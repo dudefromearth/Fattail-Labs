@@ -39,6 +39,8 @@ def test_alumni_not_in_commercial_known_expand_sources():
     assert "coaching" in expanded
     assert "activator" in expanded
     assert "labs-membership" in expanded
+    assert "iki-lab" not in expanded
+    assert expand_plans({"iki-lab"}) == frozenset({"iki-lab"})
 
 
 def test_expand_observer_trial_admits_higher_commercial():

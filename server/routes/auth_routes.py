@@ -371,6 +371,8 @@ def me(request: Request):
     # access_role: live membership elevation (Observer trial ≡ navigator, DL-128)
     access_role = str(claims.get("role") or "observer")
     memberships: list[dict] = []
+    iki_lab = False
+    iki_lab_only = False
     if claims["identity_id"] != 0:
         with db.transaction() as conn:
             with conn.cursor() as cur:
@@ -413,11 +415,20 @@ def me(request: Request):
                     }
                     for r in cur.fetchall()
                 ]
+                iki_lab, iki_lab_only = identity.iki_lab_flags(
+                    cur,
+                    int(claims["identity_id"]),
+                    str(claims.get("role") or "observer"),
+                )
+    elif str(claims.get("role") or "") == "administrator":
+        iki_lab, iki_lab_only = True, False
     return {
         "identity_id": claims["identity_id"],
         "role": claims["role"],
         "access_role": access_role,
         "memberships": memberships,
+        "iki_lab": iki_lab,
+        "iki_lab_only": iki_lab_only,
         "provider": claims.get("sso_issuer", ""),
         "email": email,
         "display_name": display_name,

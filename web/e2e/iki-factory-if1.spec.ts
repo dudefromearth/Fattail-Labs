@@ -84,6 +84,8 @@ test.describe("IKI Factory IF-1 browser walk", () => {
     await expect(page.getByTestId("iki-suite-nav-factory")).toHaveCount(0);
     await expect(page.getByTestId("iki-suite-nav-about")).toBeVisible();
     await expect(page.getByTestId("iki-suite-nav-catalog")).toBeVisible();
+    await expect(page.getByTestId("iki-suite-nav-your-lab")).toHaveCount(0);
+    await expect(page.getByTestId("iki-suite-nav-analyzer")).toHaveCount(0);
     await page.screenshot({
       path: path.join(EVIDENCE, "if1-nonadmin-soon.png"),
       fullPage: true,

@@ -9,7 +9,9 @@ Wiki Agent v0.1.3 (SUPERSEDED banners; citations still resolve).
 **DLs:** WIK-D1 · **DL-545** (git-only writer) · **DL-546** (S0 pins) · **DL-548…554**
 (Wiki Agent WA-1…4) · **DL-551** (wide open by default) · **DL-552** (access doctrine) ·
 **DL-553** (session semantics) · **DL-555** (unified spec seated) ·
-**DL-557** (WU-1 ruling B) · **DL-560** (Source Contract; Help Package gone) ·
+**DL-557** (WU-1 ruling B — superseded as a narrowing by **DL-573**) ·
+**DL-573** (plane-wide AppChrome mount; original standing-presence intent) ·
+**DL-560** (Source Contract; Help Package gone) ·
 **DL-562** (SC-0 diffs; S7 finished-only) · **DL-564** (OD-3 skill-delivered; no stub)
 
 ---
@@ -115,20 +117,22 @@ here (`wiki_agent_linkage.py`): FULLTEXT + title boost; insert vs suggest via
 open (admin cookie, reject `ftl_ag_`) → accrete while `sealed_at` IS NULL → seal
 immutable; follow-on is a new contract referencing the sealed id. First agent
 turn cites `{surface, route, entity}`. Session drafts carry `session_contract_id`
-+ calling context in frontmatter (context-into-entry). Affordance:
-`WikiAgentPanel` mounted from **wiki-owned** `web/app/app/wiki/layout.tsx` via
-`useIsAdmin()` — **not** AppChrome. Linkage-queue drain:
++ calling context in frontmatter (context-into-entry). Affordance (WA-4 as shipped):
+`WikiAgentPanel` via `useIsAdmin()`. Linkage-queue drain:
 `POST /api/wiki-agent/linkage-queue/drain` pulls next `LABS_WIKI_LINKAGE_DRAIN_N`
 (fail-loud) queued reverse-pass items into board cards; nothing auto-publishes.
 Public read is **WU-2**, not this slice.
 
-**WU-1 (DL-557 · chrome ruling B):** `WikiAgentPanel` kept and evolved on
-wiki-owned layout only — one orb, not Help’s emerald FAB, not AppChrome.
-Context providers: env `LABS_WIKI_CONTEXT_PROVIDERS` (fail-loud); first
-provider `hub=/app` exact. Unregistered routes are route-context sessions.
-Accrete is propose-and-dispose (no git draft until explicit Draft to board).
-GET `/api/wiki-agent/context`. Standing-presence defect on frozen surfaces
-accepted until a later three-OK.
+**WU-1 (DL-573; original intent; ruling B superseded as a narrowing):**
+`WikiAgentPanel` mounted from **AppChrome** lower-right dock, immediately
+**left of Help**. One orb. Wiki layout does not mount a second FAB. Not
+Help’s emerald control. Admin-only. Entire FatTail app plane — absence on
+an admin surface is a defect. Context providers: env
+`LABS_WIKI_CONTEXT_PROVIDERS` (fail-loud); first provider `hub=/app` exact.
+Unregistered routes are route-context sessions. Accrete is
+propose-and-dispose (no git draft until explicit Draft to board).
+GET `/api/wiki-agent/context`. DL-539 three-OK keeps developers focused on
+the active packet; it does not constrain Coach from naming this mount.
 
 **WU-2 (DL-558):** Published pages readable without a session. Drafts 404
 except for administrators. `GET /api/wiki/sitemap` is published slugs only
@@ -138,8 +142,9 @@ from the public article rail.
 
 **WU-3 / Source Contract (DL-560 · SC-0 · DL-562):** There is no Help Package.
 One envelope, seven `source_kind`s. Factory IF-4 exposes a **publication signal
-at Deploy** only — no envelope, no hook, no wiki page bytes. Wiki polls, hashes
-(L10), composes Wiki-side, or L12-declines. Admin push (S7) is a delivery point
+at Deploy** only (`GET /api/iki-factory/publication-signal` · **DL-577**) — no
+envelope, no hook, no wiki page bytes. Wiki **SC-3b** polls that path when
+stamped; hashes (L10), composes Wiki-side, or L12-declines. Admin push (S7) is a delivery point
 for finished publishable material; no draft/queue/unfinished store. Transcript
 pages arrive **skill-delivered** (OD-3 · **DL-564**): Coach's skill emits a
 complete envelope; no stub.

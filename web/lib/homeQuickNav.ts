@@ -27,9 +27,9 @@ export const HOME_QUICK_NAV_OPTIONS: HomeQuickNavOption[] = [
   },
   {
     id: "wiki",
-    label: "Wiki",
+    label: "IKI Lab",
     required: false,
-    description: "Compiled teaching map.",
+    description: "Compiled teaching map — Information, Knowledge, Intelligence.",
   },
   {
     id: "strategy_lab",

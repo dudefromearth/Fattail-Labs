@@ -1,0 +1,89 @@
+{
+  "captured_at": "2026-08-22T03:44:23.119Z",
+  "rows": [
+    {
+      "symbol": "SPX",
+      "expiration": "2026-08-24",
+      "http_content_hash": "46066570e281f8ee",
+      "paired_content_hash": "46066570e281f8ee",
+      "tilesHash_pipeline": "-3194f94e:26141",
+      "tilesHash_through_run": "-3194f94e:26141",
+      "options_lab_host_content_hash": "46066570e281f8ee",
+      "iki_runner_host_content_hash": "46066570e281f8ee",
+      "options_lab_symbol": "SPX",
+      "iki_runner_symbol": "SPX",
+      "options_lab_ws_hashes": [
+        "46066570e281f8ee"
+      ],
+      "iki_runner_ws_hashes": [
+        "46066570e281f8ee"
+      ],
+      "ws_hash_intersection": [
+        "46066570e281f8ee"
+      ],
+      "options_lab_tiles": 423,
+      "iki_runner_tiles": 423,
+      "options_lab_panel": 0,
+      "iki_runner_panel": 0,
+      "same_content_hash": true,
+      "same_tilesHash": true
+    },
+    {
+      "symbol": "TSLA",
+      "expiration": "2026-08-24",
+      "http_content_hash": "fb743087c38a3176",
+      "paired_content_hash": "fd9406507c92831d",
+      "tilesHash_pipeline": "-18f53bb6:17503",
+      "tilesHash_through_run": "-18f53bb6:17503",
+      "options_lab_host_content_hash": "fd9406507c92831d",
+      "iki_runner_host_content_hash": "fd9406507c92831d",
+      "options_lab_symbol": "TSLA",
+      "iki_runner_symbol": "TSLA",
+      "options_lab_ws_hashes": [
+        "d02d91546e11f594",
+        "fd9406507c92831d"
+      ],
+      "iki_runner_ws_hashes": [
+        "d02d91546e11f594",
+        "fd9406507c92831d"
+      ],
+      "ws_hash_intersection": [
+        "d02d91546e11f594",
+        "fd9406507c92831d"
+      ],
+      "options_lab_tiles": 342,
+      "iki_runner_tiles": 342,
+      "options_lab_panel": 0,
+      "iki_runner_panel": 0,
+      "same_content_hash": true,
+      "same_tilesHash": true
+    },
+    {
+      "symbol": "SPY",
+      "expiration": "2026-08-24",
+      "http_content_hash": "8ccf6455af02aef7",
+      "paired_content_hash": "8ccf6455af02aef7",
+      "tilesHash_pipeline": "7fa9d0a0:11192",
+      "tilesHash_through_run": "7fa9d0a0:11192",
+      "options_lab_host_content_hash": "8ccf6455af02aef7",
+      "iki_runner_host_content_hash": "8ccf6455af02aef7",
+      "options_lab_symbol": "SPY",
+      "iki_runner_symbol": "SPY",
+      "options_lab_ws_hashes": [
+        "8ccf6455af02aef7"
+      ],
+      "iki_runner_ws_hashes": [
+        "8ccf6455af02aef7"
+      ],
+      "ws_hash_intersection": [
+        "8ccf6455af02aef7"
+      ],
+      "options_lab_tiles": 279,
+      "iki_runner_tiles": 279,
+      "options_lab_panel": 0,
+      "iki_runner_panel": 0,
+      "same_content_hash": true,
+      "same_tilesHash": true
+    }
+  ]
+}

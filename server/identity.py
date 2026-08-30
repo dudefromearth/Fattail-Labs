@@ -17,6 +17,17 @@ ALUMNI_MIN_TENURE_DAYS = 28
 # Paid Observer membership plan (Membership Tiers + DL-126/128).
 # During the term, feature access is identical to Navigator.
 OBSERVER_TRIAL_SLUG = "observer-trial"
+# IKI Lab subscription (DL-604). Plan presence, not a role.
+IKI_LAB_SLUG = "iki-lab"
+_IKI_LAB_OTHER_COMMERCIAL = frozenset(
+    {
+        "observer-trial",
+        "activator",
+        "labs-membership",
+        "navigator",
+        "coaching",
+    }
+)
 
 
 class IdentityError(Exception):
@@ -461,6 +472,33 @@ def has_active_plan_slug(cur, identity_id: int, slug: str) -> bool:
         (identity_id, slug, *ACTIVE_STATUSES),
     )
     return cur.fetchone() is not None
+
+
+def iki_lab_flags(cur, identity_id: int, session_role: str) -> tuple[bool, bool]:
+    """(has_iki_lab, iki_lab_only). Admins: (True, False).
+
+    iki_lab_only = IKI Lab plan and no other commercial plan (alumni ignored).
+    """
+    if session_role == "administrator":
+        return True, False
+    if not identity_id:
+        return False, False
+    has = has_active_plan_slug(cur, identity_id, IKI_LAB_SLUG)
+    if not has:
+        return False, False
+    placeholders = ",".join(["%s"] * len(ACTIVE_STATUSES))
+    cur.execute(
+        f"""SELECT p.slug
+            FROM memberships m
+            JOIN plans p ON p.id = m.plan_id
+            WHERE m.identity_id = %s
+              AND m.status IN ({placeholders})
+              AND (m.current_period_end IS NULL OR m.current_period_end > NOW())""",
+        (identity_id, *ACTIVE_STATUSES),
+    )
+    slugs = {str(r["slug"]) for r in cur.fetchall()}
+    other = slugs & _IKI_LAB_OTHER_COMMERCIAL
+    return True, not other
 
 
 def feature_role(cur, identity_id: int, session_role: str) -> str:

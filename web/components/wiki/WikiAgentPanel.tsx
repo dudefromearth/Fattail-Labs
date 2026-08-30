@@ -1,8 +1,7 @@
 "use client";
 
-// Admin-only Wiki Agent session (WA-4 · WU-1 ruling B).
-// Keep/evolve this panel — one orb on wiki-owned layout. Members never see it.
-// Do not import AppChrome. Do not clone Help's emerald FAB.
+// Admin-only Wiki Agent session. Mounted from AppChrome in the lower-right
+// dock, left of Help. Members never see it. Do not clone Help's emerald FAB.
 
 import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
@@ -18,16 +17,21 @@ function surfaceFor(path: string): string {
   if (path.startsWith("/app/options-lab")) return "options-lab";
   if (path.startsWith("/app/wiki")) return "wiki";
   if (path.startsWith("/app/iki")) return "iki-lab";
+  if (path.startsWith("/app/trade-log")) return "trade-log";
+  if (path.startsWith("/app/journal")) return "journal";
+  if (path.startsWith("/app/practice")) return "practice";
   if (path.startsWith("/course")) return "courses";
-  return "wiki";
+  if (p === "/admin" || path.startsWith("/admin/")) return "admin";
+  if (path.startsWith("/app/")) return "app";
+  return "labs";
 }
 
 export default function WikiAgentPanel() {
   const isAdmin = useIsAdmin();
-  const pathname = usePathname() || "/app/wiki";
+  const pathname = usePathname() || "/";
   const [open, setOpen] = useState(false);
-  const [surface, setSurface] = useState("wiki");
-  const [route, setRoute] = useState("/app/wiki");
+  const [surface, setSurface] = useState("labs");
+  const [route, setRoute] = useState("/");
   const [entityKind, setEntityKind] = useState("");
   const [entityId, setEntityId] = useState("");
   const [entityUrl, setEntityUrl] = useState("");
@@ -226,7 +230,7 @@ export default function WikiAgentPanel() {
     <>
       {open ? (
         <div
-          className="fixed bottom-20 left-6 z-50 flex w-[min(28rem,calc(100vw-3rem))] flex-col rounded-2xl border border-[var(--color-separator)] bg-[var(--color-surface)] shadow-[var(--elevation-2)]"
+          className="flex w-[min(28rem,calc(100vw-8rem))] shrink-0 flex-col rounded-2xl border border-[var(--color-separator)] bg-[var(--color-surface)] shadow-[var(--elevation-2)]"
           data-testid="wiki-agent-panel"
           role="dialog"
           aria-modal="true"
@@ -400,16 +404,18 @@ export default function WikiAgentPanel() {
             ) : null}
           </div>
         </div>
-      ) : null}
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        title="Wiki agent"
-        data-testid="wiki-agent-admin-open"
-        className="fixed bottom-6 left-6 z-50 rounded-full bg-zinc-900 px-5 py-2.5 font-medium text-white shadow-lg transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900"
-      >
-        Wiki agent
-      </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          title="Wiki agent"
+          aria-label="Wiki agent"
+          data-testid="wiki-agent-admin-open"
+          className="shrink-0 rounded-full bg-zinc-900 px-5 py-2.5 font-medium text-white shadow-lg transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900"
+        >
+          Wiki agent
+        </button>
+      )}
     </>
   );
 }

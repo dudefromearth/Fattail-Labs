@@ -17,6 +17,8 @@ type Me = {
   /** Live membership elevation (Observer trial ≡ navigator). Prefer for gates. */
   access_role?: string;
   memberships?: { slug: string; name: string; grants_role?: string }[];
+  iki_lab?: boolean;
+  iki_lab_only?: boolean;
   email: string;
   display_name: string;
   avatar_url?: string | null;
@@ -51,6 +53,7 @@ function membershipLabel(me: Me): string {
       "observer-trial",
       "activator",
       "labs-membership",
+      "iki-lab",
     ];
     const ranked = [...mems].sort((a, b) => {
       const ia = order.indexOf(a.slug);
@@ -63,6 +66,7 @@ function membershipLabel(me: Me): string {
     if (top?.slug === "activator" || top?.slug === "labs-membership")
       return "Activator";
     if (top?.slug === "navigator") return "Navigator";
+    if (top?.slug === "iki-lab") return "IKI Lab";
     if (top?.name) return top.name;
   }
   return ROLE_LABELS[gateRole(me)] ?? gateRole(me);
@@ -83,6 +87,13 @@ const NAV: { href: string; label: string }[] = [
   { href: "/guide", label: "Guide" },
 ];
 
+const IKI_ONLY_NAV: { href: string; label: string }[] = [
+  { href: "/app/iki/about", label: "About" },
+  { href: "/app/iki/catalog", label: "Catalog" },
+  { href: "/app/iki/your-lab", label: "Your Lab" },
+  { href: "/app/iki/analyzer", label: "Analyzer" },
+];
+
 function initials(me: Me): string {
   const source = me.display_name || me.email;
   const parts = source.replace(/@.*/, "").split(/[\s._-]+/).filter(Boolean);
@@ -101,6 +112,9 @@ export default function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [learning, setLearning] = useState<EnrollmentSummary[] | null>(null);
+  const navItems = me?.iki_lab_only && me.role !== "administrator" ? IKI_ONLY_NAV : NAV;
+  const homeHref =
+    me?.iki_lab_only && me.role !== "administrator" ? "/app/iki/about" : "/";
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -153,7 +167,7 @@ export default function SiteHeader() {
       <div className="site-header-bar">
         <nav className="site-header-cluster" aria-label="Primary">
           <Link
-            href="/"
+            href={homeHref}
             className="site-header-logo-link"
             aria-label="FatTail Labs home"
           >
@@ -167,7 +181,7 @@ export default function SiteHeader() {
             />
           </Link>
 
-          {NAV.map((item) => {
+          {navItems.map((item) => {
             const active = navActive(pathname, item.href);
             return (
               <Link
@@ -369,7 +383,7 @@ export default function SiteHeader() {
       {mobileOpen && (
         <div className="border-t border-[var(--color-separator)] bg-[var(--color-surface)] md:hidden">
           <div className="mx-auto flex max-w-[72rem] flex-col px-4 py-2">
-            {NAV.map((item) => {
+            {navItems.map((item) => {
               const active = navActive(pathname, item.href);
               return (
                 <Link

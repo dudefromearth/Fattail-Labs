@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useIsAdmin } from "@/lib/useIsAdmin";
+import { ikiAccessFromMe } from "@/lib/ikiAccess";
+import { fetchMe, useIsAdmin } from "@/lib/useIsAdmin";
 import { postJSON, putJSON, revalidate } from "@/lib/client";
 import { appAlert } from "@/lib/dialogs";
 import { IconButton, IconChevronLeft, IconChevronRight } from "@/components/ui";
@@ -137,12 +138,24 @@ function AppCard({
 
 export default function AppsGrid({ apps }: { apps: AppRow[] }) {
   const isAdmin = useIsAdmin();
+  const [ikiLabOnly, setIkiLabOnly] = useState(false);
   const [orderBusy, setOrderBusy] = useState(false);
   const [highlightBusy, setHighlightBusy] = useState<string | null>(null);
   const [items, setItems] = useState(apps);
   useEffect(() => {
+    fetchMe().then((me) => setIkiLabOnly(ikiAccessFromMe(me).ikiLabOnly));
+  }, []);
+  useEffect(() => {
+    if (ikiLabOnly) {
+      setItems(
+        apps
+          .filter((a) => a.slug === "wiki")
+          .map((a) => ({ ...a, href: "/app/iki/about", status: "live" })),
+      );
+      return;
+    }
     setItems(apps);
-  }, [apps]);
+  }, [apps, ikiLabOnly]);
 
   const canReorder = isAdmin && items.length > 1 && items.every((a) => a.id > 0);
 

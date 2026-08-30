@@ -26,6 +26,8 @@ COACHING_PLAN_SLUGS: frozenset[str] = frozenset({"coaching"})
 
 # Non-commercial — never auto-added by expand_plans (Spec §4.3.2).
 ALUMNI_PLAN_SLUGS: frozenset[str] = frozenset({"courses-alumni"})
+# IKI Lab subscription — not on the commercial role ladder (DL-604).
+IKI_LAB_PLAN_SLUGS: frozenset[str] = frozenset({"iki-lab"})
 
 # All known Labs plan slugs for write-path allowlist validation (AC2).
 KNOWN_PLAN_SLUGS: frozenset[str] = (
@@ -34,6 +36,7 @@ KNOWN_PLAN_SLUGS: frozenset[str] = (
     | NAVIGATOR_PLAN_SLUGS
     | COACHING_PLAN_SLUGS
     | ALUMNI_PLAN_SLUGS
+    | IKI_LAB_PLAN_SLUGS
 )
 
 # --- Ungateable surfaces (Spec §4.2.1) — write validation rejects PUT ---

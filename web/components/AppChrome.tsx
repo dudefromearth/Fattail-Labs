@@ -13,7 +13,9 @@ import MemberSettingsRoot from "@/components/settings/MemberSettingsRoot";
 import PageViewTracker from "@/components/PageViewTracker";
 import PresenceTracker from "@/components/PresenceTracker";
 import IdleSessionGuard from "@/components/IdleSessionGuard";
+import IkiProductShell from "@/components/iki/IkiProductShell";
 import HelpLauncher from "@/components/HelpLauncher";
+import WikiAgentPanel from "@/components/wiki/WikiAgentPanel";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
 export default function AppChrome({ children }: { children: React.ReactNode }) {
@@ -30,13 +32,24 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
       <AppearanceRoot />
       <MemberSettingsRoot />
       <IdleSessionGuard />
+      <IkiProductShell />
       {!isAdminApp && !isApply && <PageViewTracker />}
       <PresenceTracker /> {/* presence tracks anyone signed in, admin area included */}
-      {!isAdminApp && !isApply && (
+      {/* Plane-wide Wiki agent (admin) left of Help (members). DL-573.
+          Separate boundaries: a Help throw must not swallow the Wiki orb. */}
+      <div
+        className="fixed bottom-5 right-5 z-[80] flex items-end gap-3"
+        data-testid="labs-corner-dock"
+      >
         <ErrorBoundary>
-          <HelpLauncher />
+          <WikiAgentPanel />
         </ErrorBoundary>
-      )}
+        {!isAdminApp && !isApply && (
+          <ErrorBoundary>
+            <HelpLauncher />
+          </ErrorBoundary>
+        )}
+      </div>
       {hideMemberChrome ? (
         children
       ) : (

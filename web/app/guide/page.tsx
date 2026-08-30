@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   title: "User's Guide",
   description:
     "How FatTail Labs works: courses, Practice (daily protocol, Trade Log, Journal, Campaign), " +
-    "Journey Process Flow, Toughness, Wiki, live sessions, resources, and membership. Process over P&L theater.",
+    "Journey Process Flow, Toughness, IKI Lab, live sessions, resources, and membership. Process over P&L theater.",
   alternates: { canonical: siteUrl("/guide") },
 };
 
@@ -41,7 +41,7 @@ export default function GuidePage() {
           User&apos;s Guide
         </h1>
         <p className="mt-2 text-[var(--color-label-secondary)]">
-          Courses, live sessions, Practice, Journey, Toughness, Wiki, and what is
+          Courses, live sessions, Practice, Journey, Toughness, IKI Lab, and what is
           coming next. Five minutes here saves an hour of poking around.
           Process over P&amp;L theater — always.
         </p>
@@ -239,7 +239,7 @@ export default function GuidePage() {
                 Journey when you enroll.
               </li>
               <li>
-                <strong>Wiki</strong> — the growing map of what we teach.
+                <strong>IKI Lab</strong> — the growing map of what we teach.
               </li>
               <li>
                 <strong>Strategy Lab</strong> — build, curate, Deploy strategies
@@ -574,27 +574,52 @@ export default function GuidePage() {
               </li>
             </ul>
 
-            <H2 id="wiki">Wiki</H2>
+            <H2 id="wiki">IKI Lab</H2>
             <p>
               The{" "}
               <Link href="/app/wiki" className={link}>
                 Wiki
               </Link>{" "}
-              is the compiled map of everything we teach — concepts, courses, and
-              live material, cross-linked and searchable. It is{" "}
-              <strong>always growing</strong> as new teaching lands.
+              (inside{" "}
+              <strong>IKI Lab</strong> — Apps → IKI Lab → Wiki,{" "}
+              <code className="text-sm">/app/wiki</code>) is the compiled map of
+              everything we teach — concepts, courses, and live material,
+              cross-linked and searchable. It is{" "}
+              <strong>always growing</strong> as new teaching lands. It is a
+              map, not a trading signal, and it never promises a profit.
             </p>
             <ul>
               <li>
-                <strong>Search first</strong> — find pages in your own words.
+                <strong>Search first</strong> — type a phrase in your own words.
+                Results include a short snippet.
               </li>
               <li>
-                <strong>Start here</strong> and <strong>new this week</strong> —
-                orientation and recently updated pages.
+                <strong>Start here</strong> and <strong>recent pages</strong> —
+                a short pinned reading list, and what was updated lately.
               </li>
               <li>
-                Use it when a lesson or live session points at a concept you want
-                to hold onto outside the video.
+                <strong>Articles</strong> at{" "}
+                <code className="text-sm">/app/wiki/…</code> — follow links in
+                the text. Empty side rails (Related, In your practice) stay
+                hidden for now; that is expected.
+              </li>
+              <li>
+                <strong>Graph</strong> — how pages connect (
+                <code className="text-sm">/app/wiki/graph</code>).
+              </li>
+              <li>
+                <strong>⌘K</strong> / <strong>Ctrl+K</strong> on Wiki pages
+                jumps by title.
+              </li>
+              <li>
+                <strong>Published pages</strong> can be read without signing
+                in. Drafts are not public.
+              </li>
+              <li>
+                The emerald <strong>Help</strong> button is the product
+                concierge — it does not write Wiki pages. A zinc{" "}
+                <strong>Wiki agent</strong> pill (left of Help) is for site
+                administrators only; members never see it.
               </li>
             </ul>
 

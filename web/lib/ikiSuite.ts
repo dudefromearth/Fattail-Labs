@@ -1,12 +1,18 @@
 /**
  * IKI Lab suite — Information · Knowledge · Intelligence.
- * Inner nav: Factory · Runner · About · Catalog
- * Factory and Runner are administrator-only (server-enforced).
+ * Inner nav: Factory · Runner · About · Catalog · Your Lab · Analyzer
+ * Factory/Runner: administrator. Your Lab/Analyzer: IKI Lab plan or admin.
  */
 
-export type IkiSuiteId = "factory" | "runner" | "about" | "catalog";
+export type IkiSuiteId =
+  | "factory"
+  | "runner"
+  | "about"
+  | "catalog"
+  | "your-lab"
+  | "analyzer";
 
-export type IkiSuiteAccess = "administrator" | "everyone";
+export type IkiSuiteAccess = "administrator" | "iki-lab" | "everyone";
 
 export type IkiSuiteItem = {
   id: IkiSuiteId;
@@ -51,6 +57,22 @@ export const IKI_SUITE: IkiSuiteItem[] = [
     access: "everyone",
     available: true,
   },
+  {
+    id: "your-lab",
+    label: "Your Lab",
+    href: "/app/iki/your-lab",
+    blurb: "Your IKI products — Heatmap workspace.",
+    access: "iki-lab",
+    available: true,
+  },
+  {
+    id: "analyzer",
+    label: "Analyzer",
+    href: "/app/iki/analyzer",
+    blurb: "OPF Analyzer in IKI Lab.",
+    access: "iki-lab",
+    available: true,
+  },
 ];
 
 /** Coach owes public banner copy. Empty on purpose — not a draft, not a claim. */
@@ -63,8 +85,14 @@ export function ikiSuiteItem(id: IkiSuiteId): IkiSuiteItem {
   return item;
 }
 
-export function ikiSuiteNavItems(isAdmin: boolean): IkiSuiteItem[] {
-  return IKI_SUITE.filter((item) =>
-    item.access === "everyone" ? true : isAdmin,
-  );
+export function ikiSuiteNavItems(
+  isAdmin: boolean,
+  hasIkiLab = false,
+): IkiSuiteItem[] {
+  return IKI_SUITE.filter((item) => {
+    if (item.access === "everyone") return true;
+    if (item.access === "administrator") return isAdmin;
+    if (item.access === "iki-lab") return isAdmin || hasIkiLab;
+    return false;
+  });
 }

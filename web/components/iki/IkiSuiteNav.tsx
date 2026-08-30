@@ -1,23 +1,29 @@
 "use client";
 
 /**
- * IKI suite nav — Factory · Runner · About · Catalog
- * Factory/Runner: administrator only. Runner: not a link until the host page ships.
+ * IKI suite nav — Factory · Runner · About · Catalog · Your Lab · Analyzer
+ * Factory/Runner: administrator. Your Lab/Analyzer: IKI Lab plan or admin.
  */
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { ikiAccessFromMe } from "@/lib/ikiAccess";
 import { fetchMe } from "@/lib/useIsAdmin";
 import { ikiSuiteNavItems, type IkiSuiteId } from "@/lib/ikiSuite";
 
 export default function IkiSuiteNav({ active }: { active: IkiSuiteId }) {
   const [isAdmin, setIsAdmin] = useState(false);
+  const [hasIkiLab, setHasIkiLab] = useState(false);
 
   useEffect(() => {
-    fetchMe().then((me) => setIsAdmin(me?.role === "administrator"));
+    fetchMe().then((me) => {
+      const a = ikiAccessFromMe(me);
+      setIsAdmin(a.isAdmin);
+      setHasIkiLab(a.hasIkiLab);
+    });
   }, []);
 
-  const items = ikiSuiteNavItems(isAdmin);
+  const items = ikiSuiteNavItems(isAdmin, hasIkiLab);
 
   return (
     <nav

@@ -1,37 +1,70 @@
 "use client";
 
-// One admin check per page load (refactor step 3/4). Previously seven
-// components each fired their own /api/auth/me effect; the module-level
-// promise cache collapses them into a single request.
+// One in-flight /api/auth/me per cache generation. AppChrome-lifetime
+// consumers (Wiki agent dock) must refetch when the session changes —
+// clearMeCache notifies subscribers. Failures are not cached.
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
-type Me = { role?: string; identity_id?: number } | null;
+export type Me = {
+  role?: string;
+  identity_id?: number;
+  iki_lab?: boolean;
+  iki_lab_only?: boolean;
+  memberships?: { slug: string; name?: string }[];
+} | null;
 
 let mePromise: Promise<Me> | null = null;
+let meEpoch = 0;
+const meListeners = new Set<() => void>();
 
 export function fetchMe(): Promise<Me> {
-  mePromise ??= fetch("/api/auth/me", { credentials: "same-origin" })
-    .then((r) => (r.ok ? (r.json() as Promise<Me>) : null))
-    .catch(() => null);
+  if (mePromise) return mePromise;
+  mePromise = fetch("/api/auth/me", { credentials: "same-origin" })
+    .then((r) => {
+      if (!r.ok) {
+        mePromise = null;
+        return null;
+      }
+      return r.json() as Promise<Me>;
+    })
+    .catch(() => {
+      mePromise = null;
+      return null;
+    });
   return mePromise;
 }
 
-/** Call after logout so the next page load re-fetches /api/auth/me. */
+/** Call after login/logout so the next fetch re-hits /api/auth/me. */
 export function clearMeCache(): void {
   mePromise = null;
+  meEpoch += 1;
+  meListeners.forEach((fn) => fn());
 }
 
 export function useIsAdmin(): boolean {
+  const pathname = usePathname();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [epoch, setEpoch] = useState(meEpoch);
+
+  useEffect(() => {
+    const onChange = () => setEpoch(meEpoch);
+    meListeners.add(onChange);
+    return () => {
+      meListeners.delete(onChange);
+    };
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     fetchMe().then((me) => {
-      if (!cancelled && me?.role === "administrator") setIsAdmin(true);
+      if (!cancelled) setIsAdmin(me?.role === "administrator");
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [epoch, pathname]);
+
   return isAdmin;
 }

@@ -59,12 +59,12 @@ export default function HelpLauncher() {
     <>
       {!open && (
         <button onClick={() => { setOpen(true); setView({ mode: "compose" }); }} aria-label="Get help"
-          className="fixed bottom-5 right-5 z-50 rounded-full bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg hover:bg-emerald-500">
+          className="shrink-0 rounded-full bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg hover:bg-emerald-500">
           Help
         </button>
       )}
       {open && (
-        <div className={`fixed bottom-5 right-5 z-50 flex max-h-[85vh] ${widthCls} flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-2xl transition-all dark:border-zinc-700 dark:bg-zinc-900`}>
+        <div className={`flex max-h-[85vh] ${widthCls} shrink-0 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-2xl transition-all dark:border-zinc-700 dark:bg-zinc-900`}>
           <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
             <div className="flex items-center gap-3 text-sm font-medium">
               <span className="text-emerald-600">Help</span>

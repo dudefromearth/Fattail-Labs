@@ -99,6 +99,10 @@ PLANS = [
         ],
     }),
     ("courses-alumni", "Course Alumni", "alumni", None),
+    ("iki-lab", "IKI Lab", "observer", {
+        "tagline": "Information · Knowledge · Intelligence — Your Lab and Analyzer",
+        "features": ["About", "Catalog", "Your Lab (Heatmap)", "Analyzer"],
+    }),
 ]
 # JWT membership_plans external_key → Labs plan slug (mig 073/074).
 # Coaching plan grants_role=navigator. Observer-trial grants_role=navigator.
@@ -126,6 +130,10 @@ PROVIDER_PLAN_MAP = [
     ("wordpress:fattail", "coaching", "coaching"),
     ("wordpress:fattail", "coaching-membership", "coaching"),
     ("wordpress:fattail", "labs-coaching", "coaching"),
+    # IKI Lab (fattail.ai Woo · DL-607)
+    ("wordpress:fattail", "iki-lab", "iki-lab"),
+    ("wordpress:fattail", "iki-lab-access", "iki-lab"),
+    ("wordpress:fattail", "iki-lab-membership", "iki-lab"),
     # 0-dte
     ("wordpress:0-dte", "observer-access", "observer-trial"),
     ("wordpress:0-dte", "observer", "observer-trial"),

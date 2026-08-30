@@ -44,7 +44,7 @@ export const GUIDE_GROUPS: GuideGroup[] = [
       { id: "campaign", label: "Campaign" },
       { id: "journey", label: "Journey" },
       { id: "toughness", label: "Toughness" },
-      { id: "wiki", label: "Wiki" },
+      { id: "wiki", label: "IKI Lab" },
       { id: "strategy-lab", label: "Strategy Lab" },
     ],
   },
