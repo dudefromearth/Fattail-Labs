@@ -61,32 +61,34 @@ const boot: TmState = {
   hole: null,
 };
 
-const state: TmState =
-  typeof window !== "undefined" &&
-  (window as Window & { __tmSlots?: TmState }).__tmSlots
-    ? (window as Window & { __tmSlots: TmState }).__tmSlots
-    : boot;
+type TmSlotBag = {
+  __tmSlots?: TmState;
+  __tmSlotListeners?: Set<() => void>;
+  __tmLog?: TmOccupancyDigest[];
+  __tmCaptures?: string[];
+  __tmOccupancy?: () => TmOccupancyDigest;
+};
 
-if (typeof window !== "undefined") {
-  (window as Window & { __tmSlots?: TmState }).__tmSlots = state;
+function slotBag(): TmSlotBag | undefined {
+  if (typeof window === "undefined") return undefined;
+  return window as unknown as TmSlotBag;
 }
 
-const listeners: Set<() => void> =
-  typeof window !== "undefined" &&
-  (window as Window & { __tmSlotListeners?: Set<() => void> }).__tmSlotListeners
-    ? (window as Window & { __tmSlotListeners: Set<() => void> })
-        .__tmSlotListeners
-    : new Set();
-if (typeof window !== "undefined") {
-  (window as Window & { __tmSlotListeners?: Set<() => void> }).__tmSlotListeners =
-    listeners;
+const state: TmState = slotBag()?.__tmSlots ?? boot;
+{
+  const w = slotBag();
+  if (w) w.__tmSlots = state;
+}
+
+const listeners: Set<() => void> = slotBag()?.__tmSlotListeners ?? new Set();
+{
+  const w = slotBag();
+  if (w) w.__tmSlotListeners = listeners;
 }
 
 function emit(): void {
-  if (typeof window !== "undefined") {
-    const w = window as Window & { __tmLog?: TmOccupancyDigest[] };
-    if (Array.isArray(w.__tmLog)) w.__tmLog.push(occupancyDigest());
-  }
+  const w = slotBag();
+  if (w && Array.isArray(w.__tmLog)) w.__tmLog.push(occupancyDigest());
   for (const fn of listeners) fn();
 }
 
@@ -283,7 +285,8 @@ if (typeof window !== "undefined") {
   window.addEventListener("tm-test-capture", (ev) => {
     const d = (ev as CustomEvent).detail;
     if (!d || typeof d !== "object") return;
-    const bag = window as Window & { __tmCaptures?: string[] };
+    const bag = slotBag();
+    if (!bag) return;
     bag.__tmCaptures = bag.__tmCaptures ?? [];
     bag.__tmCaptures.push(String((d as TmTodayGen).contentHash ?? ""));
     captureToday(d as TmTodayGen);
@@ -292,7 +295,6 @@ if (typeof window !== "undefined") {
     const d = (ev as CustomEvent).detail;
     if (typeof d === "string") loadDayHandler?.(d);
   });
-  (
-    window as Window & { __tmOccupancy?: () => TmOccupancyDigest }
-  ).__tmOccupancy = occupancyDigest;
+  const bag = slotBag();
+  if (bag) bag.__tmOccupancy = occupancyDigest;
 }

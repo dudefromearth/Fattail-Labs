@@ -40,15 +40,21 @@ export type TmHostView = {
   symbol: string;
 };
 
-const listeners: Set<() => void> =
-  typeof window !== "undefined" &&
-  (window as Window & { __tmHostListeners?: Set<() => void> }).__tmHostListeners
-    ? (window as Window & { __tmHostListeners: Set<() => void> }).__tmHostListeners
-    : new Set();
-if (typeof window !== "undefined") {
-  (
-    window as Window & { __tmHostListeners?: Set<() => void> }
-  ).__tmHostListeners = listeners;
+type TmHostBag = {
+  __tmHostListeners?: Set<() => void>;
+  __tmHostView?: TmHostView;
+  __tmHostInited?: boolean;
+};
+
+function hostBag(): TmHostBag | undefined {
+  if (typeof window === "undefined") return undefined;
+  return window as unknown as TmHostBag;
+}
+
+const listeners: Set<() => void> = hostBag()?.__tmHostListeners ?? new Set();
+{
+  const w = hostBag();
+  if (w) w.__tmHostListeners = listeners;
 }
 
 const emptyView = (): TmHostView => ({
@@ -65,22 +71,17 @@ const emptyView = (): TmHostView => ({
   symbol: "",
 });
 
-const view: TmHostView =
-  typeof window !== "undefined" &&
-  (window as Window & { __tmHostView?: TmHostView }).__tmHostView
-    ? (window as Window & { __tmHostView: TmHostView }).__tmHostView
-    : emptyView();
-if (typeof window !== "undefined") {
-  (window as Window & { __tmHostView?: TmHostView }).__tmHostView = view;
+const view: TmHostView = hostBag()?.__tmHostView ?? emptyView();
+{
+  const w = hostBag();
+  if (w) w.__tmHostView = view;
 }
 
 let allSamples: ReplaySample[] = view.samples.slice();
 let origin = { wall: 0, sample: 0 };
 let abort: AbortController | null = null;
 let raf = 0;
-let inited =
-  typeof window !== "undefined" &&
-  Boolean((window as Window & { __tmHostInited?: boolean }).__tmHostInited);
+let inited = Boolean(hostBag()?.__tmHostInited);
 
 function emit(): void {
   for (const fn of listeners) fn();
@@ -383,9 +384,8 @@ export function ensureTmHost(symbol: string): void {
   if (!view.day) view.day = nyYmd();
   if (!inited) {
     inited = true;
-    if (typeof window !== "undefined") {
-      (window as Window & { __tmHostInited?: boolean }).__tmHostInited = true;
-    }
+    const w = hostBag();
+    if (w) w.__tmHostInited = true;
     setTmLoadDayHandler((d) => {
       void loadTmDay(d, view.symbol);
     });
