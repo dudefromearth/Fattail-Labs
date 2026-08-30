@@ -67,7 +67,7 @@ On StudioOne, as `ernie`:
    # MASSIVE_API_KEY=…   # feeds need this; tap does not
    ```
    Fail loud if the root is missing. Do not default to `~/data`.
-7. **launchd**
+7. **Tap launchd**
    ```bash
    mkdir -p /Volumes/FatTail2TB/fattail-market-data/ssr/live_capture/logs
    cp ~/Fattail-Labs/infra/launchd/ai.fattail.labs.ssr-live-capture.plist.example \
@@ -78,7 +78,23 @@ On StudioOne, as `ernie`:
    ```
    Calendar: Mon–Fri **04:00 ET**. Wrapper: `scripts/ssr-live-capture-run.sh` (starts `sym_feed`, `chain_feed`, then the tap).  
 OD-6 first-hour proof: `ai.fattail.labs.ssr-od6-first-hour` at Monday **10:35 ET** writes `day=YYYY-MM-DD/FIRST_HOUR_OD6.json` (expect **720–1200** snaps in 09:30–10:30; 5-min would be **12**).
-8. **Smoke** (any weekday, or `--status` if already mid-session):
+8. **Nightly stats (02:00 ET).** Separate agent from the tap and the dash. Spec v0.8 §7.2. A hand backfill is **not** this job.
+
+   ```bash
+   mkdir -p ~/Library/Logs/fattail-labs
+   cp ~/Fattail-Labs/infra/launchd/ai.fattail.labs.ssr-archive-stats.plist.example \
+      ~/Library/LaunchAgents/ai.fattail.labs.ssr-archive-stats.plist
+   # LimitLoadToSessionType Background is required. SSH launchctl is
+   # managername=Background; Aqua-only bootstrap fails I/O error 5 and
+   # the calendar never fires.
+   launchctl bootstrap user/$(id -u) ~/Library/LaunchAgents/ai.fattail.labs.ssr-archive-stats.plist
+   launchctl enable user/$(id -u)/ai.fattail.labs.ssr-archive-stats
+   launchctl print user/$(id -u)/ai.fattail.labs.ssr-archive-stats | grep -E 'Hour|Minute|state|Background'
+   ```
+
+   Wrapper: `scripts/ssr-archive-stats-run.sh` (nice +10). Writes `STATS.json` beside the store. `STATS STALE` is the named hole when this job quietly does not run.
+
+9. **Smoke** (any weekday, or `--status` if already mid-session):
    ```bash
    launchctl kickstart -k gui/$(id -u)/ai.fattail.labs.ssr-live-capture
    sleep 8

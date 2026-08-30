@@ -7,6 +7,8 @@
 **Constraint:** Collector is **live** (gth). Do **not** mid-gth kickstart.
 Cut over only between phases.
 
+**Observed-flaky (2026-08-23, not this board’s packet):** `tests/test_ssr_session_map.py::test_at_ssr_h_g_flag_off_missing_map_polls` failed at parent `5efba75` (9 failed) and passed on current house box (8 failed) with zero edits to the SSR tree — nondeterministic. Evidence: `agents/p-wiki/gate-reports/WA-1-delta-gate.md` A2 (parent 9 failed including this test) vs WA-2-G house box (8 failed, this test not listed). **Do not fix from wiki.** SSR pass/fail flips are not chargeable to wiki packets.
+
 ## DAG
 
 ```text

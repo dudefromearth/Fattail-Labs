@@ -35,15 +35,14 @@ def _now_iso() -> str:
     return datetime.now(ZoneInfo("America/New_York")).isoformat()
 
 
-def _cache_root() -> Path:
-    raw = (os.environ.get("LABS_SSR_CACHE_ROOT") or "").strip()
-    if raw:
-        return Path(raw).expanduser().resolve()
-    return (Path.home() / "Library" / "Caches" / "fattail-ssr").resolve()
+def _archive_root() -> Path:
+    from market_data.ssr_live_capture import data_root
+
+    return data_root() / "ssr" / "live_capture"
 
 
 def day_folder(day: date) -> Path:
-    return _cache_root() / "ssr" / "live_capture" / f"day={day.isoformat()}"
+    return _archive_root() / f"day={day.isoformat()}"
 
 
 def sidecar_path(day_root: Path) -> Path:
@@ -96,6 +95,41 @@ def apply_snap(
         for v in symbols.values()
         if not (v or {}).get("not_today")
     )
+    doc["updated_at"] = at or _now_iso()
+    doc["source"] = "live"
+    return doc
+
+
+def apply_miss(
+    doc: dict[str, Any],
+    symbol: str,
+    header: dict[str, Any] | None = None,
+    *,
+    at: str | None = None,
+) -> dict[str, Any]:
+    """Named miss for a scheduled symbol. Does not increment snap count.
+
+    The last real snap filename stays. Dashboard hole flag updates.
+    """
+    sym = (symbol or "").strip().upper()
+    if not sym:
+        return doc
+    symbols = doc.setdefault("symbols", {})
+    row = symbols.get(sym) or {"snaps": 0}
+    head = header or {}
+    row["last_miss_at"] = at or _now_iso()
+    for key in ("phase", "expiration", "topic"):
+        if key in head and head[key] is not None:
+            row[key] = head[key]
+    # A live last snap is still the capture. Do not paint the board as NO CHAIN
+    # because Redis missed one 2s beat.
+    has_live = bool(row.get("last")) and int(row.get("row_count") or 0) > 0
+    if not has_live:
+        row["hole"] = head.get("hole") or f"NO CHAIN {sym}"
+        if head.get("captured_at"):
+            row["captured_at"] = head["captured_at"]
+    row["not_today"] = False
+    symbols[sym] = row
     doc["updated_at"] = at or _now_iso()
     doc["source"] = "live"
     return doc
@@ -278,6 +312,21 @@ def persist_counts(
     root = day_root if day_root is not None else day_folder(day)
     write_sidecar(root, doc)
     save_redis(store, day, doc)
+
+
+def record_miss(
+    day: date,
+    symbol: str,
+    header: dict[str, Any] | None = None,
+    *,
+    store: Any = None,
+    day_root: Path | None = None,
+) -> dict[str, Any]:
+    root = day_root if day_root is not None else day_folder(day)
+    doc = load_counts(day, store=store, day_root=root) or empty_doc(day)
+    apply_miss(doc, symbol, header)
+    persist_counts(day, doc, store=store, day_root=root)
+    return doc
 
 
 def record_snap(

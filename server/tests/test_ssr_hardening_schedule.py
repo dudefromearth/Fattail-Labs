@@ -68,7 +68,7 @@ def _write_map(tmp_path: Path) -> Path:
 
 
 def _cache_day(tmp_path: Path) -> Path:
-    return tmp_path / "cache" / "ssr" / "live_capture"
+    return tmp_path / "gold" / "ssr" / "live_capture"
 
 
 def _setup(tmp_path: Path, monkeypatch, *, hardening: str | None, ts: datetime) -> Clock:
@@ -186,7 +186,8 @@ def test_at_ssr_h_d_one_no_session_per_phase_occupancy(tmp_path, monkeypatch, ca
             "snap-*.json"
         )
     )
-    assert aapl_snaps
+    assert aapl_snaps == []
+    assert "NO CHAIN AAPL" in tap.holes
 
     clock.ts = GTH_NIGHT
     store.touched.clear()
@@ -207,20 +208,38 @@ def test_at_ssr_h_e_flag_off_is_poll_all(tmp_path, monkeypatch, hardening):
 
     aapl_topics = _topics_for("AAPL")
     assert any(t in store.touched for t in aapl_topics)
-    aapl_snaps = list(
-        (_cache_day(tmp_path) / f"day={DAY.isoformat()}" / "chain" / "AAPL").glob(
-            "snap-*.json"
-        )
-    )
-    assert aapl_snaps
-    doc = json.loads(aapl_snaps[0].read_text(encoding="utf-8"))
-    assert doc.get("hole") == "NO CHAIN AAPL"
+    aapl_dir = _cache_day(tmp_path) / f"day={DAY.isoformat()}" / "chain" / "AAPL"
+    assert list(aapl_dir.glob("snap-*.json")) == []
     assert "NO CHAIN AAPL" in tap.holes
-    summary = summarize_day(DAY, root=_cache_day(tmp_path))
-    aapl_rows = [s for s in summary["symbols"] if s.get("symbol") == "AAPL"]
-    assert aapl_rows and aapl_rows[0].get("hole") == "NO CHAIN AAPL"
-    assert summary["latest_holes"] >= 1
+    from market_data.ssr_snap_counts import load_counts
+
+    counts = load_counts(DAY, day_root=_cache_day(tmp_path) / f"day={DAY.isoformat()}")
+    assert counts
+    aapl_row = (counts.get("symbols") or {}).get("AAPL") or {}
+    assert aapl_row.get("hole") == "NO CHAIN AAPL"
+    assert int(aapl_row.get("snaps") or 0) == 0
     assert tap.no_session == []
+
+
+def test_only_writes_snap_when_generation_has_rows(tmp_path, monkeypatch):
+    """A live ladder is a snap file. An empty bus document is a miss, not a stub."""
+    _setup(tmp_path, monkeypatch, hardening="0", ts=GTH)
+    store = FakeStore()
+    tap = tap_mod.LiveTap(store=store)
+    tap.chain_cycle()
+    spx_dir = _cache_day(tmp_path) / f"day={DAY.isoformat()}" / "chain" / "SPX"
+    assert list(spx_dir.glob("snap-*.json")) == []
+
+    _put_spy_generation(store)
+    tap.chain_cycle()
+    snaps = list(spx_dir.glob("snap-*.json"))
+    assert len(snaps) == 1
+    doc = json.loads(snaps[0].read_text(encoding="utf-8"))
+    assert doc.get("hole") is None
+    assert doc.get("row_count") == 1
+    rows = (doc.get("generation") or {}).get("rows")
+    assert isinstance(rows, list) and rows
+    assert rows[0].get("delta") == 0.5
 
 
 def test_skips_symbol_that_does_not_expire_today(tmp_path, monkeypatch, capsys):

@@ -6,6 +6,7 @@ from datetime import date
 from pathlib import Path
 
 from market_data.ssr_snap_counts import (
+    apply_miss,
     apply_not_today,
     apply_snap,
     dash_view,
@@ -62,6 +63,37 @@ def test_apply_snap_increments():
     assert aapl["not_today"] is True
     assert aapl["next_expiration"] == "2026-08-19"
     assert aapl.get("hole") is None
+
+
+def test_apply_miss_does_not_count_as_snap():
+    doc = empty_doc(DAY)
+    apply_snap(
+        doc,
+        "SPX",
+        "snap-130000000Z.json",
+        {
+            "captured_at": "2026-08-18T13:00:00-04:00",
+            "iv_count": 10,
+            "row_count": 62,
+            "hole": None,
+        },
+    )
+    apply_miss(
+        doc,
+        "SPX",
+        {"hole": "NO CHAIN SPX", "captured_at": "2026-08-18T13:00:04-04:00"},
+    )
+    assert doc["snaps"] == 1
+    assert doc["symbols"]["SPX"]["last"] == "snap-130000000Z.json"
+    assert doc["symbols"]["SPX"]["hole"] is None
+    assert doc["symbols"]["SPX"]["last_miss_at"]
+    view = dash_view(doc)
+    assert view["latest_holes"] == 0
+    assert view["snaps"] == 1
+    never = empty_doc(DAY)
+    apply_miss(never, "QQQ", {"hole": "NO CHAIN QQQ"})
+    assert never["symbols"]["QQQ"]["hole"] == "NO CHAIN QQQ"
+    assert int(never["symbols"]["QQQ"].get("snaps") or 0) == 0
 
 
 def test_record_and_sidecar(tmp_path: Path):

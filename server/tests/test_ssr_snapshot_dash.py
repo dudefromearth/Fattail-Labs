@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+TOKEN_32 = "b" * 32
+
 
 def test_quiet_server_binds_without_reverse_dns():
     import threading
@@ -26,6 +28,7 @@ def test_quiet_server_binds_without_reverse_dns():
         body = res.read()
         assert res.status == 200
         assert b"Chain Snapshot" in body
+        assert b'id="write-root"' in body
     finally:
         httpd.shutdown()
         httpd.server_close()
@@ -145,3 +148,244 @@ def test_list_days_newest_first(tmp_path: Path):
     (tmp_path / "day=2026-08-17").mkdir()
     (tmp_path / "logs").mkdir()
     assert list_days(tmp_path) == ["2026-08-17", "2026-08-14"]
+
+
+def test_available_and_retrieve_http(tmp_path: Path, monkeypatch):
+    import json
+    import threading
+    from http.client import HTTPConnection
+
+    from market_data.ssr_snapshot_dash import Handler, QuietHTTPServer
+
+    day_root = tmp_path / "day=2026-08-25"
+    day_dir = day_root / "chain" / "SPX"
+    day_dir.mkdir(parents=True)
+    (day_root / "COUNTS.json").write_text(
+        json.dumps(
+            {
+                "day": "2026-08-25",
+                "symbols": {"SPX": {"snaps": 1, "expiration": "2026-08-25", "not_today": False}},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (day_dir / "snap-150000Z.json").write_text(
+        json.dumps(
+            {
+                "symbol": "SPX",
+                "captured_at": "2026-08-25T11:00:00-04:00",
+                "generation": {"rows": [1]},
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "market_data.ssr_archive_read.archive_root", lambda: tmp_path
+    )
+    monkeypatch.setenv("LABS_SSR_ARCHIVE_TOKEN", TOKEN_32)
+    auth = {"Authorization": f"Bearer {TOKEN_32}"}
+    httpd = QuietHTTPServer(("127.0.0.1", 0), Handler)
+    port = httpd.server_address[1]
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        conn = HTTPConnection("127.0.0.1", port, timeout=4)
+        conn.request("GET", "/api/coverage?days=2026-08-25&symbols=SPX", headers=auth)
+        res = conn.getresponse()
+        avail = json.loads(res.read())
+        assert res.status == 200
+        assert avail["days"][0]["status"] == "partial"
+        assert avail["days"][0]["books"][0]["first_at"].startswith("2026-08-25T11:00")
+        conn = HTTPConnection("127.0.0.1", port, timeout=4)
+        conn.request("GET", "/api/index?day=2026-08-25&symbol=SPX", headers=auth)
+        res = conn.getresponse()
+        idx = json.loads(res.read())
+        assert res.status == 200
+        assert idx["count"] == 1
+        assert "spot" not in idx["snaps"][0]
+        assert "content_hash" not in idx["snaps"][0]
+        conn = HTTPConnection("127.0.0.1", port, timeout=4)
+        conn.request("GET", "/api/fetch?day=2026-08-25&symbol=SPX&level=0", headers=auth)
+        res = conn.getresponse()
+        got = json.loads(res.read())
+        assert res.status == 200
+        assert got["returned"] == 1
+        conn = HTTPConnection("127.0.0.1", port, timeout=4)
+        conn.request("GET", "/api/index?day=2026-08-25&symbol=SPX&expiration=2026-08-26", headers=auth)
+        res = conn.getresponse()
+        wrong = json.loads(res.read())
+        assert res.status == 404
+        assert wrong["hole"] == "WRONG BOOK"
+        assert wrong["snaps"] == []
+        conn = HTTPConnection("127.0.0.1", port, timeout=4)
+        conn.request("GET", "/api/index?day=2026-08-25", headers=auth)
+        res = conn.getresponse()
+        err = json.loads(res.read())
+        assert res.status == 422
+        del err
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+
+
+def test_live_status_includes_write_root(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("LABS_MARKET_DATA_ROOT", str(tmp_path))
+    from market_data.ssr_snapshot_dash import live_status
+
+    st = live_status()
+    assert "write_root" in st
+    assert str(tmp_path / "ssr" / "live_capture") in st["write_root"]
+    assert st["day"] in st["write_root"]
+
+
+def test_absent_token_is_501_not_200(tmp_path: Path, monkeypatch):
+    """No token configured ≠ authorized. Archive routes 501 ARCHIVE NOT CONFIGURED."""
+    import threading
+    from http.client import HTTPConnection
+
+    from market_data.ssr_snapshot_dash import Handler, QuietHTTPServer
+
+    monkeypatch.delenv("LABS_SSR_ARCHIVE_TOKEN", raising=False)
+    monkeypatch.setenv("LABS_MARKET_DATA_ROOT", str(tmp_path))
+    monkeypatch.setattr("market_data.ssr_archive_read.archive_root", lambda: tmp_path)
+    httpd = QuietHTTPServer(("127.0.0.1", 0), Handler)
+    port = httpd.server_address[1]
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        conn = HTTPConnection("127.0.0.1", port, timeout=4)
+        conn.request("GET", "/")
+        html = conn.getresponse()
+        html.read()
+        assert html.status == 200
+        conn = HTTPConnection("127.0.0.1", port, timeout=4)
+        conn.request("GET", "/api/coverage?symbols=SPX")
+        res = conn.getresponse()
+        body = json.loads(res.read())
+        assert res.status == 501
+        assert body["error"] == "ARCHIVE NOT CONFIGURED"
+        assert "days" not in body
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+
+
+def test_archive_token_short_fails_loud(monkeypatch):
+    monkeypatch.setenv("LABS_SSR_ARCHIVE_TOKEN", "short")
+    from market_data.ssr_snapshot_dash import archive_token
+
+    with pytest.raises(RuntimeError, match="LABS_SSR_ARCHIVE_TOKEN"):
+        archive_token()
+
+
+def test_bearer_on_archive_routes_only(tmp_path: Path, monkeypatch):
+    """AT-SOAR-27 / 28. `/` and `/api/status` open. Archive 401 is ARCHIVE AUTH, not empty days."""
+    import threading
+    from http.client import HTTPConnection
+
+    from market_data.ssr_snapshot_dash import Handler, QuietHTTPServer
+
+    monkeypatch.setenv("LABS_SSR_ARCHIVE_TOKEN", TOKEN_32)
+    monkeypatch.setenv("LABS_MARKET_DATA_ROOT", str(tmp_path))
+    monkeypatch.setattr("market_data.ssr_archive_read.archive_root", lambda: tmp_path)
+    httpd = QuietHTTPServer(("127.0.0.1", 0), Handler)
+    port = httpd.server_address[1]
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        conn = HTTPConnection("127.0.0.1", port, timeout=4)
+        conn.request("GET", "/")
+        res = conn.getresponse()
+        assert res.status == 200
+        assert b"Chain Snapshot" in res.read()
+
+        conn = HTTPConnection("127.0.0.1", port, timeout=4)
+        conn.request("GET", "/api/status")
+        res = conn.getresponse()
+        assert res.status == 200
+        status = json.loads(res.read())
+        assert "write_root" in status or "day" in status
+
+        conn = HTTPConnection("127.0.0.1", port, timeout=4)
+        conn.request("GET", "/api/days")
+        res = conn.getresponse()
+        assert res.status == 200
+        res.read()
+
+        conn = HTTPConnection("127.0.0.1", port, timeout=4)
+        conn.request("GET", "/api/coverage?symbols=SPX")
+        res = conn.getresponse()
+        body = json.loads(res.read())
+        assert res.status == 401
+        assert body["error"] == "ARCHIVE AUTH"
+        assert "days" not in body
+
+        conn = HTTPConnection("127.0.0.1", port, timeout=4)
+        conn.request("GET", "/api/coverage?symbols=SPX", headers={"Authorization": "Bearer wrong-token-wrong-token-wrong"})
+        res = conn.getresponse()
+        wrong = json.loads(res.read())
+        assert res.status == 401
+        assert wrong["error"] == "ARCHIVE AUTH"
+        assert wrong.get("days") != []
+
+        conn = HTTPConnection("127.0.0.1", port, timeout=4)
+        conn.request(
+            "GET",
+            "/api/coverage?symbols=SPX",
+            headers={"Authorization": f"Bearer {TOKEN_32}"},
+        )
+        res = conn.getresponse()
+        ok = json.loads(res.read())
+        assert res.status == 200
+        assert "days" in ok
+        conn = HTTPConnection("127.0.0.1", port, timeout=4)
+        conn.request("GET", "/api/health", headers={"Authorization": f"Bearer {TOKEN_32}"})
+        res = conn.getresponse()
+        health = json.loads(res.read())
+        assert res.status == 200
+        assert health.get("api_version") == 1
+        assert "store" in health
+
+        # A2 W4: marks + stats are the same archive class. 401 ≠ empty tape / empty stats.
+        conn = HTTPConnection("127.0.0.1", port, timeout=4)
+        conn.request(
+            "GET",
+            "/api/marks?day=2026-08-27&symbols=VIX&t=2026-08-27T01:16:03-04:00",
+        )
+        res = conn.getresponse()
+        marks_unauth = json.loads(res.read())
+        assert res.status == 401
+        assert marks_unauth["error"] == "ARCHIVE AUTH"
+        assert "marks" not in marks_unauth
+
+        conn = HTTPConnection("127.0.0.1", port, timeout=4)
+        conn.request("GET", "/api/stats")
+        res = conn.getresponse()
+        stats_unauth = json.loads(res.read())
+        assert res.status == 401
+        assert stats_unauth["error"] == "ARCHIVE AUTH"
+        assert "days" not in stats_unauth
+
+        conn = HTTPConnection("127.0.0.1", port, timeout=4)
+        conn.request(
+            "GET",
+            "/api/marks?day=2026-08-27&symbols=VIX&t=2026-08-27T01:16:03-04:00",
+            headers={"Authorization": f"Bearer {TOKEN_32}"},
+        )
+        res = conn.getresponse()
+        marks_ok = json.loads(res.read())
+        assert res.status in (200, 404)
+        assert marks_ok.get("error") != "ARCHIVE AUTH"
+        if res.status == 200:
+            assert "marks" in marks_ok
+
+        conn = HTTPConnection("127.0.0.1", port, timeout=4)
+        conn.request("GET", "/api/stats", headers={"Authorization": f"Bearer {TOKEN_32}"})
+        res = conn.getresponse()
+        stats_ok = json.loads(res.read())
+        assert res.status == 200
+        assert stats_ok.get("api_version") == 1
+        assert stats_ok.get("error") != "ARCHIVE AUTH"
+    finally:
+        httpd.shutdown()
+        httpd.server_close()

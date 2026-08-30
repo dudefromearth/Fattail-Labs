@@ -123,7 +123,7 @@ def test_next_wake_friday_night_is_sunday_gth():
     assert wake.isoformat() == "2026-08-23T20:15:00-04:00"
 
 
-def test_write_snap_hits_local_cache_first(tmp_path, monkeypatch):
+def test_write_snap_hits_archive_root_not_library_cache(tmp_path, monkeypatch):
     from market_data import ssr_live_capture as tap
 
     monkeypatch.setenv("LABS_SSR_CACHE_ROOT", str(tmp_path / "cache"))
@@ -131,7 +131,8 @@ def test_write_snap_hits_local_cache_first(tmp_path, monkeypatch):
     gold = tmp_path / "gold" / "ssr" / "live_capture" / "day=2026-08-17" / "chain" / "SPY" / "snap-1.json"
     dest = tap.write_snap(gold, '{"ok":true}\n')
     assert dest.is_file()
-    assert "cache" in str(dest)
+    assert dest == gold
+    assert "cache" not in str(dest)
     assert dest.read_text() == '{"ok":true}\n'
 
 

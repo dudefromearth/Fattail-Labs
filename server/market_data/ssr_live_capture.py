@@ -23,7 +23,6 @@ import argparse
 import json
 import os
 import sys
-import threading
 import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -212,6 +211,27 @@ def data_root() -> Path:
     return Path("/Volumes/FatTail2TB/fattail-market-data")
 
 
+def require_archive_writable() -> Path:
+    """Fail loud if the external archive is missing or not writable."""
+    root = data_root()
+    capture = root / "ssr" / "live_capture"
+    if not root.is_dir():
+        raise RuntimeError(
+            f"LABS_MARKET_DATA_ROOT is not a directory: {root} "
+            "(OPF live_capture belongs on FatTail2TB, not ~/Library/Caches)"
+        )
+    capture.mkdir(parents=True, exist_ok=True)
+    probe = capture / ".write-ok"
+    try:
+        probe.write_text("ok\n", encoding="utf-8")
+        probe.unlink(missing_ok=True)
+    except OSError as exc:
+        raise RuntimeError(
+            f"archive is not writable: {capture} ({exc})"
+        ) from exc
+    return capture
+
+
 def day_dir(day: date) -> Path:
     return data_root() / "ssr" / "live_capture" / f"day={day.isoformat()}"
 
@@ -288,24 +308,14 @@ def write_once(path: Path, text: str) -> Path:
     return _write_text(path, text)
 
 
-def write_snap(path: Path, text: str) -> Path:
-    """Local SSD first so a stalled gold volume cannot stop the tap."""
-    try:
-        rel = path.relative_to(data_root())
-    except ValueError:
-        rel = Path("ssr") / "live_capture" / path.name
-    local = cache_root() / rel
-    written = _write_text(local, text)
-    # Gold volume has been stalling open(); copy is opt-in after the disk is healthy.
-    if (os.environ.get("LABS_SSR_GOLD_COPY") or "").strip() == "1":
-        def _gold() -> None:
-            try:
-                _write_text(path, text)
-            except OSError as exc:
-                print(f"gold_write_fail {path}: {exc}", flush=True)
+def snap_write_root() -> Path:
+    """Directory chain snaps actually land in (same tree as write_snap)."""
+    return data_root() / "ssr" / "live_capture"
 
-        threading.Thread(target=_gold, daemon=True).start()
-    return written
+
+def write_snap(path: Path, text: str) -> Path:
+    """Write-once onto the archive root (FatTail2TB). Fail loud. Not ~/Library/Caches."""
+    return _write_text(path, text)
 
 
 def dump_snap(doc: dict[str, Any]) -> str:
@@ -320,19 +330,8 @@ def append_jsonl(path: Path, doc: dict[str, Any]) -> None:
 
 
 def append_jsonl_live(path: Path, doc: dict[str, Any]) -> None:
-    try:
-        rel = path.relative_to(data_root())
-    except ValueError:
-        rel = Path(path.name)
-    append_jsonl(cache_root() / rel, doc)
-    if (os.environ.get("LABS_SSR_GOLD_COPY") or "").strip() == "1":
-        def _gold() -> None:
-            try:
-                append_jsonl(path, doc)
-            except OSError as exc:
-                print(f"gold_append_fail {path}: {exc}", flush=True)
-
-        threading.Thread(target=_gold, daemon=True).start()
+    """Append onto the archive root (FatTail2TB). Same path as session.jsonl."""
+    append_jsonl(path, doc)
 
 
 def dump_json(doc: dict[str, Any]) -> str:
@@ -399,7 +398,7 @@ class LiveTap:
             exp = front_expiration(row, day)
             if not exp:
                 continue
-            out.extend(ladder_topics(row, exp, WINGS))
+            out.extend(self._ladder_lookup_topics(row, exp))
         return out
 
     def _load_session_map(self, *, force: bool = False) -> SessionMap:
@@ -537,7 +536,8 @@ class LiveTap:
         self._ensure_dirs()
 
     def cache_day(self) -> Path:
-        return cache_root() / "ssr" / "live_capture" / f"day={self.day.isoformat()}"
+        """Live day folder — archive root, not ~/Library/Caches."""
+        return day_dir(self.day)
 
     def _ensure_dirs(self) -> None:
         root = self.cache_day()
@@ -641,6 +641,81 @@ class LiveTap:
         out["session"] = sess
         return out
 
+    @staticmethod
+    def generation_has_rows(payload: Any) -> bool:
+        """True only when the bus document is a ladder with listed strikes."""
+        if not isinstance(payload, dict):
+            return False
+        rows = payload.get("rows")
+        if not isinstance(rows, list) or not rows:
+            return False
+        return any(isinstance(r, dict) for r in rows)
+
+    def _ladder_lookup_topics(self, row: dict[str, Any], exp: str) -> list[str]:
+        """Configured wing first, then 15/25 so a wing mismatch cannot miss a live chain."""
+        wing = wings()
+        keys = list(ladder_topics(row, exp, wing))
+        for alt in (15, 25):
+            if alt == wing:
+                continue
+            for topic in ladder_topics(row, exp, alt):
+                if topic not in keys:
+                    keys.append(topic)
+        return keys
+
+    def _read_generation(
+        self, row: dict[str, Any], exp: str
+    ) -> tuple[dict[str, Any] | None, str | None]:
+        topics = self._ladder_lookup_topics(row, exp)
+        payload = None
+        topic_used = None
+        for topic in topics:
+            hit = self.store.get_json(topic)
+            if self.generation_has_rows(hit):
+                payload = hit
+                topic_used = topic
+                break
+        if payload:
+            return payload, topic_used
+        for topic in topics:
+            self.store.touch_interest(topic)
+        for topic in topics:
+            hit = self.store.get_json(topic)
+            if self.generation_has_rows(hit):
+                return hit, topic
+        return None, (topics[0] if topics else None)
+
+    def _note_chain_miss(
+        self,
+        product: str,
+        *,
+        exp: str,
+        topic: str | None,
+        captured: datetime,
+    ) -> None:
+        hole = f"NO CHAIN {product}"
+        if hole not in self.holes:
+            self.holes.append(hole)
+            print(f"chain_miss {product} exp={exp}", flush=True)
+        try:
+            from market_data.ssr_snap_counts import record_miss
+
+            record_miss(
+                self.day,
+                product,
+                {
+                    "captured_at": captured.isoformat(),
+                    "phase": self._phase(),
+                    "hole": hole,
+                    "expiration": exp,
+                    "topic": topic,
+                },
+                store=self.store,
+                day_root=self.cache_day(),
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(f"ssr_counts_miss_failed {product} {exc}", flush=True)
+
     def _row_iv_greeks(self, payload: dict[str, Any]) -> tuple[int, int, int]:
         rows = payload.get("rows") or []
         ivs = 0
@@ -675,37 +750,38 @@ class LiveTap:
             exp = front_expiration(row, self.day)
             if not exp:
                 continue
-            payload = None
-            topic_used = None
-            for topic in ladder_topics(row, exp, WINGS):
-                payload = self.store.get_json(topic)
-                if payload:
-                    topic_used = topic
-                    break
-            hole = None if payload else f"NO CHAIN {product}"
-            if hole and hole not in self.holes:
-                self.holes.append(hole)
+            payload, topic_used = self._read_generation(row, exp)
+            if not self.generation_has_rows(payload):
+                self._note_chain_miss(
+                    product, exp=exp, topic=topic_used, captured=captured
+                )
+                last = {
+                    "hole": f"NO CHAIN {product}",
+                    "symbol": product,
+                    "symbols": [],
+                }
+                continue
+            assert isinstance(payload, dict)
+            n, ivs, greeks = self._row_iv_greeks(payload)
+            self.last_chain_hash = str(payload.get("content_hash") or "") or None
+            self.last_chain_as_of = str(
+                payload.get("as_of") or payload.get("asof") or ""
+            ) or None
             doc: dict[str, Any] = {
                 "provenance": PROVENANCE,
                 "captured_at": captured.isoformat(),
                 "phase": self._phase(),
                 "symbol": product,
                 "expiration": exp,
-                "topic": topic_used or ladder_topics(row, exp, WINGS)[0],
+                "topic": topic_used or self._ladder_lookup_topics(row, exp)[0],
                 "generation": payload,
-                "hole": hole,
+                "hole": None,
                 "chain_cadence_s": CHAIN_EVERY_S,
                 "chain_cadence": "2-5s",
+                "row_count": payload.get("row_count") or n or None,
+                "iv_count": ivs,
+                "greek_count": greeks,
             }
-            if payload:
-                n, ivs, greeks = self._row_iv_greeks(payload)
-                self.last_chain_hash = str(payload.get("content_hash") or "") or None
-                self.last_chain_as_of = str(
-                    payload.get("as_of") or payload.get("asof") or ""
-                ) or None
-                doc["row_count"] = payload.get("row_count") or n or None
-                doc["iv_count"] = ivs
-                doc["greek_count"] = greeks
             dest = write_snap(
                 self.root / "chain" / product / name,
                 dump_snap(doc),
@@ -722,7 +798,7 @@ class LiveTap:
                     {
                         "captured_at": doc.get("captured_at"),
                         "phase": doc.get("phase"),
-                        "hole": doc.get("hole"),
+                        "hole": None,
                         "row_count": doc.get("row_count"),
                         "iv_count": doc.get("iv_count"),
                         "greek_count": doc.get("greek_count"),
@@ -904,6 +980,7 @@ class LiveTap:
             time.sleep(min(30.0, end - time.time()))
 
     def run(self) -> int:
+        require_archive_writable()
         self._ensure_dirs()
         print(f"live_tap root={self.root}", flush=True)
         if self._phase() in ("closed", "weekend"):

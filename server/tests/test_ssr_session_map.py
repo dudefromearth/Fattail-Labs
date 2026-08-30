@@ -15,8 +15,18 @@ NY = ZoneInfo("America/New_York")
 GTH = datetime(2026, 8, 18, 0, 30, tzinfo=NY)
 
 FIXTURE_UNIVERSE = [
-    {"symbol": "SPX", "feed_symbol": "I:SPX", "role": "tradeable"},
-    {"symbol": "AAPL", "feed_symbol": None, "role": "tradeable"},
+    {
+        "symbol": "SPX",
+        "feed_symbol": "I:SPX",
+        "role": "tradeable",
+        "next_expirations_json": ["2026-08-18"],
+    },
+    {
+        "symbol": "AAPL",
+        "feed_symbol": None,
+        "role": "tradeable",
+        "next_expirations_json": ["2026-08-18"],
+    },
 ]
 
 
@@ -143,6 +153,6 @@ def test_at_ssr_h_g_flag_off_missing_map_polls(tmp_path, monkeypatch):
     tap = tap_mod.LiveTap(store=store)
     tap.chain_cycle()
     assert any(":AAPL:" in t for t in store.touched)
-    aapl_snaps = list((tmp_path / "cache").rglob("chain/AAPL/snap-*.json"))
-    assert aapl_snaps
+    aapl_snaps = list((tmp_path / "gold").rglob("chain/AAPL/snap-*.json"))
+    assert aapl_snaps == []
     assert "NO CHAIN AAPL" in tap.holes
