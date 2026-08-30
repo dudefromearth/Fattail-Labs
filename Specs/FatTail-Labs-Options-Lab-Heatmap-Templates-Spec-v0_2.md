@@ -2,7 +2,7 @@
 
 **Status:** **DRAFT** — product / architecture authority for live options-chain **view templates**  
 **Date:** 2026-08-10  
-**Current revision:** **v0.2.1** (filename remains `…-v0_2.md`) · **HM21** 2026-08-24  
+**Current revision:** **v0.2.3** (filename remains `…-v0_2.md`) · **HM21** · Verticals two-tier Value **DL-579** · Instant Replay pointer **DL-594**  
 **Supersedes:** [v0.1 / v0.1.1](./FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_1.md)  
 **Canonical filename:** `Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md`  
 **Type:** Product + client view-plane Spec — switchable analytical panels over **one** dual-side live chain model  
@@ -82,6 +82,8 @@ UI may show labels such as “max structural profit” / “R2R” as **structur
 | Volume Profile Histogram **v0.2** | `Specs/FatTail-Labs-Volume-Profile-Histogram-Spec-v0_2.md` | Sibling app; **not** this SoR |
 | Human Interface **v1.0** | `Specs/FatTail-Labs-Human-Interface-Spec-v1.0.md` | Tokens · ≥44pt |
 | Arch 28 / 29 | `Architecture/28-massive-market-bus.md` · `29-options-lab-heatmap-templates.md` | Transport · design topology |
+| Time Machine Instant Replay **v0.1** | `Specs/FatTail-Labs-Options-Lab-Time-Machine-Instant-Replay-Spec-v0_1.md` | Heatmap **records** TR14; Instant Replay host view; playback-time Cache; **green** canvas glow. **DL-594**. DRAFT until Phase 5. |
+| Time Machine **v0.7.4 BUILD AUTHORITY** | `Specs/FatTail-Labs-Options-Lab-Time-Machine-Spec-v0_7_4.md` | Heatmap is a Time Machine **host**; Cache section per TM spec **§12.9**; HM21 persists no replay setting. Instant Replay row above is record. **DL-598**. |
 
 **Landing-order note:** Picker v1.0.2 and VP Histogram v0.2 are **cited as landed** at the paths above. Bus product law is **v1.0.1 content** inside the v1.0 filename. Future parent renames to underscore convention do not change HM laws. If a parent is temporarily missing at clone time, **do not invent weaker law** — block Heatmap GO until parent path exists.
 
@@ -272,7 +274,11 @@ Use \(S_{\mathrm{sticky}}\) for \(t\). First generation initializes sticky. Alig
 
 ### 5.3 `vertical`
 
-Matrix; width columns; debit/credit; RoC color on active value. Orientation table + golden tests before ship.
+Matrix; width columns; RoC color on active value. Orientation table + golden tests before ship.
+
+**Value (two tiers):** **Debit** or **Credit** is the main mode (listed long vs short vertical). **Type** is secondary on that package: **% Change** and **R:R**. Default Type is none — tiles show the package mid. Switching Debit ↔ Credit keeps the Type. Toggling the active Type off returns to the package. % Change and R:R are types of the selected Debit or Credit, not a fourth parallel Value.
+
+**R:R:** Debit `(width − debit) / debit` (positive debit only). Credit `credit / (width − credit)` (collected credit only). Observation-only structure descriptors.
 
 ### 5.4 `bw-fly`
 
@@ -316,7 +322,7 @@ Template / value mode / side: recompute local only; **zero** chain HTTP while st
 
 **Store:** browser `sessionStorage` key `ft_labs_heatmap_session`. JSON blob. Client hydrate in `useEffect` (no SSR mismatch). Quota / private-mode write failure → stay on defaults; do not throw.
 
-**Persisted (inspector):** `symbol`, `expiration`, `side`, `wings`, `templateId`, `valueMode`, `rocSensitivity`, `bwStrikeCount`, `bwWingSide`, `widthFitWeights`, `widthFitExpanded`, `wfIface` (heatmap \| ranking), `wfTime` (live \| average), `wfWindow` (10/20/50/100), `cacheBudgetMib` (4/8/16/32).
+**Persisted (inspector):** `symbol`, `expiration`, `side`, `wings`, `templateId`, `valueMode`, `rocSensitivity`, `bwStrikeCount`, `bwWingSide`, `widthFitWeights`, `widthFitExpanded`, `wfIface` (heatmap \| ranking), `wfTime` (live \| average \| **replay**), `wfWindow` (10/20/50/100), `cacheBudgetMib` (4/8/16/32 — internal; Instant Replay member story is playback time), `replayHorizon` (`max` \| `mid` \| `long` — TMI-12), `hostReplay` (boolean).
 
 **Not persisted:** hover tip, pinned inspect, selected tile, ToS copy buffer, color-scale \(S_{\mathrm{sticky}}\), TR14 generation slots (those live in RAM until the tab dies).
 
@@ -330,7 +336,7 @@ Template / value mode / side: recompute local only; **zero** chain HTTP while st
 
 **Legacy:** if the session key is empty, a one-time read of old Width Fit `localStorage` keys (`ft_labs_width_fit_time`, `ft_labs_width_fit_interface`, `ft_labs_width_fit_avg_window`, `ft_labs_runner_cache_budget_mb`) may seed the blob. Those keys are not a second SoR.
 
-**Cache budget detent** is an inspector pref (this blob). **Cached generations** are TR14 RAM. Closing the tab drops both.
+**Cache budget detent** is an inspector pref (this blob). Instant Replay **playback-time** stop (`replayHorizon`) is the member-facing Cache control ([TMI Spec v0.1](./FatTail-Labs-Options-Lab-Time-Machine-Instant-Replay-Spec-v0_1.md)); byte ceiling stays internal. **Cached generations** are TR14 RAM. Closing the tab drops both.
 
 **Member help:** `server/help_reference/options-lab-heatmap-session.md` (**DL-576**).
 
@@ -453,6 +459,8 @@ Grid + `template_id`, `value_mode`, `algo` ids (`sym_fly_debit_v1`, `gex_v1`), `
 | **v0.1.1** | 2026-08-10 | Dual-side HM15–HM17 (H1 resolved) |
 | **v0.2** | 2026-08-10 | External review H2–H12: modal step + no-snap; parent citations; Width vocabulary; gex_v1 units; color hysteresis; MSC look vs code; payoff-math sentence; AT extensions; next_url hard error; standard-contracts-only; filename `v0_2` |
 | **v0.2.1** | 2026-08-24 | **HM21** inspector tab-session (`sessionStorage` `ft_labs_heatmap_session`). Restores v0.1 §4.4 sessionStorage intent with Coach’s tab-lifetime rule. Distinct from HM5, §5.2.2, TR14. **AT-HM17**. **DL-575**. |
+| **v0.2.3** | 2026-08-26 | Instant Replay pointer: Heatmap records TR14; HM21 persists `replayHorizon` / `hostReplay` / `wfTime=replay`. Product law in TMI Spec v0.1. **DL-594**. |
+| **v0.2.2** | 2026-08-24 | **§5.3 Verticals** Value two-tier: Debit \| Credit main; Type % Change \| R:R secondary on that package. **DL-579**. |
 
 **Review disposition map:**
 

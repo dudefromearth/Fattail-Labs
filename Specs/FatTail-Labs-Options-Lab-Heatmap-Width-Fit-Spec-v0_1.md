@@ -2,7 +2,7 @@
 
 **Status:** **BUILD AUTHORITY** (Coach WF0-0 · **DL-525**)  
 **Date:** 2026-08-21  
-**Current revision:** **v0.1.2** (filename remains `…-v0_1.md`)  
+**Current revision:** **v0.1.3** (filename remains `…-v0_1.md`)  
 **Parent:** Heatmap Templates Spec v0.2.1 (HM1–HM21) · Advanced Fly / `sym-fly`  
 **Canonical filename:** `Specs/FatTail-Labs-Options-Lab-Heatmap-Width-Fit-Spec-v0_1.md`  
 **Short name:** Width Fit / WF  
@@ -12,6 +12,8 @@
 **Origin:** Rewrite of the SPX 0DTE Butterfly Width Optimizer development specification into a form fully compliant with the Heatmap Templates contract so an implementation plan can be drawn directly from this document.
 
 **Decision-log basis:** **OD-W1 … OD-W6 Accept** (Coach WF0-0). Clarifies relation to OD-AF7 (Surface Regime Score). JR1–7 Accept (equal \(1/7\) criteria weights; `min_valid_n` 5; `per_width`; inspector supporting modes; median; Debit default; OD-W6 (a)).
+
+**Time Machine (v0.7.4):** host views **Live | Average | Replay**. Average stays a window mean. Replay is the playhead generation. Law: `Specs/FatTail-Labs-Options-Lab-Time-Machine-Spec-v0_7_4.md`.
 
 **Content hash:** whole-file sha1 in **DL-525** (not in this file).
 
@@ -50,7 +52,7 @@ All of Heatmap Templates Spec v0.2.1 laws **HM1–HM21** apply in full. Critical
 | **HM8** | Exact listed strikes; no snap. \(K \pm w\) must be listed or cell is invalid |
 | **HM14** | HIG chrome (tokens, ≥44 pt, reduced-motion) |
 | **HM15–HM17** | Always both sides; side is view filter only; strike window ≤ 250 contracts |
-| **HM21** | Inspector tab-session (`sessionStorage` `ft_labs_heatmap_session`). Width Fit weights, expand, Heatmap \| Ranking, Live \| Average, window detent, and cache-budget detent restore in this tab. Not the TR14 generation bytes. |
+| **HM21** | Inspector tab-session (`sessionStorage` `ft_labs_heatmap_session`). Width Fit weights, expand, Heatmap \| Ranking, Live \| Average \| **Replay**, window detent, and Instant Replay `replayHorizon` restore in this tab. Not the TR14 generation bytes. |
 | **§0.3** | Structure descriptors only; no profit claims |
 
 Advanced Fly / `sym-fly` geometry, debit formula, dual-side model, and existing value modes remain the foundation.
@@ -64,7 +66,7 @@ Advanced Fly / `sym-fly` geometry, debit formula, dual-side model, and existing 
 | **WF1** | Neighborhood stability term is mandatory. A cell’s final fit score must incorporate a penalty (or down-weight) derived from dispersion of its principal metrics versus adjacent centers of the same width. Isolated high scores are suppressed; coherent regions are not. |
 | **WF2** | Per-width valid-center count (\(n\)) must be computable from the matrix of valid flags. All robust aggregates and stability statistics for a width are calculated **only** on that width’s valid cells. Footer must surface \(n\). |
 | **WF3** | Component weights are member-editable template params. A shipped, documented default preset is required. Platform-fixed weights that produce a ranking are forbidden. |
-| **WF4** | The template is a pure function of the current dual-side chain context + params + valueMode. Multi-snapshot history, fit time-series stores, and weight calibration loops are out of scope for this template and belong on the FatTail Intelligence / StudioOne plane. Short-term temporal signals may use only the existing client `flySurfaceHistory` ring-buffer pattern. **Average and Replay of Width Fit colors / per-width aggregates are Template Runner views (TR14 stream book), not template state and not a second ranking formula.** |
+| **WF4** | The template is a pure function of the current dual-side chain context + params + valueMode. Multi-snapshot history, fit time-series stores, and weight calibration loops are out of scope for this template and belong on the FatTail Intelligence / StudioOne plane. Short-term temporal signals may use only the existing client `flySurfaceHistory` ring-buffer pattern. **Average and Replay of Width Fit colors / per-width aggregates are Template Runner views (TR14 stream book), not template state and not a second ranking formula.** Host modes: **Live \| Average \| Replay** ([TMI Spec v0.1](./FatTail-Labs-Options-Lab-Time-Machine-Instant-Replay-Spec-v0_1.md) · **TMI-29**). Average = mean of a window. Replay = single gen under the Instant Replay playhead. |
 | **WF5** | Vocabulary is observation-only. See mandatory mapping table in §8. |
 
 ---
@@ -366,6 +368,7 @@ The following rulings make the Spec implementable without further ambiguity:
 
 | Version | Date | Notes |
 |---------|------|--------|
+| **v0.1.3** | 2026-08-26 | Host **Live \| Average \| Replay**. Replay = Instant Replay playhead (TMI Spec v0.1). Average unchanged. **DL-594**. |
 | **v0.1.2** | 2026-08-24 | **HM21** tab-session inspector (§8.5). Weights / Heatmap\|Ranking / Live\|Average / window / cache-budget detent persist in this tab. Distinct from TR14 RAM book. **AT-WF13**. **DL-575**. |
 | **v0.1.1** | 2026-08-21 | **BUILD AUTHORITY.** Coach WF0-0 · **DL-525**. OD-W1…W6 Accept. JR1–7. Originating `surface_stability` weight line kept; OD-W6 relocates suppression to `stability_penalty_strength` with a floor. |
 | **v0.1** | 2026-08-21 | Initial DRAFT. Rewrite of Width Optimizer into pure Heatmap Templates form. Incorporates OD-W1–W5, neighborhood stability, honest per-width \(n\), observation-only vocabulary, progressive-disclosure UI contract, and clear Intelligence boundary. |
