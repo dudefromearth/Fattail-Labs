@@ -1,0 +1,33 @@
+{
+  "at": "AT-SOAR-45",
+  "when": "2026-08-28T09:33:52.850275-04:00",
+  "load_book": "2026-08-25 SPX",
+  "baseline": {
+    "day": "2026-08-28",
+    "symbol": "SPX",
+    "count": 22,
+    "median": 2.243,
+    "p95": 4.527,
+    "gaps": [],
+    "gap_count": 0,
+    "first": "snap-133149556Z.json",
+    "last": "snap-133247957Z.json"
+  },
+  "during_load": {
+    "day": "2026-08-28",
+    "symbol": "SPX",
+    "count": 24,
+    "median": 2.212,
+    "p95": 4.436,
+    "gaps": [],
+    "gap_count": 0,
+    "first": "snap-133250152Z.json",
+    "last": "snap-133351522Z.json"
+  },
+  "hits": {
+    "ok": 94,
+    "err": 0
+  },
+  "fail": false,
+  "reasons": []
+}

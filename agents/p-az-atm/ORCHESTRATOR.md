@@ -1,5 +1,7 @@
 # ORCHESTRATOR — Analyzer Time Machine
 
+**PARKED.** See `PARKED.md`. 15 seeds; W0-0 / W0-BA / W1-G / W2-G already ran. Remaining W3 Enhanced / W4 TPO are **NX** on the unified GO — **do not fire them here.** Unified Time Machine v0.7.4 runs on `agents/p-options-lab-tm/` / plan v1.2 / `agents/go/TM-W0.md`.
+
 **Juliet** owns this board. Specialists fire only from seeds. No peer-to-peer tasking.
 
 **Plan:** [`docs/Options-Lab-Analyzer-Time-Machine-Full-Agent-Bench-Plan-v1.0.md`](../../docs/Options-Lab-Analyzer-Time-Machine-Full-Agent-Bench-Plan-v1.0.md) **v1.0**  

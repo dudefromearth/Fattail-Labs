@@ -58,23 +58,41 @@ export function spotPctFromReplay(
   return ((replaySpot / liveSpot) * 100 - 100);
 }
 
-/** Session open: first bar `o` when present, else the first print. */
+function etMinutes(tMs: number): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    hour: "numeric",
+    minute: "numeric",
+    hourCycle: "h23",
+  }).formatToParts(new Date(tMs));
+  const hour = Number(parts.find((p) => p.type === "hour")?.value ?? 0);
+  const minute = Number(parts.find((p) => p.type === "minute")?.value ?? 0);
+  return hour * 60 + minute;
+}
+
+function sessionOpenIndex(samples: readonly ReplaySample[]): number {
+  const i = samples.findIndex((s) => etMinutes(s.t_ms) >= 9 * 60 + 30);
+  return i >= 0 ? i : 0;
+}
+
+/** Session open: first RTH print (ATM-O1), else the first sample. */
 export function sessionOpenSpot(
   samples: readonly ReplaySample[],
 ): number | null {
-  const row = samples[0];
-  if (!row) return null;
+  if (!samples.length) return null;
+  const row = samples[sessionOpenIndex(samples)];
   const o = typeof row.o === "number" && row.o > 0 ? row.o : row.spot;
   return o > 0 ? o : null;
 }
 
-/** Playhead at the first print, priced at session open (ATM-O1). */
+/** Playhead at the first RTH print, priced at session open (ATM-O1). */
 export function sessionOpenCursor(
   samples: readonly ReplaySample[],
 ): ReplayCursor | null {
   if (!samples.length) return null;
-  const spot = sessionOpenSpot(samples) ?? samples[0].spot;
-  return { t_ms: samples[0].t_ms, spot, idx: 0, done: false };
+  const idx = sessionOpenIndex(samples);
+  const spot = sessionOpenSpot(samples) ?? samples[idx].spot;
+  return { t_ms: samples[idx].t_ms, spot, idx, done: false };
 }
 
 /** ATM / eligibility / builder while Time Machine is on: playhead, else open. */

@@ -7,6 +7,8 @@
 **Parents:** [Alert Builder Spec v1.0](./FatTail-Labs-Options-Lab-Analyzer-Alert-Builder-Spec-v1.0.md) (AZ-ALB) · [Alerts Manager Spec v1.0](./FatTail-Labs-Alerts-Manager-Spec-v1.0.md) (ALM) · Analyzer Spec v0.2 · OPF Truth / Elegant Failure (DL-309) · Keep-Warm Spec v0.1 · Human Interface Spec v1.0 · [Trader Feed v0.1](./FatTail-Labs-Trader-Feed-Spec-v0.1.md) (TF · **DL-514** · **DL-517**) · North Star Member Ethos v1.2  
 **Does not:** close, stop-out, or send a broker order. Does not implement the Labs-wide Alerts Manager. Does not copy MSC Trailing / 0DTE placeholder tabs.
 
+**Time Machine (v0.7.4):** Demo ticks on the replay clock; **creation under a playhead is a rehearsal object** — badged, never stored, never notifying, disposed on Reset with an announcement. Law: `Specs/FatTail-Labs-Options-Lab-Time-Machine-Spec-v0_7_4.md`.
+
 ---
 
 ## 0. Coach intent (do not drop)

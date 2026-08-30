@@ -17,6 +17,10 @@ import {
 } from "@/lib/chainLadderApi";
 import { useOptionChainBus } from "@/lib/market/useOptionChainBus";
 import { useOptionsLab } from "@/lib/optionsLabContext";
+import TimeMachineChrome from "@/components/options-lab/TimeMachineChrome";
+import { useTmReplayActive } from "@/lib/options-lab/useTmReplayActive";
+import { useChainAtPlayhead } from "@/lib/options-lab/tmChainAtT";
+import { useTimeMachineHost } from "@/lib/options-lab/useTimeMachineHost";
 import {
   useSmoothNumber,
   useSmoothNumberMap,
@@ -60,8 +64,14 @@ import type {
   ChainContext,
   TemplateParams,
   ValueModeId,
+  VerticalKind,
   WidthFitWeights,
 } from "@/lib/options-lab/templates/types";
+import {
+  verticalMetricFromMode,
+  verticalValueMode,
+  verticalViewLabel,
+} from "@/lib/options-lab/templates/vertical";
 import {
   DEFAULT_MIN_VALID_N,
   DEFAULT_STABILITY_PENALTY,
@@ -75,13 +85,16 @@ import WidthFitRanking from "@/components/options-lab/WidthFitRanking";
 import {
   applyAverageColorT,
   contractsFromMap,
-  formatCacheLine,
+  DEFAULT_BUDGET_MIB,
   getStreamBook,
   interestKey,
   weightsFingerprint,
   type AverageWindow,
-  type BudgetStopMib,
 } from "@/lib/runner/streamBook";
+import {
+  formatTodayHorizon,
+  subscribeTmSlots,
+} from "@/lib/options-lab/tmSlots";
 import {
   readHeatmapSession,
   writeHeatmapSession,
@@ -255,6 +268,7 @@ export default function HeatmapChainPanel() {
   const [valueMode, setValueMode] = useState<ValueModeId>(
     () => getTemplate(DEFAULT_HEATMAP_TEMPLATE_ID).defaultValueMode,
   );
+  const [verticalKind, setVerticalKind] = useState<VerticalKind>("debit");
   const [stickyScale, setStickyScale] = useState<number | undefined>(undefined);
   const [rocSensitivity, setRocSensitivity] = useState(DEFAULT_ROC_SENSITIVITY);
   const gradientThreshold = rocSensitivityToThreshold(rocSensitivity);
@@ -267,11 +281,13 @@ export default function HeatmapChainPanel() {
   );
   const [widthFitExpanded, setWidthFitExpanded] = useState(false);
   const [wfIface, setWfIface] = useState<"heatmap" | "ranking">("heatmap");
-  const [wfTime, setWfTime] = useState<"live" | "average">("live");
+  const [wfTime, setWfTime] = useState<"live" | "average" | "replay">("live");
+  const tmHost = useTimeMachineHost(symbol);
   const [wfWindow, setWfWindow] = useState<AverageWindow>(10);
-  const [cacheBudgetMib, setCacheBudgetMib] =
-    useState<BudgetStopMib>(8);
   const [cacheRev, setCacheRev] = useState(0);
+  const [tmHoldLine, setTmHoldLine] = useState(
+    () => formatTodayHorizon().line,
+  );
   const [sessionReady, setSessionReady] = useState(false);
   const restoreSymbolRef = useRef<string | null>(null);
   const [selectedTile, setSelectedTile] = useState<MatrixTileKey | null>(null);
@@ -299,6 +315,7 @@ export default function HeatmapChainPanel() {
       setWings(s.wings);
       setTemplateId(s.templateId);
       setValueMode(s.valueMode);
+      setVerticalKind(s.verticalKind);
       setRocSensitivity(s.rocSensitivity);
       setBwStrikeCount(s.bwStrikeCount);
       setBwWingSide(s.bwWingSide);
@@ -307,8 +324,7 @@ export default function HeatmapChainPanel() {
       setWfIface(s.wfIface);
       setWfTime(s.wfTime);
       setWfWindow(s.wfWindow);
-      setCacheBudgetMib(s.cacheBudgetMib);
-      getStreamBook().setBudgetMib(s.cacheBudgetMib);
+      getStreamBook().setBudgetMib(DEFAULT_BUDGET_MIB);
     }
     setSessionReady(true);
   }, []);
@@ -322,6 +338,7 @@ export default function HeatmapChainPanel() {
       wings,
       templateId,
       valueMode,
+      verticalKind,
       rocSensitivity,
       bwStrikeCount,
       bwWingSide,
@@ -330,7 +347,7 @@ export default function HeatmapChainPanel() {
       wfIface,
       wfTime,
       wfWindow,
-      cacheBudgetMib,
+      cacheBudgetMib: DEFAULT_BUDGET_MIB,
     });
   }, [
     sessionReady,
@@ -340,6 +357,7 @@ export default function HeatmapChainPanel() {
     wings,
     templateId,
     valueMode,
+    verticalKind,
     rocSensitivity,
     bwStrikeCount,
     bwWingSide,
@@ -348,7 +366,6 @@ export default function HeatmapChainPanel() {
     wfIface,
     wfTime,
     wfWindow,
-    cacheBudgetMib,
   ]);
 
   // Apply per-symbol profile when product changes (wings, side, template defaults).
@@ -406,8 +423,11 @@ export default function HeatmapChainPanel() {
   });
 
   const tpl = getTemplate(templateId);
+  const verticalMetric = verticalMetricFromMode(valueMode);
   const modeLabel =
-    tpl.valueModes.find((m) => m.id === valueMode)?.label ?? valueMode;
+    templateId === "vertical"
+      ? verticalViewLabel(verticalKind, verticalMetric)
+      : (tpl.valueModes.find((m) => m.id === valueMode)?.label ?? valueMode);
 
   // AF10 / AF11 — dispose pipeline memory on plane change
   useEffect(() => {
@@ -431,6 +451,13 @@ export default function HeatmapChainPanel() {
     const allowed = tpl.valueModes.some((m) => m.id === valueMode);
     if (!allowed) setValueMode(tpl.defaultValueMode);
   }, [templateId, tpl, valueMode]);
+
+  useEffect(() => {
+    if (templateId !== "vertical") return;
+    if (valueMode === "debit" || valueMode === "credit") {
+      setVerticalKind(valueMode);
+    }
+  }, [templateId, valueMode]);
 
   useEffect(() => {
     setStickyScale(undefined);
@@ -536,7 +563,7 @@ export default function HeatmapChainPanel() {
     return [...bus.rows.values()].sort((a, b) => b.strike - a.strike);
   }, [bus.rows]);
 
-  const chainCtx: ChainContext = useMemo(
+  const liveChainCtx: ChainContext = useMemo(
     () => ({
       symbol,
       viewSide: side,
@@ -558,12 +585,29 @@ export default function HeatmapChainPanel() {
       bus.hash,
     ],
   );
+  const atPlayhead = useChainAtPlayhead({
+    symbol,
+    viewSide: side,
+    wings,
+    live: liveChainCtx,
+  });
+  const replayActive = useTmReplayActive();
+  const chainCtx: ChainContext = isWidthFitTemplate(templateId)
+    ? wfTime === "replay"
+      ? atPlayhead
+      : liveChainCtx
+    : replayActive
+      ? atPlayhead
+      : liveChainCtx;
 
   /** All local: OPF-held generation already in `chainCtx`. No extra fetch. */
   const openHeldTile = useCallback(
     (body: number, widthPts: number) => {
       if (!expiration) return null;
-      const shortFly = valueMode === "credit";
+      const shortFly =
+        templateId === "vertical"
+          ? verticalKind === "credit"
+          : valueMode === "credit";
       let cost: number | null = null;
       let legs;
       if (templateId === "vertical") {
@@ -743,6 +787,7 @@ export default function HeatmapChainPanel() {
   const templateParams: TemplateParams = useMemo(
     () => ({
       valueMode,
+      verticalKind,
       widthMode: "fixed_points",
       fixedPoints: flyWidths,
       stickyScale,
@@ -756,6 +801,7 @@ export default function HeatmapChainPanel() {
     }),
     [
       valueMode,
+      verticalKind,
       stickyScale,
       bwStrikeCount,
       bwWingSide,
@@ -799,8 +845,21 @@ export default function HeatmapChainPanel() {
 
   const lastBookHash = useRef<string>("");
   useEffect(() => {
-    if (!isWidthFitTemplate(templateId) || !matrix || !bus.hash) return;
-    getStreamBook().setBudgetMib(cacheBudgetMib);
+    // TR14: record raw OPF generations for this tab, any Heatmap template.
+    // Width Fit memo is optional; GEX / flies / verticals still fill the book.
+    if (!bus.hash || !chainCtx.contracts.size) return;
+    getStreamBook().setBudgetMib(DEFAULT_BUDGET_MIB);
+    const wfMemo =
+      isWidthFitTemplate(templateId) && matrix
+        ? {
+            weightsFp,
+            colorT: matrix.cells.map((row) => row.map((c) => c.colorT)),
+            widthPts: matrix.cols.map((c) => c.widthPts),
+            median: (matrix.footer ?? []).map((f) => f.median),
+            stability: (matrix.footer ?? []).map((f) => f.stability),
+            n: (matrix.footer ?? []).map((f) => f.n),
+          }
+        : null;
     getStreamBook().push(bookKey, {
       contentHash: bus.hash,
       asOf: chainCtx.asOf,
@@ -811,22 +870,15 @@ export default function HeatmapChainPanel() {
       spot: chainCtx.spot,
       strikeStep: chainCtx.strikeStep,
       wings: chainCtx.wings,
-      memo: {
-        weightsFp,
-        colorT: matrix.cells.map((row) => row.map((c) => c.colorT)),
-        widthPts: matrix.cols.map((c) => c.widthPts),
-        median: (matrix.footer ?? []).map((f) => f.median),
-        stability: (matrix.footer ?? []).map((f) => f.stability),
-        n: (matrix.footer ?? []).map((f) => f.n),
-      },
+      memo: wfMemo,
     });
     if (lastBookHash.current !== bus.hash) {
       lastBookHash.current = bus.hash;
       setCacheRev((n) => n + 1);
     }
-    // matrix from this render after flyPaint; hash is the gen gate.
+    // hash is the gen gate; matrix/memo refresh same hash in place.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bus.hash, bookKey, weightsFp, templateId, flyPaint, cacheBudgetMib]);
+  }, [bus.hash, bookKey, weightsFp, templateId, flyPaint, chainCtx.contracts.size]);
 
   const displayMatrix = useMemo(() => {
     if (!matrix) return null;
@@ -856,11 +908,12 @@ export default function HeatmapChainPanel() {
     };
   }, [matrix, templateId, wfTime, bookKey, wfWindow, weightsFp, cacheRev]);
 
-  const cacheStatus = useMemo(() => {
-    void cacheRev;
-    getStreamBook().setBudgetMib(cacheBudgetMib);
-    return getStreamBook().status(bookKey);
-  }, [cacheBudgetMib, bookKey, cacheRev]);
+  useEffect(() => {
+    setTmHoldLine(formatTodayHorizon().line);
+    return subscribeTmSlots(() => {
+      setTmHoldLine(formatTodayHorizon().line);
+    });
+  }, []);
 
   /** Same-width listed-gamma rank, 1–10. Held chain only. */
   const convexityScores = useMemo(() => {
@@ -1022,6 +1075,15 @@ export default function HeatmapChainPanel() {
         onTemplateChange={setTemplateId}
         valueMode={valueMode}
         onValueModeChange={setValueMode}
+        verticalKind={verticalKind}
+        onVerticalKindChange={(kind) => {
+          setVerticalKind(kind);
+          setValueMode(verticalValueMode(kind, verticalMetric));
+        }}
+        verticalMetric={verticalMetric}
+        onVerticalMetricChange={(metric) => {
+          setValueMode(verticalValueMode(verticalKind, metric));
+        }}
         bwStrikeCount={bwStrikeCount}
         onBwStrikeCountChange={setBwStrikeCount}
         bwWingSide={bwWingSide}
@@ -1068,7 +1130,11 @@ export default function HeatmapChainPanel() {
                 iface: wfIface,
                 onIface: setWfIface,
                 time: wfTime,
-                onTime: setWfTime,
+                onTime: (v) => {
+                  setWfTime(v);
+                  if (v === "replay" && !replayActive) tmHost.onPlay();
+                },
+                replayEnabled: replayActive,
                 window: wfWindow,
                 onWindow: setWfWindow,
                 avgUsed:
@@ -1082,17 +1148,7 @@ export default function HeatmapChainPanel() {
               }
             : null
         }
-        streamCache={{
-          budgetMib: cacheBudgetMib,
-          onBudget: (n) => {
-            setCacheBudgetMib(n);
-            getStreamBook().setBudgetMib(n);
-            setCacheRev((x) => x + 1);
-          },
-          line: formatCacheLine(cacheStatus),
-          atLimit: cacheStatus.atLimit,
-          oversize: cacheStatus.oversize,
-        }}
+        tmHold={{ line: tmHoldLine }}
         onOpenAnalyzer={() => saveAnalyzerTrade(tosScript, "heatmap")}
         spotLabel={smoothSpot != null ? fmt(smoothSpot, 2) : "—"}
         genLine={bus.hash ? `gen ${bus.hash.slice(0, 8)}` : null}
@@ -1111,11 +1167,17 @@ export default function HeatmapChainPanel() {
         aria-label="Heatmap view"
       >
         <div
-          className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-[var(--color-separator)] bg-[var(--color-surface)] shadow-[var(--elevation-2,0_4px_16px_rgba(0,0,0,0.18))]"
+          className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-[var(--color-separator)] bg-[var(--color-surface)] shadow-[var(--elevation-2,0_4px_16px_rgba(0,0,0,0.18))]"
           data-testid="heatmap-view-panel"
         >
+          <div className="relative z-[2] shrink-0 border-b border-[var(--color-separator)] px-2 py-1.5">
+            <TimeMachineChrome
+              symbol={symbol}
+              watermarkTestId="heatmap-replay-watermark"
+            />
+          </div>
           {/* Panel header */}
-          <header className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-[var(--color-separator)] bg-[var(--color-surface-secondary,var(--color-fill))] px-3 py-2 sm:px-4">
+          <header className="relative z-[1] flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-[var(--color-separator)] bg-[var(--color-surface-secondary,var(--color-fill))] px-3 py-2 sm:px-4">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                 <h3
@@ -1126,9 +1188,7 @@ export default function HeatmapChainPanel() {
                 </h3>
                 {tpl.valueModes.length > 1 ? (
                   <span className="text-xs font-medium text-[var(--color-label-secondary)]">
-                    ·{" "}
-                    {tpl.valueModes.find((m) => m.id === valueMode)?.label ??
-                      valueMode}
+                    · {modeLabel}
                   </span>
                 ) : null}
               </div>

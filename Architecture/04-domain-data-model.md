@@ -45,6 +45,7 @@
 | `090`–`092` | Community app, Discord profiles, community messages (DL-237–242) |
 | `124_apps_catalog_order` | Seed `/app` hub `sort_order` + `practice-log` / `options-lab` rows (DL-319) |
 | `125_apps_highlighted` | `apps.highlighted` admin catalog paint (DL-321) |
+| `149_tm_hold_resident` | Time Machine hold JS-heap watch (C11; admin `/admin/archive` corpus row) |
 | **planned** | `identities.surface_inspect_json` — Surface camera/plane/view prefs (Arch 33 · tech spec v0.1) — **not applied until Coach Accept** |
 | **planned ~093** | Bot Marketplace: `bot_packages`, `bot_package_shares`, optional `bot_package_purchases` hooks (Spec v0.1 · Arch 23 · DL-243) — **not applied until Spec v1.0** |
 

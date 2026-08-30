@@ -56,11 +56,20 @@ two-sided mass (default 68.27% and optional 95.45%). Pick a **listed**
 expiration. This is an inspection overlay (σ · √τ), not a forecast that
 price will stay inside the band.
 
+## Time Machine
+The dark strip above the canvas is **Time Machine** — same strip on Heatmap
+and Surface. One surface, one scrubber. The **date** picks the day (today is
+already selected). A past day lands coarse, then sharpens; the fidelity
+indicator says how sharp it is yet. Cards you build while scrubbing are
+rehearsal: they never enter Trade Log (hidden and refused), live algos do
+not tick against the replayed clock, and Reset says when they ended. See
+the **Options Lab Time Machine** help topic.
+
 ## What-if
 Inspector → **What-if**. Turn Enable on to use Time (to last trade: index
 16:15 ET, equity 16:00 ET), Implied vol (ATM IV detent), and Spot % (−5 to
 +5). Reset clears all three and turns Enable off. What-if studies the
-picture; it does not invent new strikes.
+picture; it does not invent new strikes. What-if Enable is not Time Machine.
 
 ## Position list
 The cards under the graph are the book. **Show** is a checkbox: every Shown

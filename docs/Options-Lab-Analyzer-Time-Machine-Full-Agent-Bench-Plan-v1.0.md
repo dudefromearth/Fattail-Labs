@@ -1,5 +1,7 @@
 # Analyzer Time Machine — Full Agent Bench Plan v1.0
 
+**SUPERSEDED** as stamp target by [`docs/Options-Lab-Time-Machine-Full-Agent-Bench-Plan-v1.2.md`](./Options-Lab-Time-Machine-Full-Agent-Bench-Plan-v1.2.md) (spec **v0.7.4 BUILD AUTHORITY**). Board `p-az-atm` is **PARKED**.
+
 **Date:** 2026-08-20  
 **Plan revision:** **v1.0**  
 **Canonical filename:** `docs/Options-Lab-Analyzer-Time-Machine-Full-Agent-Bench-Plan-v1.0.md`  

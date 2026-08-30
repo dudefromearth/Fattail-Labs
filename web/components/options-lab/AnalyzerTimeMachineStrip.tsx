@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Button from "@/components/ui/Button";
 import { IconPause, IconPlay, IconStop } from "@/components/ui/icons";
 import {
@@ -8,6 +9,20 @@ import {
   type ReplaySample,
   type ReplaySpeed,
 } from "@/lib/options-lab/algoDayReplay";
+import TmDateField from "@/components/options-lab/TmDateField";
+import { formatHoldHorizon, subscribeTmSlots } from "@/lib/options-lab/tmSlots";
+
+function useCompactStrip(): boolean {
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 40rem)");
+    const on = () => setCompact(mq.matches);
+    on();
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  return compact;
+}
 
 export default function AnalyzerTimeMachineStrip(props: {
   day: string;
@@ -22,29 +37,74 @@ export default function AnalyzerTimeMachineStrip(props: {
   onLeave: () => void;
   loading?: boolean;
   disabled?: boolean;
+  replayActive?: boolean;
+  coverage?: Map<string, boolean> | null;
+  onNeedMonth?: (from: string, to: string) => void;
+  fidelity?: number | null;
+  hole?: string | null;
+  onUncovered?: (day: string) => void;
+  playheadT?: number | null;
 }) {
+  const compact = useCompactStrip();
+  const [holdLine, setHoldLine] = useState(() => formatHoldHorizon().line);
+  useEffect(() => {
+    setHoldLine(formatHoldHorizon().line);
+    return subscribeTmSlots(() => setHoldLine(formatHoldHorizon().line));
+  }, []);
+  const cycleSpeed = () => {
+    const i = REPLAY_SPEEDS.indexOf(props.speed);
+    const next = REPLAY_SPEEDS[(i + 1) % REPLAY_SPEEDS.length];
+    props.onSpeed(next);
+  };
   return (
     <div
-      className="pointer-events-auto flex min-h-11 items-center gap-1.5"
+      className="pointer-events-auto flex min-h-11 w-full min-w-0 flex-wrap items-center gap-1.5"
       data-testid="analyzer-time-machine"
+      data-tm-playhead-t={props.playheadT != null ? String(props.playheadT) : ""}
     >
-      <input
-        type="date"
-        className={
-          "min-h-11 rounded-[var(--radius-md,0.5rem)] border border-white/20 bg-[#1c1c24] px-2 " +
-          "font-mono text-[22px] tabular-nums leading-none text-white/90 outline-none " +
-          "[color-scheme:dark] " +
-          "[&::-webkit-calendar-picker-indicator]:h-7 " +
-          "[&::-webkit-calendar-picker-indicator]:w-7 " +
-          "[&::-webkit-calendar-picker-indicator]:cursor-pointer " +
-          "[&::-webkit-calendar-picker-indicator]:opacity-90"
-        }
-        value={props.day}
+      <TmDateField
+        day={props.day}
         max={nyYmd()}
-        onChange={(e) => props.onDay(e.target.value)}
-        aria-label="Time Machine day"
-        data-testid="analyzer-tm-day"
+        coverage={props.coverage ?? null}
+        onNeedMonth={props.onNeedMonth}
+        onDay={props.onDay}
+        onUncovered={props.onUncovered ?? props.onDay}
       />
+      {props.hole === "NO PATH" ? (
+        <span
+          className="font-mono text-[11px] tracking-wide text-white/55"
+          data-testid="analyzer-tm-no-path"
+        >
+          NO PATH
+        </span>
+      ) : props.hole === "WAITING" ? (
+        <span
+          className="font-mono text-[11px] tracking-wide text-white/55"
+          data-testid="analyzer-tm-waiting"
+        >
+          WAITING
+        </span>
+      ) : null}
+      <span
+        className="max-w-[14rem] truncate font-mono text-[11px] tracking-wide text-white/55"
+        data-testid="analyzer-tm-hold"
+        title={holdLine}
+      >
+        {holdLine}
+      </span>
+      {props.fidelity != null && props.hole !== "NO PATH" ? (
+        <span
+          className="font-mono text-[11px] tabular-nums text-white/55"
+          data-testid="analyzer-tm-fidelity"
+          data-tm-fidelity={Math.round(props.fidelity * 100)}
+        >
+          {props.fidelity >= 0.995
+            ? "full"
+            : props.fidelity < 0.01
+              ? "coarse"
+              : `${Math.round(props.fidelity * 100)}%`}
+        </span>
+      ) : null}
       <Button
         variant="bordered"
         className="min-w-11 px-2"
@@ -75,28 +135,41 @@ export default function AnalyzerTimeMachineStrip(props: {
       >
         <IconStop size={16} />
       </Button>
-      {REPLAY_SPEEDS.map((s) => (
+      {compact ? (
         <button
-          key={s}
           type="button"
-          className={
-            "min-h-11 min-w-11 rounded-full px-2 text-[12px] font-medium " +
-            (props.speed === s
-              ? "bg-sky-500/30 text-sky-100"
-              : "text-white/60 hover:bg-white/10")
-          }
-          onClick={() => props.onSpeed(s)}
-          aria-pressed={props.speed === s}
-          data-testid={`analyzer-tm-speed-${s}`}
+          className="min-h-11 min-w-11 rounded-full bg-white/10 px-2 text-[12px] font-medium text-white/80"
+          onClick={cycleSpeed}
+          aria-label={`Speed ${props.speed}×`}
+          data-testid={`analyzer-tm-speed-${props.speed}`}
+          data-tm-speed-collapsed=""
         >
-          {s}×
+          {props.speed}×
         </button>
-      ))}
+      ) : (
+        REPLAY_SPEEDS.map((s) => (
+          <button
+            key={s}
+            type="button"
+            className={
+              "min-h-11 min-w-11 rounded-full px-2 text-[12px] font-medium " +
+              (props.speed === s
+                ? "bg-white/15 text-white/90"
+                : "text-white/60 hover:bg-white/10")
+            }
+            onClick={() => props.onSpeed(s)}
+            aria-pressed={props.speed === s}
+            data-testid={`analyzer-tm-speed-${s}`}
+          >
+            {s}×
+          </button>
+        ))
+      )}
       <Button
         variant="plain"
         className="!min-h-11 !px-3 shrink-0"
         onClick={props.onLeave}
-        disabled={!props.day && !props.loading}
+        disabled={!props.replayActive && !props.loading}
         aria-label="Reset"
         data-testid="analyzer-tm-reset"
       >

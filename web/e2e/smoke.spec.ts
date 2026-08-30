@@ -31,8 +31,16 @@ test.describe("Member + admin smoke", () => {
     await expect(page.getByTestId("admin-shell")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId("admin-brand")).toContainText("Admin");
     await expect(page.getByTestId("admin-nav")).toBeVisible();
-    // Board link present
-    await expect(page.getByRole("link", { name: "Board" })).toBeVisible();
+    const nav = page.getByTestId("admin-nav");
+    await expect(nav.getByRole("link", { name: "Board" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Archive" })).toBeVisible();
+    await page.goto("/admin/archive");
+    await expect(page.getByTestId("admin-archive")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("admin-archive-corpus")).toBeVisible();
+    await expect(page.getByTestId("admin-archive-corpus")).toContainText("Days collected");
+    await expect(page.getByTestId("admin-archive-holds")).toBeVisible();
+    await expect(page.getByTestId("admin-archive-holds")).toContainText("2026-08-27");
+    await expect(page.getByTestId("admin-archive-holds")).toContainText("553 MB");
   });
 
   test("admin board kanban loads", async ({ page }) => {

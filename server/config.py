@@ -1,6 +1,8 @@
 """Config — env-driven, fail loud. No silent defaults for anything structural."""
 
 import os
+from pathlib import Path
+from urllib.parse import urlparse
 
 
 class ConfigError(RuntimeError):
@@ -162,6 +164,39 @@ class Config:
 
         # Help concierge model. Missing used to mean enabled.
         self.help_ai_enabled = _require_bool("LABS_HELP_AI_ENABLED")
+
+        # SO-AR. Absent is a supported state (Labs boots; archive routes 501).
+        # Present-and-invalid aborts (invariant 2).
+        arch = validate_ssr_archive_env()
+        self.ssr_archive_url = arch["url"]
+        self.ssr_archive_token = arch["token"]
+        self.ssr_archive_cache_root = arch["cache_root"]
+
+
+def validate_ssr_archive_env() -> dict:
+    """Read LABS_SSR_ARCHIVE_* . Empty is OK. Malformed raises ConfigError."""
+    url = os.environ.get("LABS_SSR_ARCHIVE_URL", "").strip() or None
+    token = os.environ.get("LABS_SSR_ARCHIVE_TOKEN", "").strip() or None
+    cache_raw = os.environ.get("LABS_SSR_ARCHIVE_CACHE_ROOT", "").strip() or None
+    if url:
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            raise ConfigError(
+                "LABS_SSR_ARCHIVE_URL is present but not a valid http(s) URL"
+            )
+    if token is not None and len(token) < 32:
+        raise ConfigError(
+            "LABS_SSR_ARCHIVE_TOKEN is present but shorter than 32 characters"
+        )
+    cache_root: str | None = None
+    if cache_raw:
+        cache_path = Path(cache_raw).expanduser()
+        if not cache_path.is_dir():
+            raise ConfigError(
+                f"LABS_SSR_ARCHIVE_CACHE_ROOT is not a directory: {cache_path}"
+            )
+        cache_root = str(cache_path.resolve())
+    return {"url": url, "token": token, "cache_root": cache_root}
 
 
 _config: Config | None = None

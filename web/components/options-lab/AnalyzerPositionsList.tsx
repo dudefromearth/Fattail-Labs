@@ -14,6 +14,8 @@ import {
   useState,
   type CSSProperties,
 } from "react";
+import ReplayBadge from "@/components/options-lab/ReplayBadge";
+import { formatReplayClock } from "@/lib/options-lab/algoDayReplay";
 import {
   calendarDteOf,
   definedDebitSigned,
@@ -24,6 +26,7 @@ import {
   applyEtHm,
   etHmValue,
   formatEtHm,
+  isTmPositionDark,
   resolveEntryAt,
 } from "@/lib/options-lab/positionSession";
 import {
@@ -297,6 +300,8 @@ export type AnalyzerPositionsListProps = {
   onShiftStrikes: (id: string, direction: "up" | "down") => void;
   /** Upcoming listed expirations (YYYY-MM-DD) for the suite / product. */
   expirations?: string[];
+  /** TMI-96: dark until playhead reaches entry. Not hidden. */
+  playheadMs?: number | null;
 };
 
 export default function AnalyzerPositionsList({
@@ -317,6 +322,7 @@ export default function AnalyzerPositionsList({
   onSetExpiration,
   onShiftStrikes,
   expirations = [],
+  playheadMs = null,
 }: AnalyzerPositionsListProps) {
   const list = positions;
   /**
@@ -425,6 +431,7 @@ export default function AnalyzerPositionsList({
             {/* One tbody per position — Trade Log block: solid fill, no inter-leg borders */}
             {list.map((pos, posIdx) => {
               const hidden = !pos.visible;
+              const tmDark = isTmPositionDark(pos, playheadMs);
               const locked = pos.lock.mode === "locked";
               const und = (pos.position.underlying || "").toUpperCase();
               const offSymbol =
@@ -546,6 +553,7 @@ export default function AnalyzerPositionsList({
                   onSetExpiration={onSetExpiration}
                   onShiftStrikes={onShiftStrikes}
                   expChoices={expChoices}
+                  tmDark={tmDark}
                 />
               );
             })}
@@ -560,6 +568,7 @@ function PosBlock({
   pos,
   orderedLegs,
   hidden,
+  tmDark = false,
   locked,
   und,
   offSymbol,
@@ -601,6 +610,7 @@ function PosBlock({
   pos: AnalyzerPosition;
   orderedLegs: LegInput[];
   hidden: boolean;
+  tmDark?: boolean;
   locked: boolean;
   und: string;
   offSymbol: boolean;
@@ -674,18 +684,111 @@ function PosBlock({
     ? "inset 0 0 0 2px rgba(156,163,175,0.75)"
     : `inset 0 0 0 2px ${edgeColor}`;
 
+  if (tmDark) {
+    const pendingEdge = cellBase(true);
+    return (
+      <tbody
+        data-testid={`analyzer-pos-card-${pos.id}`}
+        data-focused="0"
+        data-visible={hidden ? "0" : "1"}
+        data-tm-dark="1"
+        data-blotter-kind={kind}
+        data-ghost={isGhost ? "1" : "0"}
+        data-rehearsal={pos.rehearsal ? "1" : "0"}
+        className={(hidden ? "opacity-40 " : "opacity-50 ") + "transition-[filter]"}
+        style={{ backgroundColor: bg, boxShadow: blockShadow }}
+      >
+        <tr className="tabular-nums" style={{ backgroundColor: bg }}>
+          <td
+            className={td + " align-top"}
+            style={pendingEdge}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <label
+              className={
+                "flex min-h-8 cursor-pointer items-center gap-1.5 " +
+                "text-[16.5px] font-semibold uppercase tracking-wide text-white/80"
+              }
+            >
+              <input
+                type="checkbox"
+                checked={!hidden}
+                onChange={() => onToggleVisibility(pos.id)}
+                aria-label={
+                  hidden
+                    ? `Show ${pos.label} on graph`
+                    : `Hide ${pos.label} from graph`
+                }
+                data-testid={`analyzer-pos-show-${pos.id}`}
+                className="h-5 w-5 shrink-0 cursor-pointer accent-[var(--color-tint)]"
+              />
+              Show
+            </label>
+          </td>
+          <td
+            colSpan={13}
+            className={td + ` ${textMuted}`}
+            style={pendingEdge}
+            data-testid={`analyzer-pos-pending-${pos.id}`}
+          >
+            Not yet taken
+          </td>
+          <td
+            className={td + " align-top whitespace-normal"}
+            style={pendingEdge}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col items-stretch gap-2 py-0.5">
+              <label
+                className="flex items-center gap-1 text-[14px] uppercase tracking-wide text-white/70"
+                title="When this position was put on. Default is the cash open."
+              >
+                In
+                <input
+                  type="time"
+                  className="min-h-8 min-w-0 flex-1 rounded bg-black/25 px-1 py-0.5 text-[14.5px] text-white"
+                  data-testid={`analyzer-pos-entry-${pos.id}`}
+                  value={etHmValue(resolveEntryAt(pos))}
+                  onChange={(e) =>
+                    onSetEntryAt(
+                      pos.id,
+                      applyEtHm(resolveEntryAt(pos), e.target.value),
+                    )
+                  }
+                />
+              </label>
+              <button
+                type="button"
+                className={
+                  actionBtn + " min-h-8 w-full px-2 py-1 text-[16.5px] text-red-100"
+                }
+                data-testid={`analyzer-pos-delete-${pos.id}`}
+                aria-label={`Delete ${pos.label} from the list`}
+                onClick={() => onDelete(pos.id)}
+              >
+                Delete
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    );
+  }
+
   return (
     <tbody
       data-testid={`analyzer-pos-card-${pos.id}`}
       data-focused="0"
       data-visible={hidden ? "0" : "1"}
+      data-tm-dark={tmDark ? "1" : "0"}
       data-blotter-kind={kind}
       data-price-side={side ?? ""}
       data-ghost={isGhost ? "1" : "0"}
+      data-rehearsal={pos.rehearsal ? "1" : "0"}
       data-expired={expired ? "1" : "0"}
       data-off-symbol={offSymbol ? "1" : "0"}
       className={
-        (hidden ? "opacity-40 " : isGhost ? "opacity-90 " : "") +
+        (hidden ? "opacity-40 " : tmDark ? "opacity-50 " : isGhost ? "opacity-90 " : "") +
         "transition-[filter] hover:brightness-110"
       }
       style={{
@@ -748,6 +851,20 @@ function PosBlock({
                     />
                     Show
                   </label>
+                  {pos.rehearsal ? (
+                    <div className="flex flex-col items-center gap-0.5">
+                      <ReplayBadge className="!min-h-9 !min-w-9" />
+                      <span
+                        className="text-[10px] font-semibold uppercase tracking-wide text-white/55"
+                        data-testid={`analyzer-pos-rehearsal-${pos.id}`}
+                      >
+                        Rehearsal
+                        {pos.entryAt != null
+                          ? ` · ${formatReplayClock(pos.entryAt)}`
+                          : ""}
+                      </span>
+                    </div>
+                  ) : null}
                   <button
                     type="button"
                     className={actionBtn + " min-h-8 w-full px-2 py-1"}
@@ -1164,7 +1281,7 @@ function PosBlock({
                       TL #{pos.tradeLogTradeId}
                     </span>
                   ) : null}
-                  {onSendToTradeLog ? (
+                  {onSendToTradeLog && !pos.rehearsal ? (
                     <button
                       type="button"
                       className={actionBtn + " min-h-8 w-full px-2 py-1"}

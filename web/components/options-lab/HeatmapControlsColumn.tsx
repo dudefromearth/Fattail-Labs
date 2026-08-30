@@ -26,6 +26,8 @@ import type {
   BwWingSide,
   HeatmapTemplate,
   ValueModeId,
+  VerticalKind,
+  VerticalMetric,
   WidthFitWeights,
 } from "@/lib/options-lab/templates/types";
 import {
@@ -39,12 +41,9 @@ import {
 import type { LadderExpirationContract } from "@/lib/chainLadderApi";
 import SegmentedControl from "@/components/ui/SegmentedControl";
 import DetentSlider from "@/components/ui/DetentSlider";
-import Banner from "@/components/ui/Banner";
 import {
-  BUDGET_STOPS_MIB,
   WINDOW_STOPS,
   type AverageWindow,
-  type BudgetStopMib,
 } from "@/lib/runner/streamBook";
 
 const EXPIRY_PICK_COUNT = 3;
@@ -70,6 +69,10 @@ export type HeatmapControlsColumnProps = {
   onTemplateChange: (id: string) => void;
   valueMode: ValueModeId;
   onValueModeChange: (mode: ValueModeId) => void;
+  verticalKind: VerticalKind;
+  onVerticalKindChange: (kind: VerticalKind) => void;
+  verticalMetric: VerticalMetric;
+  onVerticalMetricChange: (metric: VerticalMetric) => void;
   bwStrikeCount: number;
   onBwStrikeCountChange: (n: number) => void;
   bwWingSide: BwWingSide;
@@ -102,18 +105,15 @@ export type HeatmapControlsColumnProps = {
     footer: WidthFitFooterCol[];
     iface: "heatmap" | "ranking";
     onIface: (v: "heatmap" | "ranking") => void;
-    time: "live" | "average";
-    onTime: (v: "live" | "average") => void;
+    time: "live" | "average" | "replay";
+    onTime: (v: "live" | "average" | "replay") => void;
+    replayEnabled?: boolean;
     window: AverageWindow;
     onWindow: (v: AverageWindow) => void;
     avgUsed: number | null;
   } | null;
-  streamCache: {
-    budgetMib: BudgetStopMib;
-    onBudget: (n: BudgetStopMib) => void;
+  tmHold: {
     line: string;
-    atLimit: boolean;
-    oversize: boolean;
   };
 };
 
@@ -188,6 +188,10 @@ export default function HeatmapControlsColumn({
   onTemplateChange,
   valueMode,
   onValueModeChange,
+  verticalKind,
+  onVerticalKindChange,
+  verticalMetric,
+  onVerticalMetricChange,
   bwStrikeCount,
   onBwStrikeCountChange,
   bwWingSide,
@@ -212,7 +216,7 @@ export default function HeatmapControlsColumn({
   feedLine,
   patchLine,
   widthFit = null,
-  streamCache,
+  tmHold,
 }: HeatmapControlsColumnProps) {
   const status = statusCopy(streaming, held, transport);
 
@@ -312,7 +316,57 @@ export default function HeatmapControlsColumn({
               ))}
             </select>
           </label>
-          {tpl.valueModes.length > 1 ? (
+          {templateId === "vertical" ? (
+            <div className="px-3 py-2" data-testid="heatmap-vertical-value">
+              <p className={inspectorRowLabel + " mb-1"}>Value</p>
+              <SegmentedControl
+                ariaLabel="Vertical Debit or Credit"
+                value={verticalKind}
+                onChange={onVerticalKindChange}
+                options={[
+                  { id: "debit", label: "Debit" },
+                  { id: "credit", label: "Credit" },
+                ]}
+              />
+              <p className={inspectorRowLabel + " mb-1 mt-2"}>Type</p>
+              <div
+                className="flex min-h-[var(--hit-min)] flex-1 rounded-[var(--radius-md)] bg-[var(--color-fill)] p-0.5"
+                role="group"
+                aria-label="Type of Debit or Credit"
+                data-testid="heatmap-vertical-type"
+              >
+                {(
+                  [
+                    { id: "pct_change", label: "% Change" },
+                    { id: "r2r", label: "R:R" },
+                  ] as const
+                ).map((opt) => {
+                  const on = verticalMetric === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() =>
+                        onVerticalMetricChange(on ? "package" : opt.id)
+                      }
+                      className={
+                        "flex min-h-[var(--hit-min)] flex-1 items-center justify-center rounded-[var(--radius-sm)] " +
+                        "px-2 text-[length:var(--text-subheadline)] font-medium " +
+                        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 " +
+                        "focus-visible:outline-[var(--color-tint)] " +
+                        (on
+                          ? "bg-[var(--color-surface)] text-[var(--color-label)] shadow-[var(--elevation-1)]"
+                          : "text-[var(--color-label-secondary)]")
+                      }
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : tpl.valueModes.length > 1 ? (
             <label className={inspectorRow}>
               <span className={inspectorRowLabel}>Value</span>
               <select
@@ -402,6 +456,7 @@ export default function HeatmapControlsColumn({
                 options={[
                   { id: "live", label: "Live" },
                   { id: "average", label: "Average" },
+                  { id: "replay", label: "Replay" },
                 ]}
               />
             </div>
@@ -471,30 +526,13 @@ export default function HeatmapControlsColumn({
           </InspectorSection>
         ) : null}
 
-        <InspectorSection title="Cache">
-          <DetentSlider
-            label="Cache"
-            stops={BUDGET_STOPS_MIB}
-            value={streamCache.budgetMib}
-            onChange={(n) => streamCache.onBudget(n as BudgetStopMib)}
-            valuetext={(n) => `${n} megabytes`}
-            testId="runner-cache-budget"
-          />
+        <InspectorSection title="Time Machine">
           <p
-            className="px-3 pb-2 text-[length:var(--text-caption)] text-[var(--color-label-secondary)]"
-            data-testid="runner-cache-line"
+            className="px-3 py-2 text-[length:var(--text-caption)] text-[var(--color-label-secondary)]"
+            data-testid="heatmap-tm-hold"
           >
-            {streamCache.line}
-            {streamCache.atLimit ? " · Cache at your limit" : ""}
+            {tmHold.line}
           </p>
-          {streamCache.oversize ? (
-            <div className="px-3 pb-2">
-              <Banner tone="warning">
-                This generation is larger than your cache budget. Only it is
-                kept.
-              </Banner>
-            </div>
-          ) : null}
         </InspectorSection>
 
         <InspectorSection title="Chain">

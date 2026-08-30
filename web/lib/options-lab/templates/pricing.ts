@@ -185,9 +185,10 @@ export function verticalDebitPctFromSpot(
   centersDesc: readonly number[],
   idx: number,
   widthPts: number,
+  direction: FlyDirection = "long",
 ): number | null {
   return debitPctFromSpot(ctx, centersDesc, idx, (strike) =>
-    verticalPackage(ctx, strike, widthPts, "long"),
+    verticalPackage(ctx, strike, widthPts, direction),
   );
 }
 

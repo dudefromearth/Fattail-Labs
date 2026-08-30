@@ -1,7 +1,7 @@
 # FatTail Labs — Options Lab Analyzer Time Machine Spec v0.1
 
-**Status:** DRAFT — Coach 2026-08-21. **v0.1.7** exit control is **Reset** (same chrome as What-if Reset). **v0.1.6** **Leave Time Machine** exits (superseded by v0.1.7). **v0.1.5** add position after the day, then Algo. **v0.1.4** Spot field + Autofit X = session **open**. **v0.1.3** no start-time picker. **v0.1.2** speeds 10× / 20× / 50×. **v0.1.1** 390 candles/closes · close-to-close **or** TPO path. Not BUILD AUTHORITY until Coach Phase 5.  
-**Type:** Product Spec — Analyzer **Time Machine** (calendar day replay of underlier price and time).  
+**Status:** DRAFT — Coach 2026-08-21. **v0.1.8** Time Machine is the **seat**; **Day** (this document) and **Instant Replay** ([TMI Spec v0.1](./FatTail-Labs-Options-Lab-Time-Machine-Instant-Replay-Spec-v0_1.md)) are **fractals**. **v0.1.7** exit control is **Reset** (same chrome as What-if Reset). **v0.1.6** **Leave Time Machine** exits (superseded by v0.1.7). **v0.1.5** add position after the day, then Algo. **v0.1.4** Spot field + Autofit X = session **open**. **v0.1.3** no start-time picker. **v0.1.2** speeds 10× / 20× / 50×. **v0.1.1** 390 candles/closes · close-to-close **or** TPO path. Not BUILD AUTHORITY until Coach Phase 5.  
+**Type:** Product Spec — Analyzer **Time Machine - Day** fractal (calendar day replay of underlier price and time). Instant Replay is a sibling spec.  
 **Short name:** **AZ-ATM**  
 **Route:** `/app/options-lab/analyzer`  
 **Filename:** `FatTail-Labs-Options-Lab-Analyzer-Time-Machine-Spec-v0.1.md`
@@ -13,7 +13,8 @@
 | [Analyzer Spec v0.2.1](./FatTail-Labs-Options-Lab-Analyzer-Spec-v0_2.md) | Host surface · six buckets · Autofit strip · GEX / Probability |
 | [What-If T/σ Spec v0.1](./FatTail-Labs-Options-Lab-Analyzer-What-If-Time-and-Measured-Vol-Spec-v0.1.md) | **What-if** = ad-hoc time · vol · spot %. This spec does **not** rename or replace those knobs. |
 | [AZ-ALGO v1.0.1](./FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v1.0.md) | Demo may point at this clock (price + time of the downloaded day) |
-| [3D Surface App Spec v0.1.8](./FatTail-Labs-Strategy-Lab-3D-Surface-App-Spec-v0.1.8.md) §4.6 | Surface **Time machine** = snap rebind of listed-leg IV. **Not this spec.** Do not collapse the two. |
+| [3D Surface App Spec v0.1.8](./FatTail-Labs-Strategy-Lab-3D-Surface-App-Spec-v0.1.8.md) §4.6 | Surface **Time machine** = snap rebind of listed-leg IV. **Not this Day spec.** Instant Replay may feed Surface with TR14 snaps ([TMI](./FatTail-Labs-Options-Lab-Time-Machine-Instant-Replay-Spec-v0_1.md)). |
+| [Time Machine Instant Replay Spec v0.1](./FatTail-Labs-Options-Lab-Time-Machine-Instant-Replay-Spec-v0_1.md) | Fine fractal: this tab’s OPF chain ring. Same transport seat. **Green** glow. |
 | OT-EF / **DL-309** | Representable or named state. Never invent a print or a package debit. |
 | Arch **28** | One market WebSocket. **No client Massive.** Day download is a **server** fetch. |
 | Human Interface Spec v1.0 | Dark-pinned tokens · ≥44pt hits · no emoji chrome |
@@ -54,14 +55,17 @@ Tango / Hotel / Echo / India notes sit in **§14** beside this text. They do not
 
 ## 1. Job
 
-**Time Machine** is the Analyzer’s **OnDemand-class day replay**: the member picks a **calendar session**, the system **downloads that day’s minute-granular underlier path**, the member picks a **start time**, then **plays the day** with video controls while the risk graph (and Demo Algo, when on) walk **price and time** of that day.
+**Time Machine** is the Analyzer’s OnDemand-class **seat**. This document specifies the **Day** fractal: the member picks a **calendar session**, the system **downloads that day’s minute-granular underlier path**, then **plays the day** with video controls while the risk graph (and Demo Algo, when on) walk **price and time** of that day.
+
+**Instant Replay** (fine fractal — trailing OPF chain in this tab) is specified in [TMI Spec v0.1](./FatTail-Labs-Options-Lab-Time-Machine-Instant-Replay-Spec-v0_1.md). Same strip, HUD, speeds, Reset. Different film, range control, and glow.
 
 It is **not** What-if. What-if remains the inspector’s **ad-hoc** Time / Spot% / Vol knobs.
 
-| Seat | Job | Clock |
-|------|-----|-------|
-| **What-if** | Ad-hoc change to **time, spot, and vol** on the live (or held) sheet | Member sliders |
-| **Time Machine** | **Pick a day and replay** it | Downloaded 1-minute path + playhead |
+| Seat / fractal | Job | Clock | Glow |
+|----------------|-----|-------|------|
+| **What-if** | Ad-hoc change to **time, spot, and vol** on the live (or held) sheet | Member sliders | **Red** inner |
+| **Time Machine - Day** (this spec) | **Pick a day and replay** it | Downloaded 1-minute path + playhead | **Blue** inner |
+| **Time Machine - Instant Replay** (TMI) | Scrub this tab’s OPF chain ring | TR14 gens + playhead | **Green** inner (Heatmap, Analyzer, Surface) |
 
 **Basic** Time Machine: price + time of the underlier that day. Probability **off**. GEX **off**.  
 **Enhanced** Time Machine: same replay, and the member **may** engage GEX and Probability.  
@@ -82,7 +86,7 @@ Default v1 walk is **simple** close-to-close. TPO is specified, not dropped.
 
 | Name | This spec | Not this spec |
 |------|-----------|----------------|
-| **Time Machine** | Analyzer OnDemand day replay (this document) | Inspector What-if knobs |
+| **Time Machine** | The **seat** (strip + HUD + playhead). **Day** fractal = this document. **Instant Replay** fractal = TMI Spec v0.1 | Inspector What-if knobs |
 | **What-if** | Ad-hoc time · spot · vol (Analyzer §1.11 · AZ What-If T/σ) | Must **not** be labeled Time Machine |
 | **Surface Time machine** | Snap rebind of listed-leg IV at clock \(t\) (Surface App Spec §4.6) | Analyzer 1-minute underlier replay. **Hero walk for 3D package truth** stays on Surface. AZ-ATM Basic does **not** claim last-minute package IV. |
 | **AZ-TM-*** IDs | Belong to the **What-if T/σ** spec | Do not reuse for this replay. This spec uses **ATM-*** |
@@ -231,14 +235,16 @@ Calendar and start-time sit with the video controls in that strip (OnDemand tran
 
 | Mode engaged | Viewport inside edge |
 |--------------|----------------------|
-| **Time Machine** (day selected / replay) | **Blue** blurred inner frame (inset glow / blurred box on the inside edge) |
+| **Time Machine - Day** (day selected / replay) | **Blue** blurred inner frame (inset glow / blurred box on the inside edge) |
+| **Time Machine - Instant Replay** | **Green** blurred inner frame on Heatmap, Analyzer, **and Surface** canvases (TMI-25). Not this Day glow. |
 | **What-if** Enable, Time Machine **not** engaged | **Red** inner glow |
-| Both | **Blue wins.** Time Machine is the replay clock. |
+| Day + What-if | **Blue wins.** Day is the replay clock. |
+| Instant Replay + What-if | **Green wins** (TMI-26). |
 | Neither | No sim glow |
 
 Glow is **paint only** — `pointer-events: none`; does not steal Autofit, handles, or the scrubber.
 
-Named test ids (implementation may match): `analyzer-viewport-glow` with `data-glow="timemachine" | "whatif"`.
+Named test ids (implementation may match): `analyzer-viewport-glow` with `data-glow="timemachine" | "whatif" | "instant-replay"`. Instant Replay also glows Heatmap and Surface canvases (TMI-25).
 
 ---
 
@@ -387,6 +393,7 @@ India / Echo / Tango / Hotel / Victor write **beside** §0. They do not delete C
 
 | Version | Date | Notes |
 |---------|------|-------|
+| **v0.1.8** | 2026-08-26 | Time Machine is the **seat**. This document is the **Day** fractal. Instant Replay (TMI Spec v0.1) is the fine fractal: same transport, TR14 chain film, **green** glow on Heatmap / Analyzer / Surface. Day glow stays **blue**. **DL-594**. |
 | **v0.1** | 2026-08-20 | Coach OnDemand Time Machine: calendar download, 1-minute fill of mini chart, start time, video controls in the dark strip right of Autofit, Strikes/in left of Autofit, upper-right mini chart + draggable scrubber, blue/red inner glows, Basic (GEX/Prob off) vs Enhanced (allow), What-if remains ad-hoc. **DL-486**. |
 | **v0.1.7** | 2026-08-21 | Exit control labeled **Reset**, same plain chrome as What-if Reset. **ATM-S3** · **DL-499**. |
 | **v0.1.6** | 2026-08-20 | Exit control labeled **Leave Time Machine** (not Clear). Stop still does not exit. **ATM-S3** · **DL-494**. |

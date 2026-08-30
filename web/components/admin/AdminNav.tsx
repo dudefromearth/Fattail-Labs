@@ -22,6 +22,7 @@ const NAV: Entry[] = [
   { href: "/admin/media", label: "Media" },
   { href: "/admin/tags", label: "Tags" },
   { href: "/admin/market-universe", label: "Market universe" },
+  { href: "/admin/archive", label: "Archive" },
   { href: "/admin/journal-prompts", label: "Journal prompts" },
   { href: "/admin/ai", label: "AI workbench" },
   { href: "/admin/agents", label: "Agent keys" },

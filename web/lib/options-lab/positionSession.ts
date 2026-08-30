@@ -23,6 +23,15 @@ export function resolveEntryAt(
   return defaultSessionEntryAt(pos.createdAt || nowMs);
 }
 
+/** §13a item 1: dark until the playhead reaches entry. Live (no playhead) is never dark. */
+export function isTmPositionDark(
+  pos: { entryAt?: number | null; createdAt?: number },
+  playheadMs: number | null | undefined,
+): boolean {
+  if (playheadMs == null || !Number.isFinite(playheadMs)) return false;
+  return playheadMs < resolveEntryAt(pos);
+}
+
 export function isPositionClosed(pos: { closedAt?: number | null }): boolean {
   return pos.closedAt != null && Number.isFinite(pos.closedAt);
 }

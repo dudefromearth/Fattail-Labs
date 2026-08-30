@@ -31,8 +31,23 @@ const analyzer = readFileSync(
   join(here, "../../components/options-lab/OpfRiskAnalyzer.tsx"),
   "utf8",
 );
-assert.match(analyzer, /analyzer-pip-toggle/, "PiP toggle next to Autofit");
+assert.match(analyzer, /analyzer-pip-toggle/, "PiP toggle on the viewport strip");
+const toolbar = analyzer.slice(analyzer.indexOf("analyzer-viewport-toolbar"));
+const iAf = toolbar.indexOf('data-testid="analyzer-autofit"');
+const iTm = toolbar.indexOf("<AnalyzerTimeMachineStrip");
+const iPip = toolbar.indexOf('data-testid="analyzer-pip-toggle"');
+assert.ok(iAf >= 0 && iTm > iAf, "TM still in the dark strip after Autofit");
+assert.doesNotMatch(
+  toolbar.slice(0, 400),
+  /overflow-x-auto/,
+  "Echo: transport is not a horizontal scroll",
+);
 assert.match(analyzer, /AnalyzerSurfacePip/, "ISO PiP mounted");
+assert.match(
+  analyzer,
+  /analyzer-viewport-toolbar/,
+  "header is a real row, not an overlay",
+);
 
 const pip = readFileSync(
   join(here, "../../components/options-lab/AnalyzerSurfacePip.tsx"),

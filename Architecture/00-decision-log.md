@@ -4,6 +4,713 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-29 — DL-646 TM landmarks are a usability law on the scrubber window
+
+**Decision (Coach, verbatim):** *This is not an availability law, this is a usability law directed to the scrubber window.*
+
+**TMI-97 DRAFT** seats on parent Time Machine Spec **v0.7.4** §6.2 (the mini day window). Full text: `Specs/DRAFT-FatTail-Labs-Options-Lab-Time-Machine-Scrubber-Landmarks-Spec-v0_1.md`. Clock stays (precision); landmarks are position. Four tests stay: OPF bounds not browser clock; the window shows the session this hold contains; orientation not chrome / not P&L colour; early close is that session’s end of day.
+
+**Does not:** calendar / AV-* · replace HUD clock · product code · AT-SOAR-45 · OS-1.
+
+---
+
+## 2026-08-29 — DL-645 TM scrubber landmarks DRAFT (not availability)
+
+**Decision:** Usability law for the **mini day window**, not the calendar. Spec **DRAFT** `Specs/DRAFT-FatTail-Labs-Options-Lab-Time-Machine-Scrubber-Landmarks-Spec-v0_1.md`. **TMI-97.** Clock stays (precision); landmarks are position. Four honesty tests: OPF bounds not browser clock; regions = what the archive holds (no empty never-captured pre-market); orientation not chrome / not P&L colour; early close is real end of day. Window agrees with TMI-89 hold line. x-axis is `t_ms`, not sample index.
+
+**Does not:** availability/AV-* · replace HUD clock · AT-SOAR-45 · OS-1 · product code.
+
+**Restated same day by Coach as DL-646:** directed at the scrubber window; not an availability law.
+
+---
+
+## 2026-08-29 — DL-644 Availability AV-14: 2 s, one retry, Try Later
+
+**Decision (Coach):** Failure path is law. **2 s** per attempt, **one** retry, then stop. Worst case before the member is told: **about four seconds**. Copy exact: **"Archive Not Available, Try Later."** No spinner past the second attempt. No half-painted calendar. No day clickable. Member sees one sentence; the log records `unreachable` · `not_configured` · `auth`. Reopening the calendar tries from scratch — no app reload. Labs must not inherit coverage's 8 s wait on this route.
+
+Happy path remains AV-13 (200 ms). The 4 s ceiling is the honest failure budget, not a relaxation of 200 ms.
+
+**Does not:** product code · AT-SOAR-45 · OS-1.
+
+---
+
+## 2026-08-29 — DL-643 Availability AV-13: 200 ms gated, live walk
+
+**Decision (Coach):** Open → fully-resolved calendar in **≤ 200 ms**. Grey is grey, arrows are in their final state, nothing pending. **Gate on the number.** Live browser walk, not a unit test; print the figure even on a pass (190 ms still shows 190). Over 200 ms fails — something is reconstructing. Same budget on a while-focused **304**: no visible pause. The calendar was slow because nobody put a number on it.
+
+**As-built clock (2026-08-29, this tree, SPX Analyzer):** open-to-resolved **did not finish in 120 s**. Pending cells remained `unknown`. That is the minute of unknown the budget exists to forbid. Availability is not shipped; this is the coverage path.
+
+**Does not:** product code · AT-SOAR-45 · OS-1.
+
+---
+
+## 2026-08-29 — DL-642 Availability spec v0.2 + AV-12 hole named
+
+**Decision:** Spec **v0.2 DRAFT** `Specs/DRAFT-FatTail-Labs-Archive-Availability-and-Calendar-Honesty-Spec-v0_2.md`. Plan **v1.0** `docs/Archive-Availability-and-Calendar-Honesty-Full-Agent-Bench-Plan-v1.0.md`. Token `agents/go/AV-W0.md`. **Not BUILD.** No product code until W0-0 + W0-G.
+
+**AV-9 / 10 / 11** are law: folder existence is not a day; today uses COUNTS; partial stays dotted.
+
+**AV-12 hole:** 08-14 and 08-17 have no COUNTS. **Stale nightly (rollup) does not grey them** while per-day STATS.json remains (SPY 129; eighteen × 2). **Absent STATS would grey loadable gold** under two-step-only. Closed in law: filename count of `snap-*.json`, not reconstruct, not folder existence. Store STATS STALE must not empty `days`.
+
+**AV-8:** calendar asks every time; 304 repaints only what moved. Universe in, health in, corpus totals out.
+
+**Does not:** AT-SOAR-45 · OS-1 · MiniTwo · dash bounce · implementation.
+
+---
+
+## 2026-08-29 — DL-641 Archive availability DRAFT (calendar honesty)
+
+**Decision:** Spec **DRAFT** `Specs/DRAFT-FatTail-Labs-Archive-Availability-and-Calendar-Honesty-Spec-v0_1.md`. Not BUILD. No plan, no code.
+
+**Disk:** COUNTS + nightly STATS `books[].count` **can** answer loadability without `reconstruct_book` at read time. Coverage as-built cannot (always reconstructs). Compact body today **1,100 bytes**.
+
+**AV-6:** no unknown paint. Navigation prev month/year was a spoken gap, now written. Universe + health earn a seat on the same call; corpus totals stay on stats.
+
+**Does not:** AT-SOAR-45 · OS-1 · MiniTwo · dash bounce · implementation.
+
+---
+
+## 2026-08-29 — DL-640 §13a item 1: dark position does not show legs
+
+**Decision (Coach, verbatim):** a dark position does not show its legs. It shows that something is there and not yet taken. Seeing the structure of a trade before its entry is foreshadowing the member did not have at the time, and the desk as it was is the whole point. Legs appear when it lights.
+
+**As-built:** blotter `data-tm-dark=1` is one row, copy **Not yet taken**, no per-leg strikes/side/qty. Tent/Surface book (`visibleBookTrade`) does not take those legs until playhead ≥ entry. Show checkbox remains. Items **2** (`generation.vix` write) and **3** (unnamed live-feed fields) stay Coach.
+
+**Does not:** AT-SOAR-45 · OS-1 late-tab · month coverage · HOLD · MiniTwo · dash bounce.
+
+---
+
+## 2026-08-29 — DL-639 C11 watch + 02:00 stats launchd actually loaded
+
+**Decision:** C11 **553 MB** ships as-is (Coach: watch in data, not support). Each completed Time Machine hold posts resident JS heap to `POST /api/me/options-lab/archive/hold-resident` (best-effort, never blocks replay). Admin `/admin/archive` shows those aggregates **on the corpus row** (count, avg/min/max, n ≥ 400 MiB, largest holds). **No identities** on the panel.
+
+**Nightly stats:** the 02:00 agent was a file in `~/Library/LaunchAgents` that `launchctl print` could not find. SSH `launchctl` is `Background`; the plist had no `LimitLoadToSessionType`, so `bootstrap user/503` failed I/O error 5 and the calendar never fired. A hand backfill is not the job. Plist now `LimitLoadToSessionType=Background`. `launchctl bootstrap user/503` succeeded. `print`: domain `user/503`, enabled, Hour=2 Minute=0, calendar watching=1. Kickstart exit **0**; `STATS.json` `last_run_at=2026-08-29T12:22:27-04:00`, `last_run_status=ok`, 14 days. The job is loaded; 02:00 is the schedule.
+
+**Identity 0** (dev-login) is skipped — no `identities` row to FK. Real member sessions record. Aggregates on the panel never include who.
+
+**Does not:** month-coverage calendar (follow-up, COUNTS/STATS) · AT-SOAR-45 · OS-1 13:00 late-tab · §13a · Basic/TPO/1×/Record · dash bounce · MiniTwo.
+
+---
+
+## 2026-08-29 — DL-638 TMOS W-G PASS (dash bounce · C11 full 553 MB · carries)
+
+**Decision:** Time Machine One Source **W-G PASS** with named carries.
+
+**Bounce (Coach word):** dash only, `user/503` kickstart -k. PID **16430** from 11:24:56. Tap **21649** untouched.
+
+**After bounce HTTP:**
+- OS-3: today SPX index/fetch **200**, hole **NOT TODAY**, never `TODAY_LIVE`.
+- OS-14: today VIX **14.43** `massive_index_v1` at **00:38:08.952423**.
+- OS-1: raise today, count 0 (weekend, SPX not listed). No 409. 13:00 session-day late-tab remains Monday.
+
+**C11:** 2026-08-27 SPX **36,107 / 36,107**, fidelity 100%, JS heap **553 MB**, 4.5 min after merge-by-filename (TAP RESTART twins). First 56% was `t_ms` collapse, not the tab dying.
+
+**Month coverage:** follow-up. Calendar `from`/`to` must not `reconstruct_book` every snap; use COUNTS/STATS.
+
+**Carries:** AT-SOAR-45 Monday · OS-1 13:00 session late-tab · month coverage grey · stats 02:00 launchd arm · C11 553 MB usability · §13a · HOLD Basic/TPO/1×/Record.
+
+---
+
+## 2026-08-29 — DL-637 TMOS W4–W6 (hold line · help · ATs; bounce still needed for today HTTP)
+
+**Decision:** W4 hold line is the archive’s first print (`The archive holds from 1:17 AM ET` on 2026-08-27). Calendar dots covered days; today is not grey-because-live. Help: one source, Reset then raise, VIX from tape. SO-AR §3 rewritten — today retrieve is in; `TODAY_LIVE` as a fetch refusal is retired.
+
+**C11 (2026-08-27 SPX):** 12 min infill, 20,367 / 36,107 (56%), heap 123 MB. Recorded. Not a full-download pass.
+
+**Bounce:** W4 does not need it. **OS-1, OS-3, OS-14 do** — live dash still 409 today.
+
+---
+
+## 2026-08-29 — DL-636 TMOS W1–W3 (TODAY_LIVE lift · one loadTmDay · seedTodayFromSession deleted)
+
+**Decision:** Time Machine One Source W1–W3 landed.
+
+- **W1:** `TODAY_LIVE` is not a fetch refusal. Today with files indexes/fetches. Empty today is NONE, not 409. Coverage still `live: true`. `day_changed` stays in-flight (stale `day_hash` on a fetch). **Live dash still the W5 process until a bounce.**
+- **W2:** `loadTmDay` → `fillArchiveSlot` for every date. Raise today parks newest print in the snapshot. **`seedTodayFromSession` deleted.** `engageTodayFromCache` deleted. `captureToday` remains the Width Fit Average ring only.
+- **W3:** Playhead chain never falls back to live. VIX from Labs marks route; source travels. Positions dark, not hidden, until entry. Rehearsal still refused to Trade Log.
+
+**Does not:** dash bounce · Record · TM glow · 1-min fetch · Instant Replay name · Basic/TPO/1× · answering §13a.
+
+---
+
+## 2026-08-29 — DL-635 SO-AR A2 W-G PASS (stats backfill · one carry AT-SOAR-45)
+
+**Decision:** A2 GO **closed**. Nightly stats first run was a **full backfill** of every collected day (14). `/api/stats` 200, `hole=null`, `last_run_status=ok`. SPX session medians **~2.26 s**, `within_dl609` ≈ 1.0, `within_dl400` ≈ 0.002. **DL-400's [3, 5] is leftover; DL-609 [2, 5] is the law.** `VIX NOT NATIVE` on the roll-up. AT-SOAR-51 union is **21** `marks/*.jsonl` names including `session.jsonl`; nothing else in `marks/` is unrouted (`status/ticks.jsonl` is collector status, not a tape).
+
+**W8 honesty (not a reissue):** Seek leftover, expiration-required leftover, coverage `no-store` leftover, reconstruction-retired leftover — repaired in v0.8 in place. §9 item 2 serving-marks leftover struck (A2_1).
+
+**Carry:** **AT-SOAR-45** waits for Monday's open. W-G does not wait on it.
+
+**Does not:** dash bounce · tap/feed restart · TMOS code · fake 45 · v0.9 reissue.
+
+**Decision (named):** stats pass is niced +10 as its own job (no dash bounce, so it cannot enter the in-process §4.4 pool). `launchctl bootstrap user/503` of the 02:00 agent from SSH failed (error 5); plist is in `~/Library/LaunchAgents`. First backfill already ran.
+
+---
+
+## 2026-08-29 — DL-634 SO-AR A2 W4-G + W6-G PASS (Bearer + ATs; no second bounce)
+
+**Decision:** Bounced dash came up with `LABS_SSR_ARCHIVE_TOKEN` **set** (len 64, same value Labs holds). Archive routes including `/api/marks` and `/api/stats` require Bearer. No-bearer `/api/marks` is **401** `ARCHIVE AUTH` with no `marks` key — not a 200 empty tape, not open LAN. `/` and `/api/status` stay open.
+
+**W6:** AT-SOAR-50 live 08-27 VIX first print **17.855** `massive_proxy_v1`. 55 live 08-14 SPY **129**. 51: 21 tapes including `session.jsonl`. 57 tape ≠ absent book. 58 source beside mid. 59 `VIX NOT NATIVE`. 52–54 fixture. **45 not scored** (idle weekend). **56** enumerates identifiable disk; 08-17 nested leftover snaps stay `UNKNOWN` per A2-2 (carve-out not expanded).
+
+**Nightly stats:** `GET /api/stats` with Bearer → 200 `STATS STALE`. v2.1 W6 never ran. A2 did not backfill.
+
+**Does not:** second bounce · AT-SOAR-45 · TMOS W1 · tap/feed restart.
+
+---
+
+## 2026-08-29 — DL-633 SO-AR A2 W5-G PASS (dash bounce, tap idle)
+
+**Decision (Coach W5-GO):** Bounced **only** `ai.fattail.labs.ssr-snapshot-dash` (`user/503`, SSH domain). Synced `ssr_snapshot_dash.py`. Did **not** touch live-capture, `sym_feed`, or `chain_feed`.
+
+**HTTP live dash:**
+- AT-SOAR-50 **PASS:** `/api/marks` 200, VIX 2026-08-27 first print **17.855** `massive_proxy_v1`, tape 14622, flags `VIX NOT NATIVE`.
+- AT-SOAR-55 **PASS:** 2026-08-14 SPY index/fetch **200**, count 129, hole null.
+
+**Tap after:** PID **21649** unchanged (since Aug 27 08:14). `phase=weekend`. `wake=2026-08-30T20:15:00-04:00` unchanged.
+
+**AT-SOAR-45:** not scored. Idle tap is not 45. Monday open.
+
+---
+
+## 2026-08-29 — DL-632 SO-AR A2 W3-G PASS (Labs marks proxy)
+
+**Decision:** Labs `GET /api/me/options-lab/archive/marks` is session-only pass-through. 501 if unconfigured. Unreachable is named, not an empty tape. Upstream 404 `not found` (unbounced dash) stays 404. Source travels. No TM caller. Tests 20 passed on `test_ssr_archive_proxy.py`.
+
+**Does not:** dash bounce · TMOS W1 fire · Bearer (W4).
+
+---
+
+## 2026-08-29 — DL-631 SO-AR A2 W2-G PASS (reader; dash unbounced)
+
+**Decision:** A2 W2 reader **PASS**. `ssr_archive_read.py`: marks batch, 15 s GAP floor, coverage tapes ≠ absent books, `VIX NOT NATIVE` / `VIX1D NOT NATIVE` flags, 08-14 flat SPY retrieve, symbol-completeness enumerate, source beside mid. Tests 39 passed.
+
+**Live store (StudioOne disk, new reader, no dash restart):**
+- AT-SOAR-50: 2026-08-27 VIX first print **17.855** `source=massive_proxy_v1`; tape count **14622**, not a book; flags **VIX NOT NATIVE**.
+- AT-SOAR-55: 2026-08-14 SPY index **129**, fetch `count_on_disk=129`, hole null.
+
+**Live dash HTTP** `/api/marks` still **404 not found**. Process not bounced. Bounce remains Coach **W5-GO**.
+
+TMOS W1 unblocked. Module lock released.
+
+---
+
+## 2026-08-29 — DL-630 SO-AR A2 W1-G PASS (live dash 50 and 55 fail)
+
+**Decision:** A2 W1 characterize **PASS**. Live StudioOne dash (`192.168.1.111:5055`, process started 2026-08-27 13:11, not bounced):
+
+- **AT-SOAR-50 FAIL:** `GET /api/marks` → 404 `not found`. VIX 2026-08-27 index/fetch 404 UNKNOWN, coverage `count=0 / expiration=UNKNOWN / status=none`. Disk: 14,622 lines, first mid 17.855. A fixture does not close 50.
+- **AT-SOAR-55 FAIL:** 2026-08-14 SPY coverage count 129; index/fetch 404 UNKNOWN, `count_on_disk=0`. 129 flat snaps, no nested `chain/SPY/`.
+
+No module write. Next **A2 W2**. TMOS W1 still waits on A2 W2-G. Dash bounce still Coach W5-GO.
+
+---
+
+## 2026-08-29 — DL-629 SO-AR module lock: A2 then TMOS W1
+
+**Decision (Coach):** One at a time on `server/market_data/ssr_archive_read.py`. **A2 first** — W1 characterize (proof that fails today), then W2 marks route + flat day + symbol-completeness + `VIX NOT NATIVE`. **Then TMOS W1** lifts `TODAY_LIVE` on that settled file.
+
+A2 owns the module through **A2 W2-G**. TMOS W1 does not start until that gate. Concurrent packets on that file are forbidden. A conflict is a **Delta fail-closed**, not a merge.
+
+Dash bounce stays Coach at **A2 W5-GO**.
+
+Plan v1.3 sha1 after the lock sentence: `77171aa06179d95046ef786fc009faa758f268d2`.
+
+**Does not:** fire either W1 this entry · TMOS today-retrieve · dash bounce.
+
+---
+
+## 2026-08-29 — DL-628 Time Machine One Source W0-0 STAMP · W0-G PASS
+
+**Decision (Coach):** Plan **v1.3** accepted. Spec **v0.4 BUILD AUTHORITY**. IDs: TMI-91 desk, TMI-92 original feed, TMI-93 named hole, TMI-94 VIX with source travelling, TMI-95 read the tape, TMI-96 dark not hidden. OS-13 = 08-27 labelled proxy. OS-14 = 08-29 native from 00:38:08. W0-G **PASS**. Next **W1**.
+
+**Lima:** TMI-96 is its own law in the spec — §0.14, Touches, §3, AT-TM-OS-15 — not plan-only.
+
+Spec sha1 `c0e31336165a6415b85eced6aafee8aac3c05727`. Plan v1.3 sha1 `74c4002ff74689dd21f6b9ae095bb82d97ae647c`. Token `agents/go/TMOS-W0.md`.
+
+**Does not:** TM product code this wave · A2 dash bounce · answering §13a.
+
+---
+
+## 2026-08-29 — DL-627 One Source IDs and VIX proof days (pre-stamp)
+
+**Decision:** v0.4 IDs as filed, not the fold. **TMI-91** desk (chain). **TMI-92** original feed. **TMI-93** named hole (never a live value). **TMI-94** VIX tape; **source and label travel with the mid**. **TMI-95** read the tape that exists — do not wait on `generation.vix`. **TMI-96** (new) positions dark, not hidden, light at entry. Positions-dark is **not** TMI-92 and **not** TMI-95.
+
+**AT-TM-OS-13** = **2026-08-27**, `massive_proxy_v1` — before the native feed, and before this TM feature (`generation.vix` null). Prove labelled proxy, never relabelled native, never live.
+
+**AT-TM-OS-14** = **2026-08-29** from `00:38:08.952423-04:00`, `massive_index_v1`. Prove native, never assumed proxy.
+
+A replayed day carries the source it was captured with. One assumption about what VIX is, for every date, is a fail.
+
+Spec sha1 `ef52e275be3ddd305e2b53c1234831b383177ce8`. Plan v1.3 sha1 `74c4002ff74689dd21f6b9ae095bb82d97ae647c`.
+
+**Does not:** stamp plan v1.3 (still Coach W0-0) · TM product code.
+
+---
+
+## 2026-08-29 — DL-626 Time Machine One Source v0.4 BUILD AUTHORITY; plan v1.3 filed
+
+**Decision (Coach GO SPEC):** `Specs/FatTail-Labs-Options-Lab-Time-Machine-One-Source-Spec-v0_4.md` is **BUILD AUTHORITY**. One source for every date including today. Snapshot at raise, not tail-append. Full download, no ladder. The hold is the desk. A gap is a named hole, never a live value, and a collection defect raised to Coach. VIX travels from the marks tape (§0.11 ruled — not an open question). Positions are dark, not hidden, and light when the playhead reaches their entry. Time Machine consumes the A2 marks route when it lands; it does not build one.
+
+**Plan v1.2 superseded.** Juliet re-plans: `docs/Options-Lab-Time-Machine-One-Source-Full-Agent-Bench-Plan-v1.3.md` (sha1 `274bf5c65985abdc3abe0a650e2bdf84526e7b03`) — stamp target. Spec sha1 `45f770123e38022cbabffb831e3eb93e12ac8484`. Covers TMI-91…95. **No product code until that plan is stamped.**
+
+**§13a still Coach:** whether a dark position shows its legs; whether the tap writes `generation.vix`; anything else the live feed drives that has not been named.
+
+**Does not:** TM product code · A2 dash bounce · tap write.
+
+---
+
+## 2026-08-29 — DL-625 VIX/VIX1D native index snapshot on StudioOne sym_feed
+
+**Decision (Coach):** `sym_feed` asks `GET /v3/snapshot/indices` for `I:VIX` and `I:VIX1D` first. VIXY remains a labelled fail-over (`massive_proxy_v1`) only on `NOT_ENTITLED` or HTTP error. Source on success: `massive_index_v1`. Two files: `server/market_data/massive_client.py`, `server/market_data/sym_feed.py`. StudioOne `sym_feed` restarted.
+
+**Proof:** Redis `mb:sym:VIX` mid **14.43** source **`massive_index_v1`** (not 17.6 / not `massive_proxy_v1`). `mb:sym:VIX1D` mid **10.21**. First collected native line `day=2026-08-29/marks/vix.jsonl` `captured_at` **2026-08-29T00:38:08.952423-04:00** mid **14.43** source **`massive_index_v1`**.
+
+**Does not:** `live_stream.py` · tap code · dash bounce · marks route · Time Machine · SPX/XSP `I:` path.
+
+---
+
+## 2026-08-29 — DL-624 SO-AR A2 W0-0 STAMP · W0-BA GO
+
+**Decision (Coach):** Amendment **A2_1** accepted. Byte-identical to A2 plus the COUNTS carve-out; diff confirmed. §9.2 reversed — serve the tape; that position was written without knowing what was on it. **Near = 15 seconds as the GAP floor.** VIX marks land every 5.7 s, so 15 is 2.5× the marks cadence — the same multiplier the chain uses, landing on a different number because the tape is slower. Typical nearest during RTH is about 3 s. Fifteen is the stall detector, not the match distance. On 2026-08-27 it would have fired exactly twice, on the two real stalls at 20.9 s, and never during the session. COUNTS carve-out accepted as written in A2-2: scoped to 08-14 only, flat layout, 129 snaps, one book. Nested `chain/<SYM>/` still 404s. **W0-BA GO** in the same word. W1 characterizes: AT-SOAR-50 and 55 fail today; **a fixture does not close 50.** Dash bounce stays Coach at **W5-GO**. Time Machine does not move.
+
+**Fold when the route is built:** daily stats flag `VIX NOT NATIVE` on any day whose VIX source is not native. VIXY remains a labelled fail-over. A future entitlement lapse must not go unnoticed.
+
+**Law:** v0.8 + A1 + A2_1 sha1 `4cb4ffce5c9d0928b6beb5dd7c3b1e867df61f10`. Plan v1.0 sha1 `840e1e8e1e9b1d0ca805b1fed8b6f48964e823db`. Token `agents/go/SOAR-A2-W0.md`.
+
+**Does not:** dash bounce · TM · tap write · feed switch to I:VIX (separate packet).
+
+---
+
+## 2026-08-29 — DL-623 SO-AR marks route generic; I:VIX parked; SPCX not capture universe
+
+**Decision (Coach):** Park I:VIX entitlement — Massive subscription, blocks nothing. Marks route is **generic**: VIX is one tape among twenty; serve what is on the tape; `source` / `label` travel as their own fields (Practice Proxy column, not MID). If native index values land later, the route does not change. Batch: one call, many symbols. A2 remainder stands (underlier tapes, 08-14 SPY, symbol-completeness enumerate-and-fail).
+
+**SPCX:** not in `market_symbol_universe` (migration 085 / DL-223). Named in Accounts & Capital as the **honest-degradation rule** for a member-broker book with no mark. The tap follows the enabled universe (eighteen tradeable + VIX/VIX1D reference). SPCX is a **page/spec example of a book we never intended to capture**, not a supported symbol we failed to tape.
+
+**Built:** reader `day_marks` + coverage `marks[]` + Labs `GET /api/me/options-lab/archive/marks` + dash `/api/marks` **wired, not bounced**. Tests `tests/test_ssr_archive_marks.py`.
+
+**Does not:** dash bounce · TM · tap write · I:VIX subscription change.
+
+---
+
+## 2026-08-29 — DL-622 SO-AR A2_1: A2 identical; COUNTS carve-out; VIX tape rate
+
+**Decision:** `Amendment-A2.md` and `Amendment-A2_1.md` were **byte-identical** (sha1 `5403abdb…`) until A2-2 gained the COUNTS carve-out. The A2→A2_1 *filename* was the only difference. Coach: three token ticks are **decisions**, not acceptances.
+
+**COUNTS:** carve-out **in A2-2**, scoped to the **flat layout only** (2026-08-14, 129 snaps, one book, unambiguous SPY). Not a general “identify it anyway” path. A2_1 sha1 now `581d35f1cedff2ead1dea1fceb86a63ba6dc288b`.
+
+**§9.2:** Coach **Accept** — serve marks; the unserved position was written without knowing the tape.
+
+**Near:** A2 set no threshold. Measured 2026-08-27 `marks/vix.jsonl`: n=14,622; RTH p50 **5.78 s** (min 5.03, max 6.39). Not 1 s. A 15 s GAP floor ≈ **2.6 marks**. Nearest-in-time during RTH is half an interval (~3 s); 15 s is the stall detector. Still Coach’s number.
+
+**Bounce / TM:** stay Coach; W5-GO ≠ W0-0.
+
+**Does not:** stamp W0-0 · product code.
+
+---
+
+## 2026-08-29 — DL-621 SO-AR Amendment A2_1 bench plan v1.0 (stamp target)
+
+**Decision:** Full-agent bench plan filed: `docs/StudioOne-Archive-Read-API-Amendment-A2-Full-Agent-Bench-Plan-v1.0.md` (sha1 `6413ffee8198ad846f3c3f10f9bd8624202405f9`). Law Delta reads: SO-AR **v0.8 + A1 + Amendment A2_1** `Specs/FatTail-Labs-StudioOne-Archive-Read-API-Spec-v0_8-Amendment-A2_1.md` (sha1 `5403abdb343cb99ed637eaa8cd07e3ee87e8eaae`). Cite **A2_1**, not `…-Amendment-A2.md`. Token `agents/go/SOAR-A2-W0.md`. Same board, **A2 strip** — v2.1 GO is not this program.
+
+A2-1 serve every `marks/*.jsonl` (nearest-in-time, named gap, never last-known). A2-2 2026-08-14 flat SPY. A2-3 symbol-completeness. Proof that fails today: **AT-SOAR-50** (2026-08-27 VIX matching tape) and **AT-SOAR-55** (08-14 SPY). Rollback: remove the route. Dash bounce is **Coach W5-GO**; A2_1 does not authorise it. Time Machine does not move.
+
+W0-0 must tick A2_1 / §9.2 reverse / near / COUNTS / bounce before product code.
+
+**Does not:** product code · TM · tap write · bounce · stamp plan v2.1 as this GO.
+
+---
+
+## 2026-08-29 — DL-620 Time Machine One Source v0.4: VIX comes along (TMI-94 · TMI-95)
+
+**Decision (Coach):** The marks tape is **not** on Coach's desk. *The VIX has to come along, because future features rely on it being available.* That is §0.11. **TMI-94:** read `marks/vix.jsonl`, nearest-in-time match, named hole on a gap, prove on a day collected before the feature existed (2026-08-27). **TMI-95:** that retrieve does not wait on the tap writing `generation.vix`. Folded into spec **v0.4** (not a v0.5). New **AT-TM-OS-13**.
+
+Plan **v1.2 stays unstamped.** It does not cover TMI-91…95. Juliet re-plans against v0.4. The next plan does **not** bring VIX back as an open question.
+
+**Still Coach (§13a), not this spec:**
+1. Whether a dark position shows its legs
+2. Whether the tap starts writing `generation.vix` — **StudioOne**, not this spec
+3. Whether anything else the live feed drives has not been named
+
+**Does not:** product code · stamp plan v1.2 · bounce StudioOne dash · change the tap writer · restart the StudioTwo dev server.
+
+---
+
+## 2026-08-28 — DL-619 Time Machine One Source spec v0.4 DRAFT (the spec to build)
+
+**Decision:** Spec **v0.4 DRAFT — the spec to build** filed: `Specs/FatTail-Labs-Options-Lab-Time-Machine-One-Source-Spec-v0_4.md`. Coach: *new spec to build FatTail Labs — Options Lab Time Machine One Source Spec v0.4* (§0.12). **No new product rulings.** v0.3 merge is the law (TMI-82…93, AT-TM-OS-1…12, §11a). v0.3 SUPERSEDED.
+
+Stamp candidate. **Not BUILD AUTHORITY.** v0.7.4 remains law until W0-0. Plan **v1.2 is against v0.2.1** and does **not** cover TMI-91…93 — do not stamp it as the v0.4 plan. Juliet re-plans after the stamp.
+
+**Does not:** product code · stamp v0.2.1 · serve the marks tape without Coach · MiniTwo · bounce StudioOne dash.
+
+---
+
+## 2026-08-28 — DL-618 Time Machine One Source v0.3 merged (TMI-92 · TMI-93 · §11a · verbatim §0)
+
+**Decision:** One Source spec **v0.3 DRAFT** merged in place: `Specs/FatTail-Labs-Options-Lab-Time-Machine-One-Source-Spec-v0_3.md`. TMI-91 framing stands (the hold is the desk — generation **is** the chain on Analyzer, Heatmap, Surface; live-painting beside a hold is a fail). Four BLOCKING review items folded:
+
+1. **TMI-92** — Symbol, VIX, positions, heatmap tiles rebind with the hold. *Whatever the original feed was driving.* TMI-91 is chain-only and not sufficient.
+2. **TMI-93** — a field the archive cannot supply is a **named hole, never a live-read**. That gap is a **collection defect raised to Coach**, not a permanent replay limitation. Cannot be backfilled into envelopes already written.
+3. **§0** restores Coach verbatim: the position in the Analyzer was not changing; everything should be changing including the Symbol, the VIX, the positions, and the heatmap tiles; *it should be whatever the original feed was driving*; *I thought this would have been tacit.* Item 8 (the typed drafting sentence) stays.
+4. **§11a** envelope read 2026-08-27 SPX level-0 (71 envelopes): `symbol` on the envelope; `generation.rows` for tiles; positions not in the envelope (member objects, reprice TMI-31); **`vix` key present, 71/71 `null`**. Marks tape (`marks/vix.jsonl`) is written by the tap and **not** on SO-AR retrieve. Fetch `symbol=VIX` is UNKNOWN.
+
+New **AT-TM-OS-11** and **AT-TM-OS-12**. Not BUILD AUTHORITY. Plan v1.2 remains against v0.2.1 until Coach stamps v0.3 and Juliet re-plans, or Coach says fold TMI-91…93 into v1.2.
+
+**Does not:** product code · serve the marks tape without Coach · MiniTwo · bounce StudioOne dash.
+
+---
+
+## 2026-08-28 — DL-617 Time Machine One Source spec v0.3 DRAFT (hold is the desk)
+
+**Decision:** Spec **v0.3 DRAFT** filed: `Specs/FatTail-Labs-Options-Lab-Time-Machine-One-Source-Spec-v0_3.md`. Coach: one source for all Time Machine dates, including today, **and** that source data affects all surfaces as if it were the real data.
+
+**TMI-91:** while a playhead is up, the held StudioOne generation **is the chain** on Analyzer, Heatmap, and Surface. Not an Analyzer sidecar. Width Fit Replay yes; Average still the live ring (OS-9). New **AT-TM-OS-10**.
+
+Not BUILD AUTHORITY. Plan v1.2 is still against v0.2.1 until Coach stamps v0.3 and Juliet re-plans, or Coach says fold TMI-91 into v1.2.
+
+**Does not:** product code · Volume Profile (still out of this program).
+
+---
+
+## 2026-08-28 — DL-616 Time Machine One Source bench plan v1.2 (stamp target)
+
+**Decision:** Plan **v1.2** `docs/Options-Lab-Time-Machine-One-Source-Full-Agent-Bench-Plan-v1.2.md` supersedes v1.1. Spec unchanged (**v0.2.1**). Two review leftovers folded:
+
+1. **W2 disposes `seedTodayFromSession` by name.** W1 lifts `TODAY_LIVE`; a dead path that then succeeds silently is fail-closed on W2-G (quieter than `engageTodayFromCache`).
+2. **OS-1 is a live late-tab walk.** A fixture does not close it.
+
+Do not stamp v1.1 or v1.0. W0-0 still promotes spec v0.2.1 to BUILD AUTHORITY before product code.
+
+**Does not:** start W1 · spec change.
+
+---
+
+## 2026-08-28 — DL-615 Time Machine One Source bench plan v1.1 (stamp target)
+
+**Decision:** Full-agent bench plan **v1.1** filed: `docs/Options-Lab-Time-Machine-One-Source-Full-Agent-Bench-Plan-v1.1.md`. Supersedes plan v1.0. Law to read: One Source spec **v0.2.1** `Specs/FatTail-Labs-Options-Lab-Time-Machine-One-Source-Spec-v0_2_1.md` (sha1 `8e88779018d6b096d1d27d1d39b4a3d6fe820da1`). Board and token unchanged (`p-options-lab-tm-os/` · `TMOS-W0.md`).
+
+v0.2.1 leftover pass is now in the plan: snapshot is the only path (Reset then raise; no refresh control); `day_changed` in-flight only; Width Fit Average protected (OS-9); C11 unusable is Coach-before-ship, not a pass footnote; hold line is what the archive holds.
+
+W0-0 must promote **v0.2.1** to BUILD AUTHORITY (or name a fold) before product code. v0.7.4 remains law until that stamp. Do not stamp plan v1.0.
+
+**Does not:** start W1 · lift `TODAY_LIVE` in code · MiniTwo.
+
+---
+
+## 2026-08-28 — DL-614 Time Machine One Source bench plan v1.0 (stamp target)
+
+**Decision:** Full-agent bench plan filed: `docs/Options-Lab-Time-Machine-One-Source-Full-Agent-Bench-Plan-v1.0.md`. Board `agents/p-options-lab-tm-os/`. Token `agents/go/TMOS-W0.md`. Law to read: One Source spec **v0.2** (sha1 `474cfb0e5d7ac28cc226dfee67cdb6ea117a23c2`).
+
+W0-0 must promote v0.2 to **BUILD AUTHORITY** (or name a fold) before product code. v0.7.4 remains law until that stamp. Spec §12 item 4 (tail-append) is **stale**; the plan follows **TMI-88 snapshot**.
+
+**Does not:** start W1 · lift `TODAY_LIVE` in code · MiniTwo.
+
+---
+
+## 2026-08-28 — DL-613 Time Machine One Source DRAFT filed (not BUILD AUTHORITY)
+
+**Decision:** Proposal spec filed: `Specs/DRAFT-FatTail-Labs-Options-Lab-Time-Machine-One-Source-Spec-v0_1.md`. Coach's redesign: StudioOne is the **only replay source** for every date, including today. Replay of today does not depend on login or tab-open; the range is what StudioOne already holds (the open, if the tap was up). Instant Replay is not a member-facing name.
+
+**v0.7.4 remains BUILD AUTHORITY** until Coach stamps this (or a successor). No product code on this DRAFT.
+
+OPEN for Coach on stamp: TMI-88 (today hold grows from StudioOne vs snapshot) · whether browser decay (TMI-50/68) still has a seat.
+
+**Does not:** lift `TODAY_LIVE` in code · retire `captureToday` · stamp v0.8.
+
+---
+
+## 2026-08-28 — DL-612 Heatmap Cache slider retired; TM hold from the open
+
+**Decision (Coach):** The Heatmap inspector **Cache megabyte slider is gone.** What remains is a readout of how far back **Time Machine** holds today. Member name is Time Machine, not Instant Replay. HM21 `cacheBudgetMib` is inert; Width Fit Average keeps an internal default ring.
+
+**As-built before this:** today's browser slot only captured generations this tab received — typically from when Options Lab opened, not from 9:30 ET.
+
+**Now:** on host init, today is **seeded from StudioOne's in-progress session** into the **today** slot (not the archive slot). The line says **from the open** when the first held print is at/near 9:30 ET; otherwise it names the first held clock.
+
+**Does not:** restore a member cache budget · name Instant Replay · freeze the decay ladder.
+
+---
+
+## 2026-08-28 — DL-611 Time Machine GO remainder (Coach)
+
+**Decision (Coach):** W-G accepted with the Surface carry open. Twice for the same reason (Analyze left `position-builder` visible) is a **setup problem**, not a Surface fail — do not close on a wireframe. Establish a **listed tent** from the OPF-held chain deliberately; do not wait for a volatile day to produce one.
+
+**Walked:** listed 20-wide fly from the OPF-held chain (body 7755.37, wings 7735 / 7775, exp 2026-08-28). Surface painted; `surface-law-b` hidden; REPLAY watermark on that field (`w3-watermark-surface-hiv.png`). Not CHECK LEGS. Not a wireframe.
+
+**C11 this GO stays as recorded:** 157 MB is a **floor from a thin test, not a resident cost.** Infill was not waited. Decay is not shipped. The ladder is **not frozen**. No ceiling is named. Keep that wording.
+
+**Next measurement (not this GO):** a **full dense session with decay running** and a **fully infilled archive day beside it**. That pair is what the ladder is tuned against and what a ceiling is set from.
+
+**HOLD (out of this GO, not failed):** Basic (NX-B · AT-TM-C6) · TPO (NX-TPO · ATM-17) · 1× (NX-1X) · Instant Replay film (NX-FILM · recorder / `server/` film) · Record (NX-REC). KEEP extras remain characterized (DL-610).
+
+**Does not:** freeze the decay ladder · ship Basic / TPO / 1× / Record / Instant Replay film · treat 157 MB as a budget.
+
+---
+
+## 2026-08-28 — DL-610 Time Machine KEEP extras (Coach)
+
+**Decision (Coach):** Two extras from W7 are **KEEP**:
+
+1. **Durable live algos do not tick while a playhead is up.** A live alert evaluating against a replayed clock would be reading the wrong market.
+2. **To Trade Log is both hidden and refused** on rehearsal cards — hide is not enough.
+
+Member help states both. Characterization: `rehearsal.test.ts`.
+
+**Does not:** close Surface high-IV · freeze the decay ladder · ship Basic / TPO / 1×.
+
+---
+
+## 2026-08-28 — DL-607 IKI Lab Woo product on FatTail.ai (first catalog SKU)
+
+**Decision (Coach):** First IKI product is **IKI Lab**, already in the Woo store on
+**fattail.ai**. Labs does not mint SSO — existing **fotw-sso** bridge
+(`wordpress:fattail`) remains. JWT `membership_plans` for that product map to
+Labs plan `iki-lab` via `provider_plan_map` (`iki-lab`, `iki-lab-access`,
+`iki-lab-membership`). Name “IKI Lab” normalizes to `iki-lab`.
+
+After purchase, that product is the first item in the Your Lab Heatmap product
+dropdown; Analyzer is usable with it.
+
+**Does not:** 0-dte issuer unless that store sells IKI Lab · Factory publish
+pipeline (Conor) · invent a second SSO.
+
+---
+
+## 2026-08-28 — DL-609 Time Machine W8–W9 + GO close
+
+**Decision:** Kilo AT table filed (`reviews/W8-1-kilo.md`). **AT-TM-C6 HOLD** (Basic). Nothing gated on Basic, TPO, or 1×. No row waived. **C11** recorded: native 390-tick session occupancy digest 3.9 KB, today gens JSON **52.9 KB**, heap **157 MB**; plus archive 2026-08-26 coarse (82 gens) digest 3.9 KB, archive gens JSON **12.3 KB**, heap **157 MB**. Infill not waited. Decay not shipped; ladder **not** frozen; no ceiling named.
+
+Help: `server/help_reference/options-lab-time-machine.md` — one surface, date picks the day, fidelity, what you cannot persist while scrubbing. Member name **Time Machine** only.
+
+**W-G PASS** with carry: **Surface high-IV watermark still OPEN** — no listed tent painted this GO (builder did not yield a book). Do not treat wireframe / WAITING / CHECK LEGS as that check.
+
+**Does not:** freeze the decay ladder · ship Basic / TPO / 1× · close Surface high-IV.
+
+---
+
+## 2026-08-28 — DL-608 Time Machine W7 rehearsal objects
+
+**Decision:** Alerts and positions built under a playhead are **rehearsal objects** (TMI-80). All four conditions: **(a)** CCW half-recycle badge on both card types; **(b)** tick on replay clock and replay spot, never wall time; **(c)** never alert store, never notify, never Trade Log (`durable*` save; send-to-log refused); **(d)** disposal **announced** on return to live — silent vanish is a fail. Watermark and badge walked together (`w7-watermark-and-badge.png`) as one language at two scales. Hotel **APPROVED**.
+
+**Scheduled-script log shape (from AT-45):** `FIRED`, `SUCCEEDED`, `RECOVERY_SUCCEEDED` are separate facts. Use that shape for any scheduled script, not only AT-45 (`scripts/soar-at45-wait.sh` header).
+
+**Does not:** Surface high-IV watermark (still open until a listed tent paints).
+
+---
+
+## 2026-08-28 — DL-607 Time Machine W6 sticky hosts + Width Fit Replay
+
+**Decision:** One playhead across Analyzer, Heatmap, and Surface (AT-TM-C3 / TMI-42). Shared host (`tmHost` + `TimeMachineChrome`). Width Fit is **Live \| Average \| Replay** — Average remains a window mean; Replay is the generation under the playhead. Templates stay pure: replay substitutes `ChainContext`, it does not rewrite `widthFit.ts`. Surface listed-leg IV rebinds from the chain at *t* (`iv_source: generation`) or names **IV NO**. No second WebSocket.
+
+**Does not:** Surface high-IV watermark (still open until a listed tent paints) · rehearsal cards (W7).
+
+---
+
+## 2026-08-28 — DL-606 Cadence band is [2, 5]; 2 s is Massive's floor
+
+**Decision (Coach, from AT-SOAR-45):** DL-400's **[3, 5] s** band is **wrong**. It excludes the fastest and most valuable snapshots. The tap's band is **[2, 5]**. **Two seconds is the floor Massive gives us.** The spread inside that band is **vendor latency, not drift.**
+
+**Ladder:** size on the **slow end**. Measured Friday 2026-08-28 SPX RTH: median **2.24 s**, p95 **4.53 s**, 0 gaps. Native / fail-loud min stays **2 s**. Slow-end / fail-loud max stays **5 s** (p95 sits under it). Decay still thins the oldest end (TMI-68 ~10 s) from that slow measured interval — not from a 3 s floor that never existed.
+
+**Collection outranks reads:** proven, not asserted. Under full-pool archive load (2026-08-25 SPX, 94 hits / 0 err) median and p95 both moved slightly **faster**, still 0 gaps.
+
+**Reverses** DL-400's [3, 5] / default 4 s. **Confirms** DL-428's as-built [2, 5] / default 2 s with measurement. Spec v0.7.4 §12.4 is now answered.
+
+**AT-SOAR-45 facts (both kept):** 09:32:00 ET **FIRED**; that process **did not succeed** (`rc=1`, `ImportError: today_ny`). Recovery 09:32:48 ET **SUCCEEDED** (PASS). Fired ≠ succeeded.
+
+**Does not:** change the writer code path (already fail-loud [2, 5], default 2). MiniTwo.
+
+---
+
+## 2026-08-28 — DL-605 Time Machine W5 archive slot + AT-SOAR-45 cadence
+
+**Decision:** Past day fills the **archive slot** from StudioOne coverage · levelled fetch (coarse whole session, then infill). Today keeps capturing for the whole load — occupancy log on 2026-08-26 showed todayCount 2→50 while archiveCount went 0→82, with pre-load hashes still a prefix. Switch emits empty archive before the next day. Reset drops archive; today survives. Uncovered dates name **NO PATH** and grey in the calendar. Mini line is a downsample of the same generations. Analyzer no longer walks `ohlc_1m` / `fetchAlgoReplayPath`.
+
+**AT-SOAR-45:** FIRED 09:32:00 ET. First process `rc=1` in 1s — `ImportError: today_ny` (not in `ssr_archive_read`; it is in `ssr_live_capture`). Recovery run 09:32:48 ET **PASS**: baseline 22 snaps / 60s, median **2.243 s**, p95 **4.527 s**, 0 gaps; during 2026-08-25 SPX full-pool load 24 snaps / 60s, median **2.212 s**, p95 **4.436 s**, 0 gaps, 94/0 hits. Live spacing is the as-built **[2, 5] s** band. Evidence: `agents/p-studioone-archive-read/evidence/at45-20260828-093352.json` · TM walk `e2e/tm-w5-archive.spec.ts`.
+
+**Open:** Surface watermark vs a painted high-IV tent (not WAITING / CHECK LEGS). Watermark+badge together is W7.
+
+**Does not:** Heatmap / Surface sticky `t_ms` (W6) · rehearsal cards (W7).
+
+---
+
+## 2026-08-28 — DL-604 IKI Lab member product: Your Lab + Analyzer
+
+**Decision (Coach):** IKI Lab subscription is a Labs **plan** (`iki-lab`), not a
+new role. Members with that plan (and administrators) get suite pages **Your Lab**
+(`/app/iki/your-lab`, Options Lab Heatmap reused) and **Analyzer**
+(`/app/iki/analyzer`, `OpfRiskAnalyzer` reused). IKI-only members see **only**
+About, Catalog, Your Lab, Analyzer in FatTail Labs. Observer/Activator/Navigator
+without the plan do not get those pills.
+
+**Does not:** invent Woo `external_key` (map when Coach has the product) · fifth
+role on the ladder · second Massive socket · fork heatmap/analyzer engines ·
+open Factory/Runner to IKI subscribers · reverse DL-540.
+
+**Spec:** `Specs/FatTail-Labs-IKI-Lab-Member-Product-Spec-v0_1.md`
+
+---
+
+## 2026-08-28 — DL-603 Time Machine W4 today pre-selected
+
+**Decision:** Date control shows **today** on load (AT-TM-C1) without engaging replay. Replay is the playhead (`exitReplay` / `enterTodayReplay`), not “date is filled.” Reset exits: watermark and HUD gone, date still today, today cache intact. Speeds 10/20/50 only. No Record. No 1×. Today Play parks newest gen from the today slot.
+
+**Open:** Surface watermark vs a **painted** high-IV / light-region tent (wireframe shots do not close it). Occupancy switch / capture-while-archive remain **W5**. Watermark+badge together on one screen remains **W7**.
+
+**Does not:** StudioOne past-day fill · rehearsal cards.
+
+---
+
+## 2026-08-28 — DL-602 Time Machine W3 watermark + strip wrap
+
+**Decision:** Echo **RETURNED** horizontal scroll on the Analyzer dark strip. Transport **wraps** to a second row of the same strip; compact speeds **collapse** to one cycling chip. Pause is not a scroll target.
+
+REPLAY watermark is on Analyzer, Heatmap, and Surface (`*-replay-watermark`, `data-replay`, `pointer-events: none`, faint white, static). Time Machine glow is gone. What-if red remains. Live walks: `e2e/tm-w3-watermark.spec.ts`. Occupancy proofs (switch / Reset-keeps-today / capture-while-archive) stay **open until W5**.
+
+**Does not:** W4 today-preselect behaviour · W5 StudioOne fill · rehearsal cards (W7).
+
+---
+
+## 2026-08-28 — DL-601 Time Machine W2 two browser slots
+
+**Decision:** Time Machine occupancy is two slots in the browser (`web/lib/options-lab/tmSlots.ts`): **today** always capturing from the live chain, **archive** at most one past day. One playhead `{ t_ms, projector }`. A single occupancy date is forbidden. Capture does not pause when an archive day is open. Return to live drops the archive slot and parks today's newest. No `server/` film. No Redis TM write. Heatmap `StreamBook` stays Heatmap's book.
+
+**W1 walk (same day):** live Playwright on this workspace `:3000` proved strip order and that a wrap layout clipped Play/Reset. Dark strip is one `overflow-x-auto` row. Evidence: `agents/p-options-lab-tm/evidence/w1-strip-*.png`. W3 watermark requires the same walk.
+
+**Does not:** decay ladder freeze (C11) · W5 StudioOne fill · TM glow removal · 1-minute walk retirement.
+
+---
+
+## 2026-08-27 — DL-600 Time Machine W1 layout + parent one-liners
+
+**Decision:** First Analyzer packet of TM v0.7.4: Time Machine transport sits **immediately right of Autofit**. Strikes/in was already left of Autofit (spec §11 `ml-auto` row is stale). PiP is not between Autofit and the transport.
+
+Parents gained the §13 one-liners (Analyzer, What-If T/σ, Heatmap Templates, Width Fit, Surface §4.6, Trade Log §4.4, AZ-ALGO, Arch 28). **DL-400** cadence question remains confirm-on-disk (§12.4 / AT-TM-C11). DL-486, 487, 491, 492, 494, 499, 594 carried forward, not reversed. Unified spec v0.7.4 supersedes both parent TM documents.
+
+**Does not:** watermark · cache · past-day StudioOne walk · Basic / TPO / 1× · TM glow removal (W3) · `ohlc_1m` retirement (W5).
+
+---
+
+## 2026-08-27 — DL-599 Time Machine bench plan v1.2 STAMP
+
+**Decision (Coach W0-0):** Plan **v1.2** is stamped. Token `agents/go/TM-W0.md`. Board `agents/p-options-lab-tm/`. Law = spec **v0.7.4 BUILD AUTHORITY** (**DL-598**). sha1 of spec confirmed `c325711e30cf8b2791582e8b4db03a941b70960a`.
+
+HOLD-1 is closed (TMI-79 two slots in the spec — not a plan tick). Leftover boards PARKED: `p-options-lab-tmi` (32 seeds, never stamped) · `p-az-atm` (15 seeds; W0–W2 already ran). Firing either is a fail on this GO.
+
+**First Analyzer packet = layout** (TM immediately right of Autofit; Strikes/in already left; PiP not between). Parents §13 one-liners in that same packet. Basic / TPO / 1× out. Spaces / Factory out. No `server/` film. No product code until **W0-G PASS**.
+
+**Does not:** MiniTwo · Redis as TM film · pause capture · a `heldDay` singleton.
+
+---
+
+## 2026-08-27 — DL-598 Time Machine Spec v0.7.4 BUILD AUTHORITY
+
+**Decision (Coach GO):** Spec **v0.7.4 BUILD AUTHORITY** `Specs/FatTail-Labs-Options-Lab-Time-Machine-Spec-v0_7_4.md` replaces v0.7.3 as the file to cite.
+
+**TMI-79** is two browser slots, not one day total:
+
+| Slot | Lives | Dies |
+|------|-------|------|
+| **Today** | Always capturing in the browser | Trading-date change only (TMI-73) |
+| **Archive** | At most one past day | Switch day → discard before accept; Reset / return-to-live → drop |
+
+Today's capture does not stop while an archive day is open. Replay of today windows the held (thinning) cache. Replay of a past day is a second blob. **Two blobs, one playhead** (TMI-42). A single `heldDay: Date | null` reintroduces the v0.7.3 occupancy bug.
+
+**Also law in this GO:** no `server/` film; capture always on; no Record; no TM glow (REPLAY watermark + rehearsal badge); rehearsal dies on Reset, never Trade Log / alert store; past day = StudioOne chain, no 1-minute fetch; Basic / TPO / 1× out; Spaces / Factory a different program.
+
+**AT-TM-C8** restated (archive-scoped discard; today continues). **AT-TM-C11** measures resident browser bytes (native, decayed, and with one archive day on top). 10–20 MB is transfer, not a budget. Do not freeze the decay ladder until C11 records a busy 0DTE day **and** an archive day together.
+
+**Does not:** product code until plan v1.2 is stamped and W0-G PASS · MiniTwo · Redis as TM film · pause capture · discard today because a past day was opened.
+
+**sha1** `c325711e30cf8b2791582e8b4db03a941b70960a` `Specs/FatTail-Labs-Options-Lab-Time-Machine-Spec-v0_7_4.md` (BUILD AUTHORITY header + A1 tidy). Lima W0-1 re-hashes if the file moves after this entry.
+
+---
+
+## 2026-08-26 — DL-597 OPF live_capture store is FatTail2TB, not ~/Library/Caches
+
+**Decision (Coach):** Daily OPF snaps must not live in `~/Library/Caches`. Archive is the external drive:
+
+`/Volumes/FatTail2TB/fattail-market-data/ssr/live_capture/day=YYYY-MM-DD/`
+
+Not the git repo (hundreds of MB per day). The Library path was a stall workaround (`write_snap` SSD-first, `LABS_SSR_GOLD_COPY` off). That remapping is removed: tap writes FatTail2TB and **fails loud** if the volume is missing or not writable.
+
+**Copy:** existing cache days rsync onto FatTail2TB (exclude gold Friday `day=2026-08-14`). Cache is not deleted in this pass.
+
+**Does not:** MiniTwo · delete SSD cache · rewrite Friday 5-min gold · restart the tap until pulled on StudioOne.
+
+---
+
+## 2026-08-26 — DL-596 StudioOne Archive Read API Spec v0.1 DRAFT
+
+**Decision:** Interface spec for StudioOne → Labs archive reads (Time Machine calendar + day fetch) is **DRAFT** `Specs/FatTail-Labs-StudioOne-Archive-Read-API-Spec-v0_1.md` (**SO-AR**).
+
+**Does not:** BUILD · StudioOne disk write · dash restart · sidecar · build plan (waits on spec stamp + three OKs for the dash bounce).
+
+**Law in the spec:** NY session `day=` folders; index from filename+stat only (no envelope, no spot/hash); dyadic fetch levels 0–6; coverage hours+gaps+hash; today not on this path; book = symbol+expiration (path is symbol-only — expiration is a parameter, never a client filter / never cross-fill); Labs boot fail-loud on missing `LABS_SSR_ARCHIVE_URL` and token; runtime unreachable ≠ missing config; browser never calls StudioOne.
+
+---
+
+## 2026-08-26 — DL-595 Time Machine Instant Replay full-agent bench plan v1.0
+
+**Decision (Juliet plan landing):** Instant Replay Spec **v0.1.1** has a Full Agent Bench Plan **v1.0**.
+
+- Plan: `docs/Options-Lab-Time-Machine-Instant-Replay-Full-Agent-Bench-Plan-v1.0.md`  
+- Board: `agents/p-options-lab-tmi/`  
+- W0 token: `agents/go/TMI-W0.md` (**not stamped**)  
+- **Not BUILD AUTHORITY.** Spec remains DRAFT until Coach **W0-BA** with every §11 tick.  
+- TRSB **SB5 Scrubber** is this board — do not ship a second scrubber.  
+- Dual as-built book writers (`host.ts` + Heatmap panel) are named for India W0-2; W2 must leave **one** recorder.
+
+**Does not:** product code · MiniTwo · silent default of spec §11 · Algo on Instant Replay.
+
+---
+
+## 2026-08-26 — DL-594 Time Machine - Instant Replay (DRAFT spec)
+
+**Decision (Coach):** Instant Replay is a **fractal of Time Machine**, not a second
+product. Same transport seat (Play / Pause / Stop · 10× / 20× / 50× · Reset ·
+HUD). Film is this tab’s TR14 OPF **chain** ring (not a gold day).
+
+- **Name:** Time Machine - Instant Replay  
+- **Recorder:** Heatmap. **Projectors:** Analyzer and Surface  
+- **Member Cache control:** playback time (granularity degrades as span grows);
+  wipe + confirm on change; going forward only  
+- **Mode tell:** **green** blurred inner frame on **Heatmap, Analyzer, and
+  Surface** canvases while Instant Replay is active. Day stays **blue**.
+  What-if stays **red**. Green is a mode tell, not a profit/go signal  
+- Width Fit: Live \| Average \| Replay. Algo Alert **out** of v1. What-if
+  overlay **allowed**
+
+**Spec:** `Specs/FatTail-Labs-Options-Lab-Time-Machine-Instant-Replay-Spec-v0_1.md`
+(**DRAFT** — not BUILD AUTHORITY). Design:
+`docs/Options-Lab-Time-Machine-Instant-Replay-Design-Proposal.md`.
+
+**Parents amended (pointers):** Time Machine Spec v0.1.8 · Runner TR14 ·
+Heatmap Templates v0.2.3 · Width Fit v0.1.3 · Surface App Spec §4.6 · Arch **29**.
+
+**Does not:** implementation · MiniTwo · gold full-day chain · Algo on Instant
+Replay · client Massive.
+
+---
+
+## 2026-08-26 — DL-593 Heatmap Cache is raw OPF chain for all templates
+
+**Decision (Coach intent):** Heatmap Cache (TR14 stream book) stores the
+**raw OPF-held chain generation** this tab already subscribed to. Every
+Heatmap template (Advanced flies, Verticals, GEX, Width Fit, …) is a
+client view of that chain. The book is not Width Fit–only.
+
+**As-built:** Heatmap host now **writes** the book on any template when a
+generation lands. Width Fit **Average** is still the only shipped
+**reader**. Templates stay pure (TR5 / TR14). Tab RAM; not Redis; not gold
+disk.
+
+**Does not:** Average/scrubber UI on GEX or flies; MiniTwo; second Massive.
+
+---
+
 ## 2026-08-25 — DL-592 Trade Log Autofilter book universe Help (TLAB2)
 
 **Decision (Coach GO TLAB2):** Member how-to and as-built name Trade Log Autofilter’s

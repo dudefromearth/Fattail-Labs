@@ -114,6 +114,9 @@ listed flies; Analyzer is the 2D **Risk graph** and position book
 (`/app/options-lab/analyzer`); Surface is the 3D page
 (`/app/options-lab/surface`). See **Options Lab Analyzer** for how to use
 the Risk graph (pan, handles, GEX, Probability, What-if, Auto-fit).
+See **Options Lab Time Machine** for the shared scrubber: the date picks
+the day, fidelity says how sharp a past day is yet, and what you cannot
+persist while scrubbing.
 See the Options Lab Heatmap reference for what each Heatmap Value number
 means (Long/Debit, Short/Credit, % Change, Risk to Reward, Delta, Gamma,
 Theta). See **Width Fit** for the Heatmap template that scores listed

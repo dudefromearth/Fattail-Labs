@@ -46,10 +46,11 @@
 | Advanced Fly (id `sym-fly`): Long/Debit +1/−2/+1 · Short/Credit −1/+2/−1 · columns 10…50×5 · RoC −/+ slider / tick % / R:R / Δ / Δ² / vel / accel / slope / curvature / C/P + history | Landed (DL-311 · **DL-434** · **DL-435**) |
 | **Width Fit** (template id `width-fit`) | Landed **DL-525** / **DL-526** / **DL-529** — Template switcher sibling of Advanced flies · member criteria weights (equal \(1/7\)) · stability **penalty** outside weights (OD-W6) · footer median + \(n\) · observation-only · member guide [`docs/Options-Lab-Heatmap-Width-Fit-User-Guide.md`](../docs/Options-Lab-Heatmap-Width-Fit-User-Guide.md) · help `server/help_reference/options-lab-heatmap-width-fit.md` (**DL-530**) · TR14 Average / Ranking **DL-574** · inspector tab-session **HM21** **DL-575** |
 | Inspector tab-session (HM21) | Landed **DL-575** — `sessionStorage` `ft_labs_heatmap_session`; listed expiration restores only if still on the pack; glance / TR14 book not in the blob; new tab starts clean |
+| **Time Machine - Instant Replay** | DRAFT spec **DL-594** — Heatmap records TR14; Analyzer + Surface project; playback-time Cache; **green** inner frame on Heatmap / Analyzer / Surface. Not BUILD AUTHORITY. [`Specs/FatTail-Labs-Options-Lab-Time-Machine-Instant-Replay-Spec-v0_1.md`](../Specs/FatTail-Labs-Options-Lab-Time-Machine-Instant-Replay-Spec-v0_1.md) |
 | Client flySurfaceHistory + AF10/AF17 | Landed |
 | sym-fly debit/credit/pct_change/r2r + RoC sticky color | Superseded as surface by Advanced Fly modes |
 | gex_v1 call/put/net | Landed |
-| vertical · bw-fly templates | **Verticals** Long/Debit · Short/Credit (DL-443) · bw-fly landed |
+| vertical · bw-fly templates | **Verticals** Debit \| Credit main, Type % Change \| R:R secondary (**DL-579**) · bw-fly landed |
 | Full e2e AT-HM1…16 in Playwright | Partial (unit AT pack) |
 | AT-HM17 inspector session blob | Landed unit: `web/lib/options-lab/heatmapSession.test.ts` |
 
@@ -520,6 +521,7 @@ Foundation already landed: workspace layout, push stream, hydrate-if-empty, ladd
 | **1.0** | 2026-08-10 | Initial design architecture |
 | **1.1** | 2026-08-10 | Spec v0.1.1 dual-side |
 | **1.2** | 2026-08-10 | Spec **v0.2** review fold: Width vocabulary; modal step; next_url fail-loud; standard contracts only; color hysteresis; gex units; parent citation table |
+| **1.4** | 2026-08-26 | Instant Replay DRAFT (TMI Spec v0.1). Heatmap recorder; green glow; playback time. **DL-594**. |
 | **1.3** | 2026-08-24 | **HM21** inspector tab-session as-built (`heatmapSession.ts`). VT7. Distinct from VT6 and TR14. Spec v0.2.1. **DL-575**. |
 
 **One-line law:**  

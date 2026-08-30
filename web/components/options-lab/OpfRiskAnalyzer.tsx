@@ -66,6 +66,7 @@ import { buildLabel, buildNotation } from "@/lib/options-lab/positionLabels";
 import type { PositionInput } from "@/lib/options-lab/positionTypes";
 import { useBuilderChain } from "@/lib/options-lab/useBuilderChain";
 import { useOpfRiskGraph } from "@/lib/options-lab/useOpfRiskGraph";
+import { useTmArchiveVix } from "@/lib/options-lab/tmArchiveMarks";
 import {
   formatWhatIfTimeReadout,
   remainingLastTradeHours,
@@ -91,7 +92,10 @@ import { createTrade, fetchTrades } from "@/lib/tradeLogApi";
 
 import AnalyzerPositionsList from "@/components/options-lab/AnalyzerPositionsList";
 import AnalyzerControlsColumn from "@/components/options-lab/AnalyzerControlsColumn";
-import PositionBuilder from "@/components/options-lab/PositionBuilder";
+import PositionBuilder, {
+  pickDefaultFrontExpiration,
+} from "@/components/options-lab/PositionBuilder";
+import { buildListedStructure } from "@/lib/options-lab/listedStructure";
 import HostPnLChart from "@/components/options-lab/risk-graph/HostPnLChart";
 import AnalyzerTimeMachineStrip from "@/components/options-lab/AnalyzerTimeMachineStrip";
 import AnalyzerDayReplayHud from "@/components/options-lab/AnalyzerDayReplayHud";
@@ -128,16 +132,11 @@ import {
 } from "@/lib/options-lab/algoEval";
 import { findPnLAtPrice } from "@/lib/risk-graph/hostAlertMenu";
 import {
-  replayCursor,
-  sessionOpenCursor,
-  sessionOpenSpot,
   sessionSpotNow,
   spotPctFromReplay,
-  type ReplayCursor,
-  type ReplaySample,
-  type ReplaySpeed,
 } from "@/lib/options-lab/algoDayReplay";
-import { fetchAlgoReplayPath } from "@/lib/options-lab/algoReplayApi";
+import { useTimeMachineHost } from "@/lib/options-lab/useTimeMachineHost";
+import ReplayWatermark from "@/components/options-lab/ReplayWatermark";
 import {
   clampSpotPts,
   spotPctFromPts,
@@ -176,6 +175,7 @@ import {
   resolveViewportBookPolicy,
   visibleBookTrade,
 } from "@/lib/options-lab/cardDisplayState";
+import { isTmPositionDark } from "@/lib/options-lab/positionSession";
 import { curveFailureNotice } from "@/lib/options-lab/localBookCurves";
 
 const BOOK_H_KEY = "ft_analyzer_book_height_px_v2";
@@ -284,83 +284,71 @@ export default function OpfRiskAnalyzer() {
     saveAnalyzerPip(next);
   };
 
-  const [tmDay, setTmDay] = useState("");
-  const [tmSamples, setTmSamples] = useState<ReplaySample[]>([]);
-  const [tmHole, setTmHole] = useState<string | null>(null);
-  const [tmLoading, setTmLoading] = useState(false);
-  const [tmPlaying, setTmPlaying] = useState(false);
-  const [tmSpeed, setTmSpeed] = useState<ReplaySpeed>(10);
-  const [tmCursor, setTmCursor] = useState<ReplayCursor | null>(null);
-  const tmOriginRef = useRef({ wall: 0, sample: 0 });
-  const tmAllRef = useRef<ReplaySample[]>([]);
-  const [tmOpenSpot, setTmOpenSpot] = useState<number | null>(null);
-
-  const loadTmDay = useCallback(
-    async (day: string) => {
-      setTmDay(day);
-      setTmPlaying(false);
-      setTmHole(null);
-      setTmCursor(null);
-      setTmSamples([]);
-      tmAllRef.current = [];
-      if (!day) {
-        setTmOpenSpot(null);
-        return;
-      }
-      setTmLoading(true);
-      const path = await fetchAlgoReplayPath(symbol, day);
-      setTmLoading(false);
-      const rows = path?.samples ?? [];
-      if (!rows.length) {
-        setTmHole(path?.hole || "NO PATH");
-        setTmOpenSpot(null);
-        return;
-      }
-      tmAllRef.current = rows;
-      setTmOpenSpot(sessionOpenSpot(rows));
-      setTmCursor(sessionOpenCursor(rows));
-      let i = 0;
-      const paint = () => {
-        i = Math.min(rows.length, i + Math.max(6, Math.ceil(rows.length / 48)));
-        setTmSamples(rows.slice(0, i));
-        if (i < rows.length) requestAnimationFrame(paint);
-      };
-      requestAnimationFrame(paint);
-    },
-    [symbol],
-  );
+  const tm = useTimeMachineHost(symbol);
+  const tmDay = tm.day;
+  const tmSamples = tm.samples;
+  const tmHole = tm.hole;
+  const tmLoading = tm.loading;
+  const tmPlaying = tm.playing;
+  const tmSpeed = tm.speed;
+  const tmCursor = tm.cursor;
+  const tmOpenSpot = tm.openSpot;
+  const tmFidelity = tm.fidelity;
+  const tmCoverage = tm.coverage;
+  const loadTmDay = tm.loadDay;
+  const onNeedMonth = tm.onNeedMonth;
+  const tmActive = tm.tmActive;
+  const tmVix = useTmArchiveVix();
+  const wasReplayRef = useRef(false);
+  useEffect(() => {
+    if (tmActive) {
+      wasReplayRef.current = true;
+      return;
+    }
+    if (!wasReplayRef.current) return;
+    wasReplayRef.current = false;
+    let n = 0;
+    setPositions((prev) => {
+      const keep = prev.filter((p) => !p.rehearsal);
+      n += prev.length - keep.length;
+      return keep.length === prev.length ? prev : keep;
+    });
+    setAlerts((prev) => {
+      const keep = prev.filter((a) => !a.rehearsal);
+      n += prev.length - keep.length;
+      return keep.length === prev.length ? prev : keep;
+    });
+    setBookNotice(
+      "Rehearsal ended. Those cards were practice — not working orders, and they never entered Trade Log.",
+    );
+  }, [tmActive]);
 
   useEffect(() => {
-    setTmDay("");
-    setTmSamples([]);
-    setTmCursor(null);
-    setTmPlaying(false);
-    setTmHole(null);
-    tmAllRef.current = [];
-    setTmOpenSpot(null);
-  }, [symbol]);
-
-  useEffect(() => {
-    if (!tmPlaying || !tmSamples.length) return;
-    let raf = 0;
-    const tick = (now: number) => {
-      const c = replayCursor({
-        samples: tmAllRef.current.length ? tmAllRef.current : tmSamples,
-        originWallMs: tmOriginRef.current.wall,
-        originSampleMs: tmOriginRef.current.sample,
-        nowWallMs: now,
-        speed: tmSpeed,
+    const onPos = () => {
+      const pos = positionFromInput({
+        underlying: symbol,
+        expiration: "2026-08-28",
+        contracts: 1,
+        direction: "buy",
+        legs: [
+          {
+            strike: 6400,
+            type: "call",
+            quantity: 1,
+            side: "long",
+            entry_price: 1,
+            expiration: "2026-08-28",
+          },
+        ],
       });
-      setTmCursor(c);
-      if (c?.done) {
-        setTmPlaying(false);
-        return;
-      }
-      raf = requestAnimationFrame(tick);
+      pos.rehearsal = true;
+      pos.label = "Rehearsal";
+      if (tm.tMs != null) pos.entryAt = tm.tMs;
+      setPositions((prev) => [pos, ...prev]);
     };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [tmPlaying, tmSamples, tmSpeed]);
+    window.addEventListener("tm-test-rehearsal-pos", onPos);
+    return () => window.removeEventListener("tm-test-rehearsal-pos", onPos);
+  }, [symbol, tm.tMs]);
 
   const chartRef = useRef<PnLChartHandle>(null);
   const positionsRef = useRef(positions);
@@ -717,8 +705,9 @@ export default function OpfRiskAnalyzer() {
       visibleBookTrade(positions, {
         sessionHeld,
         symbol,
+        playheadMs: tmCursor?.t_ms ?? null,
       }),
-    [positions, sessionHeld, symbol],
+    [positions, sessionHeld, symbol, tmCursor?.t_ms],
   );
   const trades = bookTrade.trades;
   const trade = bookTrade.trade;
@@ -778,8 +767,9 @@ export default function OpfRiskAnalyzer() {
       visibleBookTrade(displayPositions, {
         sessionHeld,
         symbol,
+        playheadMs: tmCursor?.t_ms ?? null,
       }),
-    [displayPositions, sessionHeld, symbol],
+    [displayPositions, sessionHeld, symbol, tmCursor?.t_ms],
   );
 
   // When Builder opens, force OPF refresh so Create is never a dead panel
@@ -864,8 +854,8 @@ export default function OpfRiskAnalyzer() {
           ? simSpotPct
           : 0,
     enabled: (graphBook.trades.length ? graphBook.trades : trades).length > 0,
-    pollLive: planePrinting,
-    pauseLive: strikeDrag != null,
+    pollLive: planePrinting && !tmActive,
+    pauseLive: strikeDrag != null || tmActive,
     tradeIds: graphBook.trades.length ? graphBook.liveIds : undefined,
   });
 
@@ -918,9 +908,68 @@ export default function OpfRiskAnalyzer() {
       : risk.spot != null && risk.spot > 0
         ? risk.spot
         : null;
-  const opfVix =
-    chain.vix != null && Number(chain.vix) > 0 ? Number(chain.vix) : null;
+  const opfVix = tmActive
+    ? tmVix.mid != null && tmVix.mid > 0
+      ? tmVix.mid
+      : null
+    : chain.vix != null && Number(chain.vix) > 0
+      ? Number(chain.vix)
+      : null;
   const sessionSpot = sessionSpotNow(tmCursor, tmOpenSpot);
+
+  useEffect(() => {
+    const front =
+      pickDefaultFrontExpiration(
+        chain.expirations,
+        posture === "Live",
+      ) || chain.expirations[0];
+    const listed = front ? chain.getStrikes(front) : [];
+    const w = window as Window & { __tmListedReady?: boolean };
+    w.__tmListedReady = Boolean(front && listed.length >= 5);
+    if (front && listed.length < 5) chain.ensureExpiration(front);
+    const onListed = () => {
+      const exp =
+        pickDefaultFrontExpiration(
+          chain.expirations,
+          posture === "Live",
+        ) || chain.expirations[0];
+      if (!exp) return;
+      const grid = chain.getStrikes(exp);
+      if (grid.length < 5) {
+        chain.ensureExpiration(exp);
+        return;
+      }
+      const center =
+        (opfSpot != null && opfSpot > 0 && opfSpot) ||
+        (sessionSpot != null && sessionSpot > 0 && sessionSpot) ||
+        grid[Math.floor(grid.length / 2)];
+      const built = buildListedStructure({
+        template: "butterfly",
+        listed: grid,
+        preferCenter: center,
+        preferWidth: 20,
+        optionSide: "call",
+      });
+      if (!built) return;
+      const input: PositionInput = {
+        underlying: symbol,
+        expiration: exp,
+        contracts: 1,
+        direction: "buy",
+        legs: built.legs.map((l) => ({ ...l, expiration: exp })),
+      };
+      const pos = positionFromInput(input);
+      pos.label = buildLabel(input.underlying, input.legs, input.expiration);
+      pos.notation = buildNotation(input.legs);
+      setPositions((prev) => [pos, ...prev]);
+    };
+    window.addEventListener("tm-test-listed-pos", onListed);
+    return () => {
+      window.removeEventListener("tm-test-listed-pos", onListed);
+      w.__tmListedReady = false;
+    };
+  }, [chain, posture, opfSpot, sessionSpot, symbol]);
+
   const displaySpotRaw =
     spotOverride ?? opfSpot ?? trade?.body ?? 0;
   /** Live spot eases between ticks — risk graph line moves continuously */
@@ -942,7 +991,7 @@ export default function OpfRiskAnalyzer() {
             ? displaySpotRaw
             : 0;
     return displayPositions
-      .filter((p) => p.visible)
+      .filter((p) => p.visible && !isTmPositionDark(p, tmCursor?.t_ms ?? null))
       .map((p) => {
         const debit = algoEntryDebit({
           definedDebitPerShare: definedDebitSigned(p),
@@ -964,7 +1013,7 @@ export default function OpfRiskAnalyzer() {
           ),
         };
       });
-  }, [displayPositions, chain, rawMarkForAlerts, displaySpotRaw, sessionSpot]);
+  }, [displayPositions, chain, rawMarkForAlerts, displaySpotRaw, sessionSpot, tmCursor?.t_ms]);
 
   const liveAlgo = alerts.find(
     (a) =>
@@ -994,12 +1043,26 @@ export default function OpfRiskAnalyzer() {
     alertBuilderPositions.some((p) => p.algoEligible) &&
     !alerts.some((a) => a.alertClass === "algo" && a.runState === "live");
   useEffect(() => {
-    if (rawMarkForAlerts == null || !(rawMarkForAlerts > 0)) return;
     setAlerts((prev) => {
-      const next = evaluateAlerts(prev, rawMarkForAlerts, symbol);
-      return next === prev ? prev : next;
+      const live = prev.filter((a) => !a.rehearsal);
+      const reh = prev.filter((a) => a.rehearsal);
+      const nowIso =
+        tm.tMs != null ? new Date(tm.tMs).toISOString() : undefined;
+      const nextLive =
+        rawMarkForAlerts != null && rawMarkForAlerts > 0
+          ? evaluateAlerts(live, rawMarkForAlerts, symbol)
+          : live;
+      const nextReh =
+        sessionSpot != null && sessionSpot > 0
+          ? evaluateAlerts(reh, sessionSpot, symbol, nowIso)
+          : reh;
+      const next = [...nextLive, ...nextReh];
+      const same =
+        next.length === prev.length &&
+        next.every((a, i) => a === prev[i] || a.id === prev[i]?.id && a.runState === prev[i]?.runState && a.status === prev[i]?.status);
+      return same && nextLive === live && nextReh === reh ? prev : next;
     });
-  }, [rawMarkForAlerts, symbol]);
+  }, [rawMarkForAlerts, symbol, sessionSpot, tm.tMs]);
 
   useEffect(() => {
     if (spotDirty) return;
@@ -1203,6 +1266,11 @@ export default function OpfRiskAnalyzer() {
       let changed = false;
       const next = prev.map((a) => {
         if (a.alertClass !== "algo" || !a.algo?.demo) return a;
+        if (a.rehearsal) {
+          if (!(tmCursor && tmCursor.spot > 0)) return a;
+        } else if (tmActive) {
+          return a;
+        }
         const pos = positions.find((p) => p.id === a.positionId);
         if (!pos) return a;
         const debit = algoEntryDebit({
@@ -1238,6 +1306,7 @@ export default function OpfRiskAnalyzer() {
     elapsedHours,
     timeMachineEnabled,
     tmCursor,
+    tmActive,
     opfSpot,
     risk.theoreticalPoints,
     symbol,
@@ -1469,7 +1538,7 @@ export default function OpfRiskAnalyzer() {
       pulse: st.pulse === true,
     };
   })();
-  const tmActive = tmDay !== "" || tmLoading;
+
 
   useEffect(() => {
     if (tmOpenSpot == null) return;
@@ -1502,6 +1571,10 @@ export default function OpfRiskAnalyzer() {
         const pos = positionFromInput(input);
         pos.label = label;
         pos.notation = notation;
+        if (tm.tmActive) {
+          pos.rehearsal = true;
+          if (tm.tMs != null) pos.entryAt = tm.tMs;
+        }
         setPositions((prev) => [pos, ...prev]);
         setFocusedId(pos.id);
       }
@@ -1510,7 +1583,7 @@ export default function OpfRiskAnalyzer() {
       setEditId(null);
       risk.refresh();
     },
-    [editId, risk],
+    [editId, risk, tm.tmActive, tm.tMs],
   );
 
   const editInitial = useMemo(() => {
@@ -1564,6 +1637,12 @@ export default function OpfRiskAnalyzer() {
     onSendToTradeLog: async (id: string) => {
       const pos = positionsRef.current.find((p) => p.id === id);
       if (!pos) return;
+      if (pos.rehearsal) {
+        setBookNotice(
+          "Rehearsal cards stay off Trade Log. They are practice, not a working order.",
+        );
+        return;
+      }
       const draft = analyzerPositionToOpenTrade(pos);
       const res = await createTrade(draft);
       if (!res.ok) {
@@ -1656,6 +1735,7 @@ export default function OpfRiskAnalyzer() {
     const seen = new Set<string>();
     for (const p of displayPositions) {
       if (!p.visible) continue;
+      if (isTmPositionDark(p, tmCursor?.t_ms ?? null)) continue;
       for (const leg of p.position.legs) {
         if (!Number.isFinite(leg.strike)) continue;
         const key = `${p.id}:${leg.strike}`;
@@ -1665,7 +1745,7 @@ export default function OpfRiskAnalyzer() {
       }
     }
     return out;
-  }, [displayPositions]);
+  }, [displayPositions, tmCursor?.t_ms]);
 
   const onStrikeDrag = useCallback((info: StrikeDragInfo | null) => {
     setStrikeDrag((prev) => {
@@ -1923,8 +2003,12 @@ export default function OpfRiskAnalyzer() {
           className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#0a0a0e] p-2"
           data-testid="analyzer-viewport-region"
         >
-          <div className="relative mb-2 flex min-h-11 shrink-0 items-center px-1">
-          <div className="flex items-center gap-[50px]">
+          <div
+            className="mb-2 flex shrink-0 flex-col gap-1 px-1"
+            data-testid="analyzer-viewport-toolbar"
+          >
+          <div className="flex min-h-11 flex-wrap items-center gap-2">
+          <div className="flex shrink-0 items-center gap-[50px]">
             <label className="flex shrink-0 items-center gap-1.5">
               <span className="text-[16px] font-bold text-yellow-400">
                 Symbol
@@ -2010,10 +2094,11 @@ export default function OpfRiskAnalyzer() {
               />
             </label>
           </div>
-            <div className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center gap-2">
+            <div className="flex min-w-min flex-wrap items-center gap-2">
+              <div className="flex min-h-11 shrink-0 flex-nowrap items-center gap-2">
               {isAdmin ? (
                 <label
-                  className="pointer-events-auto flex min-h-11 items-center gap-2 text-[13px] font-medium uppercase tracking-wide text-white/60"
+                  className="flex min-h-11 items-center gap-2 text-[13px] font-medium uppercase tracking-wide text-white/60"
                   title="Autofit scale: underlier points per CSS inch. Higher = smaller tent."
                 >
                   Strikes/in
@@ -2040,20 +2125,17 @@ export default function OpfRiskAnalyzer() {
               ) : null}
               <Button
                 variant="bordered"
-                className="pointer-events-auto"
                 onClick={() => chartRef.current?.autoFit()}
                 disabled={!hasCurves}
                 data-testid="analyzer-autofit"
               >
                 Auto-fit
               </Button>
+              </div>
               <Button
                 variant="bordered"
                 className={
-                  "pointer-events-auto " +
-                  (pip.on
-                    ? "border-red-400/80 text-red-200"
-                    : "")
+                  pip.on ? "border-red-400/80 text-red-200" : ""
                 }
                 aria-pressed={pip.on}
                 data-testid="analyzer-pip-toggle"
@@ -2067,7 +2149,7 @@ export default function OpfRiskAnalyzer() {
                       key={s}
                       variant="bordered"
                       className={
-                        "pointer-events-auto min-w-11 px-2 uppercase " +
+                        "min-w-11 px-2 uppercase " +
                         (pip.size === s ? "border-red-400/80 text-red-200" : "")
                       }
                       aria-pressed={pip.size === s}
@@ -2079,69 +2161,39 @@ export default function OpfRiskAnalyzer() {
                   ))
                 : null}
             </div>
-            <div className="relative z-[2] ml-auto shrink-0">
+          </div>
               <AnalyzerTimeMachineStrip
                 day={tmDay}
-                onDay={(d) => void loadTmDay(d)}
+                onDay={loadTmDay}
+                onUncovered={loadTmDay}
+                coverage={tmCoverage}
+                onNeedMonth={onNeedMonth}
+                fidelity={tmFidelity}
+                hole={tmHole}
                 samples={tmSamples}
                 playing={tmPlaying}
                 speed={tmSpeed}
-                onSpeed={(s) => {
-                  if (tmPlaying && tmCursor) {
-                    tmOriginRef.current = {
-                      wall: performance.now(),
-                      sample: tmCursor.t_ms,
-                    };
-                  }
-                  setTmSpeed(s);
-                }}
-                onPlay={() => {
-                  const rows = tmAllRef.current.length
-                    ? tmAllRef.current
-                    : tmSamples;
-                  if (!rows.length) return;
-                  const origin =
-                    tmCursor && !tmCursor.done ? tmCursor.t_ms : rows[0].t_ms;
-                  tmOriginRef.current = {
-                    wall: performance.now(),
-                    sample: origin,
-                  };
-                  setTmPlaying(true);
-                }}
-                onPause={() => {
-                  setTmPlaying(false);
-                  if (tmCursor) {
-                    tmOriginRef.current = {
-                      wall: performance.now(),
-                      sample: tmCursor.t_ms,
-                    };
-                  }
-                }}
+                onSpeed={tm.onSpeed}
+                replayActive={tmActive}
+                onPlay={tm.onPlay}
+                onPause={tm.onPause}
                 onLeave={() => {
-                  void loadTmDay("");
+                  tm.onLeave();
                   requestAnimationFrame(() => chartRef.current?.autoFit());
                 }}
-                onStop={() => {
-                  setTmPlaying(false);
-                  const rows = tmAllRef.current;
-                  const origin = sessionOpenCursor(rows);
-                  if (!origin) return;
-                  setTmCursor(origin);
-                  tmOriginRef.current = { wall: 0, sample: origin.t_ms };
-                }}
+                onStop={tm.onStop}
                 loading={tmLoading}
+                playheadT={tm.tMs}
               />
-            </div>
           </div>
           <div className="relative min-h-0 flex-1 overflow-hidden rounded-xl border border-white/10">
             {tmActive ? (
-              <div
-                aria-hidden
-                data-testid="analyzer-viewport-glow"
-                data-glow="timemachine"
-                className="pointer-events-none absolute inset-0 z-[15] rounded-xl shadow-[inset_0_0_28px_12px_rgba(59,130,246,0.55)]"
+              <ReplayWatermark
+                testId="analyzer-replay-watermark"
+                layer="over-canvas"
               />
-            ) : timeMachineEnabled ? (
+            ) : null}
+            {timeMachineEnabled ? (
               <div
                 aria-hidden
                 data-testid="analyzer-viewport-glow"
@@ -2156,24 +2208,11 @@ export default function OpfRiskAnalyzer() {
                 cursor={tmCursor}
                 hole={tmHole}
                 loading={tmLoading}
-                onSeek={(s) => {
-                  const rows = tmAllRef.current;
-                  const idx = rows.findIndex((r) => r.t_ms === s.t_ms);
-                  setTmCursor({
-                    t_ms: s.t_ms,
-                    spot: s.spot,
-                    idx: idx >= 0 ? idx : 0,
-                    done: false,
-                  });
-                  tmOriginRef.current = {
-                    wall: performance.now(),
-                    sample: s.t_ms,
-                  };
-                }}
+                onSeek={tm.onSeek}
               />
             ) : null}
             <div
-              className="absolute inset-0"
+              className="absolute inset-0 z-[1]"
               data-testid="analyzer-risk-viewport"
               data-curve-mode={curveMode}
             >
@@ -2219,12 +2258,12 @@ export default function OpfRiskAnalyzer() {
                         : []
                   }
                   autofitPtsPerInch={autofitPtsPerInch}
-                  gexEnabled={tmActive ? false : gexEnabled}
+                  gexEnabled={gexEnabled}
                   gexValueMode={gexValueMode}
                   gexPoints={gexProfile.points}
                   gexScale={gexProfile.scale}
                   gexOpacityPct={gexOpacityPct}
-                  rangeEnabled={tmActive ? false : rangeEnabled}
+                  rangeEnabled={rangeEnabled}
                   rangeBands={rangeBands}
                   rangeOpacityPct={rangeOpacityPct}
                   strikeHandles={strikeHandles}
@@ -2245,7 +2284,11 @@ export default function OpfRiskAnalyzer() {
                   algoHud={algoHud}
                   positionExpirationCurves={risk.positionExpirationCurves}
                   positionAlertChoices={displayPositions
-                    .filter((p) => p.visible)
+                    .filter(
+                      (p) =>
+                        p.visible &&
+                        !isTmPositionDark(p, tmCursor?.t_ms ?? null),
+                    )
                     .map((p) => ({
                       id: p.id,
                       strikesLabel: positionStrikeAlertLabel(p),
@@ -2383,6 +2426,15 @@ export default function OpfRiskAnalyzer() {
         </div>
 
         {/* Positions book — fixed height from drag; scrolls when content overflows */}
+        {bookNotice && bookNotice.startsWith("Rehearsal ended") ? (
+          <div
+            className="shrink-0 border-b border-white/10 bg-black/40 px-3 py-2 text-[12px] text-white/75"
+            role="status"
+            data-testid="analyzer-rehearsal-ended"
+          >
+            {bookNotice}
+          </div>
+        ) : null}
         <div
           className="flex shrink-0 flex-col overflow-hidden border-b border-[var(--color-separator)] bg-[#0a0a0e] px-2 py-1"
           style={{ height: bookHeightPx }}
@@ -2391,6 +2443,7 @@ export default function OpfRiskAnalyzer() {
           <AnalyzerPositionsList
             {...positionsHandlers}
             positions={displayPositions}
+            playheadMs={tmCursor?.t_ms ?? null}
           />
         </div>
       </div>
@@ -2425,7 +2478,11 @@ export default function OpfRiskAnalyzer() {
               demo: ag.demo === true,
               overlay: ag.overlay,
               runState: draft.run_state,
+              rehearsal: tm.tmActive,
             });
+            if (tm.tmActive && tm.tMs != null) {
+              next.createdAt = new Date(tm.tMs).toISOString();
+            }
             if (ag.demo && !tmDay) setTimeMachineEnabled(true);
             setAlerts((prev) => {
               const i = prev.findIndex((a) => a.id === next.id);
@@ -2455,7 +2512,11 @@ export default function OpfRiskAnalyzer() {
             targetIsUnderlier: draft.trigger.family === "price",
             color: draft.color,
             runState: draft.run_state,
+            rehearsal: tm.tmActive,
           });
+          if (tm.tmActive && tm.tMs != null) {
+            next.createdAt = new Date(tm.tMs).toISOString();
+          }
           setAlerts((prev) => {
             const i = prev.findIndex((a) => a.id === next.id);
             if (i >= 0) {

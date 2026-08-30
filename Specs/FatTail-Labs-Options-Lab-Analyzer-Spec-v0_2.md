@@ -10,6 +10,8 @@
 **Surface route (primary):** `/app/options-lab/analyzer` — **Surface is a viewport mode here, not a suite app**  
 **Chrome:** Options Lab suite workspace under Options Lab nav (Volume Profile · Heatmap · Analyzer)
 
+**Time Machine (v0.7.4 BUILD AUTHORITY):** viewport chrome, not inspector; Strikes/in left of Autofit; mini day window in the upper-right canvas corner. Law: `Specs/FatTail-Labs-Options-Lab-Time-Machine-Spec-v0_7_4.md`.
+
 **Process:** Advisor fold (§15) · **Coach OD-AZ1–8 Accept (DL-304)** · residual implementation plan → **BUILD GO** still separate.  
 **Review:** External advisor Claude 2026-08-11 (B1–B5, A1–A8, P1–P2).  
 **Content integrity:** Landing content hash (sha1 of body excluding this line): `35c53589c918c4a636e31b17cb3c8e7c9ce281a8` (v0.2.1 · OD-AZ1–8 Accept · path reconcile DL-306).

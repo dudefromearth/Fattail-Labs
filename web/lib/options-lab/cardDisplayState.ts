@@ -20,6 +20,7 @@ import {
   isOptionPointerExpired,
   type AnalyzerPosition,
 } from "@/lib/options-lab/analyzerBook";
+import { isTmPositionDark } from "@/lib/options-lab/positionSession";
 import { bindPackageLabel } from "@/lib/options-lab/optionBind";
 import { positionToParsedTrade } from "@/lib/options-lab/positionToTrade";
 import type { ParsedTosTrade } from "@/lib/options-lab/tosParser";
@@ -328,6 +329,8 @@ export function visibleBookTrade(
     now?: Date;
     sessionHeld?: boolean;
     symbol?: string;
+    /** Wall ms of the Time Machine playhead. Dark cards do not contribute structure. */
+    playheadMs?: number | null;
   },
 ): {
   trade: ParsedTosTrade | null;
@@ -355,6 +358,7 @@ export function visibleBookTrade(
   const expiredTrades: ParsedTosTrade[] = [];
   for (const p of shown) {
     if ((p.position.underlying || "").toUpperCase() !== want) continue;
+    if (isTmPositionDark(p, opts?.playheadMs)) continue;
     if (!p.position.legs.length) continue;
     contributingIds.push(p.id);
     const t = positionToParsedTrade(p.position);

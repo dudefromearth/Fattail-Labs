@@ -97,7 +97,7 @@ Member chrome is suppressed under `/admin` via `AppChrome` + `admin/layout.tsx`
 | Hub | `hub/*`, `HubIntroVideo` |
 | In-place admin | `edit/*` — EditContext, bars, editable fields, danger zone, media |
 | Admin app | `admin/BoardKanban`, `AdminNotifications`, `AgentsPanel`, `AgentWorkbench` |
-| Shell | `SiteHeader` (member), `AppChrome` (suppress header on `/admin`) |
+| Shell | `SiteHeader` (member), `AppChrome` (suppress header on `/admin`); lower-right dock: Wiki agent (admin, **DL-573**) immediately left of Help (members) |
 
 ### 4.3 In-place admin model
 
@@ -152,6 +152,7 @@ Dev convenience: `/api/auth/dev-login` (API, env=dev only) sets administrator co
 | `/admin/ai` | `AgentWorkbench` | Live Grok/Claude tasks |
 | `/admin/agents` | `AgentsPanel` | Mint/revoke `ftl_ag_` keys |
 | `/admin/media` | `MediaLibrary` | Public uploads |
+| `/admin/archive` | `ArchiveCorpusPanel` | StudioOne corpus + C11 hold-resident heap (aggregates; no identities) |
 | Header **Alerts** | `AdminNotifications` | Inbox + optional browser `Notification` API |
 
 Board deep-link: `/admin/board?item=<id>` (from email/alerts).  

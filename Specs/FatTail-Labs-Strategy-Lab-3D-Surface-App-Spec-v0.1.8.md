@@ -216,6 +216,8 @@ The surface is **one object**. Mode is a session property.
 | **What-if** (forward-analysis) | Frozen bind IVs; member moves \(S\) / \(\tau\) / later vol. **Theoretical decay.** | Later chrome; HUD must say What-if |
 | **Time machine** (replay) | Real package P&L at clock \(t\): rebind listed-leg IV, spot, and OPF29 \(\tau\) from the **snap at \(t\)** | Same HUD, later feed (Method v0.2). **This is the hero walk.** |
 
+**Time Machine (v0.7.4):** a replay generation is a lawful snap-at-*t*; Surface hosts the same scrubber and date control. Instant Replay glow note below is record — Time Machine has no glow (watermark). Law: `Specs/FatTail-Labs-Options-Lab-Time-Machine-Spec-v0_7_4.md`.
+
 **Time machine law (normative):**
 
 \[
@@ -229,6 +231,8 @@ The surface is **one object**. Mode is a session property.
   The machine does **not** interpolate through the last hour of 0DTE.
 - After that contract’s settlement instant → residual sheet, **never live** (Law C).
 - Card EXPIRED remains midnight ET (other clock).
+
+**Instant Replay (TMI Spec v0.1 · DL-594):** In this tab, a TR14 `StreamSlot` is a lawful snap at \(t\). Surface **projects** that film — same rebind law, **green** inner frame on the Surface canvas. Gold `live_capture` / Method v0.2 remains the later Day-scale feed. Do not download gold to fill Instant Replay. **NO FILM** if Heatmap never wrote this tab’s book.
 
 **Must not call the what-if τ playhead a time machine.**
 §5.3c range + playhead is the **HUD**. In Live / What-if it walks a frozen
@@ -748,3 +752,4 @@ DL-411 · §4.3 · §4.6 · §4.6a · §4.8 · §5.1).
 | **v0.1.7** | **§4.8 named consumers** (backtest sheet + mini tape-walk). **S1 closed:** first home is Options Lab (`/app/options-lab/surface`). Strategy Lab consumes. **DL-410** · **DL-411**. |
 | **v0.1.8** | Review accept. §1 / §4.1 / §5.2 = shown listed book (§4.7), not a focus radio. Mini graphic label **day walking · n of N**. **DL-412**. |
 | **v0.1.8+** | 2026-08-21 Coach intent recorded: Surface = simple alternate of Analyzer canvas; T Ortho = Easter Egg inside Surface. **DL-509**. No code in that body. |
+| **v0.1.9** | Instant Replay pointer (§4.6): TR14 slot is a lawful snap-at-\(t\) in this tab; **green** canvas glow; gold `live_capture` unchanged. [TMI Spec v0.1](./FatTail-Labs-Options-Lab-Time-Machine-Instant-Replay-Spec-v0_1.md). **DL-594**. |

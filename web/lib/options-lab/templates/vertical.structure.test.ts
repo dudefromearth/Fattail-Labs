@@ -53,8 +53,8 @@ assert(verticalFarStrike("put", 100, 10) === 90, "put far is down");
 }
 
 assert(verticalTemplate.label === "Verticals", "label");
-assert(verticalTemplate.valueModes[0]?.label === "Long/Debit", "long");
-assert(verticalTemplate.valueModes[1]?.label === "Short/Credit", "short");
+assert(verticalTemplate.valueModes[0]?.label === "Debit", "debit");
+assert(verticalTemplate.valueModes[1]?.label === "Credit", "credit");
 
 {
   const g = buildGrid(verticalTemplate, ctx("call"), {
@@ -81,8 +81,8 @@ assert(verticalTemplate.valueModes[1]?.label === "Short/Credit", "short");
   assert(!missing.cells[mid3][0].valid, "unlisted width is invalid (no snap)");
 }
 
-assert(verticalTemplate.valueModes[2]?.label === "% Change (debit)", "% change");
-assert(verticalTemplate.valueModes[3]?.label === "Risk to Reward", "R:R");
+assert(verticalTemplate.valueModes[2]?.label === "% Change", "% change");
+assert(verticalTemplate.valueModes[3]?.label === "R:R", "R:R");
 
 {
   const g = buildGrid(verticalTemplate, ctx("call"), {
@@ -106,4 +106,30 @@ assert(verticalTemplate.valueModes[3]?.label === "Risk to Reward", "R:R");
   assert((g.cells[mid][0].value ?? -1) >= 0, "% change not negative");
 }
 
-console.log("ok  vertical Long/Debit call up · put down · Short flip");
+{
+  const g = buildGrid(verticalTemplate, ctx("call"), {
+    valueMode: "r2r",
+    verticalKind: "credit",
+    widthMode: "fixed_points",
+    fixedPoints: [10],
+  });
+  const mid = g.rows.findIndex((r) => r.strike === 100);
+  assert(g.cells[mid][0].valid, "credit R:R valid");
+  assert(
+    Math.abs((g.cells[mid][0].value ?? 0) - 4 / 6) < 1e-9,
+    "credit R:R C/(w−C)",
+  );
+}
+
+{
+  const g = buildGrid(verticalTemplate, ctx("call"), {
+    valueMode: "pct_change",
+    verticalKind: "credit",
+    widthMode: "fixed_points",
+    fixedPoints: [10],
+  });
+  const mid = g.rows.findIndex((r) => r.strike === 100);
+  assert(g.cells[mid][0].display === "0.0%", `credit % spot ${g.cells[mid][0].display}`);
+}
+
+console.log("ok  vertical Debit/Credit call up · put down · Type on package");

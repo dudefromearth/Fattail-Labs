@@ -506,4 +506,22 @@ test("viewport: price → live curves, no notice", () => {
   assert(p!.notice === null, "no overlay");
 });
 
+test("§13a item 1: dark position does not contribute legs to the book", () => {
+  const pos = { ...base("2026-08-18"), entryAt: Date.parse("2026-08-18T13:30:00Z") };
+  const before = visibleBookTrade([pos], {
+    now,
+    symbol: "SPX",
+    playheadMs: pos.entryAt! - 1,
+  });
+  assert(before.contributingIds.length === 0, "dark: no structure");
+  assert(before.trades.length === 0, "dark: no tent");
+  const at = visibleBookTrade([pos], {
+    now,
+    symbol: "SPX",
+    playheadMs: pos.entryAt!,
+  });
+  assert(at.contributingIds.join() === pos.id, "at entry it lights");
+  assert(at.trades[0].legs.length === 3, "legs appear when it lights");
+});
+
 console.log(`\n${n} tests passed`);

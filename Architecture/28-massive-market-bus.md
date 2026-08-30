@@ -15,6 +15,8 @@ Member tools (chain ladder, future charts, capital marks consumers) must **not**
 
 **Law:** headcount multiplies **sockets and fan-out**; Massive multiplies only with **hot topics**.
 
+**Time Machine (v0.7.4):** replay read path is a **server** fetch of the StudioOne chain (Labs proxy). One market WebSocket. **No client Massive.** Browser holds two slots (today + at most one archive day). Not this bus's Redis generation store.
+
 **Posture (DL-286):** Redis as shared generation store for multi-worker live market data is a **named reversal** of the earlier “no always-on multi-worker Redis pipeline” line in the chain picker era. Arch/18 MySQL marks remain for non-WS / Curate until dual-write exit (Spec O2).
 
 ---

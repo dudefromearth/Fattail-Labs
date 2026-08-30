@@ -1,8 +1,9 @@
 /**
  * Vertical spread matrix — Spec HM §5.3.
  *
- * Long/Debit: +1 body, −1 far (calls: K+w · puts: K−w).
- * Short/Credit: flip. Exact listed strikes only.
+ * Debit: +1 body, −1 far (calls: K+w · puts: K−w).
+ * Credit: flip. Exact listed strikes only.
+ * Type (% Change · R:R) is secondary on the selected Debit or Credit package.
  */
 
 import {
@@ -16,6 +17,7 @@ import {
   verticalDebitPctFromSpot,
   verticalFarStrike,
   verticalPackage,
+  type FlyDirection,
 } from "./pricing";
 import type {
   ChainContext,
@@ -24,8 +26,49 @@ import type {
   HeatmapTemplate,
   RowDef,
   TemplateParams,
+  ValueModeId,
+  VerticalKind,
+  VerticalMetric,
 } from "./types";
 import { contractKey } from "@/lib/chainLadderApi";
+
+export function verticalKindFromMode(
+  valueMode: ValueModeId,
+  stored?: VerticalKind,
+): VerticalKind {
+  if (valueMode === "credit") return "credit";
+  if (valueMode === "debit") return "debit";
+  return stored === "credit" ? "credit" : "debit";
+}
+
+export function verticalMetricFromMode(valueMode: ValueModeId): VerticalMetric {
+  if (valueMode === "pct_change") return "pct_change";
+  if (valueMode === "r2r") return "r2r";
+  return "package";
+}
+
+export function verticalValueMode(
+  kind: VerticalKind,
+  metric: VerticalMetric,
+): ValueModeId {
+  if (metric === "pct_change") return "pct_change";
+  if (metric === "r2r") return "r2r";
+  return kind === "credit" ? "credit" : "debit";
+}
+
+export function verticalViewLabel(
+  kind: VerticalKind,
+  metric: VerticalMetric,
+): string {
+  const main = kind === "credit" ? "Credit" : "Debit";
+  if (metric === "pct_change") return `${main} · % Change`;
+  if (metric === "r2r") return `${main} · R:R`;
+  return main;
+}
+
+function verticalDirection(kind: VerticalKind): FlyDirection {
+  return kind === "credit" ? "short" : "long";
+}
 
 function widthList(ctx: ChainContext, params: TemplateParams): number[] {
   if (params.widthMode === "fixed_points" && params.fixedPoints?.length) {
@@ -42,13 +85,13 @@ export const verticalTemplate: HeatmapTemplate = {
   id: "vertical",
   label: "Verticals",
   description:
-    "Debit vertical · long body, short far strike (calls up / puts down)",
+    "Debit or Credit vertical · Type is % Change or R:R of that package",
   layout: "matrix",
   valueModes: [
-    { id: "debit", label: "Long/Debit" },
-    { id: "credit", label: "Short/Credit" },
-    { id: "pct_change", label: "% Change (debit)" },
-    { id: "r2r", label: "Risk to Reward" },
+    { id: "debit", label: "Debit" },
+    { id: "credit", label: "Credit" },
+    { id: "pct_change", label: "% Change" },
+    { id: "r2r", label: "R:R" },
   ],
   defaultValueMode: "debit",
 
@@ -97,7 +140,19 @@ export const verticalTemplate: HeatmapTemplate = {
       };
     }
 
-    if (params.valueMode === "pct_change") {
+    const metric = verticalMetricFromMode(params.valueMode);
+    const kind: VerticalKind =
+      metric === "package"
+        ? params.valueMode === "credit"
+          ? "credit"
+          : "debit"
+        : params.verticalKind === "credit"
+          ? "credit"
+          : "debit";
+    const direction = verticalDirection(kind);
+    const pkg = direction === "long" ? dLong : -dLong;
+
+    if (metric === "pct_change") {
       const strikes = params.flyRowStrikes;
       const idx = params.flyRowIndex;
       if (strikes == null || idx == null || idx < 0) {
@@ -108,52 +163,77 @@ export const verticalTemplate: HeatmapTemplate = {
           tooltip: "Row order unavailable",
         };
       }
-      const pct = verticalDebitPctFromSpot(ctx, strikes, idx, w);
+      const pct = verticalDebitPctFromSpot(ctx, strikes, idx, w, direction);
       if (pct == null) {
         return {
           display: "—",
           value: null,
           valid: false,
-          tooltip: "Need debit at this strike and the next toward spot",
+          tooltip: `Need ${kind} package at this strike and the next toward spot`,
         };
       }
       return {
         display: `${pct.toFixed(1)}%`,
         value: pct,
         valid: true,
-        tooltip: `% change in debit = |(inner − outer) / inner|`,
+        tooltip: `% change in ${kind} = |(inner − outer) / inner|`,
       };
     }
 
-    if (params.valueMode === "r2r") {
-      if (!isPositiveListedDebit(dLong)) {
+    if (metric === "r2r") {
+      if (kind === "debit") {
+        if (!isPositiveListedDebit(dLong)) {
+          return {
+            display: "—",
+            value: null,
+            valid: false,
+            tooltip: "R:R needs a positive debit",
+          };
+        }
+        const maxProfit = w - dLong;
+        if (!(maxProfit > 0)) {
+          return {
+            display: "—",
+            value: null,
+            valid: false,
+            tooltip: "Debit ≥ width — no positive max profit under mid model",
+          };
+        }
+        const rr = maxProfit / dLong;
+        return {
+          display: rr.toFixed(2),
+          value: rr,
+          valid: true,
+          tooltip: `R:R = (width − debit) / debit = (${w}−${formatPkg(dLong)})/${formatPkg(dLong)}`,
+        };
+      }
+      const collected = -pkg;
+      if (!isPositiveListedDebit(collected)) {
         return {
           display: "—",
           value: null,
           valid: false,
-          tooltip: "Risk to Reward needs a positive debit",
+          tooltip: "R:R needs a collected credit",
         };
       }
-      const maxProfit = w - dLong;
-      if (!(maxProfit > 0)) {
+      const maxLoss = w - collected;
+      if (!(maxLoss > 0)) {
         return {
           display: "—",
           value: null,
           valid: false,
-          tooltip: "Debit ≥ width — no positive max profit under mid model",
+          tooltip: "Credit ≥ width — no positive max loss under mid model",
         };
       }
-      const rr = maxProfit / dLong;
+      const rr = collected / maxLoss;
       return {
         display: rr.toFixed(2),
         value: rr,
         valid: true,
-        tooltip: `Risk to Reward = (width − debit) / debit = (${w}−${formatPkg(dLong)})/${formatPkg(dLong)}`,
+        tooltip: `R:R = credit / (width − credit) = ${formatPkg(collected)}/(${w}−${formatPkg(collected)})`,
       };
     }
 
-    const direction = params.valueMode === "credit" ? "short" : "long";
-    const pkg = direction === "long" ? dLong : -dLong;
     const longTip =
       side === "call"
         ? `Long ${k} / short ${far} call`

@@ -15,7 +15,13 @@ import {
   getTemplate,
   HEATMAP_TEMPLATES,
 } from "@/lib/options-lab/templates/registry";
-import type { BwWingSide, ValueModeId, WidthFitWeights } from "@/lib/options-lab/templates/types";
+import type {
+  BwWingSide,
+  ValueModeId,
+  VerticalKind,
+  WidthFitWeights,
+} from "@/lib/options-lab/templates/types";
+import { verticalKindFromMode } from "@/lib/options-lab/templates/vertical";
 import {
   DEFAULT_WIDTH_FIT_WEIGHTS,
   resolveWidthFitWeights,
@@ -37,13 +43,14 @@ export type HeatmapSessionPrefs = {
   wings: StrikeWings;
   templateId: string;
   valueMode: ValueModeId;
+  verticalKind: VerticalKind;
   rocSensitivity: number;
   bwStrikeCount: number;
   bwWingSide: BwWingSide;
   widthFitWeights: WidthFitWeights;
   widthFitExpanded: boolean;
   wfIface: "heatmap" | "ranking";
-  wfTime: "live" | "average";
+  wfTime: "live" | "average" | "replay";
   wfWindow: AverageWindow;
   cacheBudgetMib: BudgetStopMib;
 };
@@ -100,6 +107,10 @@ export function parseHeatmapSession(raw: unknown): HeatmapSessionPrefs | null {
     wings,
     templateId,
     valueMode,
+    verticalKind: verticalKindFromMode(
+      valueMode,
+      o.verticalKind === "credit" ? "credit" : "debit",
+    ),
     rocSensitivity: Number.isFinite(roc)
       ? Math.max(0, Math.min(100, roc))
       : DEFAULT_ROC_SENSITIVITY,
@@ -110,7 +121,12 @@ export function parseHeatmapSession(raw: unknown): HeatmapSessionPrefs | null {
     ),
     widthFitExpanded: o.widthFitExpanded === true,
     wfIface: o.wfIface === "ranking" ? "ranking" : "heatmap",
-    wfTime: o.wfTime === "average" ? "average" : "live",
+    wfTime:
+      o.wfTime === "average"
+        ? "average"
+        : o.wfTime === "replay"
+          ? "replay"
+          : "live",
     wfWindow: clampWindow(Number(o.wfWindow) || 10),
     cacheBudgetMib: clampBudgetMib(
       Number(o.cacheBudgetMib) || DEFAULT_BUDGET_MIB,

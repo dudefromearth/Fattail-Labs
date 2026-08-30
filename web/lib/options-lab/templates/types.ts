@@ -88,6 +88,10 @@ export type GridCell = {
 /** Which side of the body gets the broken (N-strike) wing. */
 export type BwWingSide = "closest" | "furthest";
 
+/** Verticals inspector — Debit/Credit is the structure; Type is optional. */
+export type VerticalKind = "debit" | "credit";
+export type VerticalMetric = "package" | "pct_change" | "r2r";
+
 export type TemplateParams = {
   valueMode: ValueModeId;
   widthMode: "step_multiples" | "fixed_points" | "msc_default";
@@ -111,6 +115,8 @@ export type TemplateParams = {
    * or furthest from spot. When spot is missing, furthest → upper wing.
    */
   bwWingSide?: BwWingSide;
+  /** Verticals: Debit (long) or Credit (short). Type (% / R:R) uses this package. */
+  verticalKind?: VerticalKind;
   /**
    * Advanced Fly — client history reader (time derivatives).
    * Optional; when absent, time modes render invalid.

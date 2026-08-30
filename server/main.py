@@ -76,6 +76,7 @@ def create_app() -> FastAPI:
     from routes.market_stream import router as market_stream_router
     from routes.market_ohlc import router as market_ohlc_router
     from routes.algo_replay import router as algo_replay_router
+    from routes.ssr_archive import router as ssr_archive_router
     from routes.market_session import router as market_session_router
     from routes.volume_profile import (
         admin_router as volume_profile_admin_router,
@@ -162,6 +163,7 @@ def create_app() -> FastAPI:
     app.include_router(market_stream_router)
     app.include_router(market_ohlc_router)
     app.include_router(algo_replay_router)
+    app.include_router(ssr_archive_router)
     app.include_router(market_session_router)
     app.include_router(volume_profile_member_router)
     app.include_router(volume_profile_admin_router)

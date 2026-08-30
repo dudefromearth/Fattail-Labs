@@ -43,6 +43,18 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
 
 ## Projects
 
+- `agents/p-options-lab-tm-os/` — **Time Machine One Source** (StudioOne for every date including today).  
+  Spec **v0.2.1 DRAFT — stamp candidate:** `Specs/FatTail-Labs-Options-Lab-Time-Machine-One-Source-Spec-v0_2_1.md`.  
+  **Plan v1.2:** `docs/Options-Lab-Time-Machine-One-Source-Full-Agent-Bench-Plan-v1.2.md`.  
+  Token: `agents/go/TMOS-W0.md`. **Next: W0-0 Coach stamp of plan v1.2 + spec v0.2.1 BUILD AUTHORITY · no product code before W0-G.**  
+  Snapshot (Reset then raise). Full download. Average is not replay. Instant Replay / Day boards stay PARKED.
+- `agents/p-options-lab-tm/` — **Options Lab Time Machine** (one surface, one scrubber, today pre-selected).  
+  Spec **v0.7.4 BUILD AUTHORITY:** `Specs/FatTail-Labs-Options-Lab-Time-Machine-Spec-v0_7_4.md` · **DL-598**.  
+  **Plan v1.2:** `docs/Options-Lab-Time-Machine-Full-Agent-Bench-Plan-v1.2.md`.  
+  Token: `agents/go/TM-W0.md`. **W-G PASS** (closed). Instant Replay and Day boards are **PARKED**.
+- `agents/p-options-lab-tmi/` — **PARKED.** 32 seeds, never stamped. Not live law. See `PARKED.md`. Stamp `TM-W0.md` / `p-options-lab-tm` instead.  
+  Spec: `Specs/FatTail-Labs-Options-Lab-Time-Machine-Instant-Replay-Spec-v0_1_1.md` **DRAFT** (folded).  
+  Token: `agents/go/TMI-W0.md` **SUPERSEDED**.
 - `agents/p-trader-development/` — **Trader Development** (Practice formation OS:
   Playbook · Campaign · Tags productization · Match hygiene sync/charts · season retro).  
   Specs: `Specs/FatTail-Labs-Trader-Development-*.md`.  
@@ -172,11 +184,10 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
   **Plan:** `docs/Options-Lab-Analyzer-Algo-Alert-Full-Agent-Bench-Plan-v1.0.md` **v1.0.3** · **DL-474** · **DL-489**.  
   Board: `agents/p-az-algo/ORCHESTRATOR.md`.  
   **W1–W3 PASS.** Next: W3-R (Reason) · W4 HOLD (Packet A / C2). Demo + Reason **in**.  
-- `agents/p-az-atm/` — **Analyzer Time Machine** (OnDemand **day replay**, not What-if).  
+- `agents/p-az-atm/` — **PARKED.** 15 seeds; W0-0 / W0-BA / W1-G / W2-G already ran. Remaining W3 Enhanced / W4 TPO are NX on the unified GO. See `PARKED.md`. Use `p-options-lab-tm`.  
   Spec: `Specs/FatTail-Labs-Options-Lab-Analyzer-Time-Machine-Spec-v0.1.md` (**v0.1.1 DRAFT** · **DL-486** · **DL-487**).  
   **Plan:** `docs/Options-Lab-Analyzer-Time-Machine-Full-Agent-Bench-Plan-v1.0.md` **v1.0** · **DL-489**.  
-  Board: `agents/p-az-atm/ORCHESTRATOR.md`.  
-  **Next: W0-0 Coach stamp.** W1 math/data before chrome. Chrome behind Packet A W-G → algo W4 → C2.
+  Board: `agents/p-az-atm/ORCHESTRATOR.md`.
 - `agents/p-alerts/` — **Labs Alerts** (two planes: Manager + API · Analyzer first client).  
   Specs: ALM v1.0.1 · AZ-ALB v1.0.1 · **DL-464**.  
   **Plan:** `docs/Labs-Alerts-Full-Agent-Bench-Plan-v1.0.md` **v1.0.3**.  

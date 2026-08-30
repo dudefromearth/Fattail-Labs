@@ -23,8 +23,8 @@ When you return to Heatmap in this tab, these inspector choices come back:
 - **Symbol**, **listed expiration**, **Calls** or **Puts**
 - **Template** (Advanced flies, Width Fit, Verticals, and the others)
 - **Value** on Advanced flies, and the − / + color slider
-- **Width Fit** weights, Expand, Heatmap or Ranking, Live or Average,
-  average window (10 / 20 / 50 / 100), and cache size (4 / 8 / 16 / 32 MB)
+- **Width Fit** weights, Expand, Heatmap or Ranking, Live / Average /
+  Replay, and average window (10 / 20 / 50 / 100)
 
 The strike window is still the held chain.
 
@@ -61,7 +61,7 @@ still there. It will not keep an expired date as if it were live.
 
 ## Width Fit
 On the Width Fit template, this tab also remembers Heatmap vs Ranking,
-Live vs Average, the window, cache size, Expand, and your seven weights.
+Live vs Average vs Replay, the window, Expand, and your seven weights.
 See the **Width Fit** help topic for color tiles, ranking, and weights.
 
 Average of colors is observation of listed fit on snapshots this tab held

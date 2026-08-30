@@ -27,8 +27,17 @@ import {
 } from "@/lib/options-lab/timeOrthoTapeCache";
 import { positionToParsedTrade } from "@/lib/options-lab/positionToTrade";
 import { visibleBookTrade } from "@/lib/options-lab/cardDisplayState";
+import { isTmPositionDark } from "@/lib/options-lab/positionSession";
+import { useTimeMachineHost } from "@/lib/options-lab/useTimeMachineHost";
 import { computeExpiredGhostSheet } from "@/lib/risk-graph/surfaceGhost";
 import { useOpfRiskGraph } from "@/lib/options-lab/useOpfRiskGraph";
+import TimeMachineChrome from "@/components/options-lab/TimeMachineChrome";
+import { useTmReplayActive } from "@/lib/options-lab/useTmReplayActive";
+import {
+  marksFromChain,
+  useChainAtPlayhead,
+} from "@/lib/options-lab/tmChainAtT";
+import type { ChainContext } from "@/lib/options-lab/templates/types";
 import {
   formatWhatIfTimeReadout,
   remainingLastTradeHours,
@@ -129,6 +138,8 @@ function sheetFingerprint(sheet: SurfaceSheet | null, extra = ""): string {
 
 export default function SurfaceApp() {
   const { symbol } = useOptionsLab();
+  const tm = useTimeMachineHost(symbol);
+  const tmPlayhead = tm.cursor?.t_ms ?? null;
   const pathname = usePathname();
   const hostRef = useRef<HTMLDivElement | null>(null);
   const sceneRef = useRef<SurfaceSceneHandle | null>(null);
@@ -248,6 +259,7 @@ export default function SurfaceApp() {
   const bookFitKey = useMemo(
     () =>
       book
+        .filter((p) => !isTmPositionDark(p, tmPlayhead))
         .map((p) => {
           const legs = (p.position.legs || [])
             .map(
@@ -260,14 +272,14 @@ export default function SurfaceApp() {
         })
         .sort()
         .join("|"),
-    [book],
+    [book, tmPlayhead],
   );
 
   const parsedBook = useMemo(() => {
     const errors: string[] = [];
     let split;
     try {
-      split = visibleBookTrade(book, { symbol });
+      split = visibleBookTrade(book, { symbol, playheadMs: tmPlayhead });
     } catch (err) {
       errors.push(err instanceof Error ? err.message : String(err));
       split = {
@@ -278,7 +290,7 @@ export default function SurfaceApp() {
       };
     }
     return { ...split, errors };
-  }, [book, symbol]);
+  }, [book, symbol, tmPlayhead]);
   const trades = parsedBook.trades;
   const expiredTrades = parsedBook.expiredTrades;
   const trade = trades[0] ?? null;
@@ -294,6 +306,29 @@ export default function SurfaceApp() {
   });
   const liveSpot = live.bySymbol.get(symbol)?.mid ?? null;
   const marksKey = JSON.stringify(risk.result?.marks?.leg_marks ?? null);
+  const replayActive = useTmReplayActive();
+  const emptyLive: ChainContext = {
+    symbol,
+    viewSide: "call",
+    spot: liveSpot,
+    strikeStep: null,
+    wings: 25,
+    contracts: new Map(),
+    asOf: null,
+    contentHash: null,
+  };
+  const chainAtT = useChainAtPlayhead({
+    symbol,
+    viewSide: "call",
+    wings: 25,
+    live: emptyLive,
+  });
+  const replayMarks = replayActive
+    ? marksFromChain(
+        chainAtT,
+        (trades[0]?.expiration || "").slice(0, 10),
+      )
+    : null;
 
   const view = useMemo(() => {
     let law: LawB | null = null;
@@ -301,7 +336,7 @@ export default function SurfaceApp() {
     let sheet: SurfaceSheet | null = null;
     let ghostSheet: SurfaceSheet | null = null;
     let label = symbol;
-    let cadence = "live";
+    let cadence = replayActive ? "replay" : "live";
     const liveExps = trades.flatMap((t) =>
       listedExpirationsOf({
         expiration: t.expiration,
@@ -335,10 +370,18 @@ export default function SurfaceApp() {
       law = "CHECK LEGS";
       detail = risk.error;
     } else {
-      const spot = liveSpot && liveSpot > 0 ? liveSpot : risk.spot;
-      const marks = (risk.result?.marks?.leg_marks ?? null) as
-        | OpfLegMarkForSheet[]
-        | null;
+      const replaySpot = chainAtT.spot;
+      const spot =
+        replayActive && replaySpot && replaySpot > 0
+          ? replaySpot
+          : liveSpot && liveSpot > 0
+            ? liveSpot
+            : risk.spot;
+      const marks = (
+        replayActive && replayMarks && replayMarks.length
+          ? replayMarks
+          : (risk.result?.marks?.leg_marks ?? null)
+      ) as OpfLegMarkForSheet[] | null;
       if (!spot || spot <= 0) {
         law = "WAITING";
         detail = "Waiting for a listed underlier mark.";
@@ -502,6 +545,10 @@ export default function SurfaceApp() {
   }, [
     book,
     symbol,
+    replayActive,
+    chainAtT.spot,
+    chainAtT.contentHash,
+    replayMarks,
     risk.loading,
     risk.result,
     risk.spot,
@@ -795,6 +842,12 @@ export default function SurfaceApp() {
       data-altered={altered ? "1" : "0"}
       data-time-ortho={eggOn ? "1" : "0"}
     >
+      <div className="pointer-events-auto relative z-30 shrink-0 px-2 py-1">
+        <TimeMachineChrome
+          symbol={symbol}
+          watermarkTestId="surface-replay-watermark"
+        />
+      </div>
       {keepTape ? (
         <TimeOrthoLiveChart
           ref={tapeRef}
@@ -874,6 +927,7 @@ export default function SurfaceApp() {
           ) : null}
         </div>
       ) : null}
+
       <div
         ref={hostRef}
         id="surface-canvas-host"

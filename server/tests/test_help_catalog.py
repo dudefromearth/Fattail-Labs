@@ -86,6 +86,35 @@ def test_no_write_path():
         assert authed.status_code in (404, 405, 401, 403, 422)
 
 
+def test_options_lab_time_machine_published():
+    """W9 — Time Machine help is the member name; Instant Replay is not."""
+    path = REF / "options-lab-time-machine.md"
+    assert path.is_file()
+    body = path.read_text(encoding="utf-8")
+    assert "Instant Replay" not in body
+    assert "One surface, one scrubber" in body
+    assert "picks the day" in body
+    assert "fidelity" in body.lower()
+    assert "cannot persist while scrubbing" in body.lower()
+    assert "StudioOne" in body
+    assert "Reset, then raise" in body
+    low = body.lower()
+    assert "from the open" not in low
+    assert "no refresh" in low and "control" in low
+    for other in REF.glob("*.md"):
+        text = other.read_text(encoding="utf-8")
+        assert "Instant Replay" not in text, other.name
+    with LabsTestClient(app) as client:
+        client.headers.update({"Origin": "http://testserver"})
+        listed = client.get("/api/help/guides")
+        assert listed.status_code == 200, listed.text
+        ids = {a["id"] for a in listed.json()["articles"]}
+        assert "options-lab-time-machine" in ids
+        one = client.get("/api/help/guides/options-lab-time-machine")
+        assert one.status_code == 200, one.text
+        assert one.json()["body"] == body
+
+
 def test_wiki_poller_get_only_against_catalog():
     with LabsTestClient(app) as client:
         client.headers.update({"Origin": "http://testserver"})

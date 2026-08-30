@@ -8,6 +8,7 @@ import {
   type ReplayCursor,
   type ReplaySample,
 } from "@/lib/options-lab/algoDayReplay";
+import { downsampleLine } from "@/lib/options-lab/archiveLoad";
 
 export default function AnalyzerDayReplayHud(props: {
   day: string;
@@ -21,16 +22,17 @@ export default function AnalyzerDayReplayHud(props: {
   const samples = props.samples;
   const tMs = props.cursor?.t_ms ?? samples[0]?.t_ms ?? 0;
   const frac = replayFrac(samples, tMs);
+  const line = downsampleLine(samples, 160);
 
-  const spots = samples.map((s) => s.spot);
+  const spots = line.map((s) => s.spot);
   const min = spots.length ? Math.min(...spots) : 0;
   const max = spots.length ? Math.max(...spots) : 1;
   const span = Math.max(1e-6, max - min);
   const w = 100;
   const h = 100;
-  const d = samples
+  const d = line
     .map((s, i) => {
-      const x = samples.length < 2 ? 0 : (i / (samples.length - 1)) * w;
+      const x = line.length < 2 ? 0 : (i / (line.length - 1)) * w;
       const y = h - ((s.spot - min) / span) * h;
       return `${i === 0 ? "M" : "L"}${x.toFixed(2)},${y.toFixed(2)}`;
     })
@@ -56,7 +58,13 @@ export default function AnalyzerDayReplayHud(props: {
           {props.day || "Day"}
         </span>
         <span className="font-mono text-[22px] tabular-nums leading-none text-white/90">
-          {tMs ? formatReplayClock(tMs) : props.loading ? "WAITING" : props.hole || "—"}
+          {props.hole === "NO PATH"
+            ? "NO PATH"
+            : tMs
+              ? formatReplayClock(tMs)
+              : props.loading
+                ? "WAITING"
+                : props.hole || "—"}
         </span>
       </div>
       <div
@@ -109,7 +117,7 @@ export default function AnalyzerDayReplayHud(props: {
         </div>
       </div>
       <div className="mt-1 font-mono text-[10px] tabular-nums text-white/45">
-        {samples.length} closes
+        {samples.length} prints
         {props.loading ? " · WAITING" : ""}
         {props.hole ? ` · ${props.hole}` : ""}
       </div>

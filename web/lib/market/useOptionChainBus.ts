@@ -11,6 +11,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { touchSessionActivity } from "@/lib/sessionActivity";
+import { captureToday } from "@/lib/options-lab/tmSlots";
+import { rememberChain } from "@/lib/options-lab/tmChainAtT";
 import { getMarketSocket } from "./MarketSocket";
 import type { ChainMessage } from "./types";
 import {
@@ -408,6 +410,29 @@ export function useOptionChainBus(opts: {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, symbol, expiration, wings, interestId]);
+
+  useEffect(() => {
+    if (!enabled || !hash || !asOf) return;
+    const t = Date.parse(asOf);
+    captureToday({
+      t_ms: Number.isFinite(t) ? t : 0,
+      asOf,
+      contentHash: hash,
+      spot,
+      symbol,
+      expiration,
+    });
+    rememberChain({
+      symbol,
+      viewSide: side,
+      spot,
+      strikeStep,
+      wings,
+      contracts,
+      asOf,
+      contentHash: hash,
+    });
+  }, [enabled, hash, asOf, spot, symbol, expiration, side, wings, strikeStep, contracts]);
 
   // View-side map for ladder table (filter only)
   const rows = new Map<number, LadderRow>();

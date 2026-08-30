@@ -6,6 +6,8 @@
  * A7: show first 20 of N with count label.
  */
 
+import ReplayBadge from "@/components/options-lab/ReplayBadge";
+import { formatReplayClock } from "@/lib/options-lab/algoDayReplay";
 import type { AnalyzerThresholdAlert } from "@/lib/options-lab/analyzerBook";
 
 const SEVERITY: Record<string, string> = {
@@ -99,16 +101,22 @@ export default function AnalyzerAlertsSection({
                 borderLeft: `3px solid ${SEVERITY[alert.severity] ?? SEVERITY.info}`,
               }}
               data-testid={`analyzer-alert-${alert.id}`}
+              data-rehearsal={alert.rehearsal ? "1" : "0"}
             >
+              {alert.rehearsal ? <ReplayBadge className="!min-h-9 !min-w-9" /> : null}
               <div className="min-w-0 flex-1 pl-2">
                 <div className="truncate text-xs font-medium text-[var(--color-label)]">
                   {alert.title.slice(0, 60)}
-                  {alert.status === "triggered" && (
+                  {alert.rehearsal ? (
+                    <span className="ml-1 text-white/55">· rehearsal</span>
+                  ) : alert.status === "triggered" ? (
                     <span className="ml-1 text-amber-400">· triggered</span>
-                  )}
+                  ) : null}
                 </div>
                 <div className="mt-0.5 text-[10px] text-[var(--color-label-tertiary)]">
-                  {relTime(alert.createdAt)}
+                  {alert.rehearsal
+                    ? formatReplayClock(Date.parse(alert.createdAt) || Date.now())
+                    : relTime(alert.createdAt)}
                   {alert.symbol && symbol && alert.symbol !== symbol && (
                     <span className="ml-1.5 rounded bg-sky-600/20 px-1 text-sky-700 dark:text-sky-300">
                       {alert.symbol}

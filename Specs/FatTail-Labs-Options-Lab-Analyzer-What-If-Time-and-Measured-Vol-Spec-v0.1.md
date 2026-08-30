@@ -17,6 +17,8 @@
 | 3D Surface App Spec **v0.1.8** | What-if = frozen-smile τ walk; Time machine = snap rebind. HUD parent for AZ-TM-3. |
 | Human Interface Spec v1.0 | 44pt sliders · inspector groups (already shipped) |
 
+**Time Machine (v0.7.4):** TM-A1 confirmed — these knobs are What-if; the Time Machine spec owns the Time Machine name for the replay seat; no double clock.
+
 **Amends:** Analyzer §1.11 Time offset `0…72 h` and Vol offset `−30…+30 pts` **as member domain and display**. Enable, Spot %, Reset, B4 RECON=`override` stay. Does **not** amend OPF §3.7 τ or OPF31 wire units.
 
 **Audience:** Coach · India · Hotel · Echo · Charlie · Kilo.

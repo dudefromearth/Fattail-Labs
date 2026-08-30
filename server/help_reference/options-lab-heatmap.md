@@ -15,12 +15,19 @@ are sibling apps for building a book and viewing its P&L shape.
 
 ## Verticals
 A **Verticals** template sits under Broken-wing flies. Same width columns
-(10…50). **Long/Debit** is +1 at the body and −1 at the far strike
-(calls: higher strike · puts: lower strike). **Short/Credit** flips both
-legs. **% Change (debit)** and **Risk to Reward** use the same formulas
-as Advanced flies (spot-outward debit % · `(width − debit) / debit`).
-Missing listed mid → blank tile. Option-click copies a VERTICAL
-thinkorswim script.
+(10…50). **Value** is two tiers. **Debit** or **Credit** is the main
+mode — the listed vertical you are looking at. **Type** is secondary:
+**% Change** and **R:R** describe that Debit or Credit package. Leave
+Type unselected to see the package mid.
+
+**Debit** is +1 at the body and −1 at the far strike (calls: higher
+strike · puts: lower strike). **Credit** flips both legs. **% Change**
+is the spot-outward percent change of that package
+(`|(inner − outer) / inner|`). **R:R** on Debit is
+`(width − debit) / debit` when debit is positive; on Credit it is
+`credit / (width − credit)` when credit is collected. These are
+structure descriptors, not a promised P&L. Missing listed mid → blank
+tile. Option-click copies a VERTICAL thinkorswim script.
 
 ## Heatmap
 Inspector choices (symbol, expiration, template, value, side, Width Fit
@@ -40,6 +47,13 @@ not invent a strike, a mid, or a greek.
 
 Option-click a tile to copy a thinkorswim butterfly script and send it to
 Analyzer.
+
+## Time Machine hold
+The inspector line says how far back **Time Machine** holds today — from
+the open when that session is already on disk, otherwise from the first
+print this tab received. It is not a megabyte slider and not a member
+control of the decay curve. A past day is a download; today is the held
+session.
 
 ## Advanced flies Value menu
 The Value dropdown chooses **what number** each tile shows (the tile value, sometimes called its score). Every mode uses

@@ -127,6 +127,8 @@ export type AnalyzerPosition = {
   tradeLogTradeId?: number | null;
   createdAt: number;
   updatedAt: number;
+  /** Born under a Time Machine playhead. Never persisted. TMI-80. */
+  rehearsal?: boolean;
 };
 
 export type ThresholdAlertType = "price_above" | "price_below" | "price_touch";
@@ -298,6 +300,8 @@ export type AnalyzerThresholdAlert = {
   /** Underlier print that moved Live → Touched. */
   triggeredSpot?: number;
   color: string;
+  /** Born under a Time Machine playhead. Never persisted. TMI-80. */
+  rehearsal?: boolean;
   alertClass?: "threshold" | "algo";
   algoPhase?: "waiting" | "armed" | "recorded";
   algo?: {
@@ -407,9 +411,15 @@ export function loadPositions(): AnalyzerPosition[] {
 export const ANALYZER_BOOK_EVENT = "ftl-analyzer-book";
 const POS_REV_KEY = "ft_options_lab_analyzer_positions_rev";
 
+export function durablePositions(
+  positions: readonly AnalyzerPosition[],
+): AnalyzerPosition[] {
+  return positions.filter((p) => !p.rehearsal);
+}
+
 export function savePositions(positions: AnalyzerPosition[]): void {
   if (typeof window === "undefined") return;
-  const json = JSON.stringify(positions);
+  const json = JSON.stringify(durablePositions(positions));
   sessionStorage.setItem(POS_KEY, json);
   try {
     localStorage.setItem(POS_KEY, json);
@@ -1189,9 +1199,18 @@ export function loadAlerts(): AnalyzerThresholdAlert[] {
   }
 }
 
+export function durableAlerts(
+  alerts: readonly AnalyzerThresholdAlert[],
+): AnalyzerThresholdAlert[] {
+  return alerts.filter((a) => !a.rehearsal);
+}
+
 export function saveAlerts(alerts: AnalyzerThresholdAlert[]): void {
   if (typeof window === "undefined") return;
-  sessionStorage.setItem(ALERT_KEY, JSON.stringify(alerts));
+  sessionStorage.setItem(
+    ALERT_KEY,
+    JSON.stringify(durableAlerts(alerts)),
+  );
 }
 
 export function alertVerb(type: ThresholdAlertType): string {
@@ -1238,6 +1257,7 @@ export function createPriceAlert(opts: {
   color?: string;
   id?: string;
   runState?: AlertRunState;
+  rehearsal?: boolean;
 }): AnalyzerThresholdAlert {
   const verb = alertVerb(opts.type);
   const kind: AnalyzerAlertKind =
@@ -1270,6 +1290,7 @@ export function createPriceAlert(opts: {
     enabled: alertIsArmed(opts.runState ?? "live"),
     createdAt: new Date().toISOString(),
     color,
+    rehearsal: opts.rehearsal === true ? true : undefined,
   };
 }
 
@@ -1289,6 +1310,7 @@ export function createAlgoAlert(opts: {
   overlay: boolean;
   runState?: AlertRunState;
   id?: string;
+  rehearsal?: boolean;
 }): AnalyzerThresholdAlert {
   const title = `${opts.symbol} OTM fly trail`;
   return {
@@ -1307,6 +1329,7 @@ export function createAlgoAlert(opts: {
     enabled: alertIsArmed(opts.runState ?? "live"),
     createdAt: new Date().toISOString(),
     color: opts.color,
+    rehearsal: opts.rehearsal === true ? true : undefined,
     alertClass: "algo",
     algoPhase: "waiting",
     algo: {
@@ -1329,6 +1352,7 @@ export function evaluateAlerts(
   alerts: AnalyzerThresholdAlert[],
   spot: number,
   symbol: string,
+  nowIso?: string,
 ): AnalyzerThresholdAlert[] {
   if (!(spot > 0)) return alerts;
   const sym = symbol.toUpperCase();
@@ -1351,7 +1375,7 @@ export function evaluateAlerts(
       runState: "touched" as const,
       enabled: false,
       status: "triggered" as const,
-      triggeredAt: new Date().toISOString(),
+      triggeredAt: nowIso || new Date().toISOString(),
       triggeredSpot: spot,
     };
   });

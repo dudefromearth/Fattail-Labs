@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Nightly archive stats, 02:00 local (StudioOne is ET).
+     LimitLoadToSessionType Background is required: SSH launchctl is
+     managername=Background; an Aqua-only agent bootstrap fails with I/O error 5
+     and the calendar never fires. Install:
+       cp this file ~/Library/LaunchAgents/ai.fattail.labs.ssr-archive-stats.plist
+       launchctl bootstrap user/$(id -u) ~/Library/LaunchAgents/ai.fattail.labs.ssr-archive-stats.plist
+       launchctl enable user/$(id -u)/ai.fattail.labs.ssr-archive-stats -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>ai.fattail.labs.ssr-archive-stats</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>/Users/ernie/Fattail-Labs/scripts/ssr-archive-stats-run.sh</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/ernie/Fattail-Labs/server</string>
+  <key>RunAtLoad</key>
+  <false/>
+  <key>LimitLoadToSessionType</key>
+  <string>Background</string>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>2</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>/Users/ernie/Library/Logs/fattail-labs/ssr-archive-stats.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/ernie/Library/Logs/fattail-labs/ssr-archive-stats.err.log</string>
+</dict>
+</plist>

@@ -17,10 +17,11 @@ dark tile, not a fake score.
 
 ## Live, Average, Heatmap, Ranking
 
-Width Fit has two **interfaces** (Heatmap tiles · Ranking sheet) and two **times**
-(Live generation · Average of the last 10 / 20 / 50 / 100 held generations).
-Average is a Template Runner view of cached chain snapshots on **this tab** —
-not a server archive. Cache size is a member control (4 / 8 / 16 / 32 MB).
+Width Fit has two **interfaces** (Heatmap tiles · Ranking sheet) and three **times**
+(Live generation · Average of the last 10 / 20 / 50 / 100 held generations ·
+Replay under the Time Machine playhead).
+Average is a Template Runner view of cached **raw chain** snapshots on
+**this tab** — not a server archive. There is no megabyte slider.
 Average of colors is observation of listed fit, not a forecast.
 Ranking display scores are spaced among the top widths so close medians are
 readable; rank order is still the Width Fit median.

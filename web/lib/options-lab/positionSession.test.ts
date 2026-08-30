@@ -3,6 +3,7 @@ import { closePosition, positionFromInput } from "./analyzerBook";
 import {
   defaultSessionEntryAt,
   isPositionClosed,
+  isTmPositionDark,
   resolveEntryAt,
 } from "./positionSession";
 import { nyWallToUtcMs } from "./timeOrthoSession";
@@ -43,4 +44,12 @@ import { nyWallToUtcMs } from "./timeOrthoSession";
     resolveEntryAt({ createdAt: created }, created),
     nyWallToUtcMs(2026, 8, 18, 9, 30),
   );
+}
+
+{
+  const entry = nyWallToUtcMs(2026, 8, 18, 9, 30);
+  const pos = { entryAt: entry, createdAt: entry };
+  assert.equal(isTmPositionDark(pos, null), false, "live is never dark");
+  assert.equal(isTmPositionDark(pos, entry - 1), true, "before entry is dark");
+  assert.equal(isTmPositionDark(pos, entry), false, "at entry it lights");
 }

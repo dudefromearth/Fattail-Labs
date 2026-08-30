@@ -31,6 +31,7 @@ import {
 } from "@/lib/options-lab/opfPricingApi";
 import { resolveLocalBookCurves } from "@/lib/options-lab/localBookCurves";
 import { packageUnitScale } from "@/lib/options-lab/packageEconomics";
+import { captureToday } from "@/lib/options-lab/tmSlots";
 
 export type OpfRiskGraphState = {
   loading: boolean;
@@ -701,6 +702,16 @@ export function useOpfRiskGraph(opts: {
       resultRef.current = entry.result;
     }
     setGenerations(entry.generations ?? []);
+    for (const g of entry.generations ?? []) {
+      captureToday({
+        t_ms: g.as_of && Number.isFinite(Date.parse(g.as_of)) ? Date.parse(g.as_of) : 0,
+        asOf: g.as_of || "",
+        contentHash: g.content_hash,
+        spot: g.spot ?? null,
+        symbol: (g.product || "").toUpperCase(),
+        expiration: g.expiration,
+      });
+    }
     setGenerationEpoch(entry.generationEpoch);
     setContentHashes(entry.contentHashes);
     setError(entry.error);
