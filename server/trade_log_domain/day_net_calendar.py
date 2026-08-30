@@ -102,7 +102,14 @@ def build_day_net_calendar(
         close_day = m.get("close_day") or ymd_from_exec(close.get("exec_at"))
         if not close_day or close_day < lo or close_day > hi:
             continue
-        c = by_id.get(int(close["id"]))
+        cid = close.get("id")
+        if cid is None:
+            pnl = realized_pnl(close)
+            c = close if pnl is not None else None
+        else:
+            c = by_id.get(int(cid)) or (
+                close if close.get("synthetic") else None
+            )
         if not c:
             continue
         pnl = realized_pnl(c)
@@ -120,7 +127,7 @@ def build_day_net_calendar(
     matched_close_ids = {
         int(m["close"]["id"])
         for m in matched
-        if m.get("close") is not None
+        if m.get("close") is not None and m["close"].get("id") is not None
     }
     for t in enriched:
         tid = int(t["id"])

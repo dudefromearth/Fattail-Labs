@@ -55,6 +55,62 @@ def test_parse_thinkorswim_fixture():
     assert fly["legs"][1]["quantity"] == 2
     assert fly["net_side"] == "DEBIT"
     assert fly["net_price"] == 0.6
+    assert all(leg.get("expiry") == "2026-04-21" for leg in fly["legs"])
+
+
+TOS_FUTURES_AND_EXPIRED = """\
+,Exec Time,Spread,Side,Qty,Pos Effect,Symbol,Exp,Strike,Type,Price,Net Price,Order Type
+,8/4/25 07:04:39,BUTTERFLY,BUY,+1,TO OPEN,/ESU25 1/50 4 AUG 25 (Monday) (Wk2),/E1AQ25,6350,PUT,54.00,23.00,LMT
+,,,SELL,-2,TO OPEN,/ESU25 1/50 4 AUG 25 (Monday) (Wk2),/E1AQ25,6300,PUT,18.25,DEBIT,
+,,,BUY,+1,TO OPEN,/ESU25 1/50 4 AUG 25 (Monday) (Wk2),/E1AQ25,6250,PUT,5.50,,
+,4/21/26 16:00:00,SINGLE,,-1,EXPIRED,SPX,21 APR 26,7080,PUT,0.00,0.00,
+,4/21/26 16:00:00,SINGLE,SELL,-1,EXPIRED,SPX,21 APR 26,7075,PUT,0.00,0.00,
+"""
+
+
+def test_parse_tos_futures_expiry_from_symbol():
+    """ToS futures-option Exp column is the root (/E1AQ25); date is in Symbol."""
+    result = tio.parse_thinkorswim(TOS_FUTURES_AND_EXPIRED)
+    assert not result["errors"]
+    fly = next(t for t in result["trades"] if t["strategy"] == "BUTTERFLY")
+    assert [leg["expiry"] for leg in fly["legs"]] == [
+        "2025-08-04",
+        "2025-08-04",
+        "2025-08-04",
+    ]
+    assert fly["legs"][0]["underlier"] == "/ESU25"
+    assert fly["legs"][0]["strike"] == 6350.0
+
+
+def test_coerce_leg_expiry_from_stored_tos_futures_symbol():
+    """Already-imported futures legs with null expiry still resolve from Symbol."""
+    from routes.trade_log.common import _coerce_leg_expiry
+
+    assert (
+        _coerce_leg_expiry(
+            {
+                "expiry": None,
+                "symbol": "/ESU25 1/50 4 AUG 25 (Monday) (Wk2)",
+            }
+        )
+        == "2025-08-04"
+    )
+    assert _coerce_leg_expiry({"expiry": None, "symbol": "SPX"}) is None
+
+
+def test_parse_tos_expired_pos_effect_is_to_close():
+    """EXPIRED rows (even with blank Side) import as TO_CLOSE at 0."""
+    result = tio.parse_thinkorswim(TOS_FUTURES_AND_EXPIRED)
+    expired = [
+        t
+        for t in result["trades"]
+        if t["legs"] and t["legs"][0]["pos_effect"] == "TO_CLOSE" and t["strategy"] == "SINGLE"
+    ]
+    assert len(expired) == 2
+    for t in expired:
+        assert t["legs"][0]["fill_price"] == 0.0
+        assert t["legs"][0]["expiry"] == "2026-04-21"
+        assert t["legs"][0]["side"] == "SELL"
 
 
 def test_parse_tos_account_statement_snippet():
@@ -72,6 +128,13 @@ def test_parse_tos_account_statement_snippet():
     # Complete multi-leg groups (snippet may truncate a trailing partial block)
     complete = [t for t in flies if len(t["legs"]) == 3]
     assert complete, f"expected 3-leg flies, got {[len(t['legs']) for t in flies]}"
+    # Futures-option legs must still receive a calendar expiry (from Symbol).
+    fut = next(
+        (t for t in complete if (t["legs"][0].get("underlier") or "").startswith("/")),
+        None,
+    )
+    if fut:
+        assert all(leg.get("expiry") for leg in fut["legs"])
 
 
 def test_import_commit_idempotent(client):

@@ -208,6 +208,8 @@ Template mismatch: keep label + warn (do not force CUSTOM).
 - Strategy Lab / bots: must stamp **`automated`** (never `import`, never silent `manual`).  
 - Legacy synonym: `machine` → normalize to **`automated`** (migration `082`).
 
+**Time Machine (v0.7.4):** replay is not a write source and `entry_source` gains **no fourth value**. Rehearsal objects never reach the log.
+
 **entry_source (MM-1):** v1 **trash is universal** (any open/close fill may be deleted by the owner). Later product may restrict trash/edit for **`automated`** fills; store source now so policy does not guess. **Import and automated remain distinct** for audit and future policy.
 
 ### 4.5 Leg
@@ -333,6 +335,13 @@ file → detect/parse → canonical → preview → commit (account-scoped)
 | tastytrade, ibkr, tradestation, schwab | later |
 
 Server-side parse. No third-party upload of member files.
+
+**thinkorswim Account Trade History (as-built · DL-480):**
+
+- **Expiry** is taken from the `Exp` column when it is a date (`21 APR 26`, `4/21/26`). For **futures options** ToS puts the option root in `Exp` (`/E1AQ25`) and the calendar date in `Symbol` (`/ESU25 1/50 4 AUG 25 (Monday) (Wk2)`) — the adapter parses that date. Without expiry, remaining opens never expire.
+- **EXPIRED** / assignment / exercise `Pos Effect` imports as `TO_CLOSE` at 0 (blank Side infers from qty sign).
+- **Expire-worthless:** unmatched remaining quantity whose expiry is on or before today is Complete at 0 (synthetic close on the expiry date, not a stored blotter row). Realized P&L is the open debit/credit × multiplier × remaining units.
+- **Partial closes:** FIFO matching is quantity-aware (GCD unit size). Closing 1 of a 5-unit structure leaves 4 open; it does not complete the whole open.
 
 ---
 

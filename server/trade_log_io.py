@@ -155,24 +155,53 @@ def _parse_dt(raw: str) -> str | None:
     return None
 
 
+_EXPIRE_POS_EFFECTS = frozenset(
+    {
+        "EXPIRED",
+        "EXPIRE",
+        "EXPIRED_WORTHLESS",
+        "EXERCISE",
+        "EXERCISED",
+        "ASSIGNMENT",
+        "ASSIGNED",
+        "REMOVAL",
+    }
+)
+
+
+def _is_expire_pos_effect(raw: str | None) -> bool:
+    pe = (raw or "").strip().upper().replace(" ", "_")
+    return pe in _EXPIRE_POS_EFFECTS
+
+
+def _month_name_expiry(raw: str) -> str | None:
+    """ToS `21 APR 26` / `4 AUG 25 (Monday) (Wk2)` / `21-APR-26`."""
+    m = re.search(r"(\d{1,2})\s+([A-Za-z]{3})\s+(\d{2,4})", raw)
+    if not m:
+        m = re.search(r"(\d{1,2})-([A-Za-z]{3})-(\d{2,4})", raw)
+    if not m:
+        return None
+    day, mon, yr = m.group(1), m.group(2).title(), m.group(3)
+    if len(yr) == 2:
+        yr = "20" + yr
+    try:
+        dt = datetime.strptime(f"{day} {mon} {yr}", "%d %b %Y")
+        return dt.strftime("%Y-%m-%d")
+    except ValueError:
+        return None
+
+
 def _parse_expiry(raw: str) -> str | None:
     raw = (raw or "").strip()
     if not raw:
         return None
-    # "21 APR 26 (Weeklys)" or "4/21/26" or ISO
-    m = re.match(
-        r"(\d{1,2})\s+([A-Za-z]{3})\s+(\d{2,4})",
-        raw,
-    )
-    if m:
-        day, mon, yr = m.group(1), m.group(2).title(), m.group(3)
-        if len(yr) == 2:
-            yr = "20" + yr
-        try:
-            dt = datetime.strptime(f"{day} {mon} {yr}", "%d %b %Y")
-            return dt.strftime("%Y-%m-%d")
-        except ValueError:
-            pass
+    # Futures-option Symbol embeds the date (`/ESU25 1/50 4 AUG 25 (Monday)`).
+    # The Exp column is often the option root (`/E1AQ25`) — not a date.
+    named = _month_name_expiry(raw)
+    if named:
+        return named
+    if raw.startswith("/"):
+        return None
     iso = _parse_dt(raw.split("(")[0].strip())
     return iso[:10] if iso else None
 
@@ -201,6 +230,10 @@ _HEADER_MAP = {
     "exp": "expiry",
     "expiry": "expiry",
     "expiration": "expiry",
+    "expirationdate": "expiry",
+    "expdate": "expiry",
+    "expire": "expiry",
+    "expiredate": "expiry",
     "strike": "strike",
     "type": "right",
     "callput": "right",
@@ -248,7 +281,7 @@ def _map_row(headers: list[str], row: list[str]) -> dict[str, str]:
             pe = (m.group(2) or "").upper().replace(" ", "_")
             if pe in ("OPEN", "TO_OPEN"):
                 out["pos_effect"] = "TO_OPEN"
-            elif pe in ("CLOSE", "TO_CLOSE"):
+            elif pe in ("CLOSE", "TO_CLOSE") or _is_expire_pos_effect(pe):
                 out["pos_effect"] = "TO_CLOSE"
     # Strike type combined "7080 PUT"
     if "strike" in out and "right" not in out:
@@ -306,9 +339,11 @@ def _leg_from_mapped(m: dict[str, str], index: int) -> dict:
     except ValueError:
         qty = 1
     pe = (m.get("pos_effect") or "").upper().replace(" ", "_")
-    if pe in ("OPEN",):
+    if _is_expire_pos_effect(pe):
+        pe = "TO_CLOSE"
+    elif pe in ("OPEN",):
         pe = "TO_OPEN"
-    if pe in ("CLOSE",):
+    elif pe in ("CLOSE",):
         pe = "TO_CLOSE"
     if pe not in ("TO_OPEN", "TO_CLOSE"):
         pe = "TO_OPEN" if side == "BUY" else "TO_CLOSE"
@@ -333,6 +368,10 @@ def _leg_from_mapped(m: dict[str, str], index: int) -> dict:
     ac = ac_aliases.get(ac, ac)
     if ac not in cat.ASSET_CLASSES:
         ac = "equity_option"
+    expiry = _parse_expiry(m.get("expiry") or "")
+    if not expiry:
+        # ToS futures options: `/ESU25 1/50 4 AUG 25 (Monday) (Wk2)`
+        expiry = _parse_expiry(m.get("symbol") or "")
     return {
         "leg_index": index,
         "side": side,
@@ -341,7 +380,7 @@ def _leg_from_mapped(m: dict[str, str], index: int) -> dict:
         "asset_class": ac,
         "underlier": underlier[:64] if underlier else None,
         "symbol": m.get("symbol"),
-        "expiry": _parse_expiry(m.get("expiry") or ""),
+        "expiry": expiry,
         "strike": _dec(m.get("strike")),
         "right": right,
         "fill_price": _dec(m.get("fill_price")) or 0.0,
@@ -384,7 +423,11 @@ def _group_tos_rows(rows: list[dict[str, str]]) -> list[dict]:
         else:
             strategy = "CUSTOM"
         key = (exec_at, strategy)
-        if current is None or current["_key"] != key:
+        # EXPIRED rows at the same 16:00 stamp must not merge into one giant
+        # trade. A filled Exec Time starts a new block; blank-exec continuation
+        # legs of one expired spread still group.
+        force_new = bool(m.get("_expire_row") and raw_exec)
+        if current is None or current["_key"] != key or force_new:
             if current:
                 del current["_key"]
                 trades.append(current)
@@ -717,19 +760,37 @@ def parse_thinkorswim(text: str) -> dict:
             # clear fake price
             if _dec(raw_net) is None:
                 m.pop("net_price", None)
-        # Qty may be "+1" / "-2"
+        # Qty may be "+1" / "-2" — keep the sign until EXPIRED side inference.
+        qty_signed = (m.get("quantity") or "").strip()
         if m.get("quantity"):
             m["quantity"] = m["quantity"].replace("+", "").strip()
             if m["quantity"].startswith("-"):
                 # sign is informational; side already SELL/BUY
                 m["quantity"] = m["quantity"].lstrip("-")
-        # Pos Effect "TO OPEN" → TO_OPEN
+        # Pos Effect "TO OPEN" → TO_OPEN; EXPIRED / ASSIGNMENT → TO_CLOSE
         if m.get("pos_effect"):
             pe = m["pos_effect"].upper().replace(" ", "_")
             if pe in ("OPEN", "TO_OPEN"):
                 m["pos_effect"] = "TO_OPEN"
-            elif pe in ("CLOSE", "TO_CLOSE"):
+            elif pe in ("CLOSE", "TO_CLOSE") or _is_expire_pos_effect(pe):
                 m["pos_effect"] = "TO_CLOSE"
+                if _is_expire_pos_effect(pe):
+                    m["_expire_row"] = "1"
+        strat_raw = (m.get("strategy") or "").strip().upper()
+        if strat_raw in ("EXPIRED", "EXPIRATION", "EXPIRE"):
+            m["strategy"] = "SINGLE"
+            m["pos_effect"] = "TO_CLOSE"
+            m["_expire_row"] = "1"
+        if m.get("_expire_row"):
+            if m.get("fill_price") in (None, ""):
+                m["fill_price"] = "0"
+            if not m.get("side"):
+                if qty_signed.startswith("-"):
+                    m["side"] = "SELL"
+                elif qty_signed.startswith("+"):
+                    m["side"] = "BUY"
+                else:
+                    m["side"] = "SELL"
         # Type column → right for options; STOCK/ETF keep as type hint
         if m.get("right"):
             rt = m["right"].upper()
