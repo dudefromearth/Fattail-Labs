@@ -2,6 +2,8 @@
 
 **Juliet** maintains the board. **Coach** drives. Specialists execute only via seeds.
 
+**Observed (2026-08-23, not this board’s packet):** 7 tests red in `tests/test_strategy_lab_curate.py` on house box as of 2026-08-23 (`test_curate_create_arm_tick_open`, `test_curate_envelope_blocks_second_open`, `test_curate_manage_take_profit`, `test_curate_unknown_symbol_fails_loud`, `test_curate_positions_report`, `test_deploy_reports_book_shape`, `test_curate_isolation`); observed during Wiki Agent WA-1-G; not caused by wiki program (baseline proof: `agents/p-wiki/gate-reports/WA-1-delta-gate.md` A2 addendum). **Do not fix from wiki.**
+
 | Doc | Path |
 |-----|------|
 | Charter | [`CHARTER.md`](./CHARTER.md) |

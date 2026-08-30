@@ -4,6 +4,8 @@
 
 **Plan:** [`docs/OT-EF-Session-Print-and-Two-Clocks-Full-Agent-Bench-Plan-v1.0.md`](../../docs/OT-EF-Session-Print-and-Two-Clocks-Full-Agent-Bench-Plan-v1.0.md)
 
+**Observed (2026-08-23, not this board’s packet):** `tests/test_opf_session_envelope.py::test_cl21_ladder_http_carries_opf_session` red on house box; observed during Wiki Agent WA-1-G; not caused by wiki program (baseline proof: `agents/p-wiki/gate-reports/WA-1-delta-gate.md` A2 addendum). **Do not fix from wiki.**
+
 ## DAG
 
 ```text
