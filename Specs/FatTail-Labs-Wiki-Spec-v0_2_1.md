@@ -15,6 +15,12 @@ content version. Parent of Wiki Source Contract v0.1.4 (**B-3 closed**).
 Build: WU-0…WU-2 shipped; WU-3 is Source Contract poll/compose (Help Package
 superseded · **DL-560** · §6.1 diffs **SC-0 · DL-562**). S7 finished-only.
 OD-3 skill-delivered (**DL-564** — no stub; envelope arrives complete).
+**Standing presence (Coach 2026-08-24 · DL-573):** original intent restored —
+the floating Wiki agent is present across the **entire FatTail app plane**,
+not IKI/wiki routes only. WU-1 chrome ruling B was a developer-focus
+narrowing, not a change of this law. Mount: AppChrome, lower-right, left of
+Help.
+
 **Supersedes (on approval; sources marked SUPERSEDED with pointer, never deleted,
 never edited further):**
 - `FatTail-Labs-Member-Wiki-Spec-v0.1.md`
@@ -60,13 +66,14 @@ reconciliation).
 > through two-sided contracts; humans gate every publication; and the whole corpus is
 > **wide open to the public by default**, because the Wiki exists for discovery.
 > During development and maintenance the Wiki keeps a **prominent, always-present
-> interface**: a floating agent reachable from anywhere the admin works, opening a
-> message window where direction is given, proposals are made, and every exchange
-> becomes sealed contract evidence. Coach's framing: *like the court stenographer,
-> but way more* — ever-present and recording everything, but also composing,
-> linking, and contextualizing what it records into the map. The agent composes; it
-> does not assert. Nothing enters except through a contract; nothing publishes
-> except through a human; nothing is invented beyond evidence.
+> interface**: a floating agent reachable from anywhere the admin works **across
+> the entire FatTail app plane**, opening a message window where direction is
+> given, proposals are made, and every exchange becomes sealed contract evidence.
+> Coach's framing: *like the court stenographer, but way more* — ever-present and
+> recording everything, but also composing, linking, and contextualizing what it
+> records into the map. The agent composes; it does not assert. Nothing enters
+> except through a contract; nothing publishes except through a human; nothing is
+> invented beyond evidence.
 
 ---
 
@@ -78,11 +85,17 @@ The Wiki is important enough to hold a prominent interface **at all times during
 development and maintenance** — not a destination the admin visits, but a presence
 that rides alongside the work. Three consequences bind design:
 
-1. **Always reachable.** The floating launcher (Part III.3) is present wherever the
-   admin is. Absence of the launcher on an admin surface is a defect, not a default —
-   where mounting is lawful: the principle directs rollout priority across
-   program-owned and three-OK'd surfaces; it never licenses touching a frozen tree
-   (DL-539 always governs the mount, never the other way around).
+1. **Always reachable — entire FatTail app plane.** The floating launcher
+   (Part III.3) is present wherever the admin is: every member app, the admin
+   app, courses, and the rest of the Labs surface AppChrome wraps. Absence of
+   the launcher on an admin surface is a defect, not a default. This was the
+   original intent (Coach 2026-08-23: *anywhere the admin works*). **Coach
+   2026-08-24 (DL-573):** WU-1 chrome ruling B (wiki-owned layouts only) was an
+   implementation narrowing to keep **developers** from drifting into other
+   trees during a focused packet. DL-539 three-OK is that same developer-focus
+   rule — it does not constrain Coach, and it does not shrink this principle.
+   Coach named the plane-wide mount: **AppChrome**, lower-right of each page,
+   immediately **left of Help**. One orb. Members never see it.
 2. **Everything becomes record.** Direction given in the message window is session
    transcript; source changes arrive as contracts; all of it lands in the ledger and,
    through drafts, in git. The stenographer function is structural: the record
@@ -284,15 +297,21 @@ path — the contamination check, done in-tree where the truth lives.
 ## III.3 Admin interface — the floating agent (Coach direction, 2026-08-23)
 
 **Delivery model:** a floating launcher on the **Help Concierge precedent** — one
-launcher, present wherever the admin is, opening the **message window**. This
-supersedes per-app panel adoption (never built). The WA-4 wiki-layout mount stands
-as-built; Juliet disposes of it (keep or retire) with one line of rationale at
-implementation.
+launcher, present wherever the admin is **across the entire FatTail app plane**,
+opening the **message window**. This supersedes per-app panel adoption (never
+built).
 
-- **Discovery precondition:** report the Help bot's mount point — exact file, tree,
-  frozen or open — before any code. Open file → proceed, pre-declared. Frozen chrome
-  → STOP, name file and lines to Coach, three-OK ritual. The Help bot's presence is
-  context for Coach's decision, not license. No seams.
+**Mount (Coach 2026-08-24 · DL-573; original intent):** `AppChrome` lower-right
+dock. Wiki agent sits **immediately left of Help**. Help stays rightmost
+(emerald, members). Wiki agent is zinc, sentence-case “Wiki agent”, admin-only.
+The WA-4 wiki-layout orb is **retired** — two orbs is a defect. On `/admin/*`
+Help is hidden; Wiki agent remains, still lower-right. Unauthenticated visitors
+and members: Wiki agent **DOM absent**.
+
+- **Help bot (as-built, discovery closed):** `web/components/HelpLauncher.tsx`,
+  mounted from `web/components/AppChrome.tsx`. Member-facing. Wiki does not
+  edit Help behavior; it shares the dock as a sibling. Coach named this
+  placement; DL-539 three-OK does not apply to Coach naming the plane.
 - **Admin-only, both layers, proven:** the launcher never renders for members or
   unauthenticated visitors (DOM absent) AND the session API rejects them (403/404);
   agent bearers rejected (`session_requires_human`). The Help bot is member-facing;
@@ -308,10 +327,12 @@ implementation.
   the `/app` hub (Coach: "app surface first"). Adoption order beyond that: the
   agent proposes a best-estimate order **in the message window**; Coach accepts or
   redirects; Coach names specifics only when different. Each provider is a declared
-  touch in its own app's tree, three-OK where frozen. Sessions from
-  unregistered surfaces are route-context sessions — valid, less rich.
+  touch in its own app's tree (developer-focus / DL-539 still applies to
+  *unrelated* trees a packet did not name). Sessions from unregistered surfaces
+  are route-context sessions — valid, less rich.
 - **Prominence (I.1):** the launcher is the standing-presence principle made
-  visible. It is not buried in a menu.
+  visible. It is not buried in a menu, and it is not confined to IKI Lab or
+  `/app/wiki`.
 
 ## III.4 Session mechanics in the window
 
@@ -332,7 +353,9 @@ like any other (authoring direction ≠ publish gate).
 OD-1(b) pipeline write authority · OD-2 no publish exceptions · OD-3 standalone
 supersession of Proactive Compilation · OD-4 registration-consequence · OD-5
 bridge pollers · OD-6 floating chrome + multi-turn chat (delivery model refined to
-the Help-bot pattern) · public-by-default access + the access-doctrine correction ·
+the Help-bot pattern; **plane-wide AppChrome mount is the original intent —
+WU-1 ruling B was developer-focus, superseded as a narrowing by DL-573**) ·
+public-by-default access + the access-doctrine correction ·
 session semantics sharpened (admin-only direct communication; context-into-entry) ·
 WooCommerce as platform-wide commerce entry point (ruled via Factory OD-F6,
 generalized) · India R0-1 transcript-as-evidence · Mike R0-2 `contracts:deliver`
@@ -344,12 +367,14 @@ Shipped through gates WA-1…WA-4 (+DL-548/549/550 + WA-4 entries): portal + led
 source registry + fixture git authorship · pollers (courseware, help) + pointer
 registry + Oscar discharge + Hotel guidelines + retired-path handling ·
 linkage engine + `wiki_refs` + reverse pass + rollup/queue · session lifecycle API +
-context-into-entry + wiki-layout panel + queue drain. Tolerated house-box failures:
-the named 8 (OPF + curate), SSR recorded flaky, flips non-chargeable. **Not built:**
-floating launcher + context providers (III.3) · public read surface (III.2) ·
+context-into-entry + queue drain. **WU-1 plane-wide launcher (DL-573):**
+`WikiAgentPanel` in AppChrome, lower-right, left of Help; wiki-layout orb
+retired. Context providers: hub `/app` first; further apps as named. Tolerated
+house-box failures: the named 8 (OPF + curate), SSR recorded flaky, flips
+non-chargeable. **Not built:** further context-provider adoption beyond hub ·
 S3 / WU-3 live end-to-end (Source Contract poll + Wiki-side envelope; Factory
 signal at Deploy — **SC-0 landed**, SC-3b waits on the signal existing) ·
-everything in I.5.
+everything in I.5. Public read (III.2 / WU-2) is shipped.
 
 ## IV.3 Citation map (old anchors → this document)
 
@@ -387,13 +412,11 @@ this document's anchors.
 
 ## IV.5 Remaining slices (each its own Coach stamp)
 
-1. **Floating agent delivery** (III.3): discovery → launcher + window + `/app` hub
-   provider + in-window adoption proposal. **The discovery report (Help bot mount:
-   exact file, tree, frozen/open) is a named deliverable of the first seed, gated by
-   India before any chrome-adjacent code.** Includes the two owed WA-4 record checks
-   (the 9-line Member Wiki edit diff shown and dispositioned; the
-   security-and-access doc touch declared).
-2. **Public read surface** (III.2): Sierra + Mike reviews → build → gate.
+1. **Floating agent delivery** (III.3): **SHIPPED (DL-573).** Plane-wide
+   AppChrome mount, left of Help; wiki-layout orb retired; `/app` hub provider
+   already seated. Remaining: further per-app context providers as Coach names
+   them — not a second launcher.
+2. **Public read surface** (III.2): **SHIPPED (WU-2 / DL-558).**
 3. **Registration / S3 live** (WU-3 / SC-3b): Source Contract poll + Wiki-side
    envelope. Factory IF-4 is the **publication signal at Deploy** (smaller — no
    envelope, no hook). Not blocked on a Help Package spec (**SUPERSEDED · DL-560**).
