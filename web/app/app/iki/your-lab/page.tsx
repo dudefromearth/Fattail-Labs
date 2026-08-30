@@ -12,7 +12,7 @@ const IKI_LAB_PRODUCT = { id: "iki-lab", label: "IKI Lab" } as const;
 /** IKI Your Lab — owned products (first: IKI Lab) + Heatmap. */
 export default function IkiYourLabPage() {
   const [allowed, setAllowed] = useState<boolean | null>(null);
-  const [productId, setProductId] = useState(IKI_LAB_PRODUCT.id);
+  const [productId, setProductId] = useState<string>(IKI_LAB_PRODUCT.id);
 
   useEffect(() => {
     fetchMe().then((me) => setAllowed(ikiAccessFromMe(me).hasIkiLab));
