@@ -7,7 +7,7 @@
 
 ## Ask
 
-DL program close. Arch 30 as-built for the **plane** (hydrator, listed key, three clocks). Deploy notes for the named host. **Explicit non-claim:** GEX compute not shipped; L4-A still frozen; `archive_put` not built; store still process-local.
+DL program close. Arch 30 as-built for the **plane** (hydrator, listed key, three clocks, **GP21 wings-only interest**). Record `chain_feed.py` inline key builder. Deploy notes for the named host. **Explicit non-claim:** GEX compute not shipped; capability exists; L4-A still frozen; `archive_put` not built; store still process-local.
 
 ## Done when
 

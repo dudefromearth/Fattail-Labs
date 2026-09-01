@@ -21,8 +21,11 @@ Truth change, not a rewrite of Coach intent:
 8. `chain_feed --symbol` unused.
 9. §14 L5 already wired via Analyzer package-quote (GP1a).
 10. §9 interest budget is per-process.
+11. **GP18a erratum:** spec's "one existing OPF module" is false; five are modified; `keys.py` is the listed-token module; `generation.py` is P2-1.
+12. **GP21 erratum:** plane interest is **wings-only**. Listed pairs need no interest.
+13. **`chain_feed.py:59–62` inline `w{wings}` f-string** — recorded, not fixed (errata §4). Not on the DL-539 allowlist.
 
-DL same day. Hyphenated spec is the law path. **Report** missing OPF Reference v1.1 and L4-A v0.4.
+DL same day. Hyphenated spec and plan v1.1 are the law paths. **Report** missing OPF Reference v1.1 and L4-A v0.4.
 
 ## Done when
 

@@ -2,7 +2,7 @@
 
 **Project:** OPF Generation Plane  
 **Agent:** Alpha  
-**Depends:** W0-G · **three DL-539 OKs** on `GP-W0.md`  
+**Depends:** P2-0-G · **three DL-539 OKs** (already spent on `keys.py` at P2-0)  
 **Law:** GP2 · GP2b · GP2c · GP5–GP6 · GP14 · OD-GP6 · OD-GP7 · AT-GP2,3,4,5,9,17,20,21  
 **Files:** `server/opf/generation.py` · `server/routes/pricing.py` · `server/opf/store_read.py` (new) · tests  
 **Out:** hydrator (P2-2) · listed writer · analytics compute · unnamespaced accessors · breaking GP1a
@@ -16,7 +16,7 @@
 5. `health.generations_cached` counts **owned only** (AT-GP17).
 6. `source` required on put (AT-GP3). `book` required for analytics usability (AT-GP5); owned writes stamp it.
 7. `stale_ms` / `stale` vs `LABS_OPF_STORE_MAX_STALE_MS` (no code default — hydrator side).
-8. `store_read.py`: analytics-class helper **rejects** `supplied` (AT-GP2).
+8. **`server/opf/store_read.py`:** analytics-class helper **rejects** `namespace="supplied"` and `source ∈ {client_body, http_fill}` (AT-GP2). Declared in plan §8; this seed creates it.
 9. AT-GP21: three entries coexist.
 10. Existing 20 `test_opf_foundation.py` stay green (AT-GP20). Pricing tests that POST generations still work (GP1a).
 

@@ -12,4 +12,4 @@ Docs match the tree. Honesty list landed. Missing cites named, not filled with i
 
 ## Done when
 
-P0-G note in `gate-reports/P0-G.md` (India). Unblocks P1.
+P0-G note in `gate-reports/P0-G.md` (India). Unblocks P1a.

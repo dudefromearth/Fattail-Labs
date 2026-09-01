@@ -2,9 +2,9 @@
 
 **Project:** OPF Generation Plane  
 **Agent:** Alpha  
-**Depends:** P2-1 · P1-G for **live** AT-GP1 (units may use fake Redis)  
+**Depends:** P2-1 · P1b-G for **live** AT-GP1 (units may use fake Redis)  
 **Law:** GP11–GP15 · GP23 · GP24 · AT-GP1,6,7,8,10,11,15a–c,19  
-**Files:** `server/opf/hydrator.py` (new) · `server/opf/plane_interest.py` (new, if not in P1) · `server/opf/config.py` · `server/main.py` · tests  
+**Files:** `server/opf/hydrator.py` (new) · `server/opf/config.py` · `server/main.py` · tests  
 **Out:** Massive in the hydrator · separate hydrator process · killing API on misconfig · `_env` empty-collapse for `PLANE_WINGS_TOPICS`
 
 ## Ask
@@ -16,11 +16,11 @@
 5. Hold past Redis TTL; mark stale (AT-GP9). Never silent refresh.
 6. Redis down → `broken` / `bus: down` (AT-GP10). Empty, stale, broken distinguishable.
 7. Config: hydrator starts only when enabled **and** required keys set. `STORE_MAX_STALE_MS` unset → hydrator does not start (AT-GP15a). Listed pairs absent + listed writer off → no abort (AT-GP15b).
-8. Helper distinguishing **unset** vs **set-to-empty** for `LABS_OPF_PLANE_WINGS_TOPICS`.
+8. **Config helper distinguishing UNSET from SET-TO-EMPTY.** `opf.config._env` collapses `""` to the default, so `LABS_OPF_PLANE_WINGS_TOPICS=""` silently becomes the default without it (spec §9.2).
 9. GP23: boot **fails loud** if workers > 1 while store is process-local (AT-GP19).
 10. Three states `not_configured` / `misconfigured` / `down`; API serves a request in each (AT-GP11).
 11. **Zero Massive calls** in hydrator (AT-GP1).
-12. Plane interest heartbeat < 45 s on enumerated listed pairs + `PLANE_WINGS_TOPICS` (default empty = listed only). Same `mb:interest:{topic}` key. Sidecar for `source: plane`. No decorated topic.
+12. Do **not** register listed interest here — that is P1b and it is **wings-only**. Hydrator consumes whatever Redis already holds.
 
 ## Done when
 

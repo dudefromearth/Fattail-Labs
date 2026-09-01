@@ -18,8 +18,9 @@ Quote the tree (path + line). Confirm or return:
 - Hydrator in-process (GP11); GP23 workers=1.
 - GP1a: pricing POST path preserved.
 - Arch 30 §10 hours-TTL, §11 multi-worker SoR, §4 MiniTwo topology, §6.1 pagination, §17b 19 ATs — honesty list is P0, not silent.
+- **GP21 erratum:** listed pairs must **not** be registered as interest. Interest is the feed's input; the feed produces wings (`chain_feed.py:59–62` hardcodes `w{wings}`).
 - L4-A remains frozen. Consumer cite v0.4 is **missing from tree** — name it, do not write it.
-- `docs/OPF-REFERENCE-v1_1.md` missing — name it.
+- `docs/OPF-REFERENCE-v1_1.md` missing — W0 substitutes GXA0 + spec §2/§10. Do not write it.
 
 APPROVED or RETURNED for build readiness. Coach Content Law.
 

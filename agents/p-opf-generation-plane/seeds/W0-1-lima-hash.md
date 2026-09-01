@@ -8,9 +8,10 @@
 
 ## Ask
 
-1. `shasum -a 1` of `Specs/FatTail-Labs-OPF-Generation-Plane-Spec-v0_2_2.md` and of plan v1.0. Record on the token and in a DL draft (do not land Arch 30 edits here).
-2. Note the origin filename `Specs/FatTail Labs — OPF Generation Plane Spec v0.2.2.md` (`d216da4`) is the same bytes; hyphenated path is law.
-3. Cite GXA0 as evidence parent.
+1. `shasum -a 1` of spec v0.2.2, plan v1.1 (hyphenated, errata-applied), and the errata file. Record on the token and in a DL draft (do not land Arch 30 edits here).
+2. Note origin filenames (spaces/em-dash) vs hyphenated law paths.
+3. **Where `docs/OPF-REFERENCE-v1_1.md` is absent, record on the token that W0 reviewers substitute `agents/p-iki-gex/gate-reports/GXA0-opf-readiness-audit.md` + spec §2 and §10. Do not author the Reference.**
+4. Cite GXA0 as evidence parent.
 
 ## Done when
 
