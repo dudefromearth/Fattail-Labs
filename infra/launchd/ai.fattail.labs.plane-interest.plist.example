@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Plane-owned wings interest (P1b). Own process — does not edit main.py.
+
+  Sources repo .env via run-from-repo-env.sh (same wrapper as chain-feed).
+  No secrets in this plist.
+
+  Empty LABS_OPF_PLANE_WINGS_TOPICS is the default and a correct no-op.
+  Set it in the repo .env, e.g.  I:SPX,2026-09-01,25
+
+  Install on StudioTwo:
+    cp infra/launchd/ai.fattail.labs.plane-interest.plist.example \
+       ~/Library/LaunchAgents/ai.fattail.labs.plane-interest.plist
+    launchctl load ~/Library/LaunchAgents/ai.fattail.labs.plane-interest.plist
+
+  Do NOT load ai.fattail.labs.ssr-live-capture.plist.
+  AT-GP23 requires a quiet window (no member Options Lab tab holding interest).
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>ai.fattail.labs.plane-interest</string>
+  <key>WorkingDirectory</key><string>/Users/ernie/Fattail-Labs/server</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/ernie/Fattail-Labs/infra/launchd/run-from-repo-env.sh</string>
+    <string>-m</string>
+    <string>opf.plane_interest</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>LABS_MARKET_BUS</key><string>1</string>
+    <key>REDIS_URL</key><string>redis://127.0.0.1:6379/0</string>
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>/tmp/labs-plane-interest.log</string>
+  <key>StandardErrorPath</key><string>/tmp/labs-plane-interest.err</string>
+</dict>
+</plist>

@@ -4,7 +4,8 @@
 **Agent:** Alpha  
 **Depends:** P1a-G · W0-G  
 **Law:** GP21 **erratum** · errata E1 · E3 · AT-GP23  
-**Files:** `server/opf/plane_interest.py` (new) · `server/main.py` (lifespan/start only if required) · tests  
+**Files:** `server/opf/plane_interest.py` (new) · tests · `infra/launchd/ai.fattail.labs.plane-interest.plist.example`  
+**Coach P1b GO:** own supervised process. **`server/main.py` is not edited.** DL-539 not consumed.  
 **Out:** reading `LABS_OPF_LISTED_PAIRS` · constructing a listed topic · decorating `mb:interest:` keys · inline f-string keys · hydrator · `keys.py` · **loading or relying on `ssr-live-capture`**
 
 ## Ask

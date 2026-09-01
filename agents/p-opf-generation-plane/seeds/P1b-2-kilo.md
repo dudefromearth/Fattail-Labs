@@ -19,6 +19,8 @@ Before AT-GP23:
 
 A `wrote mb:ladder:I:SPX:…` line from chain_feed while a member tab is open is **not** AT-GP23.
 
+**AT-GP23 EXECUTION NOTE (Coach GO P1b, 2026-09-01):** topic isolation may substitute for a global quiet window. Same underlier/expiration, **different wings** (w10 vs member w25). The observed key must carry the plane sidecar; the member key must not. India signs in P1b-G. Not a spec change.
+
 ## Ask
 
 With the plane on and **no member watching**, and **at least one wings topic configured**:

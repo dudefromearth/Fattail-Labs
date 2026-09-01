@@ -371,6 +371,12 @@ The local-exec daemon does **not** itself source `.env` (no launchd `Environment
 
 **Standing rule — SSR stays unloaded.** `~/Library/LaunchAgents/ai.fattail.labs.ssr-live-capture.plist` may exist on disk. Do **not** `launchctl load` it. If SSR holds interest, AT-GP23 would pass on someone else's keys (GP21).
 
+**Plane interest (P1b) is its own supervised process**, not a `main.py` lifespan. `python -m opf.plane_interest` via `infra/launchd/ai.fattail.labs.plane-interest.plist.example` and the same `run-from-repo-env.sh` wrapper. Heartbeat default 15 s for `LABS_OPF_PLANE_WINGS_TOPICS` only (empty = correct no-op). Same `mb:interest:{topic}` key as the member path; sidecar `mb:interest_src:{topic}=plane`. Topic strings via `bus_ladder_key()` only.
+
+Item 9: **API health gate before touch.** Default `GET http://127.0.0.1:{LABS_PORT}/api/health` (2 s). On StudioTwo the live API is `:4001` while `LABS_PORT` in `.env` may differ — set `LABS_PLANE_INTEREST_HEALTH_URL=http://127.0.0.1:4001/api/health`. If health is not 200, skip the tick; interest expires inside the 45 s grace and `chain_feed` stops pulling Massive for a plane that is not there. Not an accepted unbounded cost. Do not take the API down to prove the skip.
+
+**AT-GP23** (execution): topic isolation. Configure `LABS_OPF_PLANE_WINGS_TOPICS` to a wings topic **no member holds** (StudioTwo: I:SPX 2026-09-01 **w10** vs member **w25**). SSR stays unloaded. A global quiet window is not required when the observed key is plane-only (sidecar `mb:interest_src:{topic}=plane`).
+
 Evidence: `agents/p-opf-generation-plane/evidence/p1a-studio-two-bring-up-2026-09-01.md`.
 
 ### Redis

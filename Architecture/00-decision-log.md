@@ -4,6 +4,22 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-01 — DL-650 Generation Plane P1b own process
+
+**Decision (Coach GO P1b, 2026-09-01):** Plane-owned wings interest is **its own supervised process** (`python -m opf.plane_interest`, launchd `ai.fattail.labs.plane-interest`, `run-from-repo-env.sh`). **`server/main.py` is not edited.** The `main.py` lifespan edit is deferred to P2 with the hydrator. **DL-539 is NOT consumed and stays 1/3.** The five §8 modules stay frozen. P2-0 remains blocked on OK 2 and OK 3.
+
+GP11's in-process mandate is the hydrator (ContractStore is process-local). Interest lives in Redis; a sibling process satisfies GP21 (heartbeat < 45 s grace, same undecorated `mb:interest:{topic}`, sidecar attribution, stop via TTL when the plane is disabled).
+
+**Item 9:** API health gate before touch. On StudioTwo, `LABS_PORT` in `.env` is not the live uvicorn port (4001). First ticks skipped (`api_down skip tick`) hitting `:4000` while `:4001` stayed up — live demonstration without taking the API down. Override `LABS_PLANE_INTEREST_HEALTH_URL=http://127.0.0.1:4001/api/health`. Unit test covers the skip path.
+
+**AT-GP23 EXECUTION NOTE (India):** topic isolation substitutes for a global quiet window. Member path had held I:SPX 2026-09-01 **w25**. Plane heartbeats the same underlier/expiration at **w10**. Observed interest is provably the plane's (sidecar `plane`; w25 never received a sidecar). Not a spec change.
+
+**P1b-G PASS** unblocks **P2-0 in the DAG only**.
+
+**Does not:** MiniTwo · five frozen modules · API restart · loading SSR · consuming a DL-539 OK.
+
+---
+
 ## 2026-09-01 — DL-649 Generation Plane P1a-FIX chain-feed env
 
 **Decision (Coach GO P1a-FIX, 2026-09-01):** Two infra defects from the P1a-G carries, without reopening P1a-G (`60ddc0d`).
