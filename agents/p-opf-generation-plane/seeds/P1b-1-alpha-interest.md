@@ -5,7 +5,7 @@
 **Depends:** P1a-G · W0-G  
 **Law:** GP21 **erratum** · errata E1 · E3 · AT-GP23  
 **Files:** `server/opf/plane_interest.py` (new) · `server/main.py` (lifespan/start only if required) · tests  
-**Out:** reading `LABS_OPF_LISTED_PAIRS` · constructing a listed topic · decorating `mb:interest:` keys · inline f-string keys · hydrator · `keys.py`
+**Out:** reading `LABS_OPF_LISTED_PAIRS` · constructing a listed topic · decorating `mb:interest:` keys · inline f-string keys · hydrator · `keys.py` · **loading or relying on `ssr-live-capture`**
 
 ## Ask
 

@@ -17,7 +17,7 @@ W0 → P0 docs → P1a infra → P1b wings-only interest → P2-0 keys
 |-------|------|--------|
 | **W0** | Coach · India · Mike · Hotel · Foxtrot · Tango · Lima · Delta | **not started** — stamp v1.1 + errata |
 | **P0** | Arch 30 honesty · GP18a + **GP21** errata · `chain_feed` f-string recorded | blocked on W0-G |
-| **P1a** | Redis + `LABS_MARKET_BUS` + `chain_feed` (Foxtrot, **infra only**) | blocked on P0-G + OD-GP3 |
+| **P1a** | StudioTwo: **env + one plist** (probe 2026-09-01 14:34). Redis already up. **Do not load SSR capture.** | blocked on P0-G + OD-GP3 |
 | **P1b** | `plane_interest.py` **wings-only** (Alpha) | blocked on P1a-G. Empty `PLANE_WINGS_TOPICS` → Delta **BLOCKED** not FAIL |
 | **P2-0** | `keys.py` listed token, AT-GP22 alone | blocked on three DL-539 OKs |
 | **P2** | In-process hydrator + namespace | blocked on P2-0-G |
@@ -28,7 +28,7 @@ W0 → P0 docs → P1a infra → P1b wings-only interest → P2-0 keys
 
 ### Coach GO (do not)
 
-Product code before W0-0 + W0-G · P2-0 before three DL-539 OKs · P1a before OD-GP3 · Foxtrot shipping Python in P1a · hydrator as a separate process · hydrator Massive · analytics on `supplied` · `_require_tool_member` on visibility · `archive_put` · `gex_v2` / Surface / Card · `--workers` > 1 · invent OPF Reference / L4-A v0.4 unless B4 ticked · label a wing window chain GEX · decorate interest topics · kill the API because the plane is off · **register listed pairs as interest** · **construct ladder topics outside `keys.py` (new code)** · raise `LABS_MB_CHAIN_TTL_S` to skip GP14
+Product code before W0-0 + W0-G · P2-0 before three DL-539 OKs · P1a before OD-GP3 · Foxtrot shipping Python in P1a · **loading `ssr-live-capture` to warm keys** · hydrator as a separate process · hydrator Massive · analytics on `supplied` · `_require_tool_member` on visibility · `archive_put` · `gex_v2` / Surface / Card · `--workers` > 1 · invent OPF Reference / L4-A v0.4 unless B4 ticked · label a wing window chain GEX · decorate interest topics · kill the API because the plane is off · **register listed pairs as interest** · **construct ladder topics outside `keys.py` (new code)** · raise `LABS_MB_CHAIN_TTL_S` to skip GP14
 
 ### One-line law
 

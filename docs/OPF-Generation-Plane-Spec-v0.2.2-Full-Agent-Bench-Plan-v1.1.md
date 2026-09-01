@@ -145,7 +145,7 @@ mb:ladder:*` → 0 keys. MiniTwo: `redis-cli` not installed.**
 |------|----------------------------|
 | `_store` is process-local, body-hydrated (F8) | P2 is the SoR change. D2 was unfounded. |
 | MiniTwo: no Redis, no `chain_feed`, no `LABS_MARKET_BUS` | P1a is Foxtrot, not an import. Until P1a, `bus: "not_configured"` is lawful. |
-| **StudioTwo Redis is already up** | P1a there is configuration, not an install (OD-GP3). |
+| **StudioTwo probed 2026-09-01 14:34 EDT** | Redis **v8.2.3** up, bind localhost — **nothing to install**. **All `mb:*` keys zero** — this Redis has never served the bus. **No `chain_feed` process, no chain-feed plist.** uvicorn `:4001` pid 79091 has none of `LABS_MARKET_BUS` / `REDIS_URL` / `LABS_MB_*` / `LABS_OPF_*`; `get_store()` is `None`; `pricing.py:238` swallows. **P1a = env + one plist.** Set **`LABS_OPF_STORE_MAX_STALE_MS=20000`** in that same env change (OD-GP2). Host SHA `9cbac89`. |
 | Redis generation TTL **6 s**; interest **45 s**; process refcount never expires | GP8–GP14. **Do not "fix" TTL to hours in this GO — §10.** |
 | Feed writes Heatmap windows, not listed books | GP3 vs GP4. Hydrating `mb:ladder:*` unchanged is **wings**. |
 | `archive_put` has no writer | OD-GP1 = B. Not this GO. |
@@ -178,7 +178,7 @@ Coach's spec text stays in `Specs/`. Nothing below deletes GP1–GP24 or OD-GP1�
 
 **OD-GP3 — Which host runs the plane (same GO as P1a)**
 
-- [ ] **StudioTwo** *(recommended — Redis already answers `PONG` there; P1a is configuration, not an install)*. MiniTwo stays `not_configured` until a later Foxtrot packet.
+- [ ] **StudioTwo** *(recommended — probe 2026-09-01 14:34: Redis up, bus absent; P1a is **env + one plist**)*. MiniTwo stays `not_configured` until a later Foxtrot packet.
 - [ ] **MiniTwo** — Redis + `LABS_MARKET_BUS` + `chain_feed` launchd on production in P1a.
 - [ ] **Both** — StudioTwo first (P1a), MiniTwo (P1c) before wings-compute capability is claimed on the member host.
 
@@ -242,7 +242,7 @@ template, GEX compute, L4-A route.
 | **W0-6 Tango** | `present/stale/cold/broken` are honest; empty is not an outage; no "chain GEX" on a window | W0-G |
 | **W0-G** | Token stamped; reviews in; **three DL-539 OKs** if P2-0/P2 are to start; **no product code** | P0 |
 | **P0-G** | Arch 30 §10/11/4/6.1/12/17b honesty landed. Missing Reference / L4-A v0.4 **named**, not invented (unless B4 ticked). Hyphenated spec is the law path. DL. | P1a |
-| **P1a-G** | Named host: Redis reachable · `chain_feed` running · `LABS_MARKET_BUS` set · `mb:ladder:*` key observable **under a manual interest touch**. **Infra only — no product code in this packet** | P1b |
+| **P1a-G** | Named host: Redis reachable · `chain_feed` running · `LABS_MARKET_BUS` set · `LABS_OPF_STORE_MAX_STALE_MS` set · `mb:ladder:*` key observable **under a documented one-shot manual touch**. **Infra only — no product code.** **SSR live-capture plist must stay unloaded** | P1b |
 | **P1b-G** | `plane_interest.py` heartbeating **wings topics only**. **Precondition:** at least one wings topic configured on the named host. Then: **`mb:ladder:*` key AND an `mb:pub` message with NO member watching.** Topic string **unmodified** under `list_interest_topics("mb:ladder:")`. `bus ≠ not_configured`. **With `PLANE_WINGS_TOPICS` empty the heartbeat is a correct no-op — Delta records `BLOCKED`, not `FAIL` (errata E2).** | P2 live AT-GP1 |
 | **P2-0-G** | **AT-GP22 alone.** `…:listed:dual` → `book:"listed"`, `wings:None`; `…:w15:dual` with `I:SPX` intact; legacy single-side unchanged; non-ladder → `None`. **Gated before any hydrator work** | P2 |
 | **P2-G** | **AT-GP1–11, 15a–c, 17, 19, 20, 21.** Hydrator in-process. Zero Massive in hydrator. Namespace. `store_read.py` rejects `supplied` (AT-GP2). 20 OPF ATs green. **AT-GP1 live on the P1a host, not a fixture** | P3 · P4 · P6 |
@@ -290,7 +290,7 @@ Seeds under `agents/p-opf-generation-plane/seeds/`.
 | `W0-2-india.md` | India | GP1–GP24 vs tree; F8 closed by design; listed key; namespace; three clocks; L4-A frozen; Arch 30 list |
 | `W0-3-mike.md` | Mike | P6 design: `product:` read; not Trade Log write; session required; fail closed |
 | `W0-4-hotel.md` | Hotel | GP7; listed completeness; no `w0`; truncation writes nothing; window ≠ chain |
-| `W0-5-foxtrot.md` | Foxtrot | **P1a** runbook for the named host; Redis localhost; launchd; workers=1; env names (no secret values). **Explicitly excludes `plane_interest.py` — that is P1b** |
+| `W0-5-foxtrot.md` | Foxtrot | **P1a** runbook: env + one plist on StudioTwo. **Trap: do not load `ssr-live-capture.plist`** — AT-GP23 would pass on SSR's interest. Excludes `plane_interest.py` (P1b) |
 | `W0-6-tango.md` | Tango | Visibility states; no chain-GEX on a window; empty ≠ broken |
 | `W0-G-delta.md` | Delta | Token + reviews; no product code; ternary |
 
@@ -305,7 +305,7 @@ Seeds under `agents/p-opf-generation-plane/seeds/`.
 
 | Seed | Agent | Done when |
 |------|-------|-----------|
-| `P1a-1-foxtrot-bus.md` | Foxtrot | Named host: Redis up and bound localhost, `LABS_MARKET_BUS` set, `chain_feed` launchd running, env names recorded. Evidence: `redis-cli ping`, SCAN `mb:ladder:*` **under a manual `touch_interest`**, launchd state. **Ships no Python** |
+| `P1a-1-foxtrot-bus.md` | Foxtrot | StudioTwo: **env + one plist**. `LABS_MARKET_BUS`, `REDIS_URL`, **`LABS_OPF_STORE_MAX_STALE_MS=20000`**, `chain_feed` plist, uvicorn restart. **Do not load `ssr-live-capture`.** Ships no Python |
 | `P1a-2-india.md` | India | Host matches OD-GP3 tick. Env present. Feed process alive |
 | `P1a-G` | Delta | Infra observable. **A key produced only by a manual touch is the expected P1a state, not a pass of AT-GP23** |
 
@@ -438,6 +438,7 @@ compute · L4-A route · StudioOne · Time Machine
 - `_env` treating `PLANE_WINGS_TOPICS=""` as default
 - **Changing `LABS_MB_CHAIN_TTL_S` to avoid implementing hold-past-TTL** *(promoted from O6 — raising the TTL defeats GP14 while passing every test)*
 - **Foxtrot shipping product code in P1a**, or **P1a claiming AT-GP23 on a manual interest touch**
+- **Loading `ai.fattail.labs.ssr-live-capture.plist` to warm keys.** SSR interest is not plane interest; AT-GP23 would pass on someone else's hold (GP21)
 - `w0` as listed marker
 - Listed writer using `max_pages=3` as the bound
 - Truncation that writes a partial listed generation

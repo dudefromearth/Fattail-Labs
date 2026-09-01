@@ -15,6 +15,8 @@ With the plane on and **no member watching**, and **at least one wings topic con
 
 If `PLANE_WINGS_TOPICS` is empty: record **BLOCKED** (configuration gap), not FAIL.
 
+**SSR live-capture must be unloaded.** If `mb:interest:*` is held by SSR, AT-GP23 is invalid — that is GP21's point.
+
 ## Done when
 
 Evidence. Delta P1b-G.

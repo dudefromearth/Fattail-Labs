@@ -34,9 +34,19 @@
 
 **OD-GP3 — host (same GO as P1a)**
 
-- [ ] **StudioTwo** *(recommended — Redis already answers `PONG`; P1a is configuration)*  
+- [ ] **StudioTwo** *(recommended)*  
 - [ ] MiniTwo in P1a  
 - [ ] Both (StudioTwo P1a, MiniTwo P1c)
+
+**StudioTwo probed 2026-09-01 14:34 EDT — P1a evidence (verbatim in `agents/p-opf-generation-plane/evidence/studio-two-2026-09-01-od-gp3.md`):**
+
+- Redis **v8.2.3**, `127.0.0.1:6379`, bind `127.0.0.1 ::1`, homebrew. Nothing to install.
+- **All `mb:*` keys are zero.** This Redis has never served the bus.
+- **No `chain_feed` process and no `chain-feed` plist.** Bus is absent, not idling.
+- uvicorn `pid 79091` (`main:app --port 4001`, no `--workers`) has **none** of `LABS_MARKET_BUS`, `REDIS_URL`, `LABS_MB_*`, `LABS_OPF_*`. `get_store()` is `None`; `pricing.py:238` swallows the Redis touch.
+- **P1a on StudioTwo = env + one plist.** Smaller than scoped.
+- Fold into that env change: **`LABS_OPF_STORE_MAX_STALE_MS=20000`** (OD-GP2, no code default). Hydrator refuses to start without it at P2.
+- Host was at **`9cbac89`**, `main` synced.
 
 **AT-GP22 ownership**
 
