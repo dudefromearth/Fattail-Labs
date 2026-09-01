@@ -20,3 +20,5 @@
 ## Done when
 
 Kilo P1b-2. Delta P1b-G: if no wings topic is configured, **BLOCKED** not FAIL (E2).
+
+**AT-GP23 precondition (P1a-FIX):** a member Options Lab tab on StudioTwo holds I:SPX w25. AT-GP23 is invalid while that tab (or SSR) holds interest — GP21. Kilo verifies a quiet window **before** the test. See `P1b-2-kilo.md`.

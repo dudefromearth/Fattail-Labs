@@ -367,6 +367,8 @@ The local-exec daemon does **not** itself source `.env` (no launchd `Environment
 
 **One plist on StudioTwo:** `infra/launchd/ai.fattail.labs.chain-feed.plist.example` → `~/Library/LaunchAgents/ai.fattail.labs.chain-feed.plist`, `launchctl load`. That plist only.
 
+**chain-feed needs the full server config, not just the two bus names.** `chain_feed.py` calls `cl._resolve_universe_symbol` → `db.transaction()` → `get_config()`, which fail-louds `LABS_ENV` first, then `LABS_DB_*` and the rest of `config.py`. `_fetch_ladder_uncached` then needs `MASSIVE_API_KEY` or `POLYGON_API_KEY`. A plist that only sets `LABS_MARKET_BUS` and `REDIS_URL` will `skip {topic}: Missing required environment variable: LABS_ENV` on every tick and never write `mb:ladder:*`. The example plist therefore runs `infra/launchd/run-from-repo-env.sh`, which `set -a && source ../.env && set +a` and execs the venv python. **Do not paste DB or API values into `EnvironmentVariables`.** Keep `POLYGON_API_KEY` (or `MASSIVE_API_KEY`) in the repo `.env` so that source carries it.
+
 **Standing rule — SSR stays unloaded.** `~/Library/LaunchAgents/ai.fattail.labs.ssr-live-capture.plist` may exist on disk. Do **not** `launchctl load` it. If SSR holds interest, AT-GP23 would pass on someone else's keys (GP21).
 
 Evidence: `agents/p-opf-generation-plane/evidence/p1a-studio-two-bring-up-2026-09-01.md`.

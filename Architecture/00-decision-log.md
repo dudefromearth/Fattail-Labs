@@ -4,6 +4,20 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-01 — DL-649 Generation Plane P1a-FIX chain-feed env
+
+**Decision (Coach GO P1a-FIX, 2026-09-01):** Two infra defects from the P1a-G carries, without reopening P1a-G (`60ddc0d`).
+
+**Pass 1.** Pid 90357 still had `POLYGON_API_KEY` and `HEYGEN_API_KEY` (inherited from the restarting shell). Live `GET /api/me/market/chain-ladder?symbol=SPX` returned data (102 rows). Nothing lost on the live API; API not restarted. Both names were missing from the repo `.env` — they are now in `.env` (names only in artifacts) so the documented `source ../.env` restart carries them.
+
+**Pass 2.** chain-feed skipped every tick: `skip mb:ladder:I:SPX:2026-09-01:w25:dual: Missing required environment variable: LABS_ENV`. Plist `EnvironmentVariables` had only the two bus names. Feed now runs `infra/launchd/run-from-repo-env.sh` (sources repo `.env`; no secrets in the plist). After reload: `wrote mb:ladder:I:SPX:2026-09-01:w25:dual … rows=102`. That write is **member** interest, **not AT-GP23**.
+
+**AT-GP23 precondition (for P1b / Kilo):** a member Options Lab tab on StudioTwo holds I:SPX w25. AT-GP23 must prove the **plane** holds interest. Running it while a member tab is open is invalid (same reason SSR stays unloaded — GP21). Quiet window, verified before the test. Seed: `agents/p-opf-generation-plane/seeds/P1b-2-kilo.md`.
+
+**Does not:** MiniTwo · product Python · five frozen modules · `--workers` > 1 · loading SSR · claiming AT-GP23 · P1b start (still needs DL-539 OK 2 for `main.py`).
+
+---
+
 ## 2026-09-01 — DL-648 Generation Plane P1a on StudioTwo
 
 **Decision (Coach GO P1a, 2026-09-01):** Plane bring-up **infra only** on **StudioTwo** (OD-GP3). Redis was already up. Three names in the repo `.env`: `LABS_MARKET_BUS=1`, `REDIS_URL=redis://127.0.0.1:6379/0`, `LABS_OPF_STORE_MAX_STALE_MS=20000` (OD-GP2, no code default). API restarted from that `.env` with `--workers` omitted (GP23). One plist loaded: `ai.fattail.labs.chain-feed`. **SSR live-capture stays unloaded** (standing rule). MiniTwo stays `bus: "not_configured"`.

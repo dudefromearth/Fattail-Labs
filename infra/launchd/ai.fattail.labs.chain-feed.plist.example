@@ -1,12 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  chain_feed needs the full server config (LABS_ENV, LABS_DB_*, Massive key,
+  …) plus the bus names. Do not paste secrets here — the ProgramArguments
+  wrapper sources the repo .env.
+
+  Install on StudioTwo:
+    cp infra/launchd/ai.fattail.labs.chain-feed.plist.example \
+       ~/Library/LaunchAgents/ai.fattail.labs.chain-feed.plist
+    chmod +x infra/launchd/run-from-repo-env.sh
+    launchctl load ~/Library/LaunchAgents/ai.fattail.labs.chain-feed.plist
+
+  Do NOT load ai.fattail.labs.ssr-live-capture.plist.
+-->
 <plist version="1.0">
 <dict>
   <key>Label</key><string>ai.fattail.labs.chain-feed</string>
   <key>WorkingDirectory</key><string>/Users/ernie/Fattail-Labs/server</string>
   <key>ProgramArguments</key>
   <array>
-    <string>/Users/ernie/Fattail-Labs/server/.venv/bin/python</string>
+    <string>/Users/ernie/Fattail-Labs/infra/launchd/run-from-repo-env.sh</string>
     <string>-m</string>
     <string>market_data.chain_feed</string>
     <string>--interval</string>
