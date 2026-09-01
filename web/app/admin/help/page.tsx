@@ -8,9 +8,26 @@ import { useCallback, useEffect, useState } from "react";
 
 type Row = {
   id: number; email: string; subject: string; category: string; status: string;
-  reply_count: number; has_screenshot: boolean;
-  created_at: string | null; updated_at: string | null;
+  reply_count: number; team_reply_count: number; has_screenshot: boolean;
+  created_at: string | null; updated_at: string | null; answered_at: string | null;
 };
+
+// A ticket that was answered and then re-opened by a member reply reads as
+// "Responded" (needs another look) — it sits between Open and Answered. Every
+// other state shows its raw status.
+function displayStatus(status: string, answeredAt: string | null): string {
+  if (status === "open" && answeredAt) return "responded";
+  return status;
+}
+
+// What the queue row says about replies: real team replies vs the AI-only case,
+// so an open ticket the bot auto-answered never looks like a human handled it.
+function replyLabel(r: Row): string {
+  if (r.team_reply_count > 0)
+    return `${r.team_reply_count} team repl${r.team_reply_count === 1 ? "y" : "ies"}`;
+  if (r.reply_count > 0) return "no team reply yet · AI only";
+  return "no replies";
+}
 type Msg = { id: number; author_role: string; visibility: string; body: string; created_at: string | null };
 
 // Who sent a message, made visually distinct so the bot is never mistaken for the member.
@@ -141,10 +158,10 @@ export default function AdminHelpPage() {
                   className={`cursor-pointer border-t border-zinc-100 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900 ${sel === r.id ? "bg-emerald-50 dark:bg-emerald-950/40" : ""}`}>
                   <td className="px-3 py-2">
                     <div className="font-medium">{r.subject}</div>
-                    <div className="text-xs text-zinc-500">{r.category} · {r.reply_count} repl{r.reply_count === 1 ? "y" : "ies"}{r.has_screenshot ? " · 📷" : ""}</div>
+                    <div className="text-xs text-zinc-500">{r.category} · {replyLabel(r)}{r.has_screenshot ? " · 📷" : ""}</div>
                   </td>
                   <td className="px-3 py-2 text-xs">{r.email || "—"}</td>
-                  <td className="px-3 py-2"><StatusPill s={r.status} /></td>
+                  <td className="px-3 py-2"><StatusPill s={displayStatus(r.status, r.answered_at)} /></td>
                   <td className="px-3 py-2 text-xs text-zinc-500">{fmt(r.updated_at)}</td>
                 </tr>
               ))}
@@ -163,7 +180,7 @@ export default function AdminHelpPage() {
               <div>
                 <div className="flex items-center justify-between gap-2">
                   <h2 className="text-lg font-semibold">{detail.question.subject}</h2>
-                  <StatusPill s={detail.question.status} />
+                  <StatusPill s={displayStatus(detail.question.status, detail.question.answered_at)} />
                 </div>
                 <p className="text-xs text-zinc-500">
                   {detail.question.email} · {detail.question.category}
@@ -237,8 +254,13 @@ export default function AdminHelpPage() {
 }
 
 function StatusPill({ s }: { s: string }) {
-  const color = s === "open" ? "bg-orange-100 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300"
+  const color =
+    s === "open" ? "bg-orange-100 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300"
+    : s === "responded" ? "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300"
     : s === "answered" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
+    : s === "ai_resolved" ? "bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300"
+    : s === "ai_pending" ? "bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300"
     : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800";
-  return <span className={`rounded-full px-2 py-0.5 text-xs capitalize ${color}`}>{s}</span>;
+  const label = s === "ai_resolved" ? "AI resolved" : s === "ai_pending" ? "AI pending" : s;
+  return <span className={`rounded-full px-2 py-0.5 text-xs capitalize ${color}`}>{label}</span>;
 }

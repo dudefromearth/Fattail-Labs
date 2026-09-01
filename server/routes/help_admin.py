@@ -41,14 +41,37 @@ def list_questions(
         with conn.cursor() as cur:
             cur.execute(f"SELECT COUNT(*) AS n FROM help_questions q {where}", tuple(params))
             total = int(cur.fetchone()["n"])
+            # Tiered triage order (chronological within each tier):
+            #   0 Open (new)        status=open, never answered — needs first reply
+            #   0 ai_pending        AI hasn't responded yet
+            #   1 Responded         status=open but answered_at set — member wrote
+            #                       back after we answered (re-opened; needs a look)
+            #   2 Answered          team replied, member hasn't come back
+            #   3 ai_resolved       bot resolved it, no human action needed
+            #   4 Closed            done — sinks to the bottom
+            # team_reply_count = real public replies from the team (excludes the
+            # AI assistant and internal notes) so the queue shows whether a human
+            # has actually replied, not just the bot.
             cur.execute(
                 f"""SELECT q.id, q.email, q.subject, q.category, q.status,
                            q.created_at, q.updated_at, q.answered_at,
                            q.screenshot_path,
-                    (SELECT COUNT(*) FROM help_messages m WHERE m.question_id = q.id) AS reply_count
+                    (SELECT COUNT(*) FROM help_messages m WHERE m.question_id = q.id) AS reply_count,
+                    (SELECT COUNT(*) FROM help_messages m WHERE m.question_id = q.id
+                        AND m.author_role = 'admin' AND m.visibility = 'public') AS team_reply_count
                     FROM help_questions q
                     {where}
-                    ORDER BY (q.status = 'open') DESC, q.updated_at DESC, q.id DESC
+                    ORDER BY
+                      CASE
+                        WHEN q.status = 'open' AND q.answered_at IS NULL    THEN 0
+                        WHEN q.status = 'ai_pending'                        THEN 0
+                        WHEN q.status = 'open' AND q.answered_at IS NOT NULL THEN 1
+                        WHEN q.status = 'answered'                          THEN 2
+                        WHEN q.status = 'ai_resolved'                       THEN 3
+                        WHEN q.status = 'closed'                            THEN 4
+                        ELSE 5
+                      END ASC,
+                      q.updated_at DESC, q.id DESC
                     LIMIT %s OFFSET %s""",
                 tuple(params) + (limit, offset),
             )
@@ -59,6 +82,7 @@ def list_questions(
                 "id": int(r["id"]), "email": r["email"], "subject": r["subject"],
                 "category": r["category"], "status": r["status"],
                 "reply_count": int(r["reply_count"] or 0),
+                "team_reply_count": int(r["team_reply_count"] or 0),
                 "has_screenshot": bool(r.get("screenshot_path")),
                 "created_at": _iso(r["created_at"]), "updated_at": _iso(r["updated_at"]),
                 "answered_at": _iso(r["answered_at"]),
