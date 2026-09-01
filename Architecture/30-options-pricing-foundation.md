@@ -1,6 +1,7 @@
 # Options Pricing Foundation — Design Architecture
 
-**Status:** **AS-BUILT (foundation L0–L4)** (2026-08-11) — apps (L5) **not** wired  
+**Status:** **AS-BUILT (foundation L0–L4)** (2026-08-11) — apps (L5) **not** wired.  
+**Honesty (2026-09-01 · DL-647):** several claims below are **design, not as-built**. See **§17c**. Generation Plane spec v0.2.2 BUILD AUTHORITY at `374ed86`.  
 **Type:** Design + as-built architecture — shared **data plane + model packs** for accurate real-time and research P&amp;L  
 **Product law:** [`Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md`](../Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md) (**v0.2.1** BUILD AUTHORITY · DL-290) · v0.1 historical only  
 **Bench:** [`docs/Options-Pricing-Foundation-Full-Agent-Bench-Plan-v1.0.md`](../docs/Options-Pricing-Foundation-Full-Agent-Bench-Plan-v1.0.md) · board `agents/p-options-pricing-foundation/`  
@@ -90,11 +91,14 @@ L5  APPLICATIONS (later)
 
 **L0–L1** extend and harden Market Bus.  
 **L2–L4** are **new** foundation modules — **server is SoR** for multi-worker.  
+**As-built 2026-09-01 (item 2 · DL-647):** that multi-worker SoR claim is **false** while `ContractStore` is a process-local module dict (`server/routes/pricing.py:28`). See §17c.  
 **L5** is explicitly out of foundation MVP exit.
 
 ---
 
 ## 4. Topology (target)
+
+**As-built 2026-09-01 (item 3 · DL-647):** this topology is **not running on MiniTwo** (GXA0: no Redis, no `chain_feed`, no `LABS_MARKET_BUS`). StudioTwo Redis is up but `mb:*` empty and `chain_feed` absent (OD-GP3 evidence). MiniTwo stays `bus: "not_configured"` until a later Foxtrot packet. See §17c.
 
 ```text
                     ┌─ Massive REST ─────────────────────────┐
@@ -245,6 +249,8 @@ Stable L4 DTO: use case, pack, book, what-if/scenario, outputs (marks, curves, g
 
 Strike-union safety means: if a condor/hedge leg is outside a one-page Heatmap band, **OPF still assembles a complete generation** (wider wings and/or multi-page with `allow_truncate=false` semantics). Heatmap may continue to show a narrower view for UX; **pricing SoR is OPF completeness**, not the Heatmap viewport.
 
+**As-built 2026-09-01 (item 4 · DL-647):** §6.1 pagination has **no OPF caller** until GP16 (listed writer). The only `allow_truncate=False` path is Heatmap HM18 (`server/routes/chain_ladder.py:308–309`, `max_pages=3`, wing window). See §17c.
+
 ---
 
 ## 7. IV resolution (professional cascade)
@@ -285,6 +291,8 @@ InterestManager refcounts generations, **and**:
 | Control | Law |
 |---------|-----|
 | **Global generation-interest budget** | Config cap on concurrent live generation keys per process / per credential class |
+
+**As-built 2026-09-01 (item 10 · DL-647):** the cap is **per-process**, not global. `InterestManager` is a module singleton (`server/opf/interest.py:31–36, 102–113`). Under `N` workers the real cap is `cap × N`. See §17c.
 | **At cap** | **Refuse loudly** or **queue** (config); never silent drop of a leg’s exp |
 | **Isolation** | Sibling to VP rate isolation: chain generation budget does not starve (or get starved by) unrelated jobs without explicit priority config |
 
@@ -297,6 +305,8 @@ Members with many multi-exp strategies can request many keys — the foundation 
 | Store | Role |
 |-------|------|
 | **Redis** | **Hot / live window only** (hours-scale TTL) |
+
+**As-built 2026-09-01 (item 1 · DL-647):** TTL is **seconds, not hours.** `LABS_MB_CHAIN_TTL_S` default `2.0` (`server/market_data/market_bus/config.py:22–26`); `store.py:41–44` sets Redis `ex = max(2, int(ttl * 3))` → **6 s**. See §17c.
 | **Cold archive** | Day-sharded **disk / object / parquet** (append-only, resumable) — VP artifact pattern |
 
 `backtest.chain_replay` reads **cold archive**, not Redis months of keys.  
@@ -310,6 +320,8 @@ OD-PF5: retention + medium + max-stale are config; missing archive → fail loud
 | Role | Authority |
 |------|-----------|
 | **Server L2–L4** | **SoR** for multi-worker and any tool API resolve |
+
+**As-built 2026-09-01 (item 2 · DL-647):** false while `ContractStore` is process-local (`server/routes/pricing.py:28`). MiniTwo and StudioTwo run uvicorn **without** `--workers`. See §17c. Same note as §3.
 | **Client mirror** | Optional for offline what-if **only if** dual implementation exists |
 
 If a TypeScript mirror of engine math ships:
@@ -328,6 +340,8 @@ Prefer single-language engine (server) + thin client if parity cost is high.
 |------------|--------------------|
 | Massive sole writers in feeds | Consumes generations only |
 | Redis `mb:ladder:*` | L1 hot store / interest |
+
+**As-built 2026-09-01 (item 5 · DL-647):** Redis is **not** L1. L1 is the in-process `ContractStore`. Generation Plane P2 hydrates `owned` from Redis. See §17c.
 | WS push full\|diff\|unchanged | L1 input |
 | `mb:sym` / session | Spot + held |
 | Does **not** define package/lock/packs/r/q | **Does** define L2–L4 + static facts + archive policy |
@@ -360,6 +374,8 @@ Foundation **extends** dual-key hygiene, multi-interest, budgets; it does **not*
 - 3D risk graph  
 - True dealer GEX  
 
+**As-built 2026-09-01 (item 9 · DL-647):** L5 is **already wired** via Analyzer `POST /api/me/pricing/package-quote` with posted generations (`web/lib/options-lab/opfPricingApi.ts:216–218`). That is GP1a (preserve), not “apps not wired.” See §17c.  
+
 ---
 
 ## 15. Open decisions (OD)
@@ -390,6 +406,8 @@ Foundation **extends** dual-key hygiene, multi-interest, budgets; it does **not*
 | Arch 28 / MB Spec | Transport parent (`…Spec-v1.0.md`, content **v1.0.1**) |
 | Chain Picker Spec **v1.0.2** | `Specs/FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md` (RATIFIED header; OC6a in body) |
 | Heatmap Spec **v0_2** | HM18 / HM19 heritage targets for OPF17–18 |
+| **Generation Plane spec v0.2.2** | [`Specs/FatTail-Labs-OPF-Generation-Plane-Spec-v0_2_2.md`](../Specs/FatTail-Labs-OPF-Generation-Plane-Spec-v0_2_2.md) — BUILD AUTHORITY at `374ed86` · **§17c honesty** · board `agents/p-opf-generation-plane/` |
+| **Generation Plane plan** | [`docs/OPF-Generation-Plane-Spec-v0.2.2-Full-Agent-Bench-Plan-v1.1.md`](../docs/OPF-Generation-Plane-Spec-v0.2.2-Full-Agent-Bench-Plan-v1.1.md) (law path, sha1 `8ae7f22`) |
 
 ---
 
@@ -414,20 +432,44 @@ Only then: wire apps.
 
 | Layer | Path |
 |-------|------|
-| Dual keys / feed | `server/opf/keys.py` · `server/market_data/chain_feed.py` |
+| Dual keys / feed | `server/opf/keys.py` · `server/market_data/chain_feed.py` — **item 8:** `--symbol` is defined (`chain_feed.py:23–27`) and **never read**; empty interest → idle (`:45–48`). **Item 13:** write key is an inline f-string (`:59–62`), not `bus_ladder_key()`. Recorded, not fixed. Not on the Generation Plane §8 allowlist. |
 | Config | `server/opf/config.py` |
 | τ / static facts | `server/opf/tau.py` · `static_facts.py` |
 | L1 store / interest | `server/opf/generation.py` · `interest.py` · `strike.py` |
 | L2 | `server/opf/leg.py` · `package.py` · `lock.py` · `engines/*` |
 | L3 packs | `server/opf/packs/{registry,day_trade,outlook,backtest}.py` · `engines/surface.py` |
-| Archive | `server/opf/archive.py` · `server/data/opf_archive/` |
-| L4 API | `server/opf/resolve.py` · `server/routes/pricing.py` |
-| ATs | `server/tests/test_opf_foundation.py` (19) |
+| Archive | `server/opf/archive.py` · `server/data/opf_archive/` — **as-built 2026-09-01 (item 6):** directory holds `.gitkeep` only; `archive_put` has no running writer (GXA0 Q3). OD-GP1 = StudioOne; `archive_put` is not built in Generation Plane. |
+| L4 API | `server/opf/resolve.py` · `server/routes/pricing.py` — **item 7:** comment at `pricing.py:27` says “hydrate from body or bus”; `_hydrate` (`:95–115`) is body-only. |
+| ATs | `server/tests/test_opf_foundation.py` (**20** as-built 2026-09-01; was 19 at foundation exit) |
 
 **Env (fail loud / config):** `LABS_OPF_MAX_GENERATION_INTERESTS` · `LABS_OPF_MAX_SKEW_MS` · `LABS_OPF_SKEW_MODE` · `LABS_OPF_T0_RECON_TOL_*` · `LABS_OPF_ARCHIVE_*` · `LABS_OPF_RISK_FREE_RATE`
 
 **API (member session + tool gate):**  
 `GET /api/me/pricing/packs` · `POST /api/me/pricing/resolve` · `POST /api/me/pricing/interest` · `POST /api/me/pricing/lock` · `GET /api/me/pricing/health`
+
+---
+
+## 17c. Honesty vs as-built (Generation Plane · 2026-09-01 · DL-647)
+
+Design claims above stay. **As-built** is this table. Generation Plane spec v0.2.2 BUILD AUTHORITY at commit `374ed86`. Plan law path: `docs/OPF-Generation-Plane-Spec-v0.2.2-Full-Agent-Bench-Plan-v1.1.md` (sha1 `8ae7f22`).
+
+| # | Claim in this document | As-built | Cite |
+|---|------------------------|----------|------|
+| **1** | §10 Redis “hours-scale TTL” | **Seconds.** Default `LABS_MB_CHAIN_TTL_S=2.0` → Redis `EX=6` | `market_data/market_bus/config.py:22–26` · `store.py:41–44` `ex = max(2, int(ttl * 3))` |
+| **2** | §3 / §11 “server L2–L4 SoR for multi-worker” | **False** while `ContractStore` is a process-local module dict | `routes/pricing.py:28` |
+| **3** | §4 topology: `chain_feed` → Redis → API | **Not running on MiniTwo** as of GXA0 2026-09-01. StudioTwo: Redis up, `mb:*` empty, no `chain_feed` | GXA0 Q5 · `agents/p-opf-generation-plane/evidence/studio-two-2026-09-01-od-gp3.md` |
+| **4** | §6.1 OPF may paginate (`allow_truncate=false`) | **No OPF caller** until GP16. Heatmap only: wing window, `max_pages=3` | `routes/chain_ladder.py:308–309` |
+| **5** | §12 Redis `mb:ladder:*` is L1 | Redis is **not** L1. L1 is in-process `ContractStore`. P2 hydrates `owned` | `opf/generation.py:53–60` · Generation Plane GP11 |
+| **6** | §17b archive path | Directory is `.gitkeep` only. No running `archive_put`. OD-GP1 = StudioOne | `server/data/opf_archive/` · GXA0 Q3 |
+| **7** | `pricing.py:27` “or bus” | Comment only. `_hydrate` is request-body | `routes/pricing.py:27` · `:95–115` |
+| **8** | `chain_feed --symbol` “default warm” | Defined, **never read**. Empty interest → idle | `chain_feed.py:23–27` · `:45–48` |
+| **9** | §14 / header: L5 not wired | Analyzer already posts generations to package-quote (**GP1a** — preserve) | `web/lib/options-lab/opfPricingApi.ts:216–218` |
+| **10** | §9 “global” interest budget | **Per-process** singleton | `opf/interest.py:31–36` · `:102–113` |
+| **11** | Spec GP18a “the one existing OPF module this spec modifies” | **False — five modules** on the allowlist. **Scope that sentence to the listed-book token:** `keys.py` is the listed-token module (P2-0); `generation.py` is P2-1. Do not read `generation.py` as out of scope | Spec v0.2.2 GP18a · plan §8 |
+| **12** | Spec GP21 (a) listed pairs as interest | **Erratum:** plane interest is **wings-only**. Listed pairs are not registered as interest; the listed writer pulls itself | Spec GP21 · errata E1 · `chain_feed.py:59–62` |
+| **13** | Dual keys via `bus_ladder_key()` | Feed builds write keys with an **inline f-string** `w{wings}`. Recorded, not fixed. Not on §8 allowlist. **E3:** new code uses `bus_ladder_key()` | `chain_feed.py:59–62` |
+
+**Reported, not authored (B4):** `docs/OPF-REFERENCE-v1_1.md` is absent. `Specs/IKI-Labs-Chain-Analytics-Read-Spec-v0_4.md` is absent (v0.1 exists). W0-1 substitution remains: GXA0 + spec §2 and §10.
 
 ---
 

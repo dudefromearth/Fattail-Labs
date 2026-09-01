@@ -4,6 +4,28 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-01 — DL-647 Generation Plane spec v0.2.2 BUILD AUTHORITY
+
+**Decision (Coach W0-0, 2026-09-01):** Generation Plane spec **v0.2.2** is **BUILD AUTHORITY** at commit **`374ed86`**. Bench plan **as folded at `374ed86`** Accept — law path `docs/OPF-Generation-Plane-Spec-v0.2.2-Full-Agent-Bench-Plan-v1.1.md` (sha1 `8ae7f22ad3b932a5df7281f92eeaae3aeb44e3db`). Token `agents/go/GP-W0.md`. W0-G PASS `59295ac`.
+
+**OD-GP3 = StudioTwo.** Evidence `agents/p-opf-generation-plane/evidence/studio-two-2026-09-01-od-gp3.md`. MiniTwo stays `bus: "not_configured"` until a later Foxtrot packet. Wings-compute capability is not claimable on the member host until that packet lands.
+
+**AT-GP22 = P2-0.** `keys.py` lands in P2, gated on AT-GP22 alone before hydrator work. P4 keeps AT-GP22 as a regression check.
+
+**DL-539 OK 1/3.** The §8 freeze binds five Python modules: `generation.py`, `keys.py`, `config.py`, `routes/pricing.py`, `main.py`. Untouched until the third OK. Arch 30 and this log are documentation; P0 honesty is not an allowlist edit.
+
+**GP21 erratum Accept.** Plane interest is **wings-only**. Listed pairs are not registered as interest; the listed writer pulls itself.
+
+**GP18a erratum recorded.** Spec's “one existing OPF module this spec modifies” is false — five are modified. That sentence is scoped to the **listed-book token**: `keys.py` is the listed-token module (P2-0); `generation.py` is P2-1. Do not read `generation.py` as out of scope.
+
+**B4 report-only.** `docs/OPF-REFERENCE-v1_1.md` absent. `Specs/IKI-Labs-Chain-Analytics-Read-Spec-v0_4.md` absent (v0.1 exists). W0-1 substitution remains: GXA0 audit + spec §2 and §10. Do not author those documents.
+
+**Honesty:** Arch 30 **§17c** (thirteen items). `chain_feed.py:59–62` inline `w{wings}` f-string recorded, not fixed; not on the §8 allowlist; E3 governs new code.
+
+**Does not:** product code · P1a · P2-0 · MiniTwo bus · L4-A v0.4 · OPF Reference v1.1.
+
+---
+
 ## 2026-08-29 — DL-646 TM landmarks are a usability law on the scrubber window
 
 **Decision (Coach, verbatim):** *This is not an availability law, this is a usability law directed to the scrubber window.*

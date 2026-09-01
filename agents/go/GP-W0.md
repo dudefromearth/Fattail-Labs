@@ -84,5 +84,6 @@ DL-539 OKs: 1/3  (OK 1 recorded; 2 and 3 pending; §8 allowlist untouched)
 B4: report-only; W0-1 substitution in force
 Authorized: W0 only. P0 does not start on this GO.
 W0-G: PASS 2026-09-01 (see agents/p-opf-generation-plane/gate-reports/W0-G.md)
-Implementation: W0 complete. P0 not authorized. P1a/P2-0 not authorized (P0 unrun; DL-539 1/3).
+P0-G: PASS 2026-09-01 (see agents/p-opf-generation-plane/gate-reports/P0-G.md)
+Implementation: W0 complete. P0 complete. P1a unblocked in the DAG only — not started. P2-0 blocked (DL-539 1/3).
 ```
