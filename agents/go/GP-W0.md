@@ -1,14 +1,14 @@
 # GP-W0 — OPF Generation Plane
 
 **ID:** `GP-W0`  
-**Plan:** [`docs/OPF-Generation-Plane-Spec-v0.2.2-Full-Agent-Bench-Plan-v1.1.md`](../../docs/OPF-Generation-Plane-Spec-v0.2.2-Full-Agent-Bench-Plan-v1.1.md) — **v1.1 + errata E1–E3**  
-**Errata:** [`docs/OPF-Generation-Plane-Bench-Plan-v1.1-Errata.md`](../../docs/OPF-Generation-Plane-Bench-Plan-v1.1-Errata.md)  
-**Origin v1.1 (unmodified landing):** `docs/OPF Generation Plane Spec v0.2.2 — Full Agent Bench Plan v1.1.md`  
-**Law:** Generation Plane Spec **v0.2.2** INDIA-SIGNED **with GP21 erratum** — [`Specs/FatTail-Labs-OPF-Generation-Plane-Spec-v0_2_2.md`](../../Specs/FatTail-Labs-OPF-Generation-Plane-Spec-v0_2_2.md)  
+**Working law (this GO):** spec `v0.2.2` + bench plan **as folded at `374ed86`**. Reference by commit, not by version string.  
+**Plan path at that commit:** `docs/OPF-Generation-Plane-Spec-v0.2.2-Full-Agent-Bench-Plan-v1.1.md`  
+**Errata path at that commit:** `docs/OPF-Generation-Plane-Bench-Plan-v1.1-Errata.md`  
+**Law:** [`Specs/FatTail-Labs-OPF-Generation-Plane-Spec-v0_2_2.md`](../../Specs/FatTail-Labs-OPF-Generation-Plane-Spec-v0_2_2.md)  
 **Board:** `agents/p-opf-generation-plane/`  
 **Evidence:** `agents/p-iki-gex/gate-reports/GXA0-opf-readiness-audit.md`
 
-**Status:** **not stamped.** Stamp **v1.1 + this errata**, the way India signed spec v0.2 + v0.2.1. No product code until W0-0 + W0-G.
+**Status:** **W0-0 STAMP 2026-09-01. W0 in progress → W0-G.** Authorized scope: **W0 only**. P0 does not start on this GO.
 
 ---
 
@@ -30,45 +30,38 @@
 
 ---
 
-## Coach ticks (required before P1a / P2-0)
+## Coach ticks (W0-0 2026-09-01)
 
 **OD-GP3 — host (same GO as P1a)**
 
-- [ ] **StudioTwo** *(recommended)*  
+- [x] **StudioTwo** — Coach W0-0. Evidence: `agents/p-opf-generation-plane/evidence/studio-two-2026-09-01-od-gp3.md`. MiniTwo stays `bus: "not_configured"` by law until a later Foxtrot packet. Wings-compute capability is **not** claimable on the member host until that packet lands.  
 - [ ] MiniTwo in P1a  
 - [ ] Both (StudioTwo P1a, MiniTwo P1c)
 
-**StudioTwo probed 2026-09-01 14:34 EDT — P1a evidence (verbatim in `agents/p-opf-generation-plane/evidence/studio-two-2026-09-01-od-gp3.md`):**
-
-- Redis **v8.2.3**, `127.0.0.1:6379`, bind `127.0.0.1 ::1`, homebrew. Nothing to install.
-- **All `mb:*` keys are zero.** This Redis has never served the bus.
-- **No `chain_feed` process and no `chain-feed` plist.** Bus is absent, not idling.
-- uvicorn `pid 79091` (`main:app --port 4001`, no `--workers`) has **none** of `LABS_MARKET_BUS`, `REDIS_URL`, `LABS_MB_*`, `LABS_OPF_*`. `get_store()` is `None`; `pricing.py:238` swallows the Redis touch.
-- **P1a on StudioTwo = env + one plist.** Smaller than scoped.
-- Fold into that env change: **`LABS_OPF_STORE_MAX_STALE_MS=20000`** (OD-GP2, no code default). Hydrator refuses to start without it at P2.
-- Host was at **`9cbac89`**, `main` synced.
-
 **AT-GP22 ownership**
 
-- [ ] **`keys.py` lands in P2 as `P2-0`, gated on AT-GP22 alone; P4 keeps AT-GP22 as a regression check.** *(plan default)*  
-- [ ] Keys stay in P4 — then AT-GP22 is removed from P2-G
+- [x] **`keys.py` lands in P2 as `P2-0`, gated on AT-GP22 alone; P4 keeps AT-GP22 as a regression check.** *(plan default — Coach W0-0)*  
+- [ ] Keys stay in P4
 
 **DL-539 — three successive OKs** for plan §8 allowlist (`keys.py` P2-0, `generation.py`, `config.py`, `pricing.py`, `main.py`, Arch 30, DL, `infra/deploy.md`)
 
-- [ ] OK 1  
+- [x] OK 1 — Coach W0-0 2026-09-01  
 - [ ] OK 2  
 - [ ] OK 3  
 
-Until three boxes, **P2-0 and P2 do not start.** P0, W0, and **P1a (infra)** do not edit those files. **P1b is product code** (`plane_interest.py` is **new**, not on the allowlist) — still waits on W0-G.
+**The §8 allowlist stays untouched** until the third OK. No edit to `generation.py`, `keys.py`, `config.py`, `routes/pricing.py`, or `main.py`. P2-0 does **not** start on this GO.
 
 **B4 — missing cites** (`docs/OPF-REFERENCE-v1_1.md`, L4-A v0.4)
 
-- [x] P0 reports only; W0 substitutes GXA0 + spec §2/§10 *(plan default)*  
+- [x] P0 reports only; W0 substitutes GXA0 + spec §2/§10 *(plan default; this GO)*  
 - [ ] Coach names those docs as P0 authoring
+
+**W0-1 substitution (Lima, recorded on this token):**  
+`docs/OPF-REFERENCE-v1_1.md` is **absent**. W0 reviewers substitute `agents/p-iki-gex/gate-reports/GXA0-opf-readiness-audit.md` plus spec §2 and §10. **Do not author the Reference or L4-A v0.4.**
 
 **GP21 erratum**
 
-- [ ] Accept: plane interest is wings-only; listed pairs need no interest  
+- [x] Accept: plane interest is wings-only; listed pairs need no interest *(folded at `374ed86`; Coach stamp)*
 
 **Env discipline (belt-and-braces behind E1)**
 
@@ -80,13 +73,16 @@ Until three boxes, **P2-0 and P2 do not start.** P0, W0, and **P1a (infra)** do 
 
 ```
 W0-0 STAMP
-Date:
-Spec v0.2.2 BUILD AUTHORITY:
-GP21 erratum (wings-only interest):
-Plan v1.1 + errata E1–E3:
-OD-GP3:
-AT-GP22 ownership:
-DL-539 OKs: 0/3
-W0-G:
-Implementation: blocked until W0-0 plus W0-G
+Date: 2026-09-01
+Commit: 374ed86
+Spec v0.2.2 BUILD AUTHORITY: YES
+GP21 erratum (wings-only interest): Accept
+Plan as folded at 374ed86: Accept
+OD-GP3: StudioTwo (MiniTwo stays not_configured)
+AT-GP22 ownership: plan default (keys.py = P2-0)
+DL-539 OKs: 1/3  (OK 1 recorded; 2 and 3 pending; §8 allowlist untouched)
+B4: report-only; W0-1 substitution in force
+Authorized: W0 only. P0 does not start on this GO.
+W0-G: PASS 2026-09-01 (see agents/p-opf-generation-plane/gate-reports/W0-G.md)
+Implementation: W0 complete. P0 not authorized. P1a/P2-0 not authorized (P0 unrun; DL-539 1/3).
 ```

@@ -15,7 +15,7 @@ W0 → P0 docs → P1a infra → P1b wings-only interest → P2-0 keys
 
 | Phase | Name | State |
 |-------|------|--------|
-| **W0** | Coach · India · Mike · Hotel · Foxtrot · Tango · Lima · Delta | **not started** — stamp v1.1 + errata |
+| **W0** | Coach · India · Mike · Hotel · Foxtrot · Tango · Lima · Delta | **W0-0 STAMP · W0-G PASS 2026-09-01.** Scope was W0 only. P0 **not** started |
 | **P0** | Arch 30 honesty · GP18a + **GP21** errata · `chain_feed` f-string recorded | blocked on W0-G |
 | **P1a** | StudioTwo: **env + one plist** (probe 2026-09-01 14:34). Redis already up. **Do not load SSR capture.** | blocked on P0-G + OD-GP3 |
 | **P1b** | `plane_interest.py` **wings-only** (Alpha) | blocked on P1a-G. Empty `PLANE_WINGS_TOPICS` → Delta **BLOCKED** not FAIL |
