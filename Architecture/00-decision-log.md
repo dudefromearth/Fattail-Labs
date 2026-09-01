@@ -4,6 +4,20 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-01 — DL-648 Generation Plane P1a on StudioTwo
+
+**Decision (Coach GO P1a, 2026-09-01):** Plane bring-up **infra only** on **StudioTwo** (OD-GP3). Redis was already up. Three names in the repo `.env`: `LABS_MARKET_BUS=1`, `REDIS_URL=redis://127.0.0.1:6379/0`, `LABS_OPF_STORE_MAX_STALE_MS=20000` (OD-GP2, no code default). API restarted from that `.env` with `--workers` omitted (GP23). One plist loaded: `ai.fattail.labs.chain-feed`. **SSR live-capture stays unloaded** (standing rule). MiniTwo stays `bus: "not_configured"`.
+
+**P1a-G PASS** unblocks **P1b in the DAG only** (separate GO). **P2-0 stays blocked** (DL-539 1/3). A documented one-shot `mb:ladder:*` key is the expected P1a steady state — **not AT-GP23**.
+
+**Carries, not acted:** (1) P1b-1 declares `server/main.py` lifespan; `main.py` is on the frozen §8 allowlist — P1b needs DL-539 OK 2 (and OK 3 before any allowlist edit). (2) The StudioTwo API daemon does not itself source `.env`; durable fix is teach the daemon or stand up `ai.fattail.labs.api.plist` (`deploy.md` launchd section) — open Coach decision.
+
+Evidence: `agents/p-opf-generation-plane/evidence/p1a-studio-two-bring-up-2026-09-01.md`. Gate: `agents/p-opf-generation-plane/gate-reports/P1a-G.md`.
+
+**Does not:** MiniTwo bus · product Python · `plane_interest.py` · five frozen modules · `--workers` > 1 · loading SSR capture · AT-GP23.
+
+---
+
 ## 2026-09-01 — DL-647 Generation Plane spec v0.2.2 BUILD AUTHORITY
 
 **Decision (Coach W0-0, 2026-09-01):** Generation Plane spec **v0.2.2** is **BUILD AUTHORITY** at commit **`374ed86`**. Bench plan **as folded at `374ed86`** Accept — law path `docs/OPF-Generation-Plane-Spec-v0.2.2-Full-Agent-Bench-Plan-v1.1.md` (sha1 `8ae7f22ad3b932a5df7281f92eeaae3aeb44e3db`). Token `agents/go/GP-W0.md`. W0-G PASS `59295ac`.

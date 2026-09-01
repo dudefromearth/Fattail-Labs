@@ -344,10 +344,32 @@ Shared market data plane (Spec: `Specs/FatTail-Labs-Massive-Market-Bus-Shared-Cl
 ```bash
 LABS_MARKET_BUS=1
 REDIS_URL=redis://127.0.0.1:6379/0
+LABS_OPF_STORE_MAX_STALE_MS=20000   # OD-GP2; no code default; hydrator will not start at P2 without it
 # optional:
 # LABS_MB_CHAIN_TTL_S=2.0
 # LABS_MB_INTEREST_GRACE_S=45
 ```
+
+### Generation Plane host (P1a · OD-GP3 = StudioTwo)
+
+**StudioTwo is the plane host.** Dev only (`deploy.md` topology). Production (**MiniTwo**) stays `bus: "not_configured"`. Wings-compute is not claimable on the member host until a later Foxtrot packet.
+
+**API on StudioTwo** is daemon-supervised (Grok Bot local-exec), not `ai.fattail.labs.api.plist`. Restarts take env from the repo `.env` via the documented pattern:
+
+```bash
+cd server && set -a && source ../.env && set +a
+.venv/bin/uvicorn main:app --host 127.0.0.1 --port 4001
+```
+
+`--workers` omitted or `1` (GP23 — the store is process-local). Do not pass `--workers` > 1.
+
+The local-exec daemon does **not** itself source `.env` (no launchd `EnvironmentVariables` block). Durable fix is an open Coach decision: teach the daemon, or stand up `ai.fattail.labs.api.plist` per the production launchd section below. Do not build that in a plane packet without a GO.
+
+**One plist on StudioTwo:** `infra/launchd/ai.fattail.labs.chain-feed.plist.example` → `~/Library/LaunchAgents/ai.fattail.labs.chain-feed.plist`, `launchctl load`. That plist only.
+
+**Standing rule — SSR stays unloaded.** `~/Library/LaunchAgents/ai.fattail.labs.ssr-live-capture.plist` may exist on disk. Do **not** `launchctl load` it. If SSR holds interest, AT-GP23 would pass on someone else's keys (GP21).
+
+Evidence: `agents/p-opf-generation-plane/evidence/p1a-studio-two-bring-up-2026-09-01.md`.
 
 ### Redis
 
