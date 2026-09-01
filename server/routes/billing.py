@@ -157,23 +157,60 @@ async def create_checkout(request: Request) -> dict:
     return {"url": session["url"]}
 
 
+# Members bill on the WordPress site they subscribed through (WooCommerce). Manage
+# billing sends them to that site's My Account page. Native Stripe billers (if any)
+# get the Stripe portal instead.
+_WOO_MYACCOUNT = {
+    "wordpress:fattail": "https://fattail.ai/my-account/",
+    "wordpress:0-dte": "https://0-dte.com/my-account/",
+}
+
+
+def _woo_billing_url(cur, identity_id: int, claims: dict) -> str:
+    """The member's WooCommerce My Account URL: this session's login site if it's a
+    WordPress issuer, else a linked WordPress site, else the main site."""
+    iss = str((claims or {}).get("sso_issuer") or "")
+    if iss in _WOO_MYACCOUNT:
+        return _WOO_MYACCOUNT[iss]
+    cur.execute(
+        "SELECT provider FROM identity_links WHERE identity_id = %s", (identity_id,)
+    )
+    linked = {str(r["provider"]) for r in cur.fetchall()}
+    for prov in ("wordpress:fattail", "wordpress:0-dte"):
+        if prov in linked:
+            return _WOO_MYACCOUNT[prov]
+    return "https://fattail.ai/my-account/"
+
+
 @router.post("/api/billing/portal")
 def create_portal(request: Request) -> dict:
-    _require_enabled()
+    """Manage-billing destination. A native Stripe biller gets the Stripe portal;
+    every other member (WooCommerce) gets their WordPress My Account page. Always
+    returns a usable url so the button never dead-ends."""
     claims = require_session(request)
+    identity_id = int(claims["identity_id"])
+    # Native Stripe billing, only when configured AND the member has a Stripe customer.
+    if _enabled():
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                customer_id = identity.resolve_stripe_customer(cur, identity_id)
+        if customer_id:
+            stripe.api_key = get_config().stripe_secret_key
+            try:
+                session = stripe.billing_portal.Session.create(
+                    customer=customer_id, return_url=f"{_web_origin()}/me"
+                )
+                return {"url": session["url"]}
+            except stripe.error.StripeError as exc:  # type: ignore[attr-defined]
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"Stripe error: {exc.user_message or exc}",
+                ) from exc
+    # WooCommerce member (the common case) -> their site's My Account page.
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            customer_id = identity.resolve_stripe_customer(cur, claims["identity_id"])
-    if not customer_id:
-        raise HTTPException(status_code=404, detail="No billing account")
-    stripe.api_key = get_config().stripe_secret_key
-    try:
-        session = stripe.billing_portal.Session.create(
-            customer=customer_id, return_url=f"{_web_origin()}/me"
-        )
-    except stripe.error.StripeError as exc:  # type: ignore[attr-defined]
-        raise HTTPException(status_code=502, detail=f"Stripe error: {exc.user_message or exc}") from exc
-    return {"url": session["url"]}
+            url = _woo_billing_url(cur, identity_id, claims)
+    return {"url": url}
 
 
 # --- webhook (source of membership truth) -------------------------------------
