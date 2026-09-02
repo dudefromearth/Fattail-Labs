@@ -119,6 +119,10 @@ import HeatmapControlsColumn from "@/components/options-lab/HeatmapControlsColum
 import { HeatmapHoverTip } from "@/components/options-lab/HeatmapHoverTip";
 import HeatmapLimQuadrant from "@/components/options-lab/HeatmapLimQuadrant";
 import { computeLim, type LimResult } from "@/lib/options-lab/templates/lim";
+import {
+  limChromeInfoLines,
+  limNumericHeader,
+} from "@/lib/options-lab/templates/limChrome";
 import { LimConfigError, loadLimConfig } from "@/lib/options-lab/templates/limConfig";
 import {
   createLimTrail,
@@ -1263,6 +1267,26 @@ export default function HeatmapChainPanel() {
                 >
                   {tpl.label}
                 </h3>
+                {tpl.layout === "quadrant" ? (
+                  <details
+                    className="relative"
+                    data-testid="lim-chrome-info"
+                  >
+                    <summary
+                      className="flex h-7 w-7 cursor-pointer list-none items-center justify-center rounded-full text-[13px] font-semibold text-[var(--color-label-secondary)] hover:bg-[var(--color-fill)] [&::-webkit-details-marker]:hidden"
+                      aria-label="LIM reading notes"
+                    >
+                      i
+                    </summary>
+                    <div className="absolute left-0 top-8 z-20 w-[min(22rem,70vw)] space-y-1.5 rounded-md border border-[var(--color-separator)] bg-[var(--color-surface)] p-3 text-[11px] leading-snug text-[var(--color-label-secondary)] shadow-lg">
+                      {limChromeInfoLines().map((line) => (
+                        <p key={line} data-testid="lim-chrome-info-line">
+                          {line}
+                        </p>
+                      ))}
+                    </div>
+                  </details>
+                ) : null}
                 {tpl.valueModes.length > 1 ? (
                   <span className="text-xs font-medium text-[var(--color-label-secondary)]">
                     · {modeLabel}
@@ -1286,6 +1310,14 @@ export default function HeatmapChainPanel() {
                   .filter(Boolean)
                   .join(" · ")}
               </p>
+              {tpl.layout === "quadrant" && limPack.result ? (
+                <p
+                  className="mt-0.5 truncate text-[11px] tabular-nums text-[var(--color-label)]"
+                  data-testid="lim-numeric-header"
+                >
+                  {limNumericHeader(limPack.result)}
+                </p>
+              ) : null}
             </div>
 
             <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--color-label-secondary)]">
@@ -1343,7 +1375,8 @@ export default function HeatmapChainPanel() {
           <div
             ref={scrollRef}
             className={[
-              "min-h-0 flex-1 overflow-auto",
+              "min-h-0 flex-1",
+              tpl.layout === "quadrant" ? "overflow-hidden" : "overflow-auto",
               tpl.layout === "matrix" ||
               tpl.layout === "profile" ||
               tpl.layout === "quadrant"

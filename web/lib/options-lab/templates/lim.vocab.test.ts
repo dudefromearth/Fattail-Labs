@@ -6,17 +6,26 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  LIM_AT23_PHRASES,
   LIM_AT23_WORDS,
   LIM_AXIS_X,
+  LIM_AXIS_X_EDGE,
   LIM_AXIS_Y,
+  LIM_AXIS_Y_BOTTOM,
+  LIM_AXIS_Y_TOP,
+  LIM_CELL_LL,
+  LIM_CELL_LR,
+  LIM_CELL_UL,
+  LIM_CELL_UR,
   LIM_CHROME_1,
   LIM_CHROME_2,
   LIM_CHROME_3_HOLE,
   LIM_CHROME_4,
   LIM_MODE_LABEL,
   LIM_PICKER_LABEL,
+  limChromeInfoLines,
   limChromeLine3,
-  limChromeLines,
+  limNumericHeader,
   limStateLine,
 } from "./limChrome";
 import { HEATMAP_TEMPLATES } from "./registry";
@@ -39,6 +48,9 @@ function hasBanned(s: string): string | null {
     const re = new RegExp(`\\b${w}\\b`, "i");
     if (re.test(lower)) return w;
   }
+  for (const p of LIM_AT23_PHRASES) {
+    if (lower.includes(p)) return p;
+  }
   return null;
 }
 
@@ -47,21 +59,37 @@ const rendered: string[] = [
   LIM_MODE_LABEL,
   LIM_AXIS_X,
   LIM_AXIS_Y,
+  LIM_AXIS_X_EDGE,
+  LIM_AXIS_Y_TOP,
+  LIM_AXIS_Y_BOTTOM,
+  LIM_CELL_UL,
+  LIM_CELL_UR,
+  LIM_CELL_LL,
+  LIM_CELL_LR,
   LIM_CHROME_1,
   LIM_CHROME_2,
   LIM_CHROME_3_HOLE,
   LIM_CHROME_4,
   limChromeLine3(null),
   limChromeLine3("2026-09-01"),
-  ...limChromeLines(null, "comfort"),
-  ...limChromeLines("2026-09-01", "compact"),
-  limStateLine({ expiration: "2026-09-04", wings: 25, crossingCount: 0 }, "comfort"),
-  limStateLine({ expiration: "2026-09-04", wings: 25, crossingCount: 3 }, "comfort"),
+  ...limChromeInfoLines(),
+  limStateLine({ expiration: "2026-09-04", wings: 25, crossingCount: 0 }),
+  limStateLine({ expiration: "2026-09-04", wings: 25, crossingCount: 3 }),
+  limNumericHeader({
+    x: -12.4,
+    y: 61,
+    magF: 80,
+    crossingCount: 2,
+    crossingProximity: 0.5,
+  }),
 ];
 
 const lim = HEATMAP_TEMPLATES.find((t) => t.id === "lim");
 assert(lim, "lim registered");
 rendered.push(lim!.label, lim!.description, ...lim!.valueModes.map((m) => m.label));
+
+assert(LIM_AT23_WORDS.length === 11, "AT-LIM23 no words dropped from v0.4.3 list");
+assert(LIM_AT23_PHRASES.length === 5, "AT-LIM23 MSC outcome phrases present");
 
 for (const s of rendered) {
   const hit = hasBanned(s);
@@ -79,15 +107,16 @@ const files = [
 for (const f of files) {
   const src = readFileSync(f, "utf8");
   for (const lit of stringLiterals(src)) {
-    if (f.endsWith("limChrome.ts") && lit === "LIM_AT23_WORDS") continue;
-    if (LIM_AT23_WORDS.includes(lit as (typeof LIM_AT23_WORDS)[number])) {
-      if (src.includes("LIM_AT23_WORDS")) continue;
+    if (f.endsWith("limChrome.ts") && (lit === "LIM_AT23_WORDS" || lit === "LIM_AT23_PHRASES")) {
+      continue;
     }
     const hit = hasBanned(lit);
     if (!hit) continue;
     if (f.endsWith("limChrome.ts") && src.includes("LIM_AT23_WORDS")) {
-      const inList = new RegExp(`LIM_AT23_WORDS[\\s\\S]*${hit}`);
-      if (inList.test(src) && lit === hit) continue;
+      const inList = new RegExp(`LIM_AT23_(WORDS|PHRASES)[\\s\\S]*${hit}`);
+      if (inList.test(src) && (lit === hit || LIM_AT23_PHRASES.includes(lit as (typeof LIM_AT23_PHRASES)[number]))) {
+        continue;
+      }
     }
     throw new Error(`AT-LIM23 literal in ${f}: "${lit}" (${hit})`);
   }

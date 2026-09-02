@@ -5,7 +5,7 @@
 **Language:** observation only. It forecasts nothing. It does not tell you what to trade.
 
 **Help (concierge):** `server/help_reference/options-lab-heatmap-lim.md`  
-**Spec (engineering):** `Specs/FatTail Labs — Heatmap LIM Template — Specification v0.4.3.md`
+**Spec (engineering):** `Specs/FatTail Labs — Heatmap LIM Template — Specification v0.4.4.md`
 
 Picker name: **GEX lean (window)**. Code id `lim`.
 
@@ -15,11 +15,11 @@ Picker name: **GEX lean (window)**. Code id `lim`.
 
 ```
 ┌──────── inspector ────────┐  ┌──── quadrant ────┬── companion GEX ──┐
-│ Template: GEX lean (window)│  │ crosshairs 0 / 50 │  bars ordinary    │
-│ Comfort | Compact          │  │ disc + ring       │  spot LINE glows  │
-│ Chain (symbol / exp / …)   │  │ trail if Comfort  │                  │
+│ Template: GEX lean (window)│  │ four outlined     │  bars ordinary    │
+│ Chain (symbol / exp / …)   │  │ cells + disc      │  spot LINE glows  │
+│ Lean · Mix · magF · …      │  │ proximity chip    │                  │
 └────────────────────────────┘  └──────────────────┴───────────────────┘
-chrome under both
+OI as-of line visible; other three lines behind the i next to the title
 ```
 
 ---
@@ -36,15 +36,18 @@ Changing Template does not add a second market feed.
 
 ## 2. The plane
 
-Crosshairs at lean **0** and mix **50**. The disc is **lean** (left/right) and **near-spot mix** (up/down). Colour is identity (one blue), not good/bad.
+Crosshairs at lean **0** and mix **50**. Four cells are outlined. Labels name the **book**, not a price outcome:
+
+- Weight below · packed / Weight above · packed
+- Weight below · loose / Weight above · loose
+
+The disc is **lean** (left/right) and **near-spot mix** (up/down). Colour is identity (one blue), not good/bad.
 
 Empty, not yet loaded, or a symbol with no scale, sit **dead centre** at full opacity — not bottom-centre, not a spinner.
 
-**Shelf life** is the **ring** (size), never the disc fading. Compact **keeps the ring** and drops the numeric chip, the trail, and the magF readout.
+**Shelf life** is the **numeric chip** (0–1, two decimals), never the disc fading, never a ring. The header also prints Lean · Mix · magF · crossings · proximity. Two books can share the same mix and differ only in magF.
 
-Comfort shows `crossingProximity` (0–1, two decimals) and **magF** beside it. Two books can share the same mix and differ only in magF.
-
-Ghosts (Comfort) are prior states. Spacing is speed. They may plot past the left/right edge.
+There is no Comfort / Compact toggle. At a narrow panel the trail drops; the chip stays. Ghosts are prior states. Spacing is speed. They may plot past the left/right edge.
 
 ---
 
@@ -56,9 +59,9 @@ Ghosts (Comfort) are prior states. Spacing is speed. They may plot past the left
    When the as-of date is missing: `Open interest as-of date unavailable. Today's trading is not in it.`
 4. `The near-spot mix is a blend of measured factors. Whether it resists price movement is unmeasured.`
 
-Compact shows lines **1 and 3** only.
+Line **3** (open interest as-of) is always visible. Lines 1, 2 and 4 sit behind the **i** next to the title — one click, same words.
 
-The state line prints expiration, wing count, and (Comfort) crossing **count**. It never prints a single crossing **price**.
+The numeric header prints Lean, Mix, magF, crossings **count**, and proximity. It never prints a single crossing **price**.
 
 ---
 

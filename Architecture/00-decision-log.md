@@ -4,6 +4,29 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-02 — DL-656 LIM7 surface fit; Spec v0.4.4
+
+**Decision (Coach LIM7, live surface 2026-09-02):** Board reopens for one packet. Spec **v0.4.4** is **BUILD AUTHORITY** with this work. Compute geometry unchanged since v0.4. Chrome and plane law change: LIM24, LIM27, LIM31, LIM36, §7.6. Errata **E18–E24**.
+
+| S | Law |
+|---|-----|
+| S1 | Ring deleted. `limRingRadius` gone. Proximity is the numeric chip (E18) |
+| S2 | `LIM_DISC_R_PT = 9` (E19 · Echo) |
+| S3 | No `minHeight: min(w,h)`. Quadrant + companion GEX share the panel (E20) |
+| S4 | No density toggle. Breakpoint only. AT-LIM24 is a width render (E21) |
+| S5 | Four cells outlined; ticks in gutters; crosshairs raised (E22) |
+| S6 | Cell labels in the book's terms. **OD-LIM7 CLOSED.** MSC outcome names stay banned (E23) |
+| S7 | Appendix B verbatim. Line 3 visible; 1/2/4 behind title info (E24) |
+| S8 | Heatmap header pattern kept. Numeric strip: Lean · Mix · magF · crossings · prox |
+
+**Coach override available** for MSC outcome names was **not** taken. Third path: book-terms now; Hotel tape sitting may later earn outcome names.
+
+**Spec sha1 (JR7, this log, not the Spec body):** `b061e7d7de55b546749467f8efd9ffba263de0d4`
+
+**Does not:** MiniTwo (NX14) · volume · MSC import · move the dot with proximity · change computeLim.
+
+---
+
 ## 2026-09-02 — DL-655 LIM client env: literal NEXT_PUBLIC_ map (D1 / D2)
 
 **Decision:** LIM was dead on arrival in the browser at deploy prep (`c6e578d`). Two blockers, both closed here.

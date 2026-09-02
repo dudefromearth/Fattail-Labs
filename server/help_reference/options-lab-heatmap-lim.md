@@ -15,12 +15,15 @@ The disc is lean (left/right) and near-spot mix (up/down). Colour is
 identity — one blue — not good or bad. Empty or not-yet-loaded sits
 dead centre at full opacity.
 
-Shelf life is the **ring** around the disc, never a fade. Compact keeps
-the ring and drops the numeric chip, the trail, and the magF number.
-Comfort shows crossing proximity (0–1) and magF beside it.
+Four outlined cells, labelled in the book's terms (weight below/above ·
+packed/loose). Shelf life is the **numeric chip** (0–1), never a fade
+and never a ring. The header also prints Lean · Mix · magF · crossings ·
+proximity. There is no Comfort/Compact toggle; a narrow panel drops the
+trail and keeps the chip.
 
 ## Chrome
-Four standing lines (Compact shows 1 and 3 only):
+Four standing lines. Line 3 is always visible. Lines 1, 2 and 4 sit
+behind the **i** next to the title:
 
 1. Chain GEX (estimate). Dealer sign is assumed, not observed.
 2. Window read — mass outside the wings is not counted.
@@ -38,7 +41,7 @@ The same generation as the quadrant. The **spot line** (a price, not a
 strike row) takes the disc’s colour and glow. Bars stay ordinary.
 
 ## Trail
-Comfort only. Prior states; spacing is speed. Clears on symbol change,
+Prior states; spacing is speed. Drops on a narrow panel. Clears on symbol change,
 expiration change, and when the UTC date in the generation stamp
 changes (UTC midnight = 20:00 ET daylight / 19:00 standard — not the
 cash open).

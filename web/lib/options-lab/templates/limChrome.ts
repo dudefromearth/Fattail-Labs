@@ -1,6 +1,6 @@
 /**
- * LIM chrome — Spec v0.4.3 Appendix B verbatim (LIM27). Tango lock.
- * No cell names. Picker carries neither intent nor friction (LIM35).
+ * LIM chrome — Spec v0.4.4 Appendix B verbatim (LIM27 · E24). Tango lock.
+ * Cell labels are book-terms (LIM36 · E23). No MSC outcome names.
  */
 
 export const LIM_PICKER_LABEL = "GEX lean (window)";
@@ -8,6 +8,16 @@ export const LIM_MODE_LABEL = "Lean / near-spot mix";
 
 export const LIM_AXIS_X = "Lean";
 export const LIM_AXIS_Y = "Near-spot mix";
+
+export const LIM_AXIS_X_EDGE =
+  "← mass sits below spot | mass sits above spot →";
+export const LIM_AXIS_Y_TOP = "positive, concentrated, close to spot";
+export const LIM_AXIS_Y_BOTTOM = "negative or thin, dispersed, far";
+
+export const LIM_CELL_UL = "Weight below · packed";
+export const LIM_CELL_UR = "Weight above · packed";
+export const LIM_CELL_LL = "Weight below · loose";
+export const LIM_CELL_LR = "Weight above · loose";
 
 export const LIM_CHROME_1 =
   "Chain GEX (estimate). Dealer sign is assumed, not observed.";
@@ -24,25 +34,31 @@ export function limChromeLine3(oiAsOf: string | null): string {
   return `Open interest as of ${oiAsOf}. Today's trading is not in it.`;
 }
 
-export type LimDensity = "comfort" | "compact";
-
-export function limChromeLines(
-  oiAsOf: string | null,
-  density: LimDensity,
-): string[] {
-  const line3 = limChromeLine3(oiAsOf);
-  if (density === "compact") return [LIM_CHROME_1, line3];
-  return [LIM_CHROME_1, LIM_CHROME_2, line3, LIM_CHROME_4];
+/** Lines 1, 2, 4 — behind the title info affordance (LIM27 · E24). */
+export function limChromeInfoLines(): string[] {
+  return [LIM_CHROME_1, LIM_CHROME_2, LIM_CHROME_4];
 }
 
 /** State line: facts only. Never a crossing price (AT-LIM18). */
-export function limStateLine(
-  r: { expiration: string; wings: number; crossingCount: number },
-  density: LimDensity,
-): string {
+export function limStateLine(r: {
+  expiration: string;
+  wings: number;
+  crossingCount: number;
+}): string {
   const exp = r.expiration || "—";
-  if (density === "compact") return `${exp} · w${r.wings}`;
   return `${exp} · w${r.wings} · crossings ${r.crossingCount}`;
+}
+
+export function limNumericHeader(r: {
+  x: number;
+  y: number;
+  magF: number;
+  crossingCount: number;
+  crossingProximity: number;
+}): string {
+  const lean = r.x.toFixed(1);
+  const mix = Number.isInteger(r.y) ? String(r.y) : r.y.toFixed(1);
+  return `Lean ${lean} · Mix ${mix} · magF ${limMagFDisplay(r.magF)} · crossings ${r.crossingCount} · prox ${limProximityDisplay(r.crossingProximity)}`;
 }
 
 export function limMagFDisplay(magF: number): string {
@@ -55,8 +71,11 @@ export function limProximityDisplay(p: number): string {
 
 export const LIM_DOT_OPACITY = 1;
 
-export const LIM_DISC_R_PT = 6;
-export const LIM_RING_MIN_OFFSET_PT = 4;
+/** Echo · E19 — legible on a dark cell; does not dominate one quadrant. */
+export const LIM_DISC_R_PT = 9;
+
+/** Narrow breakpoint (LIM31 · E21). Width of the LIM root, CSS pixels. */
+export const LIM_NARROW_PX = 420;
 
 export function limDotXY(
   x: number,
@@ -83,13 +102,6 @@ export function limGhostXY(
   };
 }
 
-export function limRingRadius(proximity: number, minWH: number): number {
-  const p = Math.min(1, Math.max(0, proximity));
-  const minR = LIM_DISC_R_PT + LIM_RING_MIN_OFFSET_PT;
-  const maxR = 0.32 * minWH;
-  return minR + (1 - p) * (maxR - minR);
-}
-
 export function limPlanePoint(
   result: { x: number; y: number; valid: boolean } | null,
 ): { x: number; y: number } {
@@ -97,22 +109,16 @@ export function limPlanePoint(
   return { x: result.x, y: result.y };
 }
 
-export function limSurfaceFlags(density: LimDensity): {
-  ring: true;
-  chip: boolean;
+/**
+ * AT-LIM24 — width in, not a mode. Chip always; trail drops when narrow.
+ */
+export function limSurfaceFlags(widthPx: number): {
+  chip: true;
   trail: boolean;
-  magF: boolean;
-  chrome2: boolean;
-  chrome4: boolean;
 } {
-  const comfort = density === "comfort";
   return {
-    ring: true,
-    chip: comfort,
-    trail: comfort,
-    magF: comfort,
-    chrome2: comfort,
-    chrome4: comfort,
+    chip: true,
+    trail: widthPx >= LIM_NARROW_PX,
   };
 }
 
@@ -128,4 +134,13 @@ export const LIM_AT23_WORDS = [
   "friction",
   "muddy",
   "slippery",
+] as const;
+
+/** MSC outcome names — banned so they cannot land beside book-terms (E23). */
+export const LIM_AT23_PHRASES = [
+  "false breakout",
+  "downside acceleration",
+  "air-pocket",
+  "air pocket",
+  "mean reversion",
 ] as const;

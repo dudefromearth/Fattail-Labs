@@ -30,10 +30,10 @@ Paths are under `web/lib/options-lab/templates/` unless noted.
 | **AT-LIM18** | `limQuadrant.test.ts` | 145 | `assert(!s.includes("4970") && !s.includes("mid"), "AT-LIM18 no crossing price")` | **PASS** |
 | **AT-LIM19** | `lim.test.ts` | 287 | `assert(r.x === 0 && r.xUnclamped === 0, "AT-LIM19 no fallback scale (would be x=10)")` | **PASS** |
 | **AT-LIM20** | `limQuadrant.test.ts` | 164 | `assert(!chrome.includes(mid), "AT-LIM20 chrome has no (lo+hi)/2 of F7 interval")` | **PASS** |
-| **AT-LIM21** | `limQuadrant.test.ts` | 102 | `assert(near > far, "AT-LIM21 ring grows as proximity → 0")` | **PASS** |
-| **AT-LIM22** | `limQuadrant.test.ts` | 151 | hole form `Open interest as-of date unavailable. Today's trading is not in it.` | **PASS** |
-| **AT-LIM23** | `lim.vocab.test.ts` | 68 | `assert(!hit, \`AT-LIM23 rendered "${s}" contains ${hit}\`)` | **PASS** |
-| **AT-LIM24** | `limQuadrant.test.ts` | 111 | `assert(c.ring === true, "AT-LIM24 Compact keeps ring")` | **PASS** |
+| **AT-LIM21** | `limQuadrant.test.ts` | 121 | `assert(LIM_DOT_OPACITY === 1, "AT-LIM21 dot opacity constant")` · ring gone (LIM7) | **PASS** |
+| **AT-LIM22** | `limQuadrant.test.ts` | 206 | `html.includes("Open interest as-of date unavailable")` line 3 visible; 1/2/4 via info (LIM7 E24) | **PASS** |
+| **AT-LIM23** | `lim.vocab.test.ts` | 68 | `assert(!hit, \`AT-LIM23 rendered "${s}" contains ${hit}\`)` · 11 words kept + 5 MSC phrases (LIM7 E23) | **PASS** |
+| **AT-LIM24** | `limQuadrant.test.ts` | 136 | `assert(narrow.chip === true, "AT-LIM24 narrow chip survives")` width, not a mode (LIM7 E21) | **PASS** |
 | **AT-LIM25** | `limTrail.test.ts` | 215 | `assert(g.length === 0, "AT-LIM25 expiration: first frame empty")` | **PASS** |
 | **AT-LIM26** | `lim.test.ts` | 422 | `assert(!/clamp\s*\(/.test(mixAssign[0]), "AT-LIM26 nearSpotMix assignment contains no clamp(")` | **PASS** |
 | **AT-LIM27** | `limQuadrant.test.ts` | 123 | `assert(lims.length === 1, "AT-LIM27 one lim template")` | **PASS** |

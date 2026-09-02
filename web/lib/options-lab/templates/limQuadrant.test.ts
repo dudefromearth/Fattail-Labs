@@ -1,24 +1,36 @@
 /**
- * LIM3 AT-LIM10 · 18 · 21 · 22 · 24 · 27 · 32
+ * LIM3 / LIM7 AT-LIM10 · 18 · 21 · 22 · 24 · 27 · 32
  *   npx --yes tsx lib/options-lab/templates/limQuadrant.test.ts
  */
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import HeatmapLimQuadrant from "@/components/options-lab/HeatmapLimQuadrant";
 import { HEATMAP_TEMPLATES } from "./registry";
 import { computeLimFromNets, type StrikeNet } from "./lim";
 import type { LimConfig } from "./limConfig";
 import {
+  LIM_CELL_LL,
+  LIM_CELL_LR,
+  LIM_CELL_UL,
+  LIM_CELL_UR,
+  LIM_CHROME_1,
+  LIM_CHROME_2,
+  LIM_CHROME_4,
+  LIM_DISC_R_PT,
   LIM_DOT_OPACITY,
   LIM_MODE_LABEL,
+  LIM_NARROW_PX,
   LIM_PICKER_LABEL,
+  limChromeInfoLines,
   limChromeLine3,
-  limChromeLines,
   limDotXY,
   limMagFDisplay,
+  limNumericHeader,
   limPlanePoint,
   limProximityDisplay,
-  limRingRadius,
   limStateLine,
   limSurfaceFlags,
 } from "./limChrome";
@@ -79,6 +91,16 @@ const F4 = [
   net(5200, 25, 0, 25),
 ];
 
+const here = dirname(fileURLToPath(import.meta.url));
+const quad = readFileSync(
+  join(here, "../../../components/options-lab/HeatmapLimQuadrant.tsx"),
+  "utf8",
+);
+const panel = readFileSync(
+  join(here, "../../../components/options-lab/HeatmapChainPanel.tsx"),
+  "utf8",
+);
+
 // AT-LIM10
 {
   const empty = run([]);
@@ -94,27 +116,41 @@ const F4 = [
   assert(LIM_DOT_OPACITY === 1, "AT-LIM10 full opacity constant");
 }
 
-// AT-LIM21 — proximity never the dot
+// AT-LIM21 — proximity never the dot; no ring
 {
   assert(LIM_DOT_OPACITY === 1, "AT-LIM21 dot opacity constant");
-  const far = limRingRadius(1, 200);
-  const near = limRingRadius(0, 200);
-  assert(near > far, "AT-LIM21 ring grows as proximity → 0");
   const a = limDotXY(10, 75, 200, 200);
   const b = limDotXY(10, 75, 200, 200);
   assert(a.left === b.left && a.top === b.top, "AT-LIM21 proximity does not move the dot");
+  assert(!quad.includes("lim-ring"), "AT-LIM21 no ring element");
+  assert(!quad.includes("limRingRadius"), "AT-LIM21 no limRingRadius");
+  assert(
+    !/opacity\s*[*=].*proximity|proximity.*opacity/i.test(quad),
+    "AT-LIM21 no proximity×opacity",
+  );
 }
 
-// AT-LIM24 Compact
+// AT-LIM24 — render at a width, not a mode
 {
-  const c = limSurfaceFlags("compact");
-  assert(c.ring === true, "AT-LIM24 Compact keeps ring");
-  assert(c.chip === false && c.trail === false && c.magF === false, "AT-LIM24 drops chip/trail/readout");
-  const comfort = limSurfaceFlags("comfort");
-  assert(comfort.chip && comfort.trail && comfort.magF && comfort.ring, "Comfort has chip trail magF ring");
-  const compactLines = limChromeLines(null, "compact");
-  assert(compactLines.length === 2, "Compact chrome 1 and 3");
-  assert(limChromeLines(null, "comfort").length === 4, "Comfort four lines");
+  const narrow = limSurfaceFlags(LIM_NARROW_PX - 1);
+  assert(narrow.chip === true, "AT-LIM24 narrow chip survives");
+  assert(narrow.trail === false, "AT-LIM24 narrow trail drops");
+  const wide = limSurfaceFlags(1280);
+  assert(wide.chip === true, "AT-LIM24 wide chip");
+  assert(wide.trail === true, "AT-LIM24 wide trail");
+  assert(!quad.includes("SegmentedControl"), "AT-LIM24 no density control");
+  assert(!quad.includes("userSet"), "AT-LIM24 no userSet");
+  assert(!/\bcompact\b/.test(quad.toLowerCase()), "AT-LIM24 no compact mode in renderer");
+  const html = renderToStaticMarkup(
+    createElement(HeatmapLimQuadrant, {
+      result: run(F2),
+      errorMessage: null,
+      ghosts: [{ t: 1, xUnclamped: 10, y: 60, opacity: 0.4 }],
+    }),
+  );
+  assert(html.includes("lim-chip-proximity"), "AT-LIM24 chip in render");
+  assert(!html.includes("lim-ring"), "AT-LIM24 no ring in render");
+  assert(html.includes(LIM_CELL_UL), "AT-LIM24 cell labels in render");
 }
 
 // AT-LIM27
@@ -140,11 +176,10 @@ const F4 = [
   const r1 = { expiration: "2026-09-04", wings: 25, crossingCount: 1 };
   const r3 = { expiration: "2026-09-04", wings: 25, crossingCount: 3 };
   for (const r of [r0, r1, r3]) {
-    const s = limStateLine(r, "comfort");
+    const s = limStateLine(r);
     assert(s.includes(`crossings ${r.crossingCount}`), "count in state line");
     assert(!s.includes("4970") && !s.includes("mid"), "AT-LIM18 no crossing price");
   }
-  assert(!limStateLine(r3, "compact").includes("crossings"), "Compact drops count");
   assert(
     limChromeLine3(null) ===
       "Open interest as-of date unavailable. Today's trading is not in it.",
@@ -155,11 +190,29 @@ const F4 = [
       "Open interest as of 2026-09-01. Today's trading is not in it.",
     "AT-LIM22 dated line 3",
   );
+  const info = limChromeInfoLines();
+  assert(info[0] === LIM_CHROME_1, "AT-LIM22 line 1 verbatim");
+  assert(info[1] === LIM_CHROME_2, "AT-LIM22 line 2 verbatim");
+  assert(info[2] === LIM_CHROME_4, "AT-LIM22 line 4 verbatim");
+  const html = renderToStaticMarkup(
+    createElement(HeatmapLimQuadrant, {
+      result: run(F2),
+      errorMessage: null,
+      ghosts: [],
+    }),
+  );
+  assert(
+    html.includes("Open interest as-of date unavailable"),
+    "AT-LIM22 line 3 visible without interaction",
+  );
+  assert(panel.includes("lim-chrome-info"), "AT-LIM22 info affordance beside title");
+  assert(panel.includes("limChromeInfoLines"), "AT-LIM22 info lines 1/2/4 reachable");
   const mid = String((4990 + 5010) / 2);
   const chrome = [
-    limStateLine(r1, "comfort"),
-    ...limChromeLines(null, "comfort"),
-    ...limChromeLines("2026-09-01", "compact"),
+    limStateLine(r1),
+    ...limChromeInfoLines(),
+    limChromeLine3(null),
+    limChromeLine3("2026-09-01"),
   ].join("\n");
   assert(!chrome.includes(mid), "AT-LIM20 chrome has no (lo+hi)/2 of F7 interval");
 }
@@ -170,29 +223,24 @@ const F4 = [
   const b = run(F4);
   assert(a.y === 40 && b.y === 40, "F2 and F4 same y");
   assert(a.magF === 80 && b.magF === 0, "magF 80 vs 0");
-  const ra = `magF ${limMagFDisplay(a.magF)}`;
-  const rb = `magF ${limMagFDisplay(b.magF)}`;
-  assert(ra === "magF 80", "AT-LIM32 F2 magF visible");
-  assert(rb === "magF 0", "AT-LIM32 F4 magF visible");
+  const ra = limNumericHeader(a);
+  const rb = limNumericHeader(b);
+  assert(ra.includes("magF 80"), "AT-LIM32 F2 magF visible");
+  assert(rb.includes("magF 0"), "AT-LIM32 F4 magF visible");
   assert(ra !== rb, "equal mix, different magF readout");
 }
 
 assert(LIM_PICKER_LABEL === "GEX lean (window)", "placeholder");
 assert(LIM_MODE_LABEL === "Lean / near-spot mix", "mode label");
 assert(limProximityDisplay(0.5) === "0.50", "chip 0-1 two decimals");
-
-const here = dirname(fileURLToPath(import.meta.url));
-const quad = readFileSync(
-  join(here, "../../../components/options-lab/HeatmapLimQuadrant.tsx"),
-  "utf8",
-);
-assert(quad.includes("data-testid=\"lim-ring\""), "ring in renderer");
+assert(LIM_DISC_R_PT === 9, "E19 disc radius");
+assert(LIM_CELL_UL === "Weight below · packed", "LIM36 UL");
+assert(LIM_CELL_UR === "Weight above · packed", "LIM36 UR");
+assert(LIM_CELL_LL === "Weight below · loose", "LIM36 LL");
+assert(LIM_CELL_LR === "Weight above · loose", "LIM36 LR");
 assert(quad.includes("LIM_DOT_OPACITY"), "dot uses constant");
-assert(
-  !/opacity\s*[*=].*proximity|proximity.*opacity/i.test(quad),
-  "AT-LIM21 no proximity×opacity",
-);
 assert(!quad.includes("animate-spin"), "AT-LIM10 no spinner");
-assert(quad.includes("min-h-[var(--hit-min)]") || quad.includes("SegmentedControl"), "44pt density control");
+assert(!quad.includes("minHeight: minWH"), "E20 no minHeight minWH");
+assert(panel.includes("overflow-hidden"), "E20 quadrant overflow hidden");
 
 console.log("limQuadrant.test.ts ok");

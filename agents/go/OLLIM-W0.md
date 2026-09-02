@@ -43,7 +43,7 @@ Coach (verbatim): *I stamp my approval of the spec, so go on and use it.*
 | **OD-LIM4** | Hotel map at LIM0-2; silent default `{"I:SPX": 50}` only; others `valid: false` | [x] Accept · [ ] Override: |
 | **OD-LIM5** | LIM runs **beside** IKI GEX toolset; does not supersede | [x] Accept · [ ] Override: |
 | **OD-LIM6** | One merged Heatmap Templates amendment (SVP **prose** + `quadrant` + `lim` **only**; **no** `session-volume` enum — E14); land at LIM6 | [x] Accept · [ ] Override: |
-| **OD-LIM7** | No quadrant cell names in v1 | [x] Accept · [ ] Override: |
+| **OD-LIM7** | No quadrant cell names in v1 | [ ] Accept · [x] **CLOSED / reversed 2026-09-02.** Book-terms ship (Weight below/above · packed/loose). MSC outcome names stay off. Recorded on this token. Spec v0.4.4 LIM36 · E23. |
 | **OD-LIM8** | Y floors ship **0/100** (E9). Later tape sitting may retune **as config** (§16), never a compute packet | [x] Accept · [ ] Override: |
 | **OD-LIM9** | Live parent **by canonical filename:** `Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md` (rev **v0.2.3**) **or** `…-v0_3.md`. There is no `v0_2_1` file. LIM0-1 named **`…-v0_2.md`** | [x] Accept · [ ] Override: |
 | **OD-LIM10** | Comfort readout: **`magF` beside the proximity chip** (Juliet default if silent). No new geometry, no cell name, Compact unchanged. Echo + Tango dispose | [x] Accept · [ ] Override: |

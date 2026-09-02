@@ -1,9 +1,20 @@
-# FatTail Labs — Heatmap LIM Template — Specification v0.4.3
+# FatTail Labs — Heatmap LIM Template — Specification v0.4.4
 
-**Status:** **SUPERSEDED** by v0.4.4. Keep on disk. Do not execute against this file.
+**Status:** **BUILD AUTHORITY** with LIM7. Surface-fit and legibility packet (S1–S8). Compute geometry **unchanged** since v0.4; chrome and plane law change here (LIM24, LIM27, LIM31, LIM36, §7.6).
 **Date:** 2026-09-02
 **Repo:** Fattail-Labs · **Scope:** one Options Lab Heatmap template, client-side only.
 **Sibling:** `FatTail-Labs-Heatmap-Strike-Turnover-Spec-v1_0.md` — independent, never fused.
+**Supersedes:** v0.4.3.
+
+**v0.4.4 surface law (E18–E24)** — Coach, live surface 2026-09-02. Spec first, then build.
+
+- **E18** Ring deleted (LIM24). `limRingRadius` gone. Proximity lives in the numeric chip.
+- **E19** Disc radius raised (`LIM_DISC_R_PT`) so the mark is legible on a dark cell.
+- **E20** Responsive fit (§7.6). No `minHeight: min(w,h)`. Quadrant and companion GEX share the panel, both fully visible.
+- **E21** No member-facing density control (LIM31). Density is breakpoint behaviour. Compact-as-mode is a spec fault, not Charlie's.
+- **E22** Four cells outlined; crosshairs and ticks raised in contrast; tick labels in gutters outside the plot (LIM23).
+- **E23** Cell labels in the **book's** terms (LIM36 reversed). MSC outcome names stay off. **OD-LIM7 CLOSED**.
+- **E24** Appendix B strings stay verbatim. Line 3 visible without interaction; lines 1, 2, 4 behind an info affordance beside the title (LIM27).
 
 **v0.4.3 errata (E15–E17)** — three formula defects surfaced by Hotel's eight hand-computed
 goldens (LIM0-2) before any code existed. **All three are authoring errors in this document.**
@@ -23,7 +34,7 @@ Full index of E1–E17 in **Appendix C**.
 - **E8** `yUnclamped` **removed**. It is dead by construction, not by parameterisation — see below.
 - **E9** Y floors ship at `0`/`100`, so the labelled axis is the achievable axis (**OD-LIM8**).
 - **E10** Canonical config key set fixed in **Appendix A**. `LIM_CONF_*` is not a name in this system.
-- **E11** Compact surface **keeps the proximity ring** (LIM31).
+- **E11** Compact surface **keeps the proximity ring** (LIM31). **SUPERSEDED by E18 / E21** — there is no ring, and no Compact mode.
 - **E12** §2 corrected — `AGENTS.md:26` **does** gate this. (Grok JR8; I was wrong.)
 - **E13** Trail resets on session open **and on expiration or symbol change** (LIM21).
 - **E14** Registry ships `lim` **only** — no switcher entry for an unbuilt mode.
@@ -355,22 +366,32 @@ trail already shows drift honestly.
 
 ### 7.3 The plane
 
-**LIM23.** Crosshairs at `x = 0`, `y = 50`.
+**LIM23.** Crosshairs at `x = 0`, `y = 50`. Four cells are **outlined** (1px borders on the
+boundaries; optional subtle alternating fills) so the plane reads as four regions, not an empty
+field with a dot in it. Crosshairs and the `−100` / `+100` / `0` / `100` tick labels are the
+reading and must be the **highest-contrast furniture** on the plane, not the faintest. Tick
+labels sit in a **gutter outside the plot** — they must not print on top of each other or on the
+plot. **(E22.)**
 
 ```
 dotX = ((x + 100) / 200) × W
 dotY = ((100 − y) / 100) × H
 ```
 
-**LIM24 — shelf life is a ring and a chip, never opacity.**
+`W` and `H` are the **plot** box, not the gutters.
 
-The dot renders at **full opacity always**. `crossingProximity` is shown as a ring whose radius
-scales with `1 − crossingProximity`, plus a numeric chip.
+**LIM24 — shelf life is a chip, never opacity, never a ring. (E18 · E19)**
 
-> **E3.** Fading the mark as a crossing nears dims the object exactly when a member should look at
-> it, and it fails in bright rooms, on low-contrast themes and for low-vision readers. Opacity is
-> the trail's channel (LIM21) and is not reused. It also contradicted LIM26, where an empty state
-> sits at full confidence in the centre.
+The dot renders at **full opacity always**. `crossingProximity` is shown as a **numeric chip**.
+The ring is **deleted**. `limRingRadius` does not exist. Proximity does **not** move `x` or `y`
+(LIM17 · D15); the chip is why D15 can keep that law.
+
+Disc radius `LIM_DISC_R_PT` is large enough to read against a dark cell at narrow widths without
+dominating a cell. Echo: **9**.
+
+> **E3** still holds: do not fade the mark. **E18** retires the ring. An uncapped
+> `minR + (1 − p) × (0.32 × minWH)` circle detached from the disc and read as a random arc
+> (~670px on a 1050px plane at proximity 0). Coach: remove it.
 
 **LIM25 — colour is identity, not valence.** One blue with an edge glow. Horizontal position
 already states lean, so colour was redundant; red/green asserts good/bad before anything is read
@@ -382,10 +403,36 @@ real one.)*
 
 **LIM27 — chrome** states the expiration, wing count, `crossingCount`, and **four** standing lines.
 Verbatim strings in **Appendix B**; they are contractual and Tango's packet quotes them from there.
+**Placement (E24):** line **3** (OI as-of) is **visible without interaction** — it is the one that
+actively misleads on a 0DTE session. Lines **1, 2, 4** sit behind an **info affordance beside the
+title**, reachable in one interaction. The four lines are not deleted. The heatmap header pattern
+is not redesigned (S8).
 
-**LIM36 — the quadrant ships with labelled axes and no cell names.** *Pin*, *Air-Pocket*,
-*Downside Acceleration* are outcome claims; *muddy / slippery* are held pending §15.3. The axes are
-labelled and the position is the reading. Names are added after the tape sitting, or not at all.
+**LIM36 — cells are labelled in the book's terms. (E23) OD-LIM7 CLOSED.**
+
+Large, centred labels. They describe **what the book is**, not what price will do:
+
+| Cell | Label |
+|------|--------|
+| upper-left | `Weight below · packed` |
+| upper-right | `Weight above · packed` |
+| lower-left | `Weight below · loose` |
+| lower-right | `Weight above · loose` |
+
+X at the plane edge: `← mass sits below spot | mass sits above spot →`  
+Y top: `positive, concentrated, close to spot`  
+Y bottom: `negative or thin, dispersed, far`
+
+**Not shipped:** MSC's *Pin / Mean Reversion*, *False Breakout Risk*, *Downside Acceleration*,
+*Air-Pocket Expansion*. Those are predictions about price. LIM1 and caveat 2 state that whether
+this book resists or accelerates price is **unmeasured**. Printing those four in the largest type
+on the surface would assert exactly what this spec says has not been established.
+
+Coach disposed **book-terms now**. Hotel's tape sitting (OD-LIM3) may later earn outcome names
+with evidence; that is a later revision, not a silent overlay.
+
+AT-LIM23 keeps every previously banned word **and** greps the MSC outcome names so they cannot
+land by accident. Do not drop words from the grep.
 
 ### 7.4 The spot-line link
 
@@ -405,19 +452,33 @@ while it is rare.
 **LIM30.** Behind `LIM_SHOW_ANNOTATIONS`: a hairline at `spot + centrePts` (the centre of gravity —
 the honest link to the X position) and interval ticks at each crossing's `lo` and `hi`.
 
-**LIM31 — density budget.** Default: spot glow only. Never spot glow **and** centre-of-gravity
-**and** crossing ticks at once by default.
+**LIM31 — density is breakpoint behaviour, never a control. (E21)**
 
-**Compact surface: dot, proximity ring, expiration, wing count, chrome lines 1 and 3.** No trail,
-no annotations, no numeric chip, no readout.
+Default annotations: spot glow only. Never spot glow **and** centre-of-gravity **and** crossing
+ticks at once by default.
 
-> **E11.** v0.4.1 dropped the ring from Compact. That is the one element Compact cannot drop.
-> D15 removed the crossing haircut from the dot's position on the argument that shelf life gets its
-> own channel — so a surface showing the dot **without** that channel shows a position whose
-> staleness has been silently deleted, which is exactly the state D15 refused. The ring is
-> geometry and survives at any size; the **chip** is the text, and text is what Compact drops.
+**No member-facing density control.** There is no Comfort / Compact toggle and no `userSet` override.
+A member has no basis for that choice; the panel already knows its size. ResizeObserver width is
+the only input.
+
+At **narrow** width: the proximity **chip** survives; trail and in-plane readout drop. At
+comfortable width: trail may show. The chip is the shelf-life channel (LIM24). AT-LIM24 is
+asserted by **rendering at a width**, not by calling a mode function.
+
+> **E11 SUPERSEDED.** v0.4.2 kept a ring on Compact. E18 deleted the ring. E21 deleted Compact as
+> a mode. The chip is what remains of the channel at any size.
 
 **LIM32 — layering.** The dot carries the one-second read; trail and readout are the study layer.
+
+### 7.6 Responsive fit (E20)
+
+The quadrant plane and the companion GEX profile **share the panel**. Both are fully visible.
+No clipping. No scrolling of the LIM panel to find the other.
+
+Do **not** set `minHeight` to `min(w, h)` — that inflates the box on a wide panel and pushes the
+profile out.
+
+Verify at **1280**, **1440**, and **1920** CSS pixels. One screenshot each, attached to LIM7-G.
 
 ---
 
@@ -502,9 +563,9 @@ Values are MSC's as-built settings where they existed and are defensible, carrie
 | **AT-LIM19** | Symbol absent from the scale map | `valid: false`; no fallback scale |
 | **AT-LIM20** | No midpoint anywhere | no `(lo+hi)/2` in any published field or chrome string |
 | **AT-LIM21** | `crossingProximity` at any value | **dot opacity is unchanged (E3)** |
-| **AT-LIM22** | Chrome | matches Appendix B verbatim, incl. OI as-of date **(E6)** |
-| **AT-LIM23** | Grep of every output string, field name and label | contains none of: *wall, magnet, pin, gravity, intent, hostile, support, resistance, friction, muddy, slippery* **(E4, E7)** |
-| **AT-LIM24** | Compact surface render | dot **and proximity ring** present; chip, trail, annotations absent **(E11)** |
+| **AT-LIM22** | Chrome | all four Appendix B lines **reachable verbatim**; **line 3 visible without interaction**; lines 1, 2, 4 behind the title info affordance **(E6 · E24)** |
+| **AT-LIM23** | Grep of every output string, field name and label | contains none of the v0.4.3 list (*wall, magnet, pin, gravity, intent, hostile, support, resistance, friction, muddy, slippery*) **and** none of the MSC outcome names (*false breakout, downside acceleration, air-pocket, air pocket, mean reversion*). Do not drop words from the grep. Cell labels are the book-terms in LIM36 **(E4, E7, E23)** |
+| **AT-LIM24** | Narrow-width render | proximity **chip** present; trail and in-plane readout absent. Asserted by **rendering at a width**, not by calling a mode function. No ring. No density control **(E18 · E21)** |
 | **AT-LIM25** | Expiration changed, then symbol changed | trail buffer empty on the first frame after each **(E13)** |
 | **AT-LIM26** | Y across the full fixture set, incl. extremes | `0 ≤ nearSpotMix ≤ 100` holds with **no clamp in the code path**; `yUnclamped` absent from the payload **(E8)** |
 | **AT-LIM27** | Registry enumeration | exactly one `ValueModeId` added; no `session-volume` entry **(E14)** |
@@ -615,10 +676,10 @@ a version string that is not a file — is a silent fork of the registry contrac
 | 4 | `LIM_CENTRE_SCALE_PTS` per symbol | **Hotel** |
 | 5 | Does LIM supersede parts of the IKI GEX toolset, or run beside it | **Juliet** |
 | 6 | **Merged Heatmap Templates amendment draft** — SVP auxiliary plane + `layout: "quadrant"` + one `ValueModeId` + registry entry. One PR | **India · Juliet** |
-| 7 | Whether quadrant cell names are ever added, after §15.3 | **Echo · Hotel** |
+| 7 | **CLOSED (OD-LIM7 · E23).** Cell names ship in v0.4.4 as book-terms (LIM36). MSC outcome names stay off until a tape sitting earns them. | **Coach disposed 2026-09-02** |
 | **OD-LIM8** | **Y floors.** v1 ships 0/100 (E9). Does the tape sitting justify reinstating a floor, and at what value? Config change, versioned per §16 — never a code change | **Hotel · Coach** |
 | **OD-LIM9** | **Live parent.** Named by canonical filename, not revision string: `…-Templates-Spec-v0_2.md` (whose header carries rev v0.2.3) or `…-Templates-Spec-v0_3.md`. **There is no `v0_2_1` file** — v0.4.2 §14 said otherwise and was wrong. Blocks §15.6 | **India** |
-| **OD-LIM10** | **`magF` must reach the reader** (caveat 7). Y gives `40` to both a negative close book and an empty one. Options: a `magF` value in the comfort readout · a second, smaller mark on the plane · nothing, and the axis label carries the warning. **Juliet default if silent: `magF` in the comfort readout beside the proximity chip** — one number, no new geometry, no cell name. Compact is unchanged (LIM31) | **Echo · Tango** |
+| **OD-LIM10** | **`magF` must reach the reader** (caveat 7). Y gives `40` to both a negative close book and an empty one. In v0.4.4 `magF` is in the compact numeric header (Lean · Mix · magF · crossings · proximity) with the proximity chip. No density mode. | **Echo · Tango** |
 
 ---
 
@@ -671,7 +732,8 @@ Four standing lines. Tango's packet quotes these; it does not rewrite them.
 
 Plus the state line: expiration, wing count, `crossingCount`.
 
-**Compact** shows lines **1 and 3** only (LIM31).
+Line **3** is visible without interaction. Lines **1, 2, 4** sit behind an info affordance
+beside the title (LIM27 · E24). There is no Compact-mode subset.
 
 `{oiAsOf}` is `LimResult.oiAsOf`. When it is `null`, line 3 renders as
 `Open interest as-of date unavailable. Today's trading is not in it.` — it is never omitted and
@@ -683,7 +745,7 @@ never silently dated to today.
 
 ---
 
-## Appendix C — errata index (E1–E14)
+## Appendix C — errata index (E1–E24)
 
 A hash of this document without this list is not an errata record.
 
@@ -699,7 +761,14 @@ A hash of this document without this list is not an errata record.
 | **E8** | **v0.4.2** | `yUnclamped` removed and the Y clamp removed. Y is a convex combination of `[0,100]` terms, so it cannot leave `[0,100]`; the bound becomes AT-LIM26 and the weight sum becomes AT-LIM17b (LIM38) |
 | **E9** | **v0.4.2** | Y floors ship at `0`/`100` so the labelled axis is the achievable axis. Keys retained; retune is config, not code (LIM39, D17, OD-LIM8) |
 | **E10** | **v0.4.2** | Canonical key set fixed in Appendix A. `LIM_CONF_*` retired; AT-LIM28 enforces |
-| **E11** | **v0.4.2** | Compact surface keeps the proximity ring; it drops the chip, not the channel (LIM31) |
+| **E11** | **v0.4.2** | Compact surface keeps the proximity ring; it drops the chip, not the channel (LIM31). **SUPERSEDED E18 / E21** |
+| **E18** | **v0.4.4** | Ring deleted. `limRingRadius` gone. Proximity is the numeric chip only (LIM24) |
+| **E19** | **v0.4.4** | `LIM_DISC_R_PT` raised so the disc reads on a dark cell without dominating it (LIM24) |
+| **E20** | **v0.4.4** | Responsive fit: no `minHeight: min(w,h)`; quadrant and companion GEX both fully visible (§7.6) |
+| **E21** | **v0.4.4** | No density toggle. Density is ResizeObserver breakpoint behaviour (LIM31). AT-LIM24 is a width render |
+| **E22** | **v0.4.4** | Four cells outlined; crosshairs and ticks high-contrast; tick labels in gutters outside the plot (LIM23) |
+| **E23** | **v0.4.4** | Cell labels in the book's terms. LIM36 reversed. OD-LIM7 closed. MSC outcome names stay banned in AT-LIM23 |
+| **E24** | **v0.4.4** | Appendix B verbatim. Line 3 visible; lines 1, 2, 4 behind title info (LIM27) |
 | **E12** | **v0.4.2** | §2 corrected — `AGENTS.md:26` IKI-only gate applies. Three successive OKs recorded on the GO token before the first edit |
 | **E13** | **v0.4.2** | Trail buffer clears on session open, expiration change and symbol change (LIM21, AT-LIM25) |
 | **E14** | **v0.4.2** | Registry ships `lim` only; no reserved switcher entry for an unbuilt mode (LIM37, AT-LIM27) |
@@ -717,7 +786,8 @@ A hash of this document without this list is not an errata record.
 | v0.4 | 2026-09-01 | DG removed · confidence channel replaces the haircut (D15) · crossings as intervals (D16) · factors published · transition off · config boot-safe |
 | v0.4.1 | 2026-09-01 | Errata pass E1–E7, geometry unchanged. LIM36 no cell names in v1 |
 | v0.4.2 | 2026-09-02 | Second errata pass E8–E14, geometry unchanged. Y clamp and `yUnclamped` removed as dead by construction · floors to 0/100 · canonical key appendix · Compact keeps the ring · IKI gate acknowledged · trail resets on expiration and symbol · registry ships one mode. Appendices A/B/C added |
-| **v0.4.3** | **2026-09-02** | **Third errata pass E15–E17, geometry unchanged.** All three are authoring defects in the formulas, found by Hotel's eight hand-computed goldens before any code existed: `crossingProximity` unit mismatch (dead channel) · `steepness` denominator · `spotBelowNearestCrossing` inside case. AT-LIM29–32 added. OD-LIM10 (`magF` must reach the reader) and caveat 7. OD-LIM9 corrected — there is no `v0_2_1` parent file. **No law created.** |
+| **v0.4.3** | **2026-09-02** | **Third errata pass E15–E17, geometry unchanged.** All three are authoring defects in the formulas, found by Hotel's eight hand-computed goldens before any code existed: `crossingProximity` unit mismatch (dead channel) · `steepness` denominator · `spotBelowNearestCrossing` inside case. AT-LIM29–32 added. OD-LIM10 (`magF` must reach the reader) and caveat 7. OD-LIM9 corrected — there is no `v0_2_1` parent file. **No law created.** **SUPERSEDED by v0.4.4.** |
+| **v0.4.4** | **2026-09-02** | **LIM7 surface fit and legibility (S1–S8).** Compute unchanged. Chrome/plane law: ring gone (E18) · disc larger (E19) · responsive fit (E20) · no density toggle (E21) · cells outlined + tick gutters (E22) · book-term cell labels, OD-LIM7 closed (E23) · Appendix B placement (E24). AT-LIM22 and AT-LIM24 rewritten; AT-LIM23 grep extended, no words dropped. |
 
 ---
 

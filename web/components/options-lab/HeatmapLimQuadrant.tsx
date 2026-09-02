@@ -1,11 +1,10 @@
 "use client";
 
 /**
- * LIM quadrant plane — Spec v0.4.3 §7.3. No LIM math here; LimResult is the source.
+ * LIM quadrant plane — Spec v0.4.4 §7.3 / §7.6. No LIM math here; LimResult is the source.
  */
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import SegmentedControl from "@/components/ui/SegmentedControl";
 import type { LimResult } from "@/lib/options-lab/templates/lim";
 import type { LimTrailGhost } from "@/lib/options-lab/templates/limTrail";
 import type { GexProfilePoint } from "@/lib/options-lab/templates/gex";
@@ -16,19 +15,21 @@ import {
   gexSpotLineTopPct,
 } from "@/lib/options-lab/templates/gex";
 import {
-  LIM_AXIS_X,
-  LIM_AXIS_Y,
+  LIM_AXIS_X_EDGE,
+  LIM_AXIS_Y_BOTTOM,
+  LIM_AXIS_Y_TOP,
+  LIM_CELL_LL,
+  LIM_CELL_LR,
+  LIM_CELL_UL,
+  LIM_CELL_UR,
   LIM_DISC_R_PT,
   LIM_DOT_OPACITY,
-  limChromeLines,
+  limChromeLine3,
   limDotXY,
   limGhostXY,
-  limMagFDisplay,
   limPlanePoint,
   limProximityDisplay,
-  limRingRadius,
-  limStateLine,
-  type LimDensity,
+  limSurfaceFlags,
 } from "@/lib/options-lab/templates/limChrome";
 
 export type HeatmapLimQuadrantProps = {
@@ -40,7 +41,7 @@ export type HeatmapLimQuadrantProps = {
   showAnnotations?: boolean;
 };
 
-const PLANE_MIN = 240;
+const PLANE_MIN = 160;
 
 export default function HeatmapLimQuadrant({
   result,
@@ -50,42 +51,36 @@ export default function HeatmapLimQuadrant({
   spot = null,
   showAnnotations = false,
 }: HeatmapLimQuadrantProps) {
-  const [density, setDensity] = useState<LimDensity>("comfort");
-  const [userSet, setUserSet] = useState(false);
-  const boxRef = useRef<HTMLDivElement | null>(null);
-  const [wh, setWh] = useState({ w: 320, h: 320 });
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const plotRef = useRef<HTMLDivElement | null>(null);
+  const [rootW, setRootW] = useState(640);
+  const [plot, setPlot] = useState({ w: 320, h: 280 });
 
   useEffect(() => {
-    const el = boxRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
+    if (typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver((entries) => {
-      const cr = entries[0]?.contentRect;
-      if (!cr) return;
-      const w = Math.max(PLANE_MIN, cr.width);
-      const h = Math.max(PLANE_MIN, cr.height);
-      setWh({ w, h });
-      if (!userSet && cr.width < 420) setDensity("compact");
-      if (!userSet && cr.width >= 420) setDensity("comfort");
+      for (const e of entries) {
+        const cr = e.contentRect;
+        if (e.target === rootRef.current) {
+          setRootW(cr.width);
+        }
+        if (e.target === plotRef.current) {
+          setPlot({
+            w: Math.max(PLANE_MIN, cr.width),
+            h: Math.max(PLANE_MIN, cr.height),
+          });
+        }
+      }
     });
-    ro.observe(el);
+    if (rootRef.current) ro.observe(rootRef.current);
+    if (plotRef.current) ro.observe(plotRef.current);
     return () => ro.disconnect();
-  }, [userSet]);
+  }, []);
 
-  const comfort = density === "comfort";
+  const flags = limSurfaceFlags(rootW);
   const pt = limPlanePoint(result);
   const proximity = result?.crossingProximity ?? 1;
-  const minWH = Math.min(wh.w, wh.h);
-  const dot = limDotXY(pt.x, pt.y, wh.w, wh.h);
-  const ringR = limRingRadius(proximity, minWH);
-  const lines = limChromeLines(result?.oiAsOf ?? null, density);
-  const state = limStateLine(
-    {
-      expiration: result?.expiration ?? "—",
-      wings: result?.wings ?? 0,
-      crossingCount: result?.crossingCount ?? 0,
-    },
-    density,
-  );
+  const dot = limDotXY(pt.x, pt.y, plot.w, plot.h);
 
   if (errorMessage) {
     return (
@@ -101,178 +96,178 @@ export default function HeatmapLimQuadrant({
 
   return (
     <div
-      ref={boxRef}
-      className="flex min-h-full flex-col text-[13px] text-white/80"
+      ref={rootRef}
+      className="flex h-full min-h-0 flex-col text-[13px] text-white/80"
       data-testid="heatmap-lim-quadrant"
       data-lim-plane
-      data-density={density}
+      data-lim-width={String(Math.round(rootW))}
       style={
         {
           "--lim-identity": "#0a84ff",
           "--lim-identity-glow": "rgba(10, 132, 255, 0.55)",
-          "--lim-identity-ring": "#0a84ff",
-          "--lim-crosshair": "rgba(255, 255, 255, 0.22)",
+          "--lim-crosshair": "rgba(255, 255, 255, 0.62)",
+          "--lim-cell-border": "rgba(255, 255, 255, 0.38)",
+          "--lim-cell-a": "rgba(255, 255, 255, 0.035)",
+          "--lim-cell-b": "rgba(255, 255, 255, 0.07)",
         } as CSSProperties
       }
     >
-      <div className="flex shrink-0 items-center justify-end gap-2 px-3 py-1">
-        <div className="w-56">
-          <SegmentedControl
-            ariaLabel="LIM density"
-            value={density}
-            onChange={(id) => {
-              setUserSet(true);
-              setDensity(id);
-            }}
-            options={[
-              { id: "comfort", label: "Comfort" },
-              { id: "compact", label: "Compact" },
-            ]}
-          />
-        </div>
-      </div>
+      <div className="flex min-h-0 flex-1 flex-row gap-2 px-2 pt-1">
+        <div className="flex min-h-0 min-w-0 flex-[3] flex-col">
+          <div className="flex min-h-0 flex-1">
+            <div className="flex w-[5.5rem] shrink-0 flex-col justify-between py-1 pr-1 text-[9px] leading-snug text-white/70">
+              <span data-testid="lim-axis-y-top">{LIM_AXIS_Y_TOP}</span>
+              <span data-testid="lim-axis-y-bottom">{LIM_AXIS_Y_BOTTOM}</span>
+            </div>
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+              <div
+                ref={plotRef}
+                className="relative min-h-0 w-full flex-1 overflow-hidden"
+                data-testid="lim-plane"
+              >
+                <div
+                  className="absolute inset-0 grid grid-cols-2 grid-rows-2 border"
+                  style={{ borderColor: "var(--lim-cell-border)" }}
+                  data-testid="lim-cells"
+                >
+                  <Cell label={LIM_CELL_UL} fill="a" testid="lim-cell-ul" />
+                  <Cell label={LIM_CELL_UR} fill="b" testid="lim-cell-ur" />
+                  <Cell label={LIM_CELL_LL} fill="b" testid="lim-cell-ll" />
+                  <Cell label={LIM_CELL_LR} fill="a" testid="lim-cell-lr" />
+                </div>
+                <svg
+                  className="pointer-events-none absolute inset-0 h-full w-full"
+                  viewBox={`0 0 ${plot.w} ${plot.h}`}
+                  preserveAspectRatio="none"
+                  aria-hidden
+                >
+                  <line
+                    x1={plot.w / 2}
+                    y1={0}
+                    x2={plot.w / 2}
+                    y2={plot.h}
+                    stroke="var(--lim-crosshair)"
+                    strokeWidth="1.25"
+                    data-testid="lim-crosshair-x"
+                  />
+                  <line
+                    x1={0}
+                    y1={plot.h / 2}
+                    x2={plot.w}
+                    y2={plot.h / 2}
+                    stroke="var(--lim-crosshair)"
+                    strokeWidth="1.25"
+                    data-testid="lim-crosshair-y"
+                  />
+                </svg>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-2 px-2 md:flex-row">
-      <div
-        className="relative mx-auto min-h-[16rem] w-full max-w-[36rem] flex-1 overflow-visible"
-        data-testid="lim-plane"
-        style={{ minHeight: minWH }}
-      >
-        <svg
-          className="absolute inset-0 h-full w-full"
-          viewBox={`0 0 ${wh.w} ${wh.h}`}
-          preserveAspectRatio="none"
-          aria-hidden
-        >
-          <line
-            x1={wh.w / 2}
-            y1={0}
-            x2={wh.w / 2}
-            y2={wh.h}
-            stroke="var(--lim-crosshair)"
-            strokeWidth="1"
-            data-testid="lim-crosshair-x"
-          />
-          <line
-            x1={0}
-            y1={wh.h / 2}
-            x2={wh.w}
-            y2={wh.h / 2}
-            stroke="var(--lim-crosshair)"
-            strokeWidth="1"
-            data-testid="lim-crosshair-y"
-          />
-        </svg>
+                {flags.trail
+                  ? ghosts.map((g, i) => {
+                      const p = limGhostXY(g.xUnclamped, g.y, plot.w, plot.h);
+                      return (
+                        <span
+                          key={`${g.t}-${i}`}
+                          data-testid="lim-ghost"
+                          className="pointer-events-none absolute z-[5] rounded-full"
+                          style={{
+                            left: p.left,
+                            top: p.top,
+                            width: 6,
+                            height: 6,
+                            marginLeft: -3,
+                            marginTop: -3,
+                            background: "var(--lim-identity)",
+                            opacity: g.opacity,
+                          }}
+                        />
+                      );
+                    })
+                  : null}
 
-        {comfort
-          ? ghosts.map((g, i) => {
-              const p = limGhostXY(g.xUnclamped, g.y, wh.w, wh.h);
-              return (
                 <span
-                  key={`${g.t}-${i}`}
-                  data-testid="lim-ghost"
-                  className="pointer-events-none absolute rounded-full"
+                  data-testid="lim-dot"
+                  data-lim-dot-opacity={String(LIM_DOT_OPACITY)}
+                  className="pointer-events-none absolute z-[10] rounded-full"
                   style={{
-                    left: p.left,
-                    top: p.top,
-                    width: 6,
-                    height: 6,
-                    marginLeft: -3,
-                    marginTop: -3,
+                    left: dot.left,
+                    top: dot.top,
+                    width: LIM_DISC_R_PT * 2,
+                    height: LIM_DISC_R_PT * 2,
+                    marginLeft: -LIM_DISC_R_PT,
+                    marginTop: -LIM_DISC_R_PT,
                     background: "var(--lim-identity)",
-                    opacity: g.opacity,
+                    boxShadow: "0 0 12px var(--lim-identity-glow)",
+                    opacity: LIM_DOT_OPACITY,
                   }}
                 />
-              );
-            })
-          : null}
 
-        <span
-          data-testid="lim-ring"
-          data-lim-ring=""
-          className="pointer-events-none absolute rounded-full border"
-          style={{
-            left: dot.left,
-            top: dot.top,
-            width: ringR * 2,
-            height: ringR * 2,
-            marginLeft: -ringR,
-            marginTop: -ringR,
-            borderColor: "var(--lim-identity-ring)",
-            background: "transparent",
-            opacity: 1,
-          }}
-        />
-
-        <span
-          data-testid="lim-dot"
-          data-lim-dot-opacity={String(LIM_DOT_OPACITY)}
-          className="pointer-events-none absolute rounded-full"
-          style={{
-            left: dot.left,
-            top: dot.top,
-            width: LIM_DISC_R_PT * 2,
-            height: LIM_DISC_R_PT * 2,
-            marginLeft: -LIM_DISC_R_PT,
-            marginTop: -LIM_DISC_R_PT,
-            background: "var(--lim-identity)",
-            boxShadow: "0 0 10px var(--lim-identity-glow)",
-            opacity: LIM_DOT_OPACITY,
-          }}
-        />
-
-        {comfort && result ? (
-          <div
-            className="absolute right-2 top-2 flex flex-col items-end gap-1 text-[11px] tabular-nums"
-            data-testid="lim-comfort-readout"
-          >
-            <span data-testid="lim-chip-proximity" className="rounded px-1.5 py-0.5 bg-black/40">
-              {limProximityDisplay(proximity)}
-            </span>
-            <span data-testid="lim-readout-magf" className="rounded px-1.5 py-0.5 bg-black/40">
-              magF {limMagFDisplay(result?.magF ?? 0)}
-            </span>
+                <span
+                  data-testid="lim-chip-proximity"
+                  className="absolute right-2 top-2 z-[11] rounded px-1.5 py-0.5 text-[11px] tabular-nums bg-black/55 text-white/90"
+                >
+                  {limProximityDisplay(proximity)}
+                </span>
+              </div>
+              <div className="flex shrink-0 items-center justify-between px-1 pt-1 text-[11px] tabular-nums text-white/80">
+                <span data-testid="lim-tick-x-lo">−100</span>
+                <span data-testid="lim-tick-x-0">0</span>
+                <span data-testid="lim-tick-x-hi">+100</span>
+              </div>
+              <p
+                className="shrink-0 px-1 pb-1 text-center text-[10px] leading-snug text-white/70"
+                data-testid="lim-axis-x-edge"
+              >
+                {LIM_AXIS_X_EDGE}
+              </p>
+            </div>
+            <div className="flex w-7 shrink-0 flex-col justify-between py-1 pl-1 text-right text-[11px] tabular-nums text-white/80">
+              <span data-testid="lim-tick-y-hi">100</span>
+              <span data-testid="lim-tick-y-mid">50</span>
+              <span data-testid="lim-tick-y-lo">0</span>
+            </div>
           </div>
+        </div>
+
+        {gexPoints && gexPoints.length > 0 ? (
+          <LimCompanionGex
+            points={gexPoints}
+            spot={spot}
+            result={result}
+            showAnnotations={flags.trail && showAnnotations}
+          />
         ) : null}
-
-        <span className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] text-white/45">
-          {LIM_AXIS_X}
-        </span>
-        <span className="absolute left-1 top-1/2 -translate-y-1/2 -rotate-90 text-[10px] text-white/45">
-          {LIM_AXIS_Y}
-        </span>
-        <span className="absolute bottom-1 left-2 text-[10px] tabular-nums text-white/35">
-          −100
-        </span>
-        <span className="absolute bottom-1 right-2 text-[10px] tabular-nums text-white/35">
-          +100
-        </span>
-        <span className="absolute right-1 top-2 text-[10px] tabular-nums text-white/35">
-          100
-        </span>
-        <span className="absolute bottom-6 right-1 text-[10px] tabular-nums text-white/35">
-          0
-        </span>
       </div>
 
-      {gexPoints && gexPoints.length > 0 ? (
-        <LimCompanionGex
-          points={gexPoints}
-          spot={spot}
-          result={result}
-          showAnnotations={comfort && showAnnotations}
-        />
-      ) : null}
-      </div>
+      <p
+        className="shrink-0 px-3 py-1.5 text-[11px] leading-snug text-white/70"
+        data-testid="lim-chrome-line-3"
+      >
+        {limChromeLine3(result?.oiAsOf ?? null)}
+      </p>
+    </div>
+  );
+}
 
-      <div className="shrink-0 space-y-0.5 px-3 py-2 text-[11px] leading-snug text-white/55">
-        <p data-testid="lim-state-line">{state}</p>
-        {lines.map((line) => (
-          <p key={line} data-testid="lim-chrome-line">
-            {line}
-          </p>
-        ))}
-      </div>
+function Cell({
+  label,
+  fill,
+  testid,
+}: {
+  label: string;
+  fill: "a" | "b";
+  testid: string;
+}) {
+  return (
+    <div
+      data-testid={testid}
+      className="flex items-center justify-center border-[var(--lim-cell-border)] px-1 text-center text-[12px] font-medium leading-tight text-white/32 sm:text-[13px]"
+      style={{
+        background: fill === "a" ? "var(--lim-cell-a)" : "var(--lim-cell-b)",
+        borderRightWidth: testid.endsWith("ul") || testid.endsWith("ll") ? 1 : 0,
+        borderBottomWidth: testid.endsWith("ul") || testid.endsWith("ur") ? 1 : 0,
+      }}
+    >
+      {label}
     </div>
   );
 }
@@ -302,7 +297,7 @@ function LimCompanionGex({
 
   return (
     <div
-      className="relative min-h-[12rem] w-full max-w-[18rem] flex-1 overflow-hidden"
+      className="relative flex min-h-0 min-w-[10rem] flex-1 flex-col overflow-hidden"
       data-testid="lim-companion-gex"
       data-lim-spot-line={glow ? "1" : undefined}
     >
@@ -313,13 +308,13 @@ function LimCompanionGex({
         return (
           <div
             key={pt.strike}
-            className="flex h-5 items-center px-1"
+            className="flex min-h-0 flex-1 items-center px-1"
             data-lim-bar=""
           >
-            <span className="w-12 shrink-0 text-right text-[10px] tabular-nums text-white/40">
+            <span className="w-10 shrink-0 text-right text-[9px] tabular-nums text-white/50">
               {pt.label}
             </span>
-            <div className="relative mx-1 h-3 flex-1 bg-white/[0.04]">
+            <div className="relative mx-1 h-[70%] min-h-[2px] flex-1 bg-white/[0.04]">
               <div className="absolute inset-y-0 left-1/2 w-px bg-white/20" />
               {mag > 0 ? (
                 <div
@@ -338,7 +333,7 @@ function LimCompanionGex({
       {spotTop != null && glow ? (
         <div
           data-testid="lim-spot-line"
-          className="pointer-events-none absolute left-12 right-1 h-px"
+          className="pointer-events-none absolute left-10 right-1 h-px"
           style={{
             top: `${spotTop}%`,
             background: glow.color,
@@ -349,7 +344,7 @@ function LimCompanionGex({
       {ann.cog != null && cogTop != null ? (
         <div
           data-testid="lim-cog-hairline"
-          className="pointer-events-none absolute left-12 right-1 h-px bg-white/35"
+          className="pointer-events-none absolute left-10 right-1 h-px bg-white/35"
           style={{ top: `${cogTop}%` }}
         />
       ) : null}
@@ -361,7 +356,7 @@ function LimCompanionGex({
             key={`tick-${k}`}
             data-testid="lim-crossing-tick"
             data-lo-hi={String(k)}
-            className="pointer-events-none absolute left-12 right-1 h-px bg-white/20"
+            className="pointer-events-none absolute left-10 right-1 h-px bg-white/20"
             style={{ top: `${top}%` }}
           />
         );
