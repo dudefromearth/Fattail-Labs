@@ -87,3 +87,9 @@ Stamp **one**:
 **Date:** 2026-09-02  
 
 Delta does **not** treat chat “go” as this stamp — **this file is the stamp.**
+
+---
+
+## v1 accepted symptoms (not a code change)
+
+**G1 session reset (LIM2 · LIM21 / E13):** fires at **UTC midnight = 20:00 ET (EDT) / 19:00 (EST)**, not at the session open, and the moment shifts across DST. Correct through RTH. Accepted for v1 — a timezone dependency in a pure client module costs more than the symptom. Revisit only if Labs shows an overnight session, where the reset would land mid-session. Carry to the LIM6 member guide.

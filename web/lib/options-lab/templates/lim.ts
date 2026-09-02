@@ -5,9 +5,10 @@
  * Proximity never moves x/y. Crossings are intervals; no midpoint.
  */
 
-import type { ChainContext } from "./types";
+import type { ChainContext, HeatmapTemplate } from "./types";
 import { buildGexProfile } from "./gex";
 import { loadLimConfig, type LimConfig } from "./limConfig";
+import { LIM_MODE_LABEL, LIM_PICKER_LABEL } from "./limChrome";
 
 export type StrikeNet = {
   strike: number;
@@ -268,3 +269,17 @@ export function computeLim(
     config,
   );
 }
+
+/** Registry descriptor. Stubs only — the quadrant does not use the grid. */
+export const limTemplate: HeatmapTemplate = {
+  id: "lim",
+  label: LIM_PICKER_LABEL,
+  description: "Window GEX lean and near-spot mix on a quadrant",
+  layout: "quadrant",
+  valueModes: [{ id: "lim", label: LIM_MODE_LABEL }],
+  defaultValueMode: "lim",
+  resolveColumns: () => [],
+  resolveRows: () => [],
+  computeCell: () => ({ display: null, value: null, valid: false }),
+  assignColors: () => ({ stickyScale: 1 }),
+};

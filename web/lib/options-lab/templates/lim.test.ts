@@ -393,8 +393,12 @@ function hotelEnv(over: LimEnv = {}): LimEnv {
     "C2 sym-fly still registered",
   );
   assert(
-    !HEATMAP_TEMPLATES.some((t) => t.id === "lim"),
-    "LIM1 does not register (LIM3)",
+    HEATMAP_TEMPLATES.some((t) => t.id === "lim"),
+    "LIM3 registry has lim",
+  );
+  assert(
+    !HEATMAP_TEMPLATES.some((t) => t.id === "session-volume"),
+    "AT-LIM27 no session-volume",
   );
 }
 

@@ -117,6 +117,14 @@ import {
 import { saveAnalyzerTrade } from "@/lib/options-lab/analyzerTrade";
 import HeatmapControlsColumn from "@/components/options-lab/HeatmapControlsColumn";
 import { HeatmapHoverTip } from "@/components/options-lab/HeatmapHoverTip";
+import HeatmapLimQuadrant from "@/components/options-lab/HeatmapLimQuadrant";
+import { computeLim, type LimResult } from "@/lib/options-lab/templates/lim";
+import { LimConfigError, loadLimConfig } from "@/lib/options-lab/templates/limConfig";
+import {
+  createLimTrail,
+  type LimTrail,
+  type LimTrailGhost,
+} from "@/lib/options-lab/templates/limTrail";
 import {
   flyColumnConvexityScores,
   heatmapGexTip,
@@ -265,6 +273,8 @@ export default function HeatmapChainPanel() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [ladderDte, setLadderDte] = useState<number | null>(null);
   const [templateId, setTemplateId] = useState(DEFAULT_HEATMAP_TEMPLATE_ID);
+  const limTrailRef = useRef<LimTrail | null>(null);
+  const [limGhosts, setLimGhosts] = useState<LimTrailGhost[]>([]);
   const [valueMode, setValueMode] = useState<ValueModeId>(
     () => getTemplate(DEFAULT_HEATMAP_TEMPLATE_ID).defaultValueMode,
   );
@@ -969,6 +979,55 @@ export default function HeatmapChainPanel() {
     return { points, scale };
   }, [tpl.layout, tpl.id, chainCtx, valueMode]);
 
+  const limPack = useMemo(() => {
+    if (tpl.layout !== "quadrant") {
+      return { result: null as LimResult | null, error: null as string | null };
+    }
+    try {
+      return {
+        result: computeLim(chainCtx, { expiration, oiAsOf: null }),
+        error: null,
+      };
+    } catch (e) {
+      const msg =
+        e instanceof LimConfigError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : "LIM failed";
+      return { result: null, error: msg };
+    }
+  }, [tpl.layout, chainCtx, expiration]);
+
+  useEffect(() => {
+    if (tpl.layout !== "quadrant" || !limPack.result) {
+      setLimGhosts([]);
+      return;
+    }
+    if (!limTrailRef.current) {
+      try {
+        const cfg = loadLimConfig();
+        limTrailRef.current = createLimTrail({
+          intervalS: cfg.LIM_TRAIL_INTERVAL_S,
+          windowMin: cfg.LIM_TRAIL_WINDOW_MIN,
+          now: () => Date.now(),
+        });
+      } catch {
+        return;
+      }
+    }
+    setLimGhosts(
+      limTrailRef.current.observe(
+        { xUnclamped: limPack.result.xUnclamped, y: limPack.result.y },
+        {
+          symbol: chainCtx.symbol,
+          expiration: expiration || "",
+          asOf: chainCtx.asOf,
+        },
+      ),
+    );
+  }, [tpl.layout, limPack.result, chainCtx.symbol, chainCtx.asOf, expiration]);
+
   /** Live spot — ease between bus updates instead of hard jump */
   const smoothSpot = useSmoothNumber(bus.spot, { durationMs: 420 });
 
@@ -1267,7 +1326,9 @@ export default function HeatmapChainPanel() {
             ref={scrollRef}
             className={[
               "min-h-0 flex-1 overflow-auto",
-              tpl.layout === "matrix" || tpl.layout === "profile"
+              tpl.layout === "matrix" ||
+              tpl.layout === "profile" ||
+              tpl.layout === "quadrant"
                 ? "bg-[#0a0a0e]"
                 : "bg-[var(--color-surface)]",
             ].join(" ")}
@@ -1470,6 +1531,12 @@ export default function HeatmapChainPanel() {
                   </div>
                 )}
               </div>
+            ) : tpl.layout === "quadrant" ? (
+              <HeatmapLimQuadrant
+                result={limPack.result}
+                errorMessage={limPack.error}
+                ghosts={limGhosts}
+              />
             ) : isWidthFitTemplate(templateId) &&
               wfIface === "ranking" &&
               rankingStats ? (

@@ -21,9 +21,10 @@ export type ValueModeId =
   | "gex_call"
   | "gex_put"
   | "gex_abs"
-  | "quote";
+  | "quote"
+  | "lim";
 
-export type TemplateLayout = "table" | "matrix" | "profile";
+export type TemplateLayout = "table" | "matrix" | "profile" | "quadrant";
 
 export type ChainContext = {
   symbol: string;

@@ -6,6 +6,7 @@ import { widthFitTemplate } from "./widthFitTemplate";
 import { bwFlyTemplate } from "./bwFly";
 import { verticalTemplate } from "./vertical";
 import { gexTemplate } from "./gex";
+import { limTemplate } from "./lim";
 
 /** Default Heatmap template — Symmetric flies (MSC look). */
 export const DEFAULT_HEATMAP_TEMPLATE_ID = "sym-fly";
@@ -28,6 +29,7 @@ export const HEATMAP_TEMPLATES: HeatmapTemplate[] = [
     assignColors: () => ({ stickyScale: 1 }),
   },
   gexTemplate,
+  limTemplate,
 ];
 
 export function getTemplate(id: string): HeatmapTemplate {
