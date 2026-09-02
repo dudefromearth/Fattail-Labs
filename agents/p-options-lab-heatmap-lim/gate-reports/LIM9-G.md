@@ -3,7 +3,7 @@
 **Gate:** LIM9-G  
 **Date:** 2026-09-02  
 **Spec:** v0.4.7 BUILD AUTHORITY sha1 `2d25e3f99a580b4e29058e720ca7f1424bc9c710`  
-**Commit:** `31d41f3`  
+**Commit:** `63d6812`  
 **Delta · Echo · Tango**
 
 ## Verdict: **PASS**
