@@ -3,7 +3,7 @@
 **Gate:** LIM7-G  
 **Date:** 2026-09-02  
 **Spec:** v0.4.4 BUILD AUTHORITY sha1 `b061e7d7de55b546749467f8efd9ffba263de0d4`  
-**Commit:** `0c389e4`  
+**Commit:** `4debb75`  
 **Delta · Echo · Tango**
 
 ## Verdict: **PASS**
