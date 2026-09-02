@@ -12,8 +12,6 @@ import type { GexProfilePoint } from "@/lib/options-lab/templates/gex";
 import {
   buildGexProfile,
   gexAnnotationMarks,
-  gexProfileScale,
-  gexSidePeaks,
   gexSpotGlowCss,
   gexSpotLineTopPct,
 } from "@/lib/options-lab/templates/gex";
@@ -325,9 +323,20 @@ function LimCompanionGex({
     if (chainCtx) return buildGexProfile(chainCtx, gexView);
     return points as GexProfilePoint[];
   }, [chainCtx, gexView, points]);
-  const combined = gexView === "gex_all";
-  const scale = gexProfileScale(viewPoints, combined ? "gex_all" : gexView) || 1;
-  const peaks = combined ? gexSidePeaks(viewPoints) : null;
+  /** Net and Call/Put: put left, call right. One peak = longest bar in the profile. */
+  const splitSides = gexView === "gex_net" || gexView === "gex_all";
+  const scale = useMemo(() => {
+    let peak = 0;
+    for (const p of viewPoints) {
+      if (splitSides) {
+        if (p.call != null) peak = Math.max(peak, Math.abs(p.call));
+        if (p.put != null) peak = Math.max(peak, Math.abs(p.put));
+      } else if (p.value != null) {
+        peak = Math.max(peak, Math.abs(p.value));
+      }
+    }
+    return peak || 1;
+  }, [viewPoints, splitSides]);
   const strikes = viewPoints.map((p) => p.strike);
   const glow = gexSpotGlowCss({ spotGlow: true });
   const spotTop = gexSpotLineTopPct(spot, strikes);
@@ -363,43 +372,31 @@ function LimCompanionGex({
       </label>
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
       {viewPoints.map((pt) => {
-        const above = spot != null && pt.strike > spot;
-        const below = spot != null && pt.strike < spot;
-        const strikeColor = above
-          ? LIM_AXIS_GREEN
-          : below
-            ? LIM_AXIS_RED
-            : "rgba(255,255,255,0.35)";
         const mag = pt.value != null ? Math.abs(pt.value) : 0;
         const pct = `${((mag / scale) * 50).toFixed(2)}%`;
-        const neg = (pt.value ?? 0) < 0;
         const callMag = pt.call != null ? Math.abs(pt.call) : 0;
         const putMag = pt.put != null ? Math.abs(pt.put) : 0;
-        const callPct =
-          peaks && peaks.call > 0
-            ? `${((callMag / peaks.call) * 50).toFixed(2)}%`
-            : "0%";
-        const putPct =
-          peaks && peaks.put > 0
-            ? `${((putMag / peaks.put) * 50).toFixed(2)}%`
-            : "0%";
+        const callPct = `${((callMag / scale) * 50).toFixed(2)}%`;
+        const putPct = `${((putMag / scale) * 50).toFixed(2)}%`;
         return (
           <div
             key={pt.strike}
             className="flex min-h-0 flex-1 items-center px-1"
             data-lim-bar=""
-            data-lim-bar-side={above ? "above" : below ? "below" : "spot"}
+            data-lim-bar-put={putMag > 0 ? "1" : undefined}
+            data-lim-bar-call={callMag > 0 ? "1" : undefined}
           >
             <span className="w-14 shrink-0 text-right text-[12px] tabular-nums text-white/70">
               {pt.label}
             </span>
             <div className="relative mx-1 h-[70%] min-h-[2px] flex-1 bg-white/[0.04]">
               <div className="absolute inset-y-0 left-1/2 w-px bg-white/20" />
-              {combined ? (
+              {splitSides ? (
                 <>
                   {putMag > 0 ? (
                     <div
                       className="absolute top-0 bottom-0"
+                      data-lim-put-bar=""
                       style={{
                         right: "50%",
                         width: putPct,
@@ -410,6 +407,7 @@ function LimCompanionGex({
                   {callMag > 0 ? (
                     <div
                       className="absolute top-0 bottom-0"
+                      data-lim-call-bar=""
                       style={{
                         left: "50%",
                         width: callPct,
@@ -421,11 +419,11 @@ function LimCompanionGex({
               ) : mag > 0 ? (
                 <div
                   className="absolute top-0 bottom-0"
-                  style={
-                    gexView === "gex_abs" || !neg
-                      ? { left: "50%", width: pct, background: strikeColor }
-                      : { right: "50%", width: pct, background: strikeColor }
-                  }
+                  style={{
+                    left: "50%",
+                    width: pct,
+                    background: "rgba(255,255,255,0.45)",
+                  }}
                 />
               ) : null}
             </div>

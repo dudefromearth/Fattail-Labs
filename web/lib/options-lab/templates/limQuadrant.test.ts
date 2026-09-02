@@ -304,7 +304,8 @@ assert(panel.includes("overflow-hidden"), "E20 quadrant overflow hidden");
   const gexSrc = readFileSync(join(here, "gex.ts"), "utf8");
   assert(!gexSrc.includes("#34c759"), "S6 no green in shared gex.ts");
   assert(!gexSrc.includes("#ff3b30"), "S6 no red in shared gex.ts");
-  assert(quad.includes("data-lim-bar-side"), "S6 companion colours bars");
+  assert(quad.includes("data-lim-put-bar"), "net/call-put puts on the left");
+  assert(quad.includes("data-lim-call-bar"), "net/call-put calls on the right");
   assert(quad.includes("lim-gex-view"), "companion GEX view menu");
 }
 
