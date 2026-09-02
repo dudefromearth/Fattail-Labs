@@ -34,7 +34,9 @@ import {
   limMagFDisplay,
   limNumericHeader,
   limPlanePoint,
+  limNoScaleMessage,
   limProximityDisplay,
+  limRefusalMessage,
   limStateLine,
   limSurfaceFlags,
 } from "./limChrome";
@@ -111,13 +113,46 @@ const panel = readFileSync(
   assert(empty.x === 0 && empty.y === 50, "empty centre");
   const neverH = limPlanePoint(null);
   assert(neverH.x === 0 && neverH.y === 50, "AT-LIM10 never-hydrated centre");
-  const off = run(F2, "I:NDX");
-  assert(off.valid === false, "valid:false");
-  const offPt = limPlanePoint(off);
-  assert(offPt.x === 0 && offPt.y === 50, "AT-LIM10 valid:false renders centre");
   const pos = limDotXY(0, 50, 200, 200);
   assert(pos.left === 100 && pos.top === 100, "AT-LIM10 dead centre pixels");
   assert(LIM_DOT_OPACITY === 1, "AT-LIM10 full opacity constant");
+}
+
+// AT-LIM33 — valid:false is a named refusal, not a live centre reading (D1b)
+{
+  const off = run(F2, "I:NDX");
+  assert(off.valid === false, "AT-LIM19/33 valid false");
+  assert(off.invalidReason === "no-scale", "AT-LIM33 no-scale reason");
+  const msg = limRefusalMessage(off);
+  assert(
+    msg === "No centre scale configured for I:NDX.",
+    "AT-LIM33 names the symbol",
+  );
+  assert(msg === limNoScaleMessage("I:NDX"), "AT-LIM33 C2-shaped named hole");
+  const html = renderToStaticMarkup(
+    createElement(HeatmapLimQuadrant, {
+      result: off,
+      errorMessage: null,
+      ghosts: [{ t: 1, xUnclamped: 0, y: 50, opacity: 0.4 }],
+    }),
+  );
+  assert(!html.includes("data-testid=\"lim-dot\""), "AT-LIM33 no live disc");
+  assert(!html.includes("data-testid=\"lim-chip-proximity\""), "AT-LIM33 no live chip");
+  assert(!html.includes("data-testid=\"lim-ghost\""), "AT-LIM33 no trail");
+  assert(html.includes("lim-scale-refusal"), "AT-LIM33 refusal on the plane");
+  assert(html.includes("No centre scale configured for I:NDX."), "AT-LIM33 copy");
+  assert(!html.includes("Lean "), "AT-LIM33 no live Lean on the plane");
+  assert(panel.includes("limPack.result?.valid"), "AT-LIM33 header gated on valid");
+  assert(panel.includes("lim-header-refusal"), "AT-LIM33 header names refusal");
+  const liveHtml = renderToStaticMarkup(
+    createElement(HeatmapLimQuadrant, {
+      result: run(F2),
+      errorMessage: null,
+      ghosts: [],
+    }),
+  );
+  assert(liveHtml.includes("data-testid=\"lim-dot\""), "AT-LIM33 live still paints a disc");
+  assert(!liveHtml.includes("lim-scale-refusal"), "AT-LIM33 live has no refusal");
 }
 
 // AT-LIM21 — proximity never the dot; no ring

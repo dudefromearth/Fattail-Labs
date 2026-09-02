@@ -30,6 +30,7 @@ import {
   limGhostXY,
   limPlanePoint,
   limProximityDisplay,
+  limRefusalMessage,
   limSurfaceFlags,
 } from "@/lib/options-lab/templates/limChrome";
 
@@ -79,6 +80,8 @@ export default function HeatmapLimQuadrant({
   }, []);
 
   const flags = limSurfaceFlags(rootW);
+  const live = result != null && result.valid;
+  const refusal = result && !result.valid ? limRefusalMessage(result) : null;
   const pt = limPlanePoint(result);
   const proximity = result?.crossingProximity ?? 1;
   const discR = limDiscRadiusPx(plot.w, plot.h);
@@ -164,7 +167,7 @@ export default function HeatmapLimQuadrant({
                   />
                 </svg>
 
-                {flags.trail
+                {live && flags.trail
                   ? ghosts.map((g, i) => {
                       const p = limGhostXY(g.xUnclamped, g.y, plot.w, plot.h);
                       return (
@@ -187,29 +190,42 @@ export default function HeatmapLimQuadrant({
                     })
                   : null}
 
-                <span
-                  data-testid="lim-dot"
-                  data-lim-dot-opacity={String(LIM_DOT_OPACITY)}
-                  className="pointer-events-none absolute z-[10] rounded-full"
-                  style={{
-                    left: dot.left,
-                    top: dot.top,
-                    width: discD,
-                    height: discD,
-                    marginLeft: -discR,
-                    marginTop: -discR,
-                    background: "var(--lim-identity)",
-                    boxShadow: "0 0 14px var(--lim-identity-glow)",
-                    opacity: LIM_DOT_OPACITY,
-                  }}
-                />
+                {live ? (
+                  <span
+                    data-testid="lim-dot"
+                    data-lim-dot-opacity={String(LIM_DOT_OPACITY)}
+                    className="pointer-events-none absolute z-[10] rounded-full"
+                    style={{
+                      left: dot.left,
+                      top: dot.top,
+                      width: discD,
+                      height: discD,
+                      marginLeft: -discR,
+                      marginTop: -discR,
+                      background: "var(--lim-identity)",
+                      boxShadow: "0 0 14px var(--lim-identity-glow)",
+                      opacity: LIM_DOT_OPACITY,
+                    }}
+                  />
+                ) : null}
 
-                <span
-                  data-testid="lim-chip-proximity"
-                  className="absolute right-2 top-2 z-[11] rounded px-1.5 py-0.5 text-[11px] tabular-nums bg-black/55 text-white/90"
-                >
-                  {limProximityDisplay(proximity)}
-                </span>
+                {live ? (
+                  <span
+                    data-testid="lim-chip-proximity"
+                    className="absolute right-2 top-2 z-[11] rounded px-1.5 py-0.5 text-[11px] tabular-nums bg-black/55 text-white/90"
+                  >
+                    {limProximityDisplay(proximity)}
+                  </span>
+                ) : null}
+
+                {refusal ? (
+                  <p
+                    className="absolute inset-0 z-[12] flex items-center justify-center px-6 text-center text-[13px] leading-snug text-white/85"
+                    data-testid="lim-scale-refusal"
+                  >
+                    {refusal}
+                  </p>
+                ) : null}
               </div>
               <div className="flex shrink-0 items-center justify-between px-1 pt-1 text-[11px] tabular-nums text-white/80">
                 <span data-testid="lim-tick-x-lo">−100</span>

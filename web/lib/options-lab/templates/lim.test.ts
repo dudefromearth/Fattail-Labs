@@ -285,6 +285,7 @@ const F9 = [
   const r = run(F1, "I:NDX");
   assert(r.valid === false, "AT-LIM19 valid false");
   assert(r.x === 0 && r.xUnclamped === 0, "AT-LIM19 no fallback scale (would be x=10)");
+  assert(r.invalidReason === "no-scale", "AT-LIM19 no-scale reason");
 }
 
 // --- AT-LIM17 / 17b — loadLimConfig ---

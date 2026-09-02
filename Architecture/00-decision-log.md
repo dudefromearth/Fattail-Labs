@@ -4,6 +4,29 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-02 — DL-658 LIM refusal must not look like a reading (E27)
+
+**Decision (Coach LIM8 D1b):** `valid: false` is a **named refusal**, not a live centre reading. Spec **v0.4.6**. AT-LIM33.
+
+**D1a (config, not code):** Heatmap `ChainContext.symbol` is **`SPX`** (`heatmapSession.ts` / `useOptionsLab`). Env `NEXT_PUBLIC_LABS_LIM_CENTRE_SCALE_PTS` is `{"SPX":50}`. Exact key. **No** `I:` prefix normalisation — `SPY` must not become `I:SPY`.
+
+**D1b (the real defect):** `lim.ts` exact lookup missed `I:SPX` vs `SPX` → `valid: false` → `limPlanePoint` `(0, 50)` → Lean printed `0.0` while Mix/magF printed live values. LIM26 parks an *empty* book at centre; it does not authorise painting a **scale miss** as that mark. Surface: no live disc, no live header numbers, chrome `No centre scale configured for <symbol>.`
+
+**Pattern (four of this shape):** a check that cannot fail, or a refusal that looks like an answer.
+
+| # | Instance | What the check missed |
+|---|----------|------------------------|
+| 1 | **E1** | `leanRaw` / `xUnclamped` — clamp tested, unclamped path not |
+| 2 | **E8** | `yUnclamped` dead; a Y clamp that could not fail |
+| 3 | **E15** | `crossingProximity` pegged; AT-LIM7/8 only hit the endpoints |
+| 4 | **E27** | `valid: false` painted as a live `(0, 50)` reading; AT-LIM10/19 tested coordinates, not that the **render** said so |
+
+**Spec sha1 (JR7):** `7d4e108986f4aef30bbf2e98c17c8c347185762f`
+
+**Does not:** prefix canonicalisation · S1–S5 of LIM8 · MiniTwo · change computeLim x/y for a scale miss (AT-LIM19 still `x === 0`).
+
+---
+
 ## 2026-09-02 — DL-657 LIM disc scale (D3) and ghost circles (D4)
 
 **Decision (Coach, live after LIM7):** Spec **v0.4.5**. Compute unchanged. Interval **30 s** unchanged.

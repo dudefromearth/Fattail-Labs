@@ -124,6 +124,22 @@ export function limPlanePoint(
   return { x: result.x, y: result.y };
 }
 
+export function limNoScaleMessage(symbol: string): string {
+  return `No centre scale configured for ${symbol}.`;
+}
+
+export function limRefusalMessage(result: {
+  valid: boolean;
+  symbol: string;
+  invalidReason?: "no-scale" | "no-spot" | null;
+}): string | null {
+  if (result.valid) return null;
+  if (result.invalidReason === "no-spot") {
+    return `No spot for ${result.symbol}.`;
+  }
+  return limNoScaleMessage(result.symbol);
+}
+
 /**
  * AT-LIM24 — width in, not a mode. Chip always; trail drops when narrow.
  */

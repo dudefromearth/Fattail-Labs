@@ -1,10 +1,15 @@
-# FatTail Labs — Heatmap LIM Template — Specification v0.4.5
+# FatTail Labs — Heatmap LIM Template — Specification v0.4.6
 
-**Status:** **SUPERSEDED** by v0.4.6. Keep on disk. Do not execute against this file.
+**Status:** **BUILD AUTHORITY** with LIM8 D1b (refusal must not look like a reading).
 **Date:** 2026-09-02
 **Repo:** Fattail-Labs · **Scope:** one Options Lab Heatmap template, client-side only.
 **Sibling:** `FatTail-Labs-Heatmap-Strike-Turnover-Spec-v1_0.md` — independent, never fused.
-**Supersedes:** v0.4.4.
+**Supersedes:** v0.4.5.
+
+**v0.4.6 (E27)** — A `valid: false` result is a **named refusal**, not a live centre reading.
+LIM26 still parks an *empty* book at `(0, 50)`. It does not authorise painting a **scale miss**
+as that same mark. Header must not print Lean / Mix / magF as live. Chrome names the hole:
+`No centre scale configured for <symbol>.` **(AT-LIM33.)**
 
 **v0.4.5 (E25 · E26 withdrawn)** — Coach, live surface after LIM7.
 
@@ -416,6 +421,16 @@ and is the worst pair for colour-vision deficiency. **(D13.)**
 *(MSC's UI defaulted Y to 0 and drew a confident marker at bottom-centre — a wrong state shown as a
 real one.)*
 
+**LIM26 does not cover `valid: false`. (E27)** A missing centre-scale (LIM34) or a missing spot is
+a **refusal**. The surface must not present it as a live reading:
+
+- No identity disc at `(0, 50)` indistinguishable from a real centre book.
+- Header does **not** print Lean / Mix / magF as live numbers.
+- Chrome names the hole: `No centre scale configured for <symbol>.` — same discipline as the C2
+  missing-key message.
+
+Compute may still return `x = 0` (AT-LIM19). The **render** must say so.
+
 **LIM27 — chrome** states the expiration, wing count, `crossingCount`, and **four** standing lines.
 Verbatim strings in **Appendix B**; they are contractual and Tango's packet quotes them from there.
 **Placement (E24):** line **3** (OI as-of) is **visible without interaction** — it is the one that
@@ -590,6 +605,7 @@ Values are MSC's as-built settings where they existed and are defensible, carrie
 | **AT-LIM30** | Crossing that spans a skipped `net == 0` strike | `steepness` uses `(hi − lo)`, not `ctx.strikeStep`; a two-step interval is not reported as twice as steep **(E16)** |
 | **AT-LIM31** | Spot inside a crossing interval | `spotBelowNearestCrossing === false`, `distanceToCrossing === 0` — inside is distinguishable from below **(E17)** |
 | **AT-LIM32** | Two fixtures with equal `nearSpotMix` but `magF = 0` and `magF > 50` | both `magF` values reach the rendered readout; the surface does not present them as the same reading **(OD-LIM10)** |
+| **AT-LIM33** | `valid: false` (symbol off the scale map) | no live disc, no live header Lean/Mix/magF, plane names `No centre scale configured for <symbol>.` A live `valid: true` still paints a disc. **(E27)** |
 
 Characterization suite green before each commit; tests land in the same change.
 
@@ -787,6 +803,7 @@ A hash of this document without this list is not an errata record.
 | **E24** | **v0.4.4** | Appendix B verbatim. Line 3 visible; lines 1, 2, 4 behind title info (LIM27) |
 | **E25** | **v0.4.5** | Disc scales with the plane: ~18–22 px radius at 1440, floor on narrow. E19's 9pt superseded (LIM24 · LIM32) |
 | **E26** | **v0.4.5** | **Withdrawn.** Size taper drafted then refused. LIM21: uniform size, opacity by age. Ghosts are circles matching the disc; 6px squares were the defect |
+| **E27** | **v0.4.6** | `valid: false` must not render as a live centre reading. Named refusal. AT-LIM33. LIM26 inverted |
 | **E12** | **v0.4.2** | §2 corrected — `AGENTS.md:26` IKI-only gate applies. Three successive OKs recorded on the GO token before the first edit |
 | **E13** | **v0.4.2** | Trail buffer clears on session open, expiration change and symbol change (LIM21, AT-LIM25) |
 | **E14** | **v0.4.2** | Registry ships `lim` only; no reserved switcher entry for an unbuilt mode (LIM37, AT-LIM27) |
@@ -806,7 +823,8 @@ A hash of this document without this list is not an errata record.
 | v0.4.2 | 2026-09-02 | Second errata pass E8–E14, geometry unchanged. Y clamp and `yUnclamped` removed as dead by construction · floors to 0/100 · canonical key appendix · Compact keeps the ring · IKI gate acknowledged · trail resets on expiration and symbol · registry ships one mode. Appendices A/B/C added |
 | **v0.4.3** | **2026-09-02** | **Third errata pass E15–E17, geometry unchanged.** All three are authoring defects in the formulas, found by Hotel's eight hand-computed goldens before any code existed: `crossingProximity` unit mismatch (dead channel) · `steepness` denominator · `spotBelowNearestCrossing` inside case. AT-LIM29–32 added. OD-LIM10 (`magF` must reach the reader) and caveat 7. OD-LIM9 corrected — there is no `v0_2_1` parent file. **No law created.** **SUPERSEDED by v0.4.4.** |
 | **v0.4.4** | **2026-09-02** | **LIM7 surface fit and legibility (S1–S8).** Compute unchanged. Chrome/plane law: ring gone (E18) · disc larger (E19) · responsive fit (E20) · no density toggle (E21) · cells outlined + tick gutters (E22) · book-term cell labels, OD-LIM7 closed (E23) · Appendix B placement (E24). AT-LIM22 and AT-LIM24 rewritten; AT-LIM23 grep extended, no words dropped. **SUPERSEDED by v0.4.5.** |
-| **v0.4.5** | **2026-09-02** | **D3 / D4.** Disc scales (~18–22 px at 1440, floor on narrow) · **E25**. Ghosts are same-size circles, opacity by age · LIM21 restated · **E26 withdrawn**. Interval 30 s unchanged. |
+| **v0.4.5** | **2026-09-02** | **D3 / D4.** Disc scales (~18–22 px at 1440, floor on narrow) · **E25**. Ghosts are same-size circles, opacity by age · LIM21 restated · **E26 withdrawn**. Interval 30 s unchanged. **SUPERSEDED by v0.4.6.** |
+| **v0.4.6** | **2026-09-02** | **LIM8 D1b / E27.** A scale miss (`valid: false`) is a named refusal, not a live `(0, 50)` reading. AT-LIM33. Header gated on `valid`. Env key for Heatmap is `SPX` (D1a), not `I:SPX`. No prefix normalisation. |
 
 ---
 

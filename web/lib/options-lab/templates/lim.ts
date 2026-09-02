@@ -46,6 +46,7 @@ export type LimResult = {
   wings: number;
   symbol: string;
   valid: boolean;
+  invalidReason: "no-scale" | "no-spot" | null;
 };
 
 export type LimComputeInput = {
@@ -68,6 +69,7 @@ function finiteNet(n: StrikeNet): n is StrikeNet & { net: number } {
 function emptyState(
   input: LimComputeInput,
   valid: boolean,
+  invalidReason: LimResult["invalidReason"],
 ): LimResult {
   return {
     x: 0,
@@ -90,6 +92,7 @@ function emptyState(
     wings: input.wings,
     symbol: input.symbol,
     valid,
+    invalidReason,
   };
 }
 
@@ -140,8 +143,14 @@ export function computeLimFromNets(
   for (const r of usable) totalAbs += Math.abs(r.net);
 
   if (!spotOk || totalAbs === 0) {
-    const empty = emptyState(input, hasScale && spotOk);
-    if (!spotOk) return { ...empty, valid: false };
+    const emptyValid = hasScale && spotOk;
+    const reason: LimResult["invalidReason"] = emptyValid
+      ? null
+      : !hasScale
+        ? "no-scale"
+        : "no-spot";
+    const empty = emptyState(input, emptyValid, reason);
+    if (!spotOk) return { ...empty, valid: false, invalidReason: reason };
     return empty;
   }
 
@@ -234,6 +243,7 @@ export function computeLimFromNets(
     wings: input.wings,
     symbol: input.symbol,
     valid,
+    invalidReason: valid ? null : !hasScale ? "no-scale" : "no-spot",
   };
 }
 

@@ -122,6 +122,7 @@ import { computeLim, type LimResult } from "@/lib/options-lab/templates/lim";
 import {
   limChromeInfoLines,
   limNumericHeader,
+  limRefusalMessage,
 } from "@/lib/options-lab/templates/limChrome";
 import { LimConfigError, loadLimConfig } from "@/lib/options-lab/templates/limConfig";
 import {
@@ -1310,13 +1311,22 @@ export default function HeatmapChainPanel() {
                   .filter(Boolean)
                   .join(" · ")}
               </p>
-              {tpl.layout === "quadrant" && limPack.result ? (
-                <p
-                  className="mt-0.5 truncate text-[11px] tabular-nums text-[var(--color-label)]"
-                  data-testid="lim-numeric-header"
-                >
-                  {limNumericHeader(limPack.result)}
-                </p>
+              {tpl.layout === "quadrant" ? (
+                limPack.result?.valid ? (
+                  <p
+                    className="mt-0.5 truncate text-[11px] tabular-nums text-[var(--color-label)]"
+                    data-testid="lim-numeric-header"
+                  >
+                    {limNumericHeader(limPack.result)}
+                  </p>
+                ) : limPack.result ? (
+                  <p
+                    className="mt-0.5 truncate text-[11px] text-[var(--color-label)]"
+                    data-testid="lim-header-refusal"
+                  >
+                    {limRefusalMessage(limPack.result)}
+                  </p>
+                ) : null
               ) : null}
             </div>
 
