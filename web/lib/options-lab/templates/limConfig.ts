@@ -3,7 +3,8 @@
  *
  * Parse on first LIM activation (C2 / JR1). Do not throw at module load.
  * Errors name the Appendix A key (`LABS_LIM_*`), never dump process.env.
- * Bundler seam: read `NEXT_PUBLIC_` + Appendix A key, then the Appendix A key.
+ * Bundler seam (JR1): Next.js inlines only *literal* `process.env.NEXT_PUBLIC_*`
+ * member expressions. PUBLIC_LIM_ENV is that map — no computed keys.
  */
 
 export const LABS_LIM_ENV_KEYS = [
@@ -51,6 +52,30 @@ export type LimConfig = {
 export type LimEnv = Record<string, string | undefined>;
 
 const W_SUM_EPS = 1e-9;
+
+/**
+ * Client-inlinable seam. Keys are Appendix A; values are literal
+ * `process.env.NEXT_PUBLIC_LABS_LIM_*` member expressions (no loops, no `env[k]`).
+ */
+const PUBLIC_LIM_ENV: Record<LabsLimEnvKey, string | undefined> = {
+  LABS_LIM_CENTRE_SCALE_PTS: process.env.NEXT_PUBLIC_LABS_LIM_CENTRE_SCALE_PTS,
+  LABS_LIM_BAND_CLOSE_PCT: process.env.NEXT_PUBLIC_LABS_LIM_BAND_CLOSE_PCT,
+  LABS_LIM_BAND_MEDIUM_PCT: process.env.NEXT_PUBLIC_LABS_LIM_BAND_MEDIUM_PCT,
+  LABS_LIM_W_NET: process.env.NEXT_PUBLIC_LABS_LIM_W_NET,
+  LABS_LIM_W_CONC: process.env.NEXT_PUBLIC_LABS_LIM_W_CONC,
+  LABS_LIM_W_MAG: process.env.NEXT_PUBLIC_LABS_LIM_W_MAG,
+  LABS_LIM_CONC_FLOOR: process.env.NEXT_PUBLIC_LABS_LIM_CONC_FLOOR,
+  LABS_LIM_CONC_SPAN: process.env.NEXT_PUBLIC_LABS_LIM_CONC_SPAN,
+  LABS_LIM_MAG_FLOOR: process.env.NEXT_PUBLIC_LABS_LIM_MAG_FLOOR,
+  LABS_LIM_MAG_SPAN: process.env.NEXT_PUBLIC_LABS_LIM_MAG_SPAN,
+  LABS_LIM_XPROX_FLOOR_PCT: process.env.NEXT_PUBLIC_LABS_LIM_XPROX_FLOOR_PCT,
+  LABS_LIM_XPROX_CEIL_PCT: process.env.NEXT_PUBLIC_LABS_LIM_XPROX_CEIL_PCT,
+  LABS_LIM_TRAIL_INTERVAL_S: process.env.NEXT_PUBLIC_LABS_LIM_TRAIL_INTERVAL_S,
+  LABS_LIM_TRAIL_WINDOW_MIN: process.env.NEXT_PUBLIC_LABS_LIM_TRAIL_WINDOW_MIN,
+  LABS_LIM_DRIFT_MIN_RATE: process.env.NEXT_PUBLIC_LABS_LIM_DRIFT_MIN_RATE,
+  LABS_LIM_SHOW_TRANSITION: process.env.NEXT_PUBLIC_LABS_LIM_SHOW_TRANSITION,
+  LABS_LIM_SHOW_ANNOTATIONS: process.env.NEXT_PUBLIC_LABS_LIM_SHOW_ANNOTATIONS,
+};
 
 let cached: LimConfig | null = null;
 
@@ -172,7 +197,7 @@ function parseLimConfig(env: LimEnv): LimConfig {
 /** First LIM activation. Side-effect free at import. */
 export function loadLimConfig(env?: LimEnv): LimConfig {
   if (env == null && cached) return cached;
-  const source = env ?? (typeof process !== "undefined" ? process.env : {});
+  const source = env ?? PUBLIC_LIM_ENV;
   const parsed = parseLimConfig(source);
   if (env == null) cached = parsed;
   return parsed;

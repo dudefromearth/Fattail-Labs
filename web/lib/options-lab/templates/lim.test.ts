@@ -427,4 +427,16 @@ function hotelEnv(over: LimEnv = {}): LimEnv {
   );
 }
 
+// --- D2 bundler seam: 17 literal process.env.NEXT_PUBLIC_LABS_LIM_* ---
+{
+  const here = dirname(fileURLToPath(import.meta.url));
+  const src = readFileSync(join(here, "limConfig.ts"), "utf8");
+  assert(LABS_LIM_ENV_KEYS.length === 17, "Appendix A is 17 keys");
+  for (const k of LABS_LIM_ENV_KEYS) {
+    const needle = `process.env.NEXT_PUBLIC_${k}`;
+    const hits = src.split(needle).length - 1;
+    assert(hits >= 1, `D2 literal ${needle} in limConfig.ts`);
+  }
+}
+
 console.log("lim.test.ts ok");

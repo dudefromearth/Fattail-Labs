@@ -4,6 +4,20 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-02 — DL-655 LIM client env: literal NEXT_PUBLIC_ map (D1 / D2)
+
+**Decision:** LIM was dead on arrival in the browser at deploy prep (`c6e578d`). Two blockers, both closed here.
+
+**D1:** Zero `LABS_LIM_*` / `NEXT_PUBLIC_LABS_LIM_*` in `.env` / `.env.example`. Seventeen required. First activation always threw the named-key error. C2 scoping kept other templates up; LIM was 100% down.
+
+**D2:** `limConfig.ts` read `env[bundlerKey(key)]` against raw `process.env`. Next.js inlines only *literal* `process.env.NEXT_PUBLIC_*` member expressions. Dynamic index → all seventeen `undefined` in the client bundle. Tests missed it (Node has a real `process.env`).
+
+**Fix:** `PUBLIC_LIM_ENV` — seventeen literal `process.env.NEXT_PUBLIC_LABS_LIM_*` members, Appendix A logical names as keys. `loadLimConfig()` falls back to that map, not raw `process.env`. Source assertion in `lim.test.ts` requires one literal per Appendix A key. `.env` / `.env.local` carry Spec §9 v1 values; `web/.env.example` carries names + comment, not values.
+
+**Does not:** MiniTwo (NX14) · server restart · migration · change Appendix A names · silent defaults.
+
+---
+
 ## 2026-09-02 — DL-654 OD-LIM6 merged amendment landed HALF
 
 **Decision (Coach, 2026-09-02):** LIM6-G accepted. LIM board closed. This entry is documentation only — **not** a reopen.
