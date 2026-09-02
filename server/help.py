@@ -14,6 +14,7 @@ from __future__ import annotations
 import base64
 import binascii
 import logging
+import os
 import uuid
 from pathlib import Path
 
@@ -23,6 +24,46 @@ MAX_SCREENSHOT_BYTES = 5 * 1024 * 1024  # 5 MB decoded
 _UPLOADS = Path(__file__).resolve().parent / "uploads" / "help"
 
 STATUSES = ("open", "answered", "closed")
+
+# Grok-4-fast $/1M tokens (override via env as pricing changes). Used only to
+# estimate concierge cost per resolution in analytics — never billed on.
+_COST_IN_PER_M = float(os.environ.get("LABS_HELP_AI_COST_IN_PER_M", "0.20"))
+_COST_OUT_PER_M = float(os.environ.get("LABS_HELP_AI_COST_OUT_PER_M", "0.50"))
+
+
+def log_ai_event(
+    *, question_id, event_type, category=None, page_context=None,
+    res=None, resolved=None, reference_hit=None,
+) -> None:
+    """Record one concierge interaction for the analytics / doc-gap report.
+    `res` is the dict from help_ai.answer (topic, resolved, reference_hit, model,
+    input_tokens, output_tokens). Best-effort — never raises into the request."""
+    try:
+        import db
+        r = res or {}
+        resolved_v = bool(r.get("resolved")) if resolved is None else bool(resolved)
+        in_tok = int(r.get("input_tokens") or 0)
+        out_tok = int(r.get("output_tokens") or 0)
+        cost = round(
+            in_tok / 1_000_000 * _COST_IN_PER_M + out_tok / 1_000_000 * _COST_OUT_PER_M, 6
+        )
+        ref = r.get("reference_hit") if reference_hit is None else reference_hit
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """INSERT INTO help_ai_events
+                         (question_id, event_type, topic, category, page_context,
+                          resolved, reference_hit, model, input_tokens, output_tokens, cost_usd)
+                       VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                    (
+                        question_id, event_type, (r.get("topic") or category), category,
+                        page_context, 1 if resolved_v else 0,
+                        None if ref is None else (1 if ref else 0),
+                        r.get("model"), in_tok or None, out_tok or None, cost or None,
+                    ),
+                )
+    except Exception as exc:  # noqa: BLE001 — analytics must never break help
+        log.warning("help_ai_event log failed (q=%s): %s", question_id, exc)
 
 
 class HelpError(Exception):

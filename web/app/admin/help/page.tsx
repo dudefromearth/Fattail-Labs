@@ -141,6 +141,7 @@ export default function AdminHelpPage() {
           <input value={search} onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && load(status, search)}
             placeholder="Search…" className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900" />
+          <a href="/admin/help/analytics" className="rounded-md border border-zinc-300 px-2.5 py-1 text-xs hover:border-zinc-400 dark:border-zinc-700">📊 Analytics</a>
         </div>
       </header>
 

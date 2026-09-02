@@ -360,7 +360,7 @@ def _last_member_text(thread: list[dict]) -> str:
     return ""
 
 
-def _call(provider, msgs: list[dict]) -> dict | None:
+def _call(provider, msgs: list[dict]) -> tuple[dict | None, dict]:
     from ai.types import coerce_messages
     result = provider.complete(
         coerce_messages(msgs),
@@ -368,7 +368,8 @@ def _call(provider, msgs: list[dict]) -> dict | None:
         temperature=0.2,
         max_tokens=_MAX_TOKENS,
     )
-    return _extract_json(getattr(result, "text", "") or "")
+    usage = getattr(result, "usage", None) or {}
+    return _extract_json(getattr(result, "text", "") or ""), usage
 
 
 def _finalize(parsed: dict | None) -> dict:
@@ -392,7 +393,9 @@ def answer(category: str, thread: list[dict], page_context: str | None = None) -
     any failure (unconfigured, model/network error, unparseable output, empty reference).
     """
     if not is_enabled() or not _sections():
-        return {"reply": ESCALATION_REPLY, "resolved": False, "topic": "general"}
+        return {"reply": ESCALATION_REPLY, "resolved": False, "topic": "general",
+                "reference_hit": False, "model": None,
+                "input_tokens": 0, "output_tokens": 0}
 
     try:
         from ai.config import get_ai_config
@@ -401,7 +404,9 @@ def answer(category: str, thread: list[dict], page_context: str | None = None) -
         provider = XaiProvider(get_ai_config())
     except Exception as exc:  # noqa: BLE001 — AI must never break help
         log.warning("help concierge provider init failed (%s) — escalating", exc)
-        return {"reply": ESCALATION_REPLY, "resolved": False, "topic": "general"}
+        return {"reply": ESCALATION_REPLY, "resolved": False, "topic": "general",
+                "reference_hit": False, "model": None,
+                "input_tokens": 0, "output_tokens": 0}
 
     msgs = _base_messages(category, thread)
     if page_context:
@@ -416,20 +421,29 @@ def answer(category: str, thread: list[dict], page_context: str | None = None) -
     # straight away instead of reflexively handing off.
     member_q = _last_member_text(thread)
     pre_ref = _search([q for q in (member_q, page_context) if q])
+    reference_hit = bool(pre_ref)
     if pre_ref:
         msgs.append({"role": "system", "content": (
             "Relevant reference sections for the member's latest message — use these to "
             "answer directly and helpfully. Search only if you still need more:\n\n"
             + pre_ref
         )})
+    usage = {"input_tokens": 0, "output_tokens": 0}
+
+    def _acc(u: dict) -> None:
+        usage["input_tokens"] += int((u or {}).get("input_tokens") or 0)
+        usage["output_tokens"] += int((u or {}).get("output_tokens") or 0)
+
     try:
-        parsed = _call(provider, msgs)  # round 1: answer or search
+        parsed, u1 = _call(provider, msgs)  # round 1: answer or search
+        _acc(u1)
         if parsed and parsed.get("action") == "search":
             raw_q = parsed.get("queries")
             queries = [str(q) for q in raw_q][:_MAX_QUERIES] if isinstance(raw_q, list) else []
             if not queries:
                 queries = [_last_member_text(thread)]
             ref = _search(queries)
+            reference_hit = reference_hit or bool(ref)
             msgs = msgs + [
                 {"role": "assistant", "content": json.dumps({"action": "search", "queries": queries})},
                 {"role": "system", "content": (
@@ -441,9 +455,17 @@ def answer(category: str, thread: list[dict], page_context: str | None = None) -
                     + "\n\nNow reply with the answer JSON."
                 )},
             ]
-            parsed = _call(provider, msgs)  # round 2: answer
+            parsed, u2 = _call(provider, msgs)  # round 2: answer
+            _acc(u2)
     except Exception as exc:  # noqa: BLE001 — AI must never break help
         log.warning("help concierge model call failed (%s) — escalating", exc)
-        return {"reply": ESCALATION_REPLY, "resolved": False, "topic": "general"}
+        return {"reply": ESCALATION_REPLY, "resolved": False, "topic": "general",
+                "reference_hit": reference_hit, "model": _MODEL,
+                "input_tokens": usage["input_tokens"], "output_tokens": usage["output_tokens"]}
 
-    return _finalize(parsed)
+    out = _finalize(parsed)
+    out.update({
+        "reference_hit": reference_hit, "model": _MODEL,
+        "input_tokens": usage["input_tokens"], "output_tokens": usage["output_tokens"],
+    })
+    return out

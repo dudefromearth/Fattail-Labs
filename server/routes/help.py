@@ -195,6 +195,10 @@ async def create_question(request: Request) -> dict:
                             (category, qid),
                         )
         _store_ai_reply(qid, res["reply"], resolved)
+        help_domain.log_ai_event(
+            question_id=qid, event_type="answer",
+            category=category, page_context=page, res=res,
+        )
         ai_payload = {"reply": res["reply"], "resolved": resolved, "topic": category}
 
     # Notify the human team only when a human is actually needed.
@@ -284,6 +288,10 @@ async def add_my_message(question_id: int, request: Request) -> dict:
         res = help_ai.answer(category, thread, page_context=page)
         resolved = bool(res.get("resolved"))
         _store_ai_reply(question_id, res["reply"], resolved)
+        help_domain.log_ai_event(
+            question_id=question_id, event_type="followup",
+            category=category, page_context=page, res=res,
+        )
         if not resolved:
             help_domain.notify_admins_new_question(
                 question_id, f"(escalated) {q['subject']}", f"member {iid}"
@@ -327,6 +335,9 @@ async def escalate_to_human(question_id: int, request: Request) -> dict:
                 "UPDATE help_questions SET status = 'open' WHERE id = %s",
                 (question_id,),
             )
+    help_domain.log_ai_event(
+        question_id=question_id, event_type="escalate", resolved=False, reference_hit=None,
+    )
     help_domain.notify_admins_new_question(
         question_id, f"(human requested) {q['subject']}", f"member {iid}"
     )
