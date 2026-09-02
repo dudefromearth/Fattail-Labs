@@ -304,9 +304,54 @@ assert(panel.includes("overflow-hidden"), "E20 quadrant overflow hidden");
   const gexSrc = readFileSync(join(here, "gex.ts"), "utf8");
   assert(!gexSrc.includes("#34c759"), "S6 no green in shared gex.ts");
   assert(!gexSrc.includes("#ff3b30"), "S6 no red in shared gex.ts");
-  assert(quad.includes("data-lim-put-bar"), "net/call-put puts on the left");
-  assert(quad.includes("data-lim-call-bar"), "net/call-put calls on the right");
+  assert(quad.includes("data-lim-put-bar"), "Call/Put puts on the left");
+  assert(quad.includes("data-lim-call-bar"), "Call/Put calls on the right");
+  assert(quad.includes("data-lim-net-bar"), "Net is a signed difference bar");
+  assert(quad.includes("data-lim-bar-side"), "Net colour follows above/below spot");
+  assert(quad.includes("data-lim-net-face"), "Net facing is left/right");
   assert(quad.includes("lim-gex-view"), "companion GEX view menu");
+  const netHtml = renderToStaticMarkup(
+    createElement(HeatmapLimQuadrant, {
+      result: run(F2),
+      errorMessage: null,
+      ghosts: [],
+      spot: 5000,
+      gexPoints: [
+        {
+          strike: 5100,
+          label: "5100",
+          isSpot: false,
+          value: 40,
+          valid: true,
+          call: 40,
+          put: 0,
+        },
+        {
+          strike: 4900,
+          label: "4900",
+          isSpot: false,
+          value: 30,
+          valid: true,
+          call: 40,
+          put: -10,
+        },
+      ],
+    }),
+  );
+  assert(netHtml.includes('data-lim-bar-side="above"'), "5100 is above spot");
+  assert(netHtml.includes('data-lim-bar-side="below"'), "4900 is below spot");
+  assert(
+    netHtml.includes('data-lim-net-face="right"'),
+    "green above faces right",
+  );
+  assert(
+    netHtml.includes('data-lim-net-face="left"'),
+    "red below faces left even when net is positive",
+  );
+  assert(
+    !netHtml.includes("data-lim-put-bar") && !netHtml.includes("data-lim-call-bar"),
+    "Net default is not dual Call/Put bars",
+  );
 }
 
 console.log("limQuadrant.test.ts ok");
