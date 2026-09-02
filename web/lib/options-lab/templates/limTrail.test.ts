@@ -135,8 +135,10 @@ assert(tradingDateFromAsOf("1693650000") === null, "G1 non-ISO → no date, no T
   );
   assert(
     g.every((p) => p.size === LIM_TRAIL_GHOST_SIZE),
-    "uniform size",
+    "LIM21 uniform size",
   );
+  assert(g[g.length - 1].opacity > g[0].opacity, "LIM21 newest more opaque than oldest");
+  assert(g[g.length - 1].opacity === 1, "LIM21 newest age-0 opacity 1 (renderer may cap)");
   assert(!("yUnclamped" in g[0]), "AT-LIM13 no y twin");
 }
 

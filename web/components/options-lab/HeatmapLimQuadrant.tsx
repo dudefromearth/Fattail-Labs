@@ -22,10 +22,11 @@ import {
   LIM_CELL_LR,
   LIM_CELL_UL,
   LIM_CELL_UR,
-  LIM_DISC_R_PT,
   LIM_DOT_OPACITY,
   limChromeLine3,
+  limDiscRadiusPx,
   limDotXY,
+  limGhostOpacity,
   limGhostXY,
   limPlanePoint,
   limProximityDisplay,
@@ -80,6 +81,8 @@ export default function HeatmapLimQuadrant({
   const flags = limSurfaceFlags(rootW);
   const pt = limPlanePoint(result);
   const proximity = result?.crossingProximity ?? 1;
+  const discR = limDiscRadiusPx(plot.w, plot.h);
+  const discD = discR * 2;
   const dot = limDotXY(pt.x, pt.y, plot.w, plot.h);
 
   if (errorMessage) {
@@ -172,12 +175,12 @@ export default function HeatmapLimQuadrant({
                           style={{
                             left: p.left,
                             top: p.top,
-                            width: 6,
-                            height: 6,
-                            marginLeft: -3,
-                            marginTop: -3,
+                            width: discD,
+                            height: discD,
+                            marginLeft: -discR,
+                            marginTop: -discR,
                             background: "var(--lim-identity)",
-                            opacity: g.opacity,
+                            opacity: limGhostOpacity(g.opacity),
                           }}
                         />
                       );
@@ -191,12 +194,12 @@ export default function HeatmapLimQuadrant({
                   style={{
                     left: dot.left,
                     top: dot.top,
-                    width: LIM_DISC_R_PT * 2,
-                    height: LIM_DISC_R_PT * 2,
-                    marginLeft: -LIM_DISC_R_PT,
-                    marginTop: -LIM_DISC_R_PT,
+                    width: discD,
+                    height: discD,
+                    marginLeft: -discR,
+                    marginTop: -discR,
                     background: "var(--lim-identity)",
-                    boxShadow: "0 0 12px var(--lim-identity-glow)",
+                    boxShadow: "0 0 14px var(--lim-identity-glow)",
                     opacity: LIM_DOT_OPACITY,
                   }}
                 />

@@ -71,8 +71,23 @@ export function limProximityDisplay(p: number): string {
 
 export const LIM_DOT_OPACITY = 1;
 
-/** Echo · E19 — legible on a dark cell; does not dominate one quadrant. */
-export const LIM_DISC_R_PT = 9;
+/** Echo · E25 — ~20 px radius at a 480 px plot min (18–22 at 1440). */
+export const LIM_DISC_R_PT = 20;
+export const LIM_DISC_REF_MIN_PX = 480;
+export const LIM_DISC_R_FLOOR_PT = 14;
+/** Echo: cap ghost opacity so a same-size newest ghost does not compete with the live disc. */
+export const LIM_GHOST_OPACITY_CAP = 0.55;
+
+export function limDiscRadiusPx(plotW: number, plotH: number): number {
+  const minWH = Math.min(plotW, plotH);
+  const r = (minWH / LIM_DISC_REF_MIN_PX) * LIM_DISC_R_PT;
+  return Math.max(LIM_DISC_R_FLOOR_PT, Math.round(r));
+}
+
+export function limGhostOpacity(ageOpacity: number): number {
+  const o = Math.min(1, Math.max(0, ageOpacity));
+  return Math.min(LIM_GHOST_OPACITY_CAP, o);
+}
 
 /** Narrow breakpoint (LIM31 · E21). Width of the LIM root, CSS pixels. */
 export const LIM_NARROW_PX = 420;

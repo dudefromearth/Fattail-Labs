@@ -4,6 +4,20 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-02 — DL-657 LIM disc scale (D3) and ghost circles (D4)
+
+**Decision (Coach, live after LIM7):** Spec **v0.4.5**. Compute unchanged. Interval **30 s** unchanged.
+
+**D3 / E25:** The live disc is the one-second read (LIM32). Radius **scales** with `min(plot W, H)`. Target **18–22 CSS px at 1440** (Echo **20** at a 480 px plot min). Floor **14** on narrow. E19's constant 9 is not enough.
+
+**D4 / LIM21:** Ghosts are **circles**, same colour and **same radius** as the live disc. Opacity fades linearly with age over `LIM_TRAIL_WINDOW_MIN`. Newest behind the disc (z). Echo caps ghost opacity at **0.55** so a same-size newest ghost does not compete — size stays uniform. **E26 (size taper) withdrawn.** 6px squares were the defect.
+
+**Spec sha1 (JR7):** `a3ae987b4272d94a605f1d34ed6ede648a2af32b`
+
+**Does not:** change `LABS_LIM_TRAIL_INTERVAL_S` · MiniTwo · volume · move the dot with proximity.
+
+---
+
 ## 2026-09-02 — DL-656 LIM7 surface fit; Spec v0.4.4
 
 **Decision (Coach LIM7, live surface 2026-09-02):** Board reopens for one packet. Spec **v0.4.4** is **BUILD AUTHORITY** with this work. Compute geometry unchanged since v0.4. Chrome and plane law change: LIM24, LIM27, LIM31, LIM36, §7.6. Errata **E18–E24**.

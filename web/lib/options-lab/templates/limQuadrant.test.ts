@@ -19,7 +19,11 @@ import {
   LIM_CHROME_1,
   LIM_CHROME_2,
   LIM_CHROME_4,
+  LIM_DISC_R_FLOOR_PT,
   LIM_DISC_R_PT,
+  LIM_GHOST_OPACITY_CAP,
+  limDiscRadiusPx,
+  limGhostOpacity,
   LIM_DOT_OPACITY,
   LIM_MODE_LABEL,
   LIM_NARROW_PX,
@@ -233,7 +237,19 @@ const panel = readFileSync(
 assert(LIM_PICKER_LABEL === "GEX lean (window)", "placeholder");
 assert(LIM_MODE_LABEL === "Lean / near-spot mix", "mode label");
 assert(limProximityDisplay(0.5) === "0.50", "chip 0-1 two decimals");
-assert(LIM_DISC_R_PT === 9, "E19 disc radius");
+assert(LIM_DISC_R_PT === 20, "E25 disc radius at 1440 ref");
+assert(limDiscRadiusPx(480, 480) === 20, "E25 20px at 480 plot min");
+{
+  const at1440 = limDiscRadiusPx(520, 500);
+  assert(at1440 >= 18 && at1440 <= 22, "E25 ~18–22 at 1440-class plot");
+}
+assert(limDiscRadiusPx(200, 200) === LIM_DISC_R_FLOOR_PT, "E25 floor on narrow");
+assert(limGhostOpacity(1) === LIM_GHOST_OPACITY_CAP, "D4 newest ghost opacity capped");
+assert(limGhostOpacity(0.2) === 0.2, "D4 older ghosts keep age opacity under cap");
+assert(quad.includes("limDiscRadiusPx"), "D3 disc scales with plot");
+assert(quad.includes("limGhostOpacity"), "D4 ghost opacity cap in renderer");
+assert(!/width:\s*6/.test(quad), "D4 no 6px ghost squares");
+assert(quad.includes("rounded-full"), "D4 ghosts are circles");
 assert(LIM_CELL_UL === "Weight below · packed", "LIM36 UL");
 assert(LIM_CELL_UR === "Weight above · packed", "LIM36 UR");
 assert(LIM_CELL_LL === "Weight below · loose", "LIM36 LL");

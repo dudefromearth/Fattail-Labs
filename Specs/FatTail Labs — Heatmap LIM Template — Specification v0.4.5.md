@@ -1,10 +1,15 @@
-# FatTail Labs — Heatmap LIM Template — Specification v0.4.4
+# FatTail Labs — Heatmap LIM Template — Specification v0.4.5
 
-**Status:** **SUPERSEDED** by v0.4.5. Keep on disk. Do not execute against this file.
+**Status:** **BUILD AUTHORITY** with LIM7 follow-on (D3 · D4). Compute geometry **unchanged** since v0.4.
 **Date:** 2026-09-02
 **Repo:** Fattail-Labs · **Scope:** one Options Lab Heatmap template, client-side only.
 **Sibling:** `FatTail-Labs-Heatmap-Strike-Turnover-Spec-v1_0.md` — independent, never fused.
-**Supersedes:** v0.4.3.
+**Supersedes:** v0.4.4.
+
+**v0.4.5 (E25 · E26 withdrawn)** — Coach, live surface after LIM7.
+
+- **E25** Disc is the one-second read (LIM32). Scales with the plane: **~18–22 CSS px radius at 1440**. Floor on narrow widths. E19's 9pt is not enough.
+- **E26 withdrawn.** A size taper was drafted; Coach: ghosts are the **same size** as the live disc; only opacity fades. LIM21 stands. The defect was 6px squares, not the sizing rule.
 
 **v0.4.4 surface law (E18–E24)** — Coach, live surface 2026-09-02. Spec first, then build.
 
@@ -344,6 +349,14 @@ therefore speed** — clustered means the state held, spread means it moved — 
 cap or threshold has to be chosen.
 
 **LIM21 — uniform size, opacity by age.** Bounded by `LIM_TRAIL_WINDOW_MIN`.
+Ghosts are **circles**, the same colour and the **same radius** as the live disc — a ghost is an
+afterimage of the same object. Opacity fades linearly with age over the window: newest near-full,
+oldest near-zero at the window edge. Newest sits **behind** the live disc (z-order) so the tail is
+continuous with it. If the newest ghost at full size would compete with the disc, **cap ghost
+opacity**, do not shrink it. **No size taper. (E26 withdrawn.)**
+
+LIM20 is unchanged: fixed-interval emission; spacing is speed. `LABS_LIM_TRAIL_INTERVAL_S` stays
+**30**. A denser tail is a §16 config change, not this packet.
 
 **The buffer is cleared on session open, on expiration change, and on symbol change. (E13)**
 The trail's whole claim is *this state came from that state*. Ghosts emitted against SPX 0DTE are
@@ -386,8 +399,10 @@ The dot renders at **full opacity always**. `crossingProximity` is shown as a **
 The ring is **deleted**. `limRingRadius` does not exist. Proximity does **not** move `x` or `y`
 (LIM17 · D15); the chip is why D15 can keep that law.
 
-Disc radius `LIM_DISC_R_PT` is large enough to read against a dark cell at narrow widths without
-dominating a cell. Echo: **9**.
+Disc radius **scales with the plot** (`min(W, H)`). Target **18–22 CSS px** at a 1440-wide
+panel (Echo: **20** at a 480 px plot min). Floor so it stays legible on a narrow plane.
+The disc is the most prominent object on the plane — ahead of crosshairs, cell outlines, and
+the tail. **(E25 · LIM32.)** E19's constant 9 is not enough.
 
 > **E3** still holds: do not fade the mark. **E18** retires the ring. An uncapped
 > `minR + (1 − p) × (0.32 × minWH)` circle detached from the disc and read as a random arc
@@ -468,7 +483,8 @@ asserted by **rendering at a width**, not by calling a mode function.
 > **E11 SUPERSEDED.** v0.4.2 kept a ring on Compact. E18 deleted the ring. E21 deleted Compact as
 > a mode. The chip is what remains of the channel at any size.
 
-**LIM32 — layering.** The dot carries the one-second read; trail and readout are the study layer.
+**LIM32 — layering.** The disc carries the one-second read and is the most prominent object on
+the plane. Trail and readout are the study layer.
 
 ### 7.6 Responsive fit (E20)
 
@@ -769,6 +785,8 @@ A hash of this document without this list is not an errata record.
 | **E22** | **v0.4.4** | Four cells outlined; crosshairs and ticks high-contrast; tick labels in gutters outside the plot (LIM23) |
 | **E23** | **v0.4.4** | Cell labels in the book's terms. LIM36 reversed. OD-LIM7 closed. MSC outcome names stay banned in AT-LIM23 |
 | **E24** | **v0.4.4** | Appendix B verbatim. Line 3 visible; lines 1, 2, 4 behind title info (LIM27) |
+| **E25** | **v0.4.5** | Disc scales with the plane: ~18–22 px radius at 1440, floor on narrow. E19's 9pt superseded (LIM24 · LIM32) |
+| **E26** | **v0.4.5** | **Withdrawn.** Size taper drafted then refused. LIM21: uniform size, opacity by age. Ghosts are circles matching the disc; 6px squares were the defect |
 | **E12** | **v0.4.2** | §2 corrected — `AGENTS.md:26` IKI-only gate applies. Three successive OKs recorded on the GO token before the first edit |
 | **E13** | **v0.4.2** | Trail buffer clears on session open, expiration change and symbol change (LIM21, AT-LIM25) |
 | **E14** | **v0.4.2** | Registry ships `lim` only; no reserved switcher entry for an unbuilt mode (LIM37, AT-LIM27) |
@@ -787,7 +805,8 @@ A hash of this document without this list is not an errata record.
 | v0.4.1 | 2026-09-01 | Errata pass E1–E7, geometry unchanged. LIM36 no cell names in v1 |
 | v0.4.2 | 2026-09-02 | Second errata pass E8–E14, geometry unchanged. Y clamp and `yUnclamped` removed as dead by construction · floors to 0/100 · canonical key appendix · Compact keeps the ring · IKI gate acknowledged · trail resets on expiration and symbol · registry ships one mode. Appendices A/B/C added |
 | **v0.4.3** | **2026-09-02** | **Third errata pass E15–E17, geometry unchanged.** All three are authoring defects in the formulas, found by Hotel's eight hand-computed goldens before any code existed: `crossingProximity` unit mismatch (dead channel) · `steepness` denominator · `spotBelowNearestCrossing` inside case. AT-LIM29–32 added. OD-LIM10 (`magF` must reach the reader) and caveat 7. OD-LIM9 corrected — there is no `v0_2_1` parent file. **No law created.** **SUPERSEDED by v0.4.4.** |
-| **v0.4.4** | **2026-09-02** | **LIM7 surface fit and legibility (S1–S8).** Compute unchanged. Chrome/plane law: ring gone (E18) · disc larger (E19) · responsive fit (E20) · no density toggle (E21) · cells outlined + tick gutters (E22) · book-term cell labels, OD-LIM7 closed (E23) · Appendix B placement (E24). AT-LIM22 and AT-LIM24 rewritten; AT-LIM23 grep extended, no words dropped. |
+| **v0.4.4** | **2026-09-02** | **LIM7 surface fit and legibility (S1–S8).** Compute unchanged. Chrome/plane law: ring gone (E18) · disc larger (E19) · responsive fit (E20) · no density toggle (E21) · cells outlined + tick gutters (E22) · book-term cell labels, OD-LIM7 closed (E23) · Appendix B placement (E24). AT-LIM22 and AT-LIM24 rewritten; AT-LIM23 grep extended, no words dropped. **SUPERSEDED by v0.4.5.** |
+| **v0.4.5** | **2026-09-02** | **D3 / D4.** Disc scales (~18–22 px at 1440, floor on narrow) · **E25**. Ghosts are same-size circles, opacity by age · LIM21 restated · **E26 withdrawn**. Interval 30 s unchanged. |
 
 ---
 
