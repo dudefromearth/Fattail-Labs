@@ -1,6 +1,7 @@
-# AT-LIM1…23 — characterization list
+# AT-LIM1…28 — characterization list
 
-**Law:** LIM Spec v0.4.1 §10.  
+**Law:** LIM Spec v0.4.2 §10.  
+**Plan:** [`docs/Options-Lab-Heatmap-LIM-Full-Agent-Bench-Plan-v1.1.md`](../../docs/Options-Lab-Heatmap-LIM-Full-Agent-Bench-Plan-v1.1.md)  
 **Gate:** LIM5-G. Fixtures land in the same change as the code they prove.
 
 | Id | Assert | Owner phase |
@@ -22,9 +23,17 @@
 | **AT-LIM15** | Moved fast → ghosts spread | LIM2 |
 | **AT-LIM16** | `netRatio`, `concF`, `magF` published; recombine to `nearSpotMix` | LIM1 |
 | **AT-LIM17** | Any config key absent → abort | LIM1 |
+| **AT-LIM17b** | `W_NET + W_CONC + W_MAG ≠ 1.0` → abort | LIM1 |
 | **AT-LIM18** | `crossingCount ≠ 1` → no single crossing price in chrome | LIM3 |
 | **AT-LIM19** | Symbol off the scale map → `valid: false`; no fallback | LIM1 |
 | **AT-LIM20** | No `(lo+hi)/2` in any published field or chrome string | LIM1 · LIM3 |
 | **AT-LIM21** | Any `crossingProximity` → dot opacity unchanged | LIM3 |
-| **AT-LIM22** | Chrome has OI as-of **or named hole** + same-day sentence | LIM3 |
+| **AT-LIM22** | Chrome matches Appendix B: OI as-of **or named hole** + same-day sentence | LIM3 |
 | **AT-LIM23** | Grep: none of *wall, magnet, pin, gravity, intent, hostile, support, resistance, friction, muddy, slippery* | LIM3 · LIM5 |
+| **AT-LIM24** | Compact: dot **and proximity ring** present; chip, trail, annotations absent | LIM3 |
+| **AT-LIM25** | Expiration changed, then symbol changed → trail empty on first frame after each | LIM2 |
+| **AT-LIM26** | `0 ≤ nearSpotMix ≤ 100` with **no clamp in the code path**; `yUnclamped` absent from payload | LIM1 |
+| **AT-LIM27** | Registry: exactly one `ValueModeId` added; no `session-volume` entry | LIM3 |
+| **AT-LIM28** | Grep `LIM_CONF_` → zero hits | LIM1 |
+
+Hotel goldens (hand-recorded before `lim.ts`): eight fixtures — Spec §10 / plan §6.7.
