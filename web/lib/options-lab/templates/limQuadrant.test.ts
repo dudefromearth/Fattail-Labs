@@ -155,6 +155,13 @@ const F4 = [
       "Open interest as of 2026-09-01. Today's trading is not in it.",
     "AT-LIM22 dated line 3",
   );
+  const mid = String((4990 + 5010) / 2);
+  const chrome = [
+    limStateLine(r1, "comfort"),
+    ...limChromeLines(null, "comfort"),
+    ...limChromeLines("2026-09-01", "compact"),
+  ].join("\n");
+  assert(!chrome.includes(mid), "AT-LIM20 chrome has no (lo+hi)/2 of F7 interval");
 }
 
 // AT-LIM32 / OD-LIM10

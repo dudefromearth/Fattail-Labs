@@ -19,7 +19,7 @@ LIM0 → LIM1 → LIM2 → LIM3 → LIM4 → LIM5 → LIM6
 | **LIM2** | Trail | **LIM2-G PASS** 2026-09-02 — `limTrail.ts` · AT-LIM13/14/15/25 |
 | **LIM3** | Quadrant + chrome | **LIM3-G PASS** 2026-09-02 |
 | **LIM4** | GEX spot-line glow | **LIM4-G PASS** 2026-09-02 |
-| **LIM5** | AT-LIM1…28 | blocked |
+| **LIM5** | AT-LIM1…32 | **LIM5-G PASS** 2026-09-02 |
 | **LIM6** | DL · Arch 29 · parent land · close | blocked |
 
 **Data law:** Same OPF-held dual-side chain. Pure template. **No volume. No second Massive. No MSC.**
@@ -38,8 +38,8 @@ Gates: `LIM0-G.md` · `LIM1-G.md` · … · `LIM6-G.md`
 
 ### First actions (Juliet)
 
-1. LIM0–LIM4 executed. **LIM4-G PASS.**  
-2. Next: **LIM5** AT pack — do not start until Coach fires LIM5.
+1. LIM0–LIM5 executed. **LIM5-G PASS.**  
+2. Next: **LIM6** docs — do not start until Coach fires LIM6.
 
 ### Do not
 
@@ -52,4 +52,4 @@ Gates: `LIM0-G.md` · `LIM1-G.md` · … · `LIM6-G.md`
 - Fade the dot.  
 - Invent a crossing midpoint.  
 - Read volume.  
-- Start LIM5 without a Coach fire.
+- Start LIM6 without a Coach fire.
