@@ -2,9 +2,9 @@
 
 Juliet materializes seeds from:
 
-[`docs/Options-Lab-Heatmap-LIM-Full-Agent-Bench-Plan-v1.0.md`](../../../docs/Options-Lab-Heatmap-LIM-Full-Agent-Bench-Plan-v1.0.md) **§8**.
+[`docs/Options-Lab-Heatmap-LIM-Full-Agent-Bench-Plan-v1.1.md`](../../../docs/Options-Lab-Heatmap-LIM-Full-Agent-Bench-Plan-v1.1.md) **§8**.
 
-**Product Spec:** [`Specs/FatTail Labs — Heatmap LIM Template — Specification v0.4.1.md`](../../../Specs/FatTail%20Labs%20%E2%80%94%20Heatmap%20LIM%20Template%20%E2%80%94%20Specification%20v0.4.1.md) (v0.4.1 DRAFT)
+**Product Spec:** [`Specs/FatTail Labs — Heatmap LIM Template — Specification v0.4.2.md`](../../../Specs/FatTail%20Labs%20%E2%80%94%20Heatmap%20LIM%20Template%20%E2%80%94%20Specification%20v0.4.2.md) (v0.4.2 DRAFT · sha1 `41dad04f06f7f2a43b80af4becb9153bf6f4f88a`)
 
 ### Naming
 

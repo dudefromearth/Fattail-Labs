@@ -41,7 +41,7 @@ v1.0 of this token (Spec v0.4.1) is superseded. Do not stamp against plan v1.0.
 | **OD-LIM6** | One merged Heatmap Templates amendment (SVP **prose** + `quadrant` + `lim` **only**; **no** `session-volume` enum — E14); land at LIM6 | [ ] Accept · [ ] Override: |
 | **OD-LIM7** | No quadrant cell names in v1 | [ ] Accept · [ ] Override: |
 | **OD-LIM8** | Y floors ship **0/100** (E9). Later tape sitting may retune **as config** (§16), never a compute packet | [ ] Accept · [ ] Override: |
-| **OD-LIM9** | India names live Heatmap Templates parent (v0.2.1 or v0.3) **before** the merged draft opens | [ ] Accept · [ ] Override: |
+| **OD-LIM9** | India names live Heatmap Templates parent **by canonical filename** (`Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md` current rev v0.2.3, or `…-v0_3.md`) **before** the merged draft opens. There is no v0.2.1 file | [ ] Accept · [ ] Override: |
 
 ## Juliet recs JR1–8 (dispose)
 

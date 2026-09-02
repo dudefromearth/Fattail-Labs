@@ -15,7 +15,7 @@ Code. Forecast copy. Vendor product names from the IKI GEX vocab note.
 
 ## Work
 
-1. Four standing chrome lines, verbatim intent of LIM27.  
+1. Four standing chrome lines **verbatim** Spec Appendix B, including `{oiAsOf}` **null** case.  
 2. Same-day-expiry sentence (E6). OI as-of **or named hole** (JR3).  
 3. AT-LIM23 scan list (exact strings). Include field names and picker label.  
 4. Rule: chrome never prints a single crossing price when `crossingCount ≠ 1`.  

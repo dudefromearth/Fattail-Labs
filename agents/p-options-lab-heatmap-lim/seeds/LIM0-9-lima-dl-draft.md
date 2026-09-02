@@ -15,7 +15,7 @@ Spec body. Arch 29 as-built (LIM6).
 
 ## Work
 
-Draft DL entry: GO · OD-LIM1…7 · JR1–8 · sha1 **procedure** · Arch 29 outline · parent-amendment pointer. Hash is computed at stamp, not invented now.
+Draft DL entry: GO · OD-LIM1…**9** · JR1–8 · sha1 **procedure** (`41dad04f06f7f2a43b80af4becb9153bf6f4f88a` at plan land; recompute at stamp) · Arch 29 outline · parent-amendment pointer. Hash is computed at stamp, not invented now. Do **not** append `Architecture/00-decision-log.md` until LIM0-0.
 
 ## LIM0-9 done
 

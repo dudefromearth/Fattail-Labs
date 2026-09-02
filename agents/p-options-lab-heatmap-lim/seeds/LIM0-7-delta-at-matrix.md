@@ -15,9 +15,10 @@ Waiving any AT. Running LIM1 tests.
 
 ## Work
 
-1. Every AT-LIM1…23 has a phase owner.  
-2. Ternary plan: evidence or FAIL.  
-3. FAIL the seat if anyone treats chat as LIM0-0.
+1. Every AT-LIM1…**28** has a phase owner (`characterization-list.md`).  
+2. Ternary plan: evidence or FAIL. Gate names **LIM0-G … LIM6-G** only.  
+3. FAIL the seat if anyone treats chat as LIM0-0.  
+4. **C2:** AT-LIM17 isolation assertion — "other templates still render with a LIM key absent."
 
 ## LIM0-7 done
 

@@ -14,7 +14,7 @@ LIM0 → LIM1 → LIM2 → LIM3 → LIM4 → LIM5 → LIM6
 
 | Phase | Name | State |
 |-------|------|--------|
-| **LIM0** | Spec GO · OD-LIM1…9 · seeds · hash · live parent · merged Templates draft | **OPEN** — fire LIM0-1…9 |
+| **LIM0** | Spec GO · OD-LIM1…9 · seeds · hash · live parent · merged Templates draft | **LIM0-G PASS** (re-fire; evidence in `seeds/out/`) — waiting Coach **LIM0-0** |
 | **LIM1** | Config + `computeLim` | blocked on LIM0-0 |
 | **LIM2** | Trail | blocked |
 | **LIM3** | Quadrant + chrome | blocked |

@@ -15,7 +15,8 @@ Code. Tape sitting (§15.3). Inventing a relationship between near-spot mix and 
 
 ## Work
 
-1. Golden numeric fixtures for AT-LIM1–13 and AT-LIM16 (synthetic `StrikeNet[]` + spot).  
+1. **Eight** hand-recorded goldens (Spec §10 / plan §6.7) **before** `lim.ts` exists. Synthetic `StrikeNet[]` + spot. Record x, y, netRatio, concF, magF, crossingCount by hand. A golden computed by the implementation tests nothing.  
+   Floors **0/100** (OD-LIM8 starting points). Scale `{"I:SPX": 50}` unless proposing otherwise.  
 2. Confirm X and Y stay independent (AT-LIM6).  
 3. Crossing walk: intervals only; `steepness`; no midpoint.  
 4. `LIM_CENTRE_SCALE_PTS` proposal (OD-LIM4). If silent: `{"I:SPX": 50}` only.  

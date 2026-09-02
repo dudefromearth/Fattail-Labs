@@ -16,7 +16,7 @@
 |-----|------|--------|
 | **Heatmap LIM Template Spec v0.4.2** | [`Specs/FatTail Labs — Heatmap LIM Template — Specification v0.4.2.md`](../Specs/FatTail%20Labs%20%E2%80%94%20Heatmap%20LIM%20Template%20%E2%80%94%20Specification%20v0.4.2.md) | **DRAFT for build planning.** Errata E1–E14. Geometry unchanged from v0.4. **Not BUILD AUTHORITY until LIM0-0.** Whole-file sha1 at plan land: `41dad04f06f7f2a43b80af4becb9153bf6f4f88a` |
 | Heatmap LIM Template Spec v0.4.1 | same directory `…Specification v0.4.1.md` | SUPERSEDED as working law. sha1 `e5aa6fdc7305add72e02dc57b62f87665d348820`. Keep. |
-| Heatmap Templates Spec **v0.2.1** | [`Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md`](../Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) | HM1–HM20 apply. **OD-LIM9:** India names the live parent before the merged amendment opens. |
+| Heatmap Templates Spec **v0.2** (current rev **v0.2.3**) | [`Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md`](../Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) | Canonical filename. HM1–HM20 · HM21 · DL-579 · DL-594. **There is no v0.2.1 file.** **OD-LIM9:** India names the live parent **by this filename or the v0.3 filename** before the merged amendment opens. |
 | Heatmap Templates Spec **v0.3** | [`Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_3.md`](../Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_3.md) | DRAFT amendment (SVP auxiliary plane). sha1 `31e985b6ab7b5fb41016fd0c3380fac114bde352`. LIM adds `layout: "quadrant"` + **one** `ValueModeId: "lim"` (E14). **One merged parent bump (OD-LIM6).** |
 | Arch **29** | [`Architecture/29-options-lab-heatmap-templates.md`](../Architecture/29-options-lab-heatmap-templates.md) | As-built heatmap. Update at LIM6. |
 | OPF Truth · **DL-309** | [`Specs/FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.1.md`](../Specs/FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.1.md) | Dual-side chain the OPF holds. |
@@ -47,7 +47,7 @@ v1.0 decomposed Spec **v0.4.1** (E1–E7). Spec **v0.4.2** is a second errata pa
 | **E13** | Trail buffer clears on **session open, expiration change, and symbol change**. Immediate, no fade. **AT-LIM25**. |
 | **E14** | Registry ships **`lim` only**. No `session-volume` `ValueModeId`, no disabled switcher stub. Parent amendment catalogs SVP in **prose**, not as an enum member. **AT-LIM27**. |
 
-**OD-LIM9 (new):** India names the live Heatmap Templates parent (v0.2.1 vs v0.3) **before** the merged amendment draft opens.
+**OD-LIM9 (new):** India names the live Heatmap Templates parent **by canonical filename** (`…-v0_2.md` current rev v0.2.3, or `…-v0_3.md`) **before** the merged amendment draft opens. There is no v0.2.1 file.
 
 ---
 
@@ -196,7 +196,7 @@ Spec §15 (Coach disposes). **Not rulings until LIM0-0.**
 | **OD-LIM6** | Merged Heatmap Templates amendment | **India + Juliet draft in LIM0.** One document bump: keep SVP **prose** clauses; add `TemplateLayout: "quadrant"`; catalog template `lim` **only**. **Do not** add a `session-volume` `ValueModeId` (E14). Land the parent in LIM6 with this program. |
 | **OD-LIM7** | Quadrant cell names | **Not in v1** (LIM36). Echo · Hotel after §15.3, or never. |
 | **OD-LIM8** | Y floors | **v1 ships 0/100 (E9).** Later tape sitting may reinstate a floor **as config**, versioned per Spec §16 — never a new compute packet. |
-| **OD-LIM9** | Live Heatmap Templates parent | **India names v0.2.1 or v0.3 before opening the merged draft.** An amendment against a superseded parent is a silent registry fork. |
+| **OD-LIM9** | Live Heatmap Templates parent | **India names the canonical filename** — `Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md` (header: current revision **v0.2.3**) **or** `Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_3.md` (amendment, supersedes v0.2 only in the clauses named in its §2) — **before** opening the merged draft. There is no v0.2.1 file. An amendment against a superseded parent is a silent registry fork. |
 
 Juliet recommendations (Coach disposes at the same stamp):
 

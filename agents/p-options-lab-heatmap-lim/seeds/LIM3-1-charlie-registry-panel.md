@@ -7,9 +7,9 @@
 
 ## In scope
 
-`templates/registry.ts` — one entry `id: "lim"`  
+`templates/registry.ts` — **one** entry `id: "lim"` (**no** `session-volume` — E14 · AT-LIM27)  
 `HeatmapChainPanel.tsx` — `layout === "quadrant"` branch only  
-`HeatmapLimQuadrant.tsx` — ring, chip, trail hook if LIM2 is in
+`HeatmapLimQuadrant.tsx` — ring (comfort **and Compact** — E11 · AT-LIM24), chip (comfort only), trail hook if LIM2 is in
 
 ## Out of scope
 

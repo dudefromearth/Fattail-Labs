@@ -7,7 +7,7 @@
 
 ## In scope
 
-All AT-LIM1…23 with command evidence. `characterization-list.md` is the index.
+All AT-LIM1…**28** with command evidence. `characterization-list.md` is the index. Spec **v0.4.2**. Include AT-LIM17 isolation: other templates still render with a LIM key absent (C2).
 
 ## Out of scope
 
