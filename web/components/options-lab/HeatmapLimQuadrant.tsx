@@ -128,23 +128,23 @@ export default function HeatmapLimQuadrant({
       }
     >
       <div className="flex min-h-0 flex-1 flex-row gap-4 px-5 pb-2 pt-5">
-        <div className="flex min-h-0 min-w-0 flex-[3] flex-col">
+        <div className="flex min-h-0 min-w-0 flex-[55] flex-col">
           <div className="flex min-h-0 flex-1">
             <div className="flex w-11 shrink-0 flex-col pr-3">
               <div className="flex min-h-0 flex-1 items-center justify-center">
                 <span
-                  data-testid="lim-label-expansion"
+                  data-testid="lim-label-compression"
                   style={{ ...vLabel, color: LIM_AXIS_GREEN }}
                 >
-                  {LIM_LABEL_EXPANSION}
+                  {LIM_LABEL_COMPRESSION}
                 </span>
               </div>
               <div className="flex min-h-0 flex-1 items-center justify-center">
                 <span
-                  data-testid="lim-label-compression"
+                  data-testid="lim-label-expansion"
                   style={{ ...vLabel, color: LIM_AXIS_RED }}
                 >
-                  {LIM_LABEL_COMPRESSION}
+                  {LIM_LABEL_EXPANSION}
                 </span>
               </div>
             </div>
@@ -327,15 +327,16 @@ function LimCompanionGex({
   const scale = useMemo(() => {
     let peak = 0;
     for (const p of viewPoints) {
-      if (callPut) {
-        if (p.call != null) peak = Math.max(peak, Math.abs(p.call));
-        if (p.put != null) peak = Math.max(peak, Math.abs(p.put));
-      } else if (p.value != null) {
-        peak = Math.max(peak, Math.abs(p.value));
+      if (gexView === "gex_abs") {
+        if (p.value != null) peak = Math.max(peak, Math.abs(p.value));
+        continue;
       }
+      // Net and Call/Put share one ruler so net length = |call| − |put|.
+      if (p.call != null) peak = Math.max(peak, Math.abs(p.call));
+      if (p.put != null) peak = Math.max(peak, Math.abs(p.put));
     }
     return peak || 1;
-  }, [viewPoints, callPut]);
+  }, [viewPoints, gexView]);
   const strikes = viewPoints.map((p) => p.strike);
   const glow = gexSpotGlowCss({ spotGlow: true });
   const spotTop = gexSpotLineTopPct(spot, strikes);
@@ -351,7 +352,7 @@ function LimCompanionGex({
 
   return (
     <div
-      className="relative flex min-h-0 min-w-[11rem] flex-1 flex-col overflow-hidden pt-1"
+      className="relative flex min-h-0 min-w-0 flex-[45] flex-col overflow-hidden pt-1"
       data-testid="lim-companion-gex"
       data-lim-spot-line={glow ? "1" : undefined}
     >
@@ -371,22 +372,28 @@ function LimCompanionGex({
       </label>
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
       {viewPoints.map((pt) => {
-        const net = pt.value ?? 0;
-        const mag = Math.abs(net);
+        const callVal = pt.call;
+        const putVal = pt.put;
+        const netSigned =
+          callVal != null || putVal != null
+            ? (callVal ?? 0) + (putVal ?? 0)
+            : (pt.value ?? 0);
+        const mag = Math.abs(netSigned);
         const pct = `${((mag / scale) * 50).toFixed(2)}%`;
-        const callMag = pt.call != null ? Math.abs(pt.call) : 0;
-        const putMag = pt.put != null ? Math.abs(pt.put) : 0;
+        const callMag = callVal != null ? Math.abs(callVal) : 0;
+        const putMag = putVal != null ? Math.abs(putVal) : 0;
         const callPct = `${((callMag / scale) * 50).toFixed(2)}%`;
         const putPct = `${((putMag / scale) * 50).toFixed(2)}%`;
         const above = spot != null && pt.strike > spot;
         const below = spot != null && pt.strike < spot;
-        const netColor = above
+        const callsWin = netSigned > 0;
+        const putsWin = netSigned < 0;
+        const netColor = callsWin
           ? LIM_AXIS_GREEN
-          : below
+          : putsWin
             ? LIM_AXIS_RED
             : "rgba(255,255,255,0.45)";
-        // Net: |gexNet| only. Red below faces left; green above faces right.
-        const netFaceLeft = gexView === "gex_net" && below;
+        const netFaceLeft = gexView === "gex_net" && putsWin;
         return (
           <div
             key={pt.strike}

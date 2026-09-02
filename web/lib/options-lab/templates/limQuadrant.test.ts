@@ -12,6 +12,8 @@ import { HEATMAP_TEMPLATES } from "./registry";
 import { computeLimFromNets, type StrikeNet } from "./lim";
 import type { LimConfig } from "./limConfig";
 import {
+  LIM_AXIS_GREEN,
+  LIM_AXIS_RED,
   LIM_CHROME_1,
   LIM_CHROME_2,
   LIM_CHROME_4,
@@ -192,6 +194,19 @@ const panel = readFileSync(
   assert(!html.includes("lim-ring"), "AT-LIM24 no ring in render");
   assert(html.includes(LIM_LABEL_EXPANSION), "LIM9 S2 EXPANSION");
   assert(html.includes(LIM_LABEL_COMPRESSION), "LIM9 S2 COMPRESSION");
+  {
+    const c = html.indexOf(LIM_LABEL_COMPRESSION);
+    const e = html.indexOf(LIM_LABEL_EXPANSION);
+    assert(c >= 0 && e > c, "COMPRESSION is the upper-left label");
+  }
+  {
+    const cAt = html.indexOf('data-testid="lim-label-compression"');
+    const eAt = html.indexOf('data-testid="lim-label-expansion"');
+    const cSlice = html.slice(cAt, cAt + 180);
+    const eSlice = html.slice(eAt, eAt + 180);
+    assert(cSlice.includes(LIM_AXIS_GREEN), "COMPRESSION is green");
+    assert(eSlice.includes(LIM_AXIS_RED), "EXPANSION is red");
+  }
   assert(html.includes("WEIGHT BELOW"), "LIM9 S2 WEIGHT BELOW");
   assert(html.includes("WEIGHT ABOVE"), "LIM9 S2 WEIGHT ABOVE");
   assert(!html.includes("Weight below · packed"), "LIM9 S1 no cell names");
@@ -307,9 +322,11 @@ assert(panel.includes("overflow-hidden"), "E20 quadrant overflow hidden");
   assert(quad.includes("data-lim-put-bar"), "Call/Put puts on the left");
   assert(quad.includes("data-lim-call-bar"), "Call/Put calls on the right");
   assert(quad.includes("data-lim-net-bar"), "Net is a signed difference bar");
-  assert(quad.includes("data-lim-bar-side"), "Net colour follows above/below spot");
   assert(quad.includes("data-lim-net-face"), "Net facing is left/right");
+  assert(quad.includes("callVal ?? 0) + (putVal ?? 0"), "Net is call+put leftover");
   assert(quad.includes("lim-gex-view"), "companion GEX view menu");
+  assert(quad.includes("flex-[55]"), "LIM column ~55% of the row");
+  assert(quad.includes("flex-[45]"), "companion GEX ~45% of the row");
   const netHtml = renderToStaticMarkup(
     createElement(HeatmapLimQuadrant, {
       result: run(F2),
@@ -321,32 +338,46 @@ assert(panel.includes("overflow-hidden"), "E20 quadrant overflow hidden");
           strike: 5100,
           label: "5100",
           isSpot: false,
-          value: 40,
-          valid: true,
-          call: 40,
-          put: 0,
-        },
-        {
-          strike: 4900,
-          label: "4900",
-          isSpot: false,
           value: 30,
           valid: true,
           call: 40,
           put: -10,
         },
+        {
+          strike: 4950,
+          label: "4950",
+          isSpot: false,
+          value: 20,
+          valid: true,
+          call: 30,
+          put: -10,
+        },
+        {
+          strike: 4900,
+          label: "4900",
+          isSpot: false,
+          value: -30,
+          valid: true,
+          call: 10,
+          put: -40,
+        },
       ],
     }),
   );
-  assert(netHtml.includes('data-lim-bar-side="above"'), "5100 is above spot");
-  assert(netHtml.includes('data-lim-bar-side="below"'), "4900 is below spot");
+  assert(netHtml.includes("width:37.50%"), "Net uses Call/Put scale: |30|/40 × 50%");
+  assert(netHtml.includes("width:25.00%"), "smaller leftover stays smaller on that scale");
   assert(
     netHtml.includes('data-lim-net-face="right"'),
-    "green above faces right",
+    "calls-win leftover faces right",
   );
   assert(
     netHtml.includes('data-lim-net-face="left"'),
-    "red below faces left even when net is positive",
+    "puts-win leftover faces left",
+  );
+  assert(
+    netHtml.includes('data-lim-bar-side="below"') &&
+      netHtml.includes('data-lim-net-face="right"'),
+    "below-spot calls-win still faces right (difference, not location)",
   );
   assert(
     !netHtml.includes("data-lim-put-bar") && !netHtml.includes("data-lim-call-bar"),
