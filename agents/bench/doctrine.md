@@ -236,7 +236,7 @@ India blocks the plan. Delta **FAIL**s a gate whose diff includes
 existing-work paths without a three-OK record. Juliet does not seed
 those paths.
 
-**Active program (now):** IKI Lab. All other trees frozen.
+**Active program (now):** Options Lab Heatmap LIM, through LIM6 (**DL-651 · DL-652**). IKI Lab is parked, not cancelled. All other trees frozen. DL-539 §8 five-module freeze is unchanged.
 
 ## Agent Hierarchy
 

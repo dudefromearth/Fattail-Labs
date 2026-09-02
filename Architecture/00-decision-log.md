@@ -4,6 +4,61 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-02 — DL-652 Active program reassigned IKI Lab → Options Lab Heatmap LIM (JR8 (a))
+
+**Decision (Coach, 2026-09-02):** Active program reassigned from **IKI Lab** to **Options Lab Heatmap LIM**, through **LIM6**. Reasoning: IKI is not the work in flight; LIM is. JR8 option **(a)**. The three-OK log on `agents/go/OLLIM-W0.md` is **N/A** — superseded by this reassignment, **not** satisfied. Coach is not collecting two more OKs to paper over LIM1.
+
+**This is a correction, not a clean sequence.** LIM1 was fired at **09:04** on 2026-09-02 **before** this reassignment landed. The reassignment is **retroactive to the LIM0-0 stamp** (**DL-651**). LIM1 compute stands (Hotel F9 proximity 0.50; E15 fixed). LIM2 does not fire until this entry is on disk and pushed.
+
+**Cites:** **DL-539** (doctrine §15: one active program; three successive OKs to touch existing work; §8 five-module freeze) · **DL-651** (LIM v0.4.3 BUILD AUTHORITY · LIM0-0 GO).
+
+**Named in:** `AGENTS.md` current-state row (origin line 26) and sacred invariant 7 (origin line 227) · `agents/bench/doctrine.md` §15 “Active program (now)” · token JR8.
+
+**IKI Lab** is **parked**, not cancelled. GO IF-2 remains not granted. IKI-P3 W1 does not fire on this tree.
+
+**DL-539 §8** five frozen modules (`generation.py`, `keys.py`, `config.py`, `routes/pricing.py`, `main.py`) are **unchanged**. This DL does not consume OK 2 or OK 3. GP **P2-0** stays blocked on those OKs and on its own GO.
+
+**Does not:** fire LIM2 · lift the §8 freeze · cancel IKI · start GP P2-0 · satisfy the three-OK log.
+
+India confirmation: `agents/p-options-lab-heatmap-lim/seeds/out/LIM1-india-jr8-reassign.md`.
+
+---
+
+## 2026-09-02 — DL-651 Options Lab Heatmap LIM v0.4.3 BUILD AUTHORITY (LIM0-0)
+
+**Decision (Coach LIM0-0, 2026-09-02):** GO for Heatmap template **`lim`**, `layout: "quadrant"`. Spec **v0.4.3** is **BUILD AUTHORITY**. Token [`agents/go/OLLIM-W0.md`](../agents/go/OLLIM-W0.md) stamped **GO**. Coach (verbatim): *I stamp my approval of the spec, so go on and use it.* L1–L18 **LOCKED**. OD-LIM1…10 **Accept**. JR1–8 **Accept**; JR8 wait overridden by this fire (one OK recorded; IKI stays the listed active program). Delta reads the token, not chat (**DL-328**). Gate **LIM0-G** already PASS. **LIM1 may fire.**
+
+**Spec:** [`Specs/FatTail Labs — Heatmap LIM Template — Specification v0.4.3.md`](../Specs/FatTail%20Labs%20%E2%80%94%20Heatmap%20LIM%20Template%20%E2%80%94%20Specification%20v0.4.3.md)  
+**Plan:** [`docs/Options-Lab-Heatmap-LIM-Full-Agent-Bench-Plan-v1.2.md`](../docs/Options-Lab-Heatmap-LIM-Full-Agent-Bench-Plan-v1.2.md) **v1.2**  
+**Board:** `agents/p-options-lab-heatmap-lim/`  
+**Token:** [`agents/go/OLLIM-W0.md`](../agents/go/OLLIM-W0.md)
+
+### Spec sha1 (JR7)
+
+Whole-file, in this DL, not in the Spec body.
+
+| When | sha1 |
+|------|------|
+| v0.4.3 land / LIM0-0 stamp | `01f638f590492520236b3607edde487b949d6016` |
+
+Command: `shasum -a 1 "Specs/FatTail Labs — Heatmap LIM Template — Specification v0.4.3.md"`
+
+Spec file bytes are unchanged at stamp (header still says DRAFT). **BUILD AUTHORITY is this entry + the token.**
+
+### Errata in force
+
+**E1–E17.** Geometry unchanged since v0.4. v0.4.3 is E15–E17 (`dPct` percent, steepness `(hi − lo)`, inside-is-not-below) plus OD-LIM10 (`magF` on Comfort readout).
+
+### C2
+
+`limConfig.ts` throws on **first LIM activation**, not Heatmap module load. Missing/invalid Appendix A key or `W_* ≠ 1.0` aborts LIM. Other templates still render. No silent default. No `server/config.py`. Bundler prefix `NEXT_PUBLIC_` is a seam; logical names stay Appendix A. Never `LIM_CONF_*`.
+
+### Does not
+
+MiniTwo · UI / trail / registry / panel (LIM2+) · `gex.ts` rewrite · volume / P-SV · Strike Turnover · `session-volume` enum · `yUnclamped` · Y runtime clamp · cell names · friction-axis words.
+
+---
+
 ## 2026-09-01 — DL-650 Generation Plane P1b own process
 
 **Decision (Coach GO P1b, 2026-09-01):** Plane-owned wings interest is **its own supervised process** (`python -m opf.plane_interest`, launchd `ai.fattail.labs.plane-interest`, `run-from-repo-env.sh`). **`server/main.py` is not edited.** The `main.py` lifespan edit is deferred to P2 with the hydrator. **DL-539 is NOT consumed and stays 1/3.** The five §8 modules stay frozen. P2-0 remains blocked on OK 2 and OK 3.

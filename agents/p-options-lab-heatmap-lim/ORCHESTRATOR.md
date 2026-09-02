@@ -3,8 +3,8 @@
 **Juliet** runs this board. Specialists only via seeds. Gates via **Delta** ternary.
 
 **Plan:** [`docs/Options-Lab-Heatmap-LIM-Full-Agent-Bench-Plan-v1.2.md`](../../docs/Options-Lab-Heatmap-LIM-Full-Agent-Bench-Plan-v1.2.md) **v1.2**  
-**Spec:** LIM **v0.4.3 DRAFT** · sha1 `01f638f590492520236b3607edde487b949d6016`  
-**W0 token:** [`agents/go/OLLIM-W0.md`](../go/OLLIM-W0.md) **unstamped**
+**Spec:** LIM **v0.4.3 BUILD AUTHORITY** · sha1 `01f638f590492520236b3607edde487b949d6016` · **DL-651**  
+**W0 token:** [`agents/go/OLLIM-W0.md`](../go/OLLIM-W0.md) **GO** (LIM0-0 · **DL-651** · active program **DL-652**)
 
 ### Critical path
 
@@ -14,8 +14,8 @@ LIM0 → LIM1 → LIM2 → LIM3 → LIM4 → LIM5 → LIM6
 
 | Phase | Name | State |
 |-------|------|--------|
-| **LIM0** | Spec GO · OD-LIM1…9 · seeds · hash · live parent · merged Templates draft | **LIM0-G PASS** (re-fire; evidence in `seeds/out/`) — waiting Coach **LIM0-0** |
-| **LIM1** | Config + `computeLim` | blocked on LIM0-0 |
+| **LIM0** | Spec GO · OD-LIM1…10 · seeds · hash · live parent · merged Templates draft | **LIM0-G PASS** · **LIM0-0 GO** 2026-09-02 |
+| **LIM1** | Config + `computeLim` | **LIM1-G PASS** 2026-09-02 — `limConfig.ts` + `computeLim` · Hotel F1–F9 |
 | **LIM2** | Trail | blocked |
 | **LIM3** | Quadrant + chrome | blocked |
 | **LIM4** | GEX spot-line glow | blocked |
@@ -38,8 +38,8 @@ Gates: `LIM0-G.md` · `LIM1-G.md` · … · `LIM6-G.md`
 
 ### First actions (Juliet)
 
-1. Fire **LIM0-1** (India · merged Templates draft) in parallel with LIM0-2…9.  
-2. **LIM1 does not start** until `OLLIM-W0.md` is GO (and JR8 IKI/three-OK line is satisfied).
+1. LIM0-0 GO recorded. LIM1-0…2 executed. **LIM1-G PASS.**  
+2. Next: **LIM2** trail (`limTrail.ts`) — do not start until **DL-652 is on disk and pushed** and Coach fires LIM2.
 
 ### Do not
 
@@ -52,4 +52,4 @@ Gates: `LIM0-G.md` · `LIM1-G.md` · … · `LIM6-G.md`
 - Fade the dot.  
 - Invent a crossing midpoint.  
 - Read volume.  
-- Start `lim.ts` before LIM0-0.
+- Start LIM2 without a Coach fire.

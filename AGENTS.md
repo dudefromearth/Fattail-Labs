@@ -23,11 +23,11 @@ LearnDash. No shared code with MarketSwarm-Canonical (HTTP only).
 
 | Priority | Guidance for agents |
 |----------|---------------------|
-| **IKI Lab (active program · DL-539)** | **Only** IKI Lab. Do not drift. Do not touch existing work. Exception: raise to Coach **three times**, **three successive OKs**, recorded on the GO token, **before** any edit outside IKI. |
+| **Options Lab Heatmap LIM (active program · DL-651 · DL-652)** | **Only** LIM, through LIM6. Do not drift. Do not touch existing work. Exception: raise to Coach **three times**, **three successive OKs**, recorded on the GO token, **before** any edit outside LIM. IKI Lab is **parked**, not cancelled. DL-539 §8 five-module freeze is **unchanged**. |
 | **Strategy Lab NOW** | Lock **Design + Curate** for entitled members. Multi-member Curate is absolute. |
 | **Deploy** | Members get **Deploy UX** except **real-broker (Tradier) real-money**. Admin dogfoods Tradier, then provision. **DL-251 / DL-252**. |
 | **Market Bus (shipped core)** | Live chains/symbols: **Massive → feeds → Redis → one WS/tab → shared client**. Options Lab at `/app/options-lab`. See Arch **28**. |
-| **Do not** | Open multi-member live Tradier before admin proof. Do not block Design/Curate on Deploy. **Do not** add per-widget Massive or extra market WebSockets. |
+| **Do not** | Open multi-member live Tradier before admin proof. Do not block Design/Curate on Deploy. **Do not** add per-widget Massive or extra market WebSockets. StudioTwo live UI is **this repo** at **http://studiotwo:3000** (API **:4000**) — see StudioTwo local stacks. |
 | **Shipped** | Courses, practice stack (trade log, journal, retros, reports), toughness, admin board/cast/HeyGen, shared marks / house designs path, **Market Bus + Options Lab** |
 | **Spec’d, not shipped** | Community Discord second window · Visualize AI · Bot Marketplace · live **header** marks UI |
 
@@ -68,6 +68,7 @@ growth playbook [`Architecture/17-strategy-lab-growth-playbook.md`](./Architectu
 | **FatTail Intelligence** | Spec **v0.1 DRAFT** `FatTail-Labs-FatTail-Intelligence-Spec-v0.1.md` (**FTI** · **DL-477**) — StudioOne snapshot grid · SSR §A1 preserved · AZ-ALGO §7 cite · **OD-FTI-OPF open** |
 | **Options Lab Heatmap · Advanced Fly** | Spec **v0.2.1** `FatTail-Labs-Options-Lab-Heatmap-Advanced-Fly-Spec-v0_2.md` · Arch **29** · full-agent plan **v1.1.1** `docs/Options-Lab-Heatmap-Advanced-Fly-Full-Agent-Bench-Plan-v1.1.md` · board `agents/p-options-lab-heatmap/` — replace sym-fly; OPF-held dual-side chain; AF0 GO required |
 | **Options Lab Heatmap · Width Fit** | Spec **v0.1.1 BUILD AUTHORITY** `FatTail-Labs-Options-Lab-Heatmap-Width-Fit-Spec-v0_1.md` (**WF** · **OD-W1…W6 Accept** · **DL-525** · **DL-529** template) · full-agent plan **v1.1** `docs/Options-Lab-Heatmap-Width-Fit-Full-Agent-Bench-Plan-v1.1.md` · board `agents/p-options-lab-heatmap-width-fit/` · W0 `agents/go/OLHWF-W0.md` — Heatmap **Template** `width-fit` · member guide `docs/Options-Lab-Heatmap-Width-Fit-User-Guide.md` · help `server/help_reference/options-lab-heatmap-width-fit.md` (**DL-530**) |
+| **Options Lab Heatmap · LIM** | Spec **v0.4.3 BUILD AUTHORITY** `FatTail Labs — Heatmap LIM Template — Specification v0.4.3.md` (E1–E17 · sha1 `01f638f590492520236b3607edde487b949d6016`) · **DL-651** · full-agent plan **v1.2** `docs/Options-Lab-Heatmap-LIM-Full-Agent-Bench-Plan-v1.2.md` · board `agents/p-options-lab-heatmap-lim/` · token `agents/go/OLLIM-W0.md` **GO**. Active program **DL-652** (was IKI). No volume; registry `lim` only |
 | **Template Runner** | Spec **v0.1.2** `FatTail-Labs-Template-Runner-Spec-v0_1.md` — **TR-P1 PASS** `f4cc89a` · **TR-P2 GO** (`agents/go/TR-P2.md` · **DL-534**) controls + live + `spread-tax@0.1` · flag `NEXT_PUBLIC_LABS_RUNNER_SHELL` · rest THESIS · **Stream Book** bench `docs/Template-Runner-Stream-Book-Full-Agent-Bench-Plan-v1.0.md` (**TR14** · **DL-574** · board `agents/p-template-runner-stream-book/` · token `agents/go/TRSB-W0.md` **GO**) — client generation cache, member MB budget, Width Fit MA heatmap **and** ranking; **TR13** remains IKI-P3 chrome · **SB5 Scrubber is Time Machine** (`p-options-lab-tm`) — do not fork a second scrubber |
 | **Time Machine** | Spec **v0.7.4 BUILD AUTHORITY** `FatTail-Labs-Options-Lab-Time-Machine-Spec-v0_7_4.md` (**ATM-*** + **TMI-*** · **DL-598**) — closed GO. **One Source v0.4 BUILD AUTHORITY** `FatTail-Labs-Options-Lab-Time-Machine-One-Source-Spec-v0_4.md` (Coach GO SPEC 2026-08-29) — one source including today; snapshot at raise; full download; hold is the desk; VIX from marks tape; consume A2, do not build it. Plan **v1.3** `docs/Options-Lab-Time-Machine-One-Source-Full-Agent-Bench-Plan-v1.3.md` **W0-0 STAMP · W0-G PASS 2026-08-29**. Board `agents/p-options-lab-tm-os/`. Token `agents/go/TMOS-W0.md`. Next **W1**. Instant Replay `p-options-lab-tmi` and Day `p-az-atm` PARKED. Basic, TPO, 1× HOLD. |
 | **StudioOne Archive Read** | Spec **v0.8 + A1** `FatTail-Labs-StudioOne-Archive-Read-API-Spec-v0_8.md` (**SO-AR**) — 0DTE; `t`-order; `AMBIGUOUS INSTANT`. Plan **v2.1** (original GO). **Amendment A2_1** `FatTail-Labs-StudioOne-Archive-Read-API-Spec-v0_8-Amendment-A2_1.md` — marks tape + 2026-08-14 SPY + symbol-completeness + **15 s GAP floor** + **`VIX NOT NATIVE`**. Plan **v1.0** `docs/StudioOne-Archive-Read-API-Amendment-A2-Full-Agent-Bench-Plan-v1.0.md`. Token `agents/go/SOAR-A2-W0.md` **W0-0 STAMP · W0-BA GO 2026-08-29**. Board `agents/p-studioone-archive-read/` **A2 strip**. Dash bounce on **Coach W5-GO**. Time Machine does not move in this GO. Next **W1** characterize: AT-SOAR-50/55 fail on the live dash; a fixture does not close 50. |
@@ -79,6 +80,42 @@ growth playbook [`Architecture/17-strategy-lab-growth-playbook.md`](./Architectu
 | OA-class positioning | `Architecture/16-strategy-lab-vs-option-alpha-positioning.md` |
 
 Also: `CLAUDE.md` for ops/commands invariants.
+
+### StudioTwo local stacks (agents — non-negotiable)
+
+**Proven working (2026-09-02, Coach in-browser):** this repo on StudioTwo, **not** MiniTwo, **not** apply-dev.
+
+| | |
+|--|--|
+| Machine | StudioTwo (`StudioTwo.local`, Tailscale `100.83.63.113`) |
+| Checkout | **this repo** `Fattail-Labs` on `main` |
+| Browser | **http://studiotwo:3000** |
+| Next | `web/` `npm run dev` **:3000** |
+| API | `server/` uvicorn **:4000** (`LABS_ENV=dev`) |
+| MiniTwo | production `labs.fattail.ai` — do not deploy/restart unless Coach names prod |
+
+**SSO (required for member context on that URL):**
+
+- `NEXT_PUBLIC_SITE_URL=http://studiotwo:3000`
+- `LABS_SSO_LOGIN_URL_*` redirect = `http://studiotwo:3000/api/auth/sso/wordpress:…` (encoded). **Not** `localhost`.
+- `web/next.config.ts` `allowedDevOrigins`: `studiotwo`, `studiotwo.local` (Next 16 blocks HMR/fonts from that host otherwise).
+- Restart **API** after any `.env` SSO URL change (Config is boot-once). Restart **Next** after `.env.local` / `next.config.ts`.
+- Sign-in: **http://studiotwo:3000/login** → Continue with FatTail.ai (WP reauth). Callback must return to `studiotwo:3000` so `ft_session` is host-only on that name. A `localhost` callback → 401 `/api/auth/me`, page loads, **no identity**.
+
+**Other checkout (do not confuse with the live UI):**
+
+| Checkout | Next | API | When |
+|----------|------|-----|------|
+| `Fattail-Labs-apply-dev` (sibling) | :3001 | :4001 | Apply-form branch only. Old SSH tunnel `3000→3001` was this. **Not** current Coach UI. |
+
+**Before “restart the dev server” / “start the API”:**
+
+1. `lsof` **3000, 3001, 4000, 4001**. Live UI is **:3000 + :4000** unless Coach says apply-dev.
+2. `ECONNREFUSED 127.0.0.1:4000` (this repo) or **:4001** (apply-dev only) → start **that** API. Do not rewrite `layout.tsx`.
+3. If the page loads, the host is fine. Missing SSO/context is callback host mismatch, not the tunnel.
+4. **Do not** treat the Next 16 overlay `Encountered a script tag… beforeInteractive` as an SSO failure. Do not edit root layout to “fix” login.
+
+Source: 2026-09-02 — an agent bound the wrong tree/ports, chased the script overlay, left the API down, and pointed SSO at `localhost` while Coach was on `http://studiotwo:3000`. Recovered when **this repo :3000/:4000** ran and SSO callback host matched `studiotwo`.
 
 ### Market data invariants (agents — non-negotiable)
 
@@ -224,7 +261,7 @@ to the packet.
 5. **Change control.** Declare exact files + changes before touching; only touch what was approved.
 6. **Stop the bleeding.** Process outcomes in marketing, never profit claims. Pathway
    routes everyone through the flagship first.
-7. **No drift; do not touch existing work (DL-539 · doctrine §15).** The active program is the only tree in play. If touching existing work feels necessary, bring it to Coach **at least three times** and get **three successive OKs** on the GO token **before** the first edit. One OK is not three. A break resets the count. India / Delta block.
+7. **No drift; do not touch existing work (DL-539 · doctrine §15 · DL-652).** The active program is the only tree in play. **Now:** Options Lab Heatmap LIM through LIM6 (DL-651 · DL-652). IKI Lab is parked. If touching existing work feels necessary, bring it to Coach **at least three times** and get **three successive OKs** on the GO token **before** the first edit. One OK is not three. A break resets the count. India / Delta block.
 
 ---
 
