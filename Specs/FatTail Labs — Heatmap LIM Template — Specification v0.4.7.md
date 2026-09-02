@@ -1,10 +1,16 @@
-# FatTail Labs — Heatmap LIM Template — Specification v0.4.6
+# FatTail Labs — Heatmap LIM Template — Specification v0.4.7
 
-**Status:** **SUPERSEDED** by v0.4.7. Keep on disk. Do not execute against this file.
+**Status:** **BUILD AUTHORITY** with LIM9 (Coach diagram, 2026-09-02).
 **Date:** 2026-09-02
 **Repo:** Fattail-Labs · **Scope:** one Options Lab Heatmap template, client-side only.
 **Sibling:** `FatTail-Labs-Heatmap-Strike-Turnover-Spec-v1_0.md` — independent, never fused.
-**Supersedes:** v0.4.5.
+**Supersedes:** v0.4.6.
+
+**v0.4.7 (LIM9)** — Build the diagram as drawn. Plane holds disc, ghosts, crosshairs, cell
+outlines — nothing else. Four large coloured edge labels. Disc has depth. Ghosts are flat,
+newest at 50% opacity. Companion GEX bars above spot green / below spot red, **only** in the
+LIM4 companion link. Frozen `gex` SHA1 stays empty. Env scale map may list both `SPX` and
+`I:SPX` as exact keys. No prefix normaliser.
 
 **v0.4.6 (E27)** — A `valid: false` result is a **named refusal**, not a live centre reading.
 LIM26 still parks an *empty* book at `(0, 50)`. It does not authorise painting a **scale miss**
@@ -355,10 +361,9 @@ cap or threshold has to be chosen.
 
 **LIM21 — uniform size, opacity by age.** Bounded by `LIM_TRAIL_WINDOW_MIN`.
 Ghosts are **circles**, the same colour and the **same radius** as the live disc — a ghost is an
-afterimage of the same object. Opacity fades linearly with age over the window: newest near-full,
-oldest near-zero at the window edge. Newest sits **behind** the live disc (z-order) so the tail is
-continuous with it. If the newest ghost at full size would compete with the disc, **cap ghost
-opacity**, do not shrink it. **No size taper. (E26 withdrawn.)**
+afterimage of the same object. They are **flat** (no sphere treatment). Opacity: newest starts at
+**50%** and fades linearly to near-zero at the window edge. Newest sits **behind** the live disc
+(z-order). **No size taper. (E26 withdrawn.)**
 
 LIM20 is unchanged: fixed-interval emission; spacing is speed. `LABS_LIM_TRAIL_INTERVAL_S` stays
 **30**. A denser tail is a §16 config change, not this packet.
@@ -384,12 +389,23 @@ trail already shows drift honestly.
 
 ### 7.3 The plane
 
-**LIM23.** Crosshairs at `x = 0`, `y = 50`. Four cells are **outlined** (1px borders on the
-boundaries; optional subtle alternating fills) so the plane reads as four regions, not an empty
-field with a dot in it. Crosshairs and the `−100` / `+100` / `0` / `100` tick labels are the
-reading and must be the **highest-contrast furniture** on the plane, not the faintest. Tick
-labels sit in a **gutter outside the plot** — they must not print on top of each other or on the
-plot. **(E22.)**
+**LIM23.** Crosshairs at `x = 0`, `y = 50`. Four cells are **outlined** (1px borders; optional
+subtle alternating fills). The plane interior holds **only** the disc, the ghosts, the
+crosshairs and the cell outlines — **no in-plane copy**. Generous padding above, below and left
+so the edge labels have room.
+
+Four large coloured labels, outside the plane, as drawn:
+
+| Place | Label | Colour |
+|-------|--------|--------|
+| left, upper half, vertical | `EXPANSION` | green |
+| left, lower half, vertical | `COMPRESSION` | red |
+| below, left | `< WEIGHT BELOW` | red |
+| below, right | `WEIGHT ABOVE >` | green |
+
+**DL polarity note (not a gate):** Y-high is positive GEX, concentrated and close to spot — the
+damping end — so "expansion" on top is the inverse of the usual mechanism reading. Coach disposed
+the drawing. Recorded so a future reader knows it was a choice, not a slip.
 
 ```
 dotX = ((x + 100) / 200) × W
@@ -407,7 +423,9 @@ The ring is **deleted**. `limRingRadius` does not exist. Proximity does **not** 
 Disc radius **scales with the plot** (`min(W, H)`). Target **18–22 CSS px** at a 1440-wide
 panel (Echo: **20** at a 480 px plot min). Floor so it stays legible on a narrow plane.
 The disc is the most prominent object on the plane — ahead of crosshairs, cell outlines, and
-the tail. **(E25 · LIM32.)** E19's constant 9 is not enough.
+the tail. **(E25 · LIM32.)** It is **spherical**: a radial gradient of the **same** identity blue
+(lighter highlight upper-left, deeper lower-right) plus the existing soft glow. A gradient of one
+colour is not a second colour **(LIM25)**. Ghosts stay flat.
 
 > **E3** still holds: do not fade the mark. **E18** retires the ring. An uncapped
 > `minR + (1 − p) × (0.32 × minWH)` circle detached from the disc and read as a random arc
@@ -438,31 +456,12 @@ actively misleads on a 0DTE session. Lines **1, 2, 4** sit behind an **info affo
 title**, reachable in one interaction. The four lines are not deleted. The heatmap header pattern
 is not redesigned (S8).
 
-**LIM36 — cells are labelled in the book's terms. (E23) OD-LIM7 CLOSED.**
+**LIM36 — no cell names inside the plane. (LIM9 S1)** Coach's four edge labels (LIM23) replace
+in-plane copy. MSC outcome names stay banned. `expansion` and `compression` are **allowed** axis
+terms (AT-LIM23 allow-list), with the LIM23 polarity note cited in the DL.
 
-Large, centred labels. They describe **what the book is**, not what price will do:
-
-| Cell | Label |
-|------|--------|
-| upper-left | `Weight below · packed` |
-| upper-right | `Weight above · packed` |
-| lower-left | `Weight below · loose` |
-| lower-right | `Weight above · loose` |
-
-X at the plane edge: `← mass sits below spot | mass sits above spot →`  
-Y top: `positive, concentrated, close to spot`  
-Y bottom: `negative or thin, dispersed, far`
-
-**Not shipped:** MSC's *Pin / Mean Reversion*, *False Breakout Risk*, *Downside Acceleration*,
-*Air-Pocket Expansion*. Those are predictions about price. LIM1 and caveat 2 state that whether
-this book resists or accelerates price is **unmeasured**. Printing those four in the largest type
-on the surface would assert exactly what this spec says has not been established.
-
-Coach disposed **book-terms now**. Hotel's tape sitting (OD-LIM3) may later earn outcome names
-with evidence; that is a later revision, not a silent overlay.
-
-AT-LIM23 keeps every previously banned word **and** greps the MSC outcome names so they cannot
-land by accident. Do not drop words from the grep.
+AT-LIM23 keeps every previously banned word **and** greps the MSC outcome names. Do not drop
+words from the grep.
 
 ### 7.4 The spot-line link
 
@@ -595,7 +594,7 @@ Values are MSC's as-built settings where they existed and are defensible, carrie
 | **AT-LIM20** | No midpoint anywhere | no `(lo+hi)/2` in any published field or chrome string |
 | **AT-LIM21** | `crossingProximity` at any value | **dot opacity is unchanged (E3)** |
 | **AT-LIM22** | Chrome | all four Appendix B lines **reachable verbatim**; **line 3 visible without interaction**; lines 1, 2, 4 behind the title info affordance **(E6 · E24)** |
-| **AT-LIM23** | Grep of every output string, field name and label | contains none of the v0.4.3 list (*wall, magnet, pin, gravity, intent, hostile, support, resistance, friction, muddy, slippery*) **and** none of the MSC outcome names (*false breakout, downside acceleration, air-pocket, air pocket, mean reversion*). Do not drop words from the grep. Cell labels are the book-terms in LIM36 **(E4, E7, E23)** |
+| **AT-LIM23** | Grep of every output string, field name and label | contains none of the v0.4.3 list (*wall, magnet, pin, gravity, intent, hostile, support, resistance, friction, muddy, slippery*) **and** none of the MSC outcome names (*false breakout, downside acceleration, air-pocket, air pocket, mean reversion*). `expansion` / `compression` are **allowed** axis terms (LIM9 S2). Do not drop words from the grep **(E4, E7, E23)** |
 | **AT-LIM24** | Narrow-width render | proximity **chip** present; trail and in-plane readout absent. Asserted by **rendering at a width**, not by calling a mode function. No ring. No density control **(E18 · E21)** |
 | **AT-LIM25** | Expiration changed, then symbol changed | trail buffer empty on the first frame after each **(E13)** |
 | **AT-LIM26** | Y across the full fixture set, incl. extremes | `0 ≤ nearSpotMix ≤ 100` holds with **no clamp in the code path**; `yUnclamped` absent from the payload **(E8)** |
@@ -824,7 +823,8 @@ A hash of this document without this list is not an errata record.
 | **v0.4.3** | **2026-09-02** | **Third errata pass E15–E17, geometry unchanged.** All three are authoring defects in the formulas, found by Hotel's eight hand-computed goldens before any code existed: `crossingProximity` unit mismatch (dead channel) · `steepness` denominator · `spotBelowNearestCrossing` inside case. AT-LIM29–32 added. OD-LIM10 (`magF` must reach the reader) and caveat 7. OD-LIM9 corrected — there is no `v0_2_1` parent file. **No law created.** **SUPERSEDED by v0.4.4.** |
 | **v0.4.4** | **2026-09-02** | **LIM7 surface fit and legibility (S1–S8).** Compute unchanged. Chrome/plane law: ring gone (E18) · disc larger (E19) · responsive fit (E20) · no density toggle (E21) · cells outlined + tick gutters (E22) · book-term cell labels, OD-LIM7 closed (E23) · Appendix B placement (E24). AT-LIM22 and AT-LIM24 rewritten; AT-LIM23 grep extended, no words dropped. **SUPERSEDED by v0.4.5.** |
 | **v0.4.5** | **2026-09-02** | **D3 / D4.** Disc scales (~18–22 px at 1440, floor on narrow) · **E25**. Ghosts are same-size circles, opacity by age · LIM21 restated · **E26 withdrawn**. Interval 30 s unchanged. **SUPERSEDED by v0.4.6.** |
-| **v0.4.6** | **2026-09-02** | **LIM8 D1b / E27.** A scale miss (`valid: false`) is a named refusal, not a live `(0, 50)` reading. AT-LIM33. Header gated on `valid`. Env key for Heatmap is `SPX` (D1a), not `I:SPX`. No prefix normalisation. |
+| **v0.4.6** | **2026-09-02** | **LIM8 D1b / E27.** A scale miss (`valid: false`) is a named refusal, not a live `(0, 50)` reading. AT-LIM33. Header gated on `valid`. Env key for Heatmap is `SPX` (D1a), not `I:SPX`. No prefix normalisation. **SUPERSEDED by v0.4.7.** |
+| **v0.4.7** | **2026-09-02** | **LIM9 diagram.** In-plane copy gone (LIM36). Four large coloured edge labels (LIM23) with polarity DL note. Disc sphere (LIM24). Ghosts 50%→0, flat (LIM21). Companion GEX colour only in the LIM4 link; frozen SHA1 empty. Scale map may list `SPX` and `I:SPX`. |
 
 ---
 

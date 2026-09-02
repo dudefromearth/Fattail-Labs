@@ -8,15 +8,13 @@ import { fileURLToPath } from "node:url";
 import {
   LIM_AT23_PHRASES,
   LIM_AT23_WORDS,
+  LIM_AT23_ALLOWED,
   LIM_AXIS_X,
-  LIM_AXIS_X_EDGE,
   LIM_AXIS_Y,
-  LIM_AXIS_Y_BOTTOM,
-  LIM_AXIS_Y_TOP,
-  LIM_CELL_LL,
-  LIM_CELL_LR,
-  LIM_CELL_UL,
-  LIM_CELL_UR,
+  LIM_LABEL_COMPRESSION,
+  LIM_LABEL_EXPANSION,
+  LIM_LABEL_WEIGHT_ABOVE,
+  LIM_LABEL_WEIGHT_BELOW,
   LIM_CHROME_1,
   LIM_CHROME_2,
   LIM_CHROME_3_HOLE,
@@ -60,13 +58,10 @@ const rendered: string[] = [
   LIM_MODE_LABEL,
   LIM_AXIS_X,
   LIM_AXIS_Y,
-  LIM_AXIS_X_EDGE,
-  LIM_AXIS_Y_TOP,
-  LIM_AXIS_Y_BOTTOM,
-  LIM_CELL_UL,
-  LIM_CELL_UR,
-  LIM_CELL_LL,
-  LIM_CELL_LR,
+  LIM_LABEL_EXPANSION,
+  LIM_LABEL_COMPRESSION,
+  LIM_LABEL_WEIGHT_BELOW,
+  LIM_LABEL_WEIGHT_ABOVE,
   LIM_CHROME_1,
   LIM_CHROME_2,
   LIM_CHROME_3_HOLE,
@@ -92,6 +87,8 @@ rendered.push(lim!.label, lim!.description, ...lim!.valueModes.map((m) => m.labe
 
 assert(LIM_AT23_WORDS.length === 11, "AT-LIM23 no words dropped from v0.4.3 list");
 assert(LIM_AT23_PHRASES.length === 5, "AT-LIM23 MSC outcome phrases present");
+assert(LIM_AT23_ALLOWED.includes("expansion"), "AT-LIM23 expansion allowed");
+assert(LIM_AT23_ALLOWED.includes("compression"), "AT-LIM23 compression allowed");
 
 for (const s of rendered) {
   const hit = hasBanned(s);

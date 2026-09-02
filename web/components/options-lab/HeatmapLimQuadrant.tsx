@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * LIM quadrant plane — Spec v0.4.4 §7.3 / §7.6. No LIM math here; LimResult is the source.
+ * LIM quadrant plane — Spec v0.4.7 LIM9. No LIM math here; LimResult is the source.
  */
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
@@ -15,21 +15,20 @@ import {
   gexSpotLineTopPct,
 } from "@/lib/options-lab/templates/gex";
 import {
-  LIM_AXIS_X_EDGE,
-  LIM_AXIS_Y_BOTTOM,
-  LIM_AXIS_Y_TOP,
-  LIM_CELL_LL,
-  LIM_CELL_LR,
-  LIM_CELL_UL,
-  LIM_CELL_UR,
+  LIM_AXIS_GREEN,
+  LIM_AXIS_RED,
+  LIM_DISC_SPHERE,
   LIM_DOT_OPACITY,
+  LIM_LABEL_COMPRESSION,
+  LIM_LABEL_EXPANSION,
+  LIM_LABEL_WEIGHT_ABOVE,
+  LIM_LABEL_WEIGHT_BELOW,
   limChromeLine3,
   limDiscRadiusPx,
   limDotXY,
   limGhostOpacity,
   limGhostXY,
   limPlanePoint,
-  limProximityDisplay,
   limRefusalMessage,
   limSurfaceFlags,
 } from "@/lib/options-lab/templates/limChrome";
@@ -44,6 +43,15 @@ export type HeatmapLimQuadrantProps = {
 };
 
 const PLANE_MIN = 160;
+
+const vLabel: CSSProperties = {
+  writingMode: "vertical-rl",
+  transform: "rotate(180deg)",
+  fontSize: "1.375rem",
+  fontWeight: 700,
+  letterSpacing: "0.22em",
+  lineHeight: 1.1,
+};
 
 export default function HeatmapLimQuadrant({
   result,
@@ -83,7 +91,6 @@ export default function HeatmapLimQuadrant({
   const live = result != null && result.valid;
   const refusal = result && !result.valid ? limRefusalMessage(result) : null;
   const pt = limPlanePoint(result);
-  const proximity = result?.crossingProximity ?? 1;
   const discR = limDiscRadiusPx(plot.w, plot.h);
   const discD = discR * 2;
   const dot = limDotXY(pt.x, pt.y, plot.w, plot.h);
@@ -118,12 +125,26 @@ export default function HeatmapLimQuadrant({
         } as CSSProperties
       }
     >
-      <div className="flex min-h-0 flex-1 flex-row gap-2 px-2 pt-1">
+      <div className="flex min-h-0 flex-1 flex-row gap-4 px-5 pb-2 pt-5">
         <div className="flex min-h-0 min-w-0 flex-[3] flex-col">
           <div className="flex min-h-0 flex-1">
-            <div className="flex w-[5.5rem] shrink-0 flex-col justify-between py-1 pr-1 text-[9px] leading-snug text-white/70">
-              <span data-testid="lim-axis-y-top">{LIM_AXIS_Y_TOP}</span>
-              <span data-testid="lim-axis-y-bottom">{LIM_AXIS_Y_BOTTOM}</span>
+            <div className="flex w-11 shrink-0 flex-col pr-3">
+              <div className="flex min-h-0 flex-1 items-center justify-center">
+                <span
+                  data-testid="lim-label-expansion"
+                  style={{ ...vLabel, color: LIM_AXIS_GREEN }}
+                >
+                  {LIM_LABEL_EXPANSION}
+                </span>
+              </div>
+              <div className="flex min-h-0 flex-1 items-center justify-center">
+                <span
+                  data-testid="lim-label-compression"
+                  style={{ ...vLabel, color: LIM_AXIS_RED }}
+                >
+                  {LIM_LABEL_COMPRESSION}
+                </span>
+              </div>
             </div>
             <div className="flex min-h-0 min-w-0 flex-1 flex-col">
               <div
@@ -136,10 +157,10 @@ export default function HeatmapLimQuadrant({
                   style={{ borderColor: "var(--lim-cell-border)" }}
                   data-testid="lim-cells"
                 >
-                  <Cell label={LIM_CELL_UL} fill="a" testid="lim-cell-ul" />
-                  <Cell label={LIM_CELL_UR} fill="b" testid="lim-cell-ur" />
-                  <Cell label={LIM_CELL_LL} fill="b" testid="lim-cell-ll" />
-                  <Cell label={LIM_CELL_LR} fill="a" testid="lim-cell-lr" />
+                  <Cell fill="a" testid="lim-cell-ul" />
+                  <Cell fill="b" testid="lim-cell-ur" />
+                  <Cell fill="b" testid="lim-cell-ll" />
+                  <Cell fill="a" testid="lim-cell-lr" />
                 </div>
                 <svg
                   className="pointer-events-none absolute inset-0 h-full w-full"
@@ -202,20 +223,11 @@ export default function HeatmapLimQuadrant({
                       height: discD,
                       marginLeft: -discR,
                       marginTop: -discR,
-                      background: "var(--lim-identity)",
-                      boxShadow: "0 0 14px var(--lim-identity-glow)",
+                      background: LIM_DISC_SPHERE,
+                      boxShadow: "0 0 16px var(--lim-identity-glow)",
                       opacity: LIM_DOT_OPACITY,
                     }}
                   />
-                ) : null}
-
-                {live ? (
-                  <span
-                    data-testid="lim-chip-proximity"
-                    className="absolute right-2 top-2 z-[11] rounded px-1.5 py-0.5 text-[11px] tabular-nums bg-black/55 text-white/90"
-                  >
-                    {limProximityDisplay(proximity)}
-                  </span>
                 ) : null}
 
                 {refusal ? (
@@ -227,19 +239,29 @@ export default function HeatmapLimQuadrant({
                   </p>
                 ) : null}
               </div>
-              <div className="flex shrink-0 items-center justify-between px-1 pt-1 text-[11px] tabular-nums text-white/80">
+              <div className="flex shrink-0 items-center justify-between px-1 pt-3">
+                <span
+                  data-testid="lim-label-weight-below"
+                  className="text-[1.25rem] font-bold tracking-wide"
+                  style={{ color: LIM_AXIS_RED }}
+                >
+                  {LIM_LABEL_WEIGHT_BELOW}
+                </span>
+                <span
+                  data-testid="lim-label-weight-above"
+                  className="text-[1.25rem] font-bold tracking-wide"
+                  style={{ color: LIM_AXIS_GREEN }}
+                >
+                  {LIM_LABEL_WEIGHT_ABOVE}
+                </span>
+              </div>
+              <div className="flex shrink-0 items-center justify-between px-1 pt-1 pb-3 text-[14px] tabular-nums text-white/80">
                 <span data-testid="lim-tick-x-lo">−100</span>
                 <span data-testid="lim-tick-x-0">0</span>
                 <span data-testid="lim-tick-x-hi">+100</span>
               </div>
-              <p
-                className="shrink-0 px-1 pb-1 text-center text-[10px] leading-snug text-white/70"
-                data-testid="lim-axis-x-edge"
-              >
-                {LIM_AXIS_X_EDGE}
-              </p>
             </div>
-            <div className="flex w-7 shrink-0 flex-col justify-between py-1 pl-1 text-right text-[11px] tabular-nums text-white/80">
+            <div className="flex w-9 shrink-0 flex-col justify-between py-1 pl-2 text-right text-[15px] font-medium tabular-nums text-white/85">
               <span data-testid="lim-tick-y-hi">100</span>
               <span data-testid="lim-tick-y-mid">50</span>
               <span data-testid="lim-tick-y-lo">0</span>
@@ -258,7 +280,7 @@ export default function HeatmapLimQuadrant({
       </div>
 
       <p
-        className="shrink-0 px-3 py-1.5 text-[11px] leading-snug text-white/70"
+        className="shrink-0 px-5 py-2 text-[11px] leading-snug text-white/70"
         data-testid="lim-chrome-line-3"
       >
         {limChromeLine3(result?.oiAsOf ?? null)}
@@ -268,26 +290,22 @@ export default function HeatmapLimQuadrant({
 }
 
 function Cell({
-  label,
   fill,
   testid,
 }: {
-  label: string;
   fill: "a" | "b";
   testid: string;
 }) {
   return (
     <div
       data-testid={testid}
-      className="flex items-center justify-center border-[var(--lim-cell-border)] px-1 text-center text-[12px] font-medium leading-tight text-white/32 sm:text-[13px]"
+      className="border-[var(--lim-cell-border)]"
       style={{
         background: fill === "a" ? "var(--lim-cell-a)" : "var(--lim-cell-b)",
         borderRightWidth: testid.endsWith("ul") || testid.endsWith("ll") ? 1 : 0,
         borderBottomWidth: testid.endsWith("ul") || testid.endsWith("ur") ? 1 : 0,
       }}
-    >
-      {label}
-    </div>
+    />
   );
 }
 
@@ -313,10 +331,12 @@ function LimCompanionGex({
     crossings: result?.crossings,
   });
   const cogTop = gexSpotLineTopPct(ann.cog, strikes);
+  const spotLabel =
+    spot != null && Number.isFinite(spot) ? spot.toFixed(2) : null;
 
   return (
     <div
-      className="relative flex min-h-0 min-w-[10rem] flex-1 flex-col overflow-hidden"
+      className="relative flex min-h-0 min-w-[11rem] flex-1 flex-col overflow-hidden pt-1"
       data-testid="lim-companion-gex"
       data-lim-spot-line={glow ? "1" : undefined}
     >
@@ -324,24 +344,32 @@ function LimCompanionGex({
         const mag = pt.value != null ? Math.abs(pt.value) : 0;
         const pct = `${((mag / scale) * 50).toFixed(2)}%`;
         const neg = (pt.value ?? 0) < 0;
+        const above = spot != null && pt.strike > spot;
+        const below = spot != null && pt.strike < spot;
+        const barColor = above
+          ? LIM_AXIS_GREEN
+          : below
+            ? LIM_AXIS_RED
+            : "rgba(255,255,255,0.35)";
         return (
           <div
             key={pt.strike}
             className="flex min-h-0 flex-1 items-center px-1"
             data-lim-bar=""
+            data-lim-bar-side={above ? "above" : below ? "below" : "spot"}
           >
-            <span className="w-10 shrink-0 text-right text-[9px] tabular-nums text-white/50">
+            <span className="w-14 shrink-0 text-right text-[12px] tabular-nums text-white/70">
               {pt.label}
             </span>
             <div className="relative mx-1 h-[70%] min-h-[2px] flex-1 bg-white/[0.04]">
               <div className="absolute inset-y-0 left-1/2 w-px bg-white/20" />
               {mag > 0 ? (
                 <div
-                  className="absolute top-0 bottom-0 bg-white/35"
+                  className="absolute top-0 bottom-0"
                   style={
                     neg
-                      ? { right: "50%", width: pct }
-                      : { left: "50%", width: pct }
+                      ? { right: "50%", width: pct, background: barColor }
+                      : { left: "50%", width: pct, background: barColor }
                   }
                 />
               ) : null}
@@ -352,7 +380,7 @@ function LimCompanionGex({
       {spotTop != null && glow ? (
         <div
           data-testid="lim-spot-line"
-          className="pointer-events-none absolute left-10 right-1 h-px"
+          className="pointer-events-none absolute left-14 right-1 h-px"
           style={{
             top: `${spotTop}%`,
             background: glow.color,
@@ -360,10 +388,19 @@ function LimCompanionGex({
           }}
         />
       ) : null}
+      {spotTop != null && spotLabel ? (
+        <span
+          data-testid="lim-spot-price"
+          className="pointer-events-none absolute left-14 z-[6] -translate-y-1/2 pl-1 text-[13px] font-semibold tabular-nums"
+          style={{ top: `${spotTop}%`, color: LIM_AXIS_RED }}
+        >
+          {spotLabel}
+        </span>
+      ) : null}
       {ann.cog != null && cogTop != null ? (
         <div
           data-testid="lim-cog-hairline"
-          className="pointer-events-none absolute left-10 right-1 h-px bg-white/35"
+          className="pointer-events-none absolute left-14 right-1 h-px bg-white/35"
           style={{ top: `${cogTop}%` }}
         />
       ) : null}
@@ -375,7 +412,7 @@ function LimCompanionGex({
             key={`tick-${k}`}
             data-testid="lim-crossing-tick"
             data-lo-hi={String(k)}
-            className="pointer-events-none absolute left-10 right-1 h-px bg-white/20"
+            className="pointer-events-none absolute left-14 right-1 h-px bg-white/20"
             style={{ top: `${top}%` }}
           />
         );

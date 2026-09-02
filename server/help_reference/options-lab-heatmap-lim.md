@@ -15,9 +15,9 @@ The disc is lean (left/right) and near-spot mix (up/down). Colour is
 identity — one blue — not good or bad. Empty or not-yet-loaded sits
 dead centre at full opacity.
 
-Four outlined cells, labelled in the book's terms (weight below/above ·
-packed/loose). Shelf life is the **numeric chip** (0–1), never a fade
-and never a ring. The header also prints Lean · Mix · magF · crossings ·
+Four outlined cells. Edge labels: EXPANSION / COMPRESSION and
+WEIGHT BELOW / WEIGHT ABOVE. Shelf life is the header proximity
+number (0–1), never a fade and never a ring. The header also prints Lean · Mix · magF · crossings ·
 proximity. There is no Comfort/Compact toggle; a narrow panel drops the
 trail and keeps the chip.
 

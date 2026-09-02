@@ -12,16 +12,17 @@ import { HEATMAP_TEMPLATES } from "./registry";
 import { computeLimFromNets, type StrikeNet } from "./lim";
 import type { LimConfig } from "./limConfig";
 import {
-  LIM_CELL_LL,
-  LIM_CELL_LR,
-  LIM_CELL_UL,
-  LIM_CELL_UR,
   LIM_CHROME_1,
   LIM_CHROME_2,
   LIM_CHROME_4,
   LIM_DISC_R_FLOOR_PT,
   LIM_DISC_R_PT,
+  LIM_DISC_SPHERE,
   LIM_GHOST_OPACITY_CAP,
+  LIM_LABEL_COMPRESSION,
+  LIM_LABEL_EXPANSION,
+  LIM_LABEL_WEIGHT_ABOVE,
+  LIM_LABEL_WEIGHT_BELOW,
   limDiscRadiusPx,
   limGhostOpacity,
   LIM_DOT_OPACITY,
@@ -187,9 +188,14 @@ const panel = readFileSync(
       ghosts: [{ t: 1, xUnclamped: 10, y: 60, opacity: 0.4 }],
     }),
   );
-  assert(html.includes("lim-chip-proximity"), "AT-LIM24 chip in render");
+  assert(!html.includes("lim-chip-proximity"), "LIM9 S1 no in-plane chip");
   assert(!html.includes("lim-ring"), "AT-LIM24 no ring in render");
-  assert(html.includes(LIM_CELL_UL), "AT-LIM24 cell labels in render");
+  assert(html.includes(LIM_LABEL_EXPANSION), "LIM9 S2 EXPANSION");
+  assert(html.includes(LIM_LABEL_COMPRESSION), "LIM9 S2 COMPRESSION");
+  assert(html.includes("WEIGHT BELOW"), "LIM9 S2 WEIGHT BELOW");
+  assert(html.includes("WEIGHT ABOVE"), "LIM9 S2 WEIGHT ABOVE");
+  assert(!html.includes("Weight below · packed"), "LIM9 S1 no cell names");
+  assert(limNumericHeader(run(F2)).includes("prox "), "AT-LIM24 prox lives in header");
 }
 
 // AT-LIM27
@@ -279,19 +285,24 @@ assert(limDiscRadiusPx(480, 480) === 20, "E25 20px at 480 plot min");
   assert(at1440 >= 18 && at1440 <= 22, "E25 ~18–22 at 1440-class plot");
 }
 assert(limDiscRadiusPx(200, 200) === LIM_DISC_R_FLOOR_PT, "E25 floor on narrow");
-assert(limGhostOpacity(1) === LIM_GHOST_OPACITY_CAP, "D4 newest ghost opacity capped");
-assert(limGhostOpacity(0.2) === 0.2, "D4 older ghosts keep age opacity under cap");
+assert(limGhostOpacity(1) === LIM_GHOST_OPACITY_CAP, "S5 newest ghost 50%");
+assert(limGhostOpacity(0.2) === 0.1, "S5 opacity scales from 50%");
+assert(limGhostOpacity(0) === 0, "S5 oldest near-zero");
 assert(quad.includes("limDiscRadiusPx"), "D3 disc scales with plot");
-assert(quad.includes("limGhostOpacity"), "D4 ghost opacity cap in renderer");
+assert(quad.includes("limGhostOpacity"), "S5 ghost opacity in renderer");
+assert(quad.includes("LIM_DISC_SPHERE"), "S4 live disc has depth");
+assert(!quad.includes("Weight below · packed"), "S1 no packed cell copy");
 assert(!/width:\s*6/.test(quad), "D4 no 6px ghost squares");
 assert(quad.includes("rounded-full"), "D4 ghosts are circles");
-assert(LIM_CELL_UL === "Weight below · packed", "LIM36 UL");
-assert(LIM_CELL_UR === "Weight above · packed", "LIM36 UR");
-assert(LIM_CELL_LL === "Weight below · loose", "LIM36 LL");
-assert(LIM_CELL_LR === "Weight above · loose", "LIM36 LR");
 assert(quad.includes("LIM_DOT_OPACITY"), "dot uses constant");
 assert(!quad.includes("animate-spin"), "AT-LIM10 no spinner");
 assert(!quad.includes("minHeight: minWH"), "E20 no minHeight minWH");
 assert(panel.includes("overflow-hidden"), "E20 quadrant overflow hidden");
+{
+  const gexSrc = readFileSync(join(here, "gex.ts"), "utf8");
+  assert(!gexSrc.includes("#34c759"), "S6 no green in shared gex.ts");
+  assert(!gexSrc.includes("#ff3b30"), "S6 no red in shared gex.ts");
+  assert(quad.includes("data-lim-bar-side"), "S6 companion colours bars");
+}
 
 console.log("limQuadrant.test.ts ok");

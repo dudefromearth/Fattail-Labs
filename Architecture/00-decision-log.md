@@ -4,6 +4,30 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-02 — DL-659 LIM9 diagram as drawn
+
+**Decision (Coach markup, 2026-09-02):** Build the diagram exactly. Spec **v0.4.7** (Coach named v0.4.6; that id already held E27, so LIM9 is v0.4.7).
+
+**D1a:** `NEXT_PUBLIC_LABS_LIM_CENTRE_SCALE_PTS={"SPX":50,"I:SPX":50}` — both exact keys, no prefix normaliser.
+
+**D1b:** stands from **DL-658** / AT-LIM33.
+
+**S1–S3:** No in-plane copy. Four large edge labels: EXPANSION (green, upper left vertical) · COMPRESSION (red, lower left vertical) · `< WEIGHT BELOW` (red) · `WEIGHT ABOVE >` (green). Generous padding.
+
+**Polarity note (not a gate):** Y-high is positive GEX, concentrated and close to spot — the damping end — so "expansion" on top is the inverse of the usual mechanism reading. Coach disposed the drawing. A choice, not a slip.
+
+**S4:** Live disc is a sphere (radial gradient of identity blue). LIM25: one hue.
+
+**S5:** Ghosts flat, same size, newest 50% opacity → 0. Interval 30 s unchanged.
+
+**S6:** Companion GEX only: bars above spot green, below red; larger strike labels; spot price on the spot line in red. Shared `gex.ts` untouched. Frozen SHA1 empty.
+
+**Spec sha1 (JR7):** `2d25e3f99a580b4e29058e720ca7f1424bc9c710`
+
+**Does not:** MiniTwo (NX14) · prefix canonicalisation · MSC outcome names · colouring frozen `gex`.
+
+---
+
 ## 2026-09-02 — DL-658 LIM refusal must not look like a reading (E27)
 
 **Decision (Coach LIM8 D1b):** `valid: false` is a **named refusal**, not a live centre reading. Spec **v0.4.6**. AT-LIM33.

@@ -1,6 +1,6 @@
 /**
- * LIM chrome — Spec v0.4.4 Appendix B verbatim (LIM27 · E24). Tango lock.
- * Cell labels are book-terms (LIM36 · E23). No MSC outcome names.
+ * LIM chrome — Spec v0.4.7 Appendix B verbatim (LIM27 · E24). Tango lock.
+ * Plane-edge labels are Coach-drawn (LIM9). No in-plane copy. No MSC outcome names.
  */
 
 export const LIM_PICKER_LABEL = "GEX lean (window)";
@@ -9,15 +9,13 @@ export const LIM_MODE_LABEL = "Lean / near-spot mix";
 export const LIM_AXIS_X = "Lean";
 export const LIM_AXIS_Y = "Near-spot mix";
 
-export const LIM_AXIS_X_EDGE =
-  "← mass sits below spot | mass sits above spot →";
-export const LIM_AXIS_Y_TOP = "positive, concentrated, close to spot";
-export const LIM_AXIS_Y_BOTTOM = "negative or thin, dispersed, far";
+export const LIM_LABEL_EXPANSION = "EXPANSION";
+export const LIM_LABEL_COMPRESSION = "COMPRESSION";
+export const LIM_LABEL_WEIGHT_BELOW = "< WEIGHT BELOW";
+export const LIM_LABEL_WEIGHT_ABOVE = "WEIGHT ABOVE >";
 
-export const LIM_CELL_UL = "Weight below · packed";
-export const LIM_CELL_UR = "Weight above · packed";
-export const LIM_CELL_LL = "Weight below · loose";
-export const LIM_CELL_LR = "Weight above · loose";
+export const LIM_AXIS_GREEN = "#34c759";
+export const LIM_AXIS_RED = "#ff3b30";
 
 export const LIM_CHROME_1 =
   "Chain GEX (estimate). Dealer sign is assumed, not observed.";
@@ -75,8 +73,8 @@ export const LIM_DOT_OPACITY = 1;
 export const LIM_DISC_R_PT = 20;
 export const LIM_DISC_REF_MIN_PX = 480;
 export const LIM_DISC_R_FLOOR_PT = 14;
-/** Echo: cap ghost opacity so a same-size newest ghost does not compete with the live disc. */
-export const LIM_GHOST_OPACITY_CAP = 0.55;
+/** Newest ghost starts at 50% and fades to 0 (LIM21 · LIM9 S5). */
+export const LIM_GHOST_OPACITY_CAP = 0.5;
 
 export function limDiscRadiusPx(plotW: number, plotH: number): number {
   const minWH = Math.min(plotW, plotH);
@@ -86,8 +84,11 @@ export function limDiscRadiusPx(plotW: number, plotH: number): number {
 
 export function limGhostOpacity(ageOpacity: number): number {
   const o = Math.min(1, Math.max(0, ageOpacity));
-  return Math.min(LIM_GHOST_OPACITY_CAP, o);
+  return o * LIM_GHOST_OPACITY_CAP;
 }
+
+export const LIM_DISC_SPHERE =
+  "radial-gradient(circle at 32% 28%, #7ec4ff 0%, #0a84ff 45%, #0450a8 100%)";
 
 /** Narrow breakpoint (LIM31 · E21). Width of the LIM root, CSS pixels. */
 export const LIM_NARROW_PX = 420;
@@ -175,3 +176,6 @@ export const LIM_AT23_PHRASES = [
   "air pocket",
   "mean reversion",
 ] as const;
+
+/** Coach-drawn axis terms (LIM9 S2). Allowed. DL polarity note cited. */
+export const LIM_AT23_ALLOWED = ["expansion", "compression"] as const;

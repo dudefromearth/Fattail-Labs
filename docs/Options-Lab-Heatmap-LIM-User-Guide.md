@@ -36,10 +36,10 @@ Changing Template does not add a second market feed.
 
 ## 2. The plane
 
-Crosshairs at lean **0** and mix **50**. Four cells are outlined. Labels name the **book**, not a price outcome:
+Crosshairs at lean **0** and mix **50**. Four cells are outlined. Edge labels, as drawn:
 
-- Weight below · packed / Weight above · packed
-- Weight below · loose / Weight above · loose
+- EXPANSION (upper, green) / COMPRESSION (lower, red)
+- WEIGHT BELOW (left, red) / WEIGHT ABOVE (right, green)
 
 The disc is **lean** (left/right) and **near-spot mix** (up/down). Colour is identity (one blue), not good/bad.
 
