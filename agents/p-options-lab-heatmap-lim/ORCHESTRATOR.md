@@ -2,8 +2,8 @@
 
 **Juliet** runs this board. Specialists only via seeds. Gates via **Delta** ternary.
 
-**Plan:** [`docs/Options-Lab-Heatmap-LIM-Full-Agent-Bench-Plan-v1.1.md`](../../docs/Options-Lab-Heatmap-LIM-Full-Agent-Bench-Plan-v1.1.md) **v1.1**  
-**Spec:** LIM **v0.4.2 DRAFT** · sha1 `41dad04f06f7f2a43b80af4becb9153bf6f4f88a`  
+**Plan:** [`docs/Options-Lab-Heatmap-LIM-Full-Agent-Bench-Plan-v1.2.md`](../../docs/Options-Lab-Heatmap-LIM-Full-Agent-Bench-Plan-v1.2.md) **v1.2**  
+**Spec:** LIM **v0.4.3 DRAFT** · sha1 `01f638f590492520236b3607edde487b949d6016`  
 **W0 token:** [`agents/go/OLLIM-W0.md`](../go/OLLIM-W0.md) **unstamped**
 
 ### Critical path

@@ -1,7 +1,7 @@
-# AT-LIM1…28 — characterization list
+# AT-LIM1…32 — characterization list
 
-**Law:** LIM Spec v0.4.2 §10.  
-**Plan:** [`docs/Options-Lab-Heatmap-LIM-Full-Agent-Bench-Plan-v1.1.md`](../../docs/Options-Lab-Heatmap-LIM-Full-Agent-Bench-Plan-v1.1.md)  
+**Law:** LIM Spec v0.4.3 §10.  
+**Plan:** [`docs/Options-Lab-Heatmap-LIM-Full-Agent-Bench-Plan-v1.2.md`](../../docs/Options-Lab-Heatmap-LIM-Full-Agent-Bench-Plan-v1.2.md)  
 **Gate:** LIM5-G. Fixtures land in the same change as the code they prove.
 
 | Id | Assert | Owner phase |
@@ -35,5 +35,9 @@
 | **AT-LIM26** | `0 ≤ nearSpotMix ≤ 100` with **no clamp in the code path**; `yUnclamped` absent from payload | LIM1 |
 | **AT-LIM27** | Registry: exactly one `ValueModeId` added; no `session-volume` entry | LIM3 |
 | **AT-LIM28** | Grep `LIM_CONF_` → zero hits | LIM1 |
+| **AT-LIM29** | Nearest crossing between XPROX floor and ceiling → `0 < crossingProximity < 1` | LIM1 |
+| **AT-LIM30** | Crossing spans skipped zero-net strike → steepness uses `(hi − lo)` | LIM1 |
+| **AT-LIM31** | Spot inside → `spotBelowNearestCrossing` false **and** distance 0 | LIM1 |
+| **AT-LIM32** | Equal `nearSpotMix`, magF 0 vs magF > 50 → both magF values on Comfort readout | LIM3 |
 
-Hotel goldens (hand-recorded before `lim.ts`): eight fixtures — Spec §10 / plan §6.7.
+Hotel goldens (hand-recorded before `lim.ts`): **nine** fixtures — Spec §10 / plan §6.7 + AT-LIM29.

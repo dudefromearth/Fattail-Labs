@@ -1,4 +1,7 @@
-# Hotel goldens — Heatmap LIM (LIM0-2)
+# Hotel goldens — Heatmap LIM (LIM0-2) — re-issued against Spec v0.4.3
+
+**Law:** Spec **v0.4.3** (E15–E17). Prior sheet against v0.4.2 is superseded.
+**Floors / scale unchanged:** `I:SPX` scale 50; close 1% / medium 2% of spot; W 0.50/0.30/0.20; CONC/MAG floors 0 span 100.
 
 **Agent:** Hotel  
 **Date:** 2026-09-02  
@@ -471,8 +474,21 @@ nearSpotMix = 50×0.50 + 100×0.30 + 80×0.20 = 25+30+16 = 71
 | crossings | the three rows above |
 | nearestCrossing | `{ lo: 4960, hi: 4980 }` (dist 20 pts) |
 | distanceToCrossing | 20 |
-| spotBelowNearestCrossing | **false** (spot 5000 is above `hi`) |
-| crossingProximity | **0** *(20/5000 = 0.004 < 0.5 % floor; **not** because spot is inside)* |
+| spotBelowNearestCrossing | **false** (`spot < lo` → `5000 < 4960` is false; also above `hi`) **(E17)** |
+| crossingProximity | **0** under **E15** |
+
+**E15 proximity (record both forms):**
+
+```
+dist = 20
+d_v042    = 20/5000 = 0.004          // fraction — DEAD channel, always < 0.5 floor
+dPct      = 20/5000 × 100 = 0.40 %   // E15
+crossingProximity = clamp((0.40 − 0.5) / (1.5 − 0.5), 0, 1) = clamp(−0.10, 0, 1) = 0
+```
+
+Still **0**, but because **0.40 % is below the 0.5 % floor**, not because a fraction was compared to a percent. Hotel's v0.4.2 worksheet already said "0.004 < 0.5 % floor" — the right comparison in words, the wrong formula in the spec. AT-LIM29 needs a **ninth** fixture whose `dPct` sits **between** 0.5 and 1.5 (fixture 9).
+
+**E16 steepness:** denominator is `(hi − lo)`. Here each interval is 20 pts and listed-step is also 20 (no skipped zero). Same number; the skipped-zero case is fixture 7 / AT-LIM30.
 
 Steepness 1 vs 2.5 vs 3 at different locations: a cliff and a smear must not report identically (AT-LIM12). Same `lo,hi` with a doubled `|Δnet|` would also differ; this sheet uses three different `|Δnet|` on a common 20-pt step.
 
@@ -494,9 +510,10 @@ Walk (skip 5000): `+30, +10, −10, −30`. One sign change: `4990 → 5010`.
 
 ```
 crossing = { lo: 4990, hi: 5010, netBefore: +10, netAfter: −10,
-             strikeStep: 5010 − 4990 = 20,
-             steepness: |−10 − 10| / 20 = 1 }
+             steepness: |−10 − 10| / (5010 − 4990) = 20/20 = 1 }   // E16: (hi−lo), not ctx.strikeStep
 ```
+
+ATM `net==0` at 5000 was **skipped**. If `ctx.strikeStep` were 10, using it would report steepness 2 and **fail AT-LIM30**. The interval width is 20.
 
 **Not** `{ lo: 4990, hi: 5000 }` or `{ lo: 5000, hi: 5010 }`. **Not** price `5000`. Spot sitting inside `[4990, 5010]` does not mint a contract at 5000.
 
@@ -521,13 +538,15 @@ concF = 100,  magF = 100
 nearSpotMix = 50×0.50 + 100×0.30 + 100×0.20 = 25+30+20 = 75
 ```
 
-**Proximity** (does not feed X or Y)
+**Proximity** (does not feed X or Y) **(E15)**
 
 ```
 dist = 0     // 4990 ≤ 5000 ≤ 5010
-d    = 0 / 5000 = 0
-crossingProximity = clamp((0 − 0.005) / 0.01, 0, 1) = 0
+dPct = 0 / 5000 × 100 = 0
+crossingProximity = clamp((0 − 0.5) / (1.5 − 0.5), 0, 1) = 0
 ```
+
+**AT-LIM31:** `spotBelowNearestCrossing = (5000 < 4990) = false`. Inside is not below. `distanceToCrossing = 0`.
 
 MSC D15 would have subtracted from both scores near a flip. **Do not.** `x` stays 0, `y` stays 75, opacity stays full (render: AT-LIM21).
 
@@ -542,7 +561,7 @@ MSC D15 would have subtracted from both scores near a flip. **Do not.** `x` stay
 | crossings[0] | `{ lo: 4990, hi: 5010, netBefore: 10, netAfter: −10, steepness: 1 }` |
 | crossingProximity | **0** |
 | distanceToCrossing | **0** |
-| spotBelowNearestCrossing | **false** (inside is not below) |
+| spotBelowNearestCrossing | **false** (`spot < lo` → `5000 < 4990`) **(E17 · AT-LIM31)** |
 | x after proximity | **0** (unchanged) |
 | y after proximity | **75** (unchanged) |
 
@@ -593,18 +612,76 @@ nearSpotMix = 50×0.50 + 50×0.30 + 0 = 25+15 = 40
 
 ---
 
+### Fixture 9 — interior proximity (AT-LIM29)
+
+**Intent:** `0 < crossingProximity < 1`. Floor 0.5 %, ceil 1.5 % of spot. 50 pts on spot 5000 = **1.0 %**, midpoint of the map.
+
+Nearest crossing entirely **above** spot so dist = 50, not inside.
+
+| strike | call | put | net | \|K−S\| | band | \|net\|×(K−S) |
+|-------:|-----:|----:|----:|--------:|------|---------------:|
+| 4900 | 10 | 0 | **+10** | 100 | medium (edge) | 10 × (−100) = **−1000** |
+| 5000 | 10 | 0 | **+10** | 0 | close | 0 |
+| 5050 | 10 | 0 | **+10** | 50 | close (edge) | 10 × 50 = **+500** |
+| 5060 | 0 | −10 | **−10** | 60 | medium | 10 × 60 = **+600** |
+
+Walk: `+10, +10, +10, −10`. One crossing: `{ lo: 5050, hi: 5060 }`.
+
+```
+dist = min(|5000−5050|, |5000−5060|) = 50
+dPct = 50/5000 × 100 = 1.0 %
+crossingProximity = clamp((1.0 − 0.5) / (1.5 − 0.5), 0, 1) = 0.50
+steepness = |−10 − 10| / (5060 − 5050) = 20/10 = 2     // E16
+spotBelowNearestCrossing = (5000 < 5050) = true
+```
+
+If this were still v0.4.2: `d = 50/5000 = 0.01`, `(0.01 − 0.5)/1.0` clamps to **0**. AT-LIM7 and AT-LIM8 would both pass. **Only 0.50 tests the map.**
+
+**X / Y** (for the sheet; AT-LIM29 cares about proximity)
+
+```
+totalAbs = 40
+Σ |net|(K−S) = −1000 + 500 + 600 = 100
+centre = 2.5
+leanRaw = 2.5/50 × 100 = 5
+x = 5
+gexClose = 10+10 = 20 (5000, 5050; 5060 is 60 pts → not close)
+absGexClose = 20
+netRatio = 1
+netF = 100
+concF = 100
+magF = 50
+nearSpotMix = 50+30+10 = 90
+```
+
+| field | golden |
+|-------|--------|
+| **x** | **5** |
+| **y** | **90** |
+| **netRatio** | **1** |
+| **concF** | **100** |
+| **magF** | **50** |
+| **crossingCount** | **1** |
+| crossings[0] | `{ lo: 5050, hi: 5060, netBefore: +10, netAfter: −10, steepness: 2 }` |
+| distanceToCrossing | **50** |
+| **crossingProximity** | **0.50** |
+| spotBelowNearestCrossing | **true** |
+
+---
+
 ## 9. Expected-value index (Kilo / LIM1-1)
 
 | # | Fixture | x | y | netRatio | concF | magF | crossingCount | also |
 |---|---------|--:|--:|---------:|------:|-----:|--------------:|------|
 | 1 | positive-gamma | 10 | 100 | 1 | 100 | 100 | 0 | AT-LIM1, AT-LIM4 |
-| 2 | negative-gamma, mass above | 62 | 40 | −1 | 80 | 80 | 0 | AT-LIM5, **AT-LIM6** |
+| 2 | negative-gamma, mass above | 62 | 40 | −1 | 80 | 80 | 0 | AT-LIM5, **AT-LIM6**; magF=80 |
 | 3 | symmetric | 0 | 100 | 1 | 100 | 100 | 0 | AT-LIM3 |
-| 4 | mass outside close | 0 | 40 | 0 | 50 | 0 | 0 | magF=0, not LIM8 |
+| 4 | mass outside close | 0 | 40 | 0 | 50 | 0 | 0 | magF=0; **AT-LIM32** with F2 (same y=40) |
 | 5 | `Σ\|net\|==0` | 0 | **50** | 0 | 0 | 0 | 0 | LIM8 overrides blend |
-| 6 | three crossings | −60 | 71 | 0 | 100 | 80 | **3** | intervals; steepness 1, 2.5, 3 |
-| 7 | spot inside crossing | 0 | 75 | 0 | 100 | 100 | 1 | proximity 0; x,y unchanged |
+| 6 | three crossings | −60 | 71 | 0 | 100 | 80 | **3** | E15: dPct=0.40% → proximity **0**; steepness 1, 2.5, 3 |
+| 7 | spot inside crossing | 0 | 75 | 0 | 100 | 100 | 1 | proximity 0; AT-LIM31 false+dist 0; E16 steepness 1 on (hi−lo)=20 |
 | 8 | `leanRaw > 100` | 100 | 40 | 0 | 50 | 0 | 0 | xUnclamped=300 |
+| **9** | **interior proximity** | **5** | **90** | **1** | **100** | **50** | **1** | **AT-LIM29: proximity 0.50** |
 
 AT-LIM16 recombination (fixtures 1–4, 6–8):
 

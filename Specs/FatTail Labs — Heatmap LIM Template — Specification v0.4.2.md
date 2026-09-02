@@ -1,6 +1,6 @@
 # FatTail Labs — Heatmap LIM Template — Specification v0.4.2
 
-**Status:** DRAFT for build planning. Second errata pass on v0.4.1; **geometry unchanged**.
+**Status:** **SUPERSEDED** by v0.4.3. Keep on disk. Do not execute against this file.
 **Date:** 2026-09-02
 **Repo:** Fattail-Labs · **Scope:** one Options Lab Heatmap template, client-side only.
 **Sibling:** `FatTail-Labs-Heatmap-Strike-Turnover-Spec-v1_0.md` — independent, never fused.
