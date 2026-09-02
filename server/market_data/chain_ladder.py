@@ -423,6 +423,8 @@ def _normalize_contract(row: dict[str, Any]) -> dict[str, Any] | None:
     vol = _i(day.get("volume") if isinstance(day, dict) else None)
     if vol is None:
         vol = _i(row.get("volume"))
+    # Vendor day.last_updated (ns). Capture stores it; not a display column.
+    last_updated = _i(day.get("last_updated") if isinstance(day, dict) else None)
 
     return {
         "strike": strike,
@@ -436,6 +438,7 @@ def _normalize_contract(row: dict[str, Any]) -> dict[str, Any] | None:
         "day_close": day_close,
         "mid_source": mid_source,
         "volume": vol,
+        "last_updated": last_updated,
         "open_interest": _i(row.get("open_interest")),
         "delta": _f(greeks.get("delta")),
         "gamma": _f(greeks.get("gamma")),
@@ -523,6 +526,7 @@ def build_ladder(
                     "ask": c.get("ask"),
                     "mid_source": c.get("mid_source"),
                     "volume": c.get("volume"),
+                    "last_updated": c.get("last_updated"),
                     "open_interest": c.get("open_interest"),
                     "delta": c.get("delta"),
                     "gamma": c.get("gamma"),

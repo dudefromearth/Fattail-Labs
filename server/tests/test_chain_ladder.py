@@ -475,6 +475,46 @@ def test_standard_contract_filter_excludes_adjusted():
     assert a["rows"][0]["strike"] == 5000.0
 
 
+def test_day_last_updated_copied_onto_generation_row():
+    """Capture stores vendor day.last_updated; not a ladder display column."""
+    from market_data.chain_ladder import LADDER_FIELDS
+
+    assert "last_updated" not in LADDER_FIELDS
+    raw = [_raw(5000, mid=12.0, side="call")]
+    raw[0]["day"] = {"volume": 10, "last_updated": 1787147344340000000}
+    a = build_ladder(
+        raw,
+        underlier="I:SPX",
+        spot=5000.0,
+        expiration="2026-08-15",
+        side="call",
+        band=50.0,
+        vix=15.0,
+        dte=1,
+        dual_side=True,
+        strike_lo=4950.0,
+        strike_hi=5050.0,
+    )
+    assert a["row_count"] == 1
+    assert a["rows"][0]["volume"] == 10
+    assert a["rows"][0]["last_updated"] == 1787147344340000000
+    raw_none = [_raw(5000, mid=12.0, side="call")]
+    b = build_ladder(
+        raw_none,
+        underlier="I:SPX",
+        spot=5000.0,
+        expiration="2026-08-15",
+        side="call",
+        band=50.0,
+        vix=15.0,
+        dte=1,
+        dual_side=True,
+        strike_lo=4950.0,
+        strike_hi=5050.0,
+    )
+    assert b["rows"][0]["last_updated"] is None
+
+
 def test_modal_strike_step():
     from market_data.chain_ladder import modal_strike_step
 
