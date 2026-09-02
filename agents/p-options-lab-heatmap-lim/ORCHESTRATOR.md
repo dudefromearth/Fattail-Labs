@@ -16,7 +16,7 @@ LIM0 → LIM1 → LIM2 → LIM3 → LIM4 → LIM5 → LIM6
 |-------|------|--------|
 | **LIM0** | Spec GO · OD-LIM1…10 · seeds · hash · live parent · merged Templates draft | **LIM0-G PASS** · **LIM0-0 GO** 2026-09-02 |
 | **LIM1** | Config + `computeLim` | **LIM1-G PASS** 2026-09-02 — `limConfig.ts` + `computeLim` · Hotel F1–F9 |
-| **LIM2** | Trail | blocked |
+| **LIM2** | Trail | **LIM2-G PASS** 2026-09-02 — `limTrail.ts` · AT-LIM13/14/15/25 |
 | **LIM3** | Quadrant + chrome | blocked |
 | **LIM4** | GEX spot-line glow | blocked |
 | **LIM5** | AT-LIM1…28 | blocked |
@@ -38,8 +38,8 @@ Gates: `LIM0-G.md` · `LIM1-G.md` · … · `LIM6-G.md`
 
 ### First actions (Juliet)
 
-1. LIM0-0 GO recorded. LIM1-0…2 executed. **LIM1-G PASS.**  
-2. Next: **LIM2** trail (`limTrail.ts`) — do not start until **DL-652 is on disk and pushed** and Coach fires LIM2.
+1. LIM0–LIM2 executed. **LIM2-G PASS.**  
+2. Next: **LIM3** quadrant — do not start until Coach fires LIM3.
 
 ### Do not
 
@@ -52,4 +52,4 @@ Gates: `LIM0-G.md` · `LIM1-G.md` · … · `LIM6-G.md`
 - Fade the dot.  
 - Invent a crossing midpoint.  
 - Read volume.  
-- Start LIM2 without a Coach fire.
+- Start LIM3 without a Coach fire.
