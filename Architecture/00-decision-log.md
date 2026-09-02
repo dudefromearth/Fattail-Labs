@@ -4,6 +4,22 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-02 — DL-660 AZ-ALGO v2.0 Arming and Trade Management (DRAFT)
+
+**Decision:** Coach’s **Arming and Trade Management** memo is seated as Analyzer Algo Alert product law. Spec **v2.0 DRAFT** [`Specs/FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v2.0.md`](../Specs/FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v2.0.md). **Not BUILD AUTHORITY.**
+
+**Law Coach named:** Armed (no fill) → In trade (mechanical entry) → Managing (trail + GEX). Arming is discretionary; entry is mechanical; management has its own 75%-of-risk gate. **There are no stops** — debit bounds loss; the line is **advisory**, judged and overridden, never an automatic exit. Rearm = untriggered setup, fly **repositioned** (width unchanged; flag if debit ∉ 5–10% of width). GEX is a **management** instrument, not an entry filter. Primary trail = live profit-at-risk (`Δ·move + ½Γ·move²`) modulated by dealer GEX; **expected move rejected**. Legacy % taper remains **fallback and a second teaching line**. Batman both-sides + 5–10¢ free-wing alert **in**. Trigger formula **open** (name from observed entries). `k` constant vs regime **open**.
+
+**v1 kept beside, not deleted:** Reason / Trader Feed / ALGO-N1 / HUD High·Profit·Trail·Stop (Stop = **guide print**). Give-up `S = (1−g)×H` is the legacy line.
+
+**As-built (audit, not a waiver):** Demo-only `tickAlgoAlert`; two superseded Reason boxes; no Trader Feed mount; no Armed-before-fill. **AT-ALGO-18** makes live eval law.
+
+**Supersedes:** AZ-ALGO **v1.0.16** as product law (file kept as W1–W4 as-built). Bench plan v1.0.3 / W5–W-G **not** reopened by this DL.
+
+**Does not:** MiniTwo · implementation · naming the bounce trigger · shipping computed-only before validation §14.
+
+---
+
 ## 2026-09-02 — DL-659 LIM9 diagram as drawn
 
 **Decision (Coach markup, 2026-09-02):** Build the diagram exactly. Spec **v0.4.7** (Coach named v0.4.6; that id already held E27, so LIM9 is v0.4.7).

@@ -1,5 +1,7 @@
 # Arming and Trade Management Specification
 
+**Seated (2026-09-02):** Coach source memo. Product law is [AZ-ALGO v2.0](./FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v2.0.md) (**DL-660**). This file is not deleted.
+
 **Scope:** the state machine from armed setup through to exit, and the GEX-guided
 profit-retention layer that replaces the fixed trail schedule.
 **Output stance:** advisory. A visible line to be judged and overridden, never an

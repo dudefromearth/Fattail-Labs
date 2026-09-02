@@ -78,7 +78,8 @@ Trade with the trend. Wait for a pullback (or pull-up) into the structural level
 Enter in the direction of the trend at extreme risk-to-reward.
 
 The mechanics of arming, triggering, and rearming are specified separately — see
-the arming and management spec.
+[AZ-ALGO v2.0](./FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v2.0.md)
+(source memo: [Arming and Trade Management Specification.md](./Arming%20and%20Trade%20Management%20Specification.md)).
 
 ---
 
