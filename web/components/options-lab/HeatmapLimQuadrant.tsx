@@ -391,8 +391,13 @@ function LimCompanionGex({
       {spotTop != null && spotLabel ? (
         <span
           data-testid="lim-spot-price"
-          className="pointer-events-none absolute left-14 z-[6] -translate-y-1/2 pl-1 text-[13px] font-semibold tabular-nums"
-          style={{ top: `${spotTop}%`, color: LIM_AXIS_RED }}
+          className="pointer-events-none absolute left-1 z-[8] px-1 py-0.5 text-[13px] font-bold tabular-nums"
+          style={{
+            top: `${spotTop}%`,
+            transform: "translateY(calc(-100% - 3px))",
+            color: LIM_AXIS_RED,
+            background: "#0a0a0e",
+          }}
         >
           {spotLabel}
         </span>
