@@ -22,6 +22,8 @@ __pycache__/
 node_modules/
 .next/
 out/
+# LIM0 seat evidence (Coach-named path); root `out/` would ignore it
+!agents/p-options-lab-heatmap-lim/seeds/out/
 
 # Uploaded media (local storage)
 server/uploads/
