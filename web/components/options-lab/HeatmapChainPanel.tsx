@@ -1598,6 +1598,7 @@ export default function HeatmapChainPanel() {
                 errorMessage={limPack.error}
                 ghosts={limGhosts}
                 gexPoints={limGexPoints}
+                chainCtx={chainCtx}
                 spot={chainCtx.spot}
                 showAnnotations={limPack.showAnnotations}
               />

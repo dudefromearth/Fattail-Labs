@@ -4,13 +4,16 @@
  * LIM quadrant plane — Spec v0.4.7 LIM9. No LIM math here; LimResult is the source.
  */
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { LimResult } from "@/lib/options-lab/templates/lim";
 import type { LimTrailGhost } from "@/lib/options-lab/templates/limTrail";
+import type { ChainContext, ValueModeId } from "@/lib/options-lab/templates/types";
 import type { GexProfilePoint } from "@/lib/options-lab/templates/gex";
 import {
+  buildGexProfile,
   gexAnnotationMarks,
   gexProfileScale,
+  gexSidePeaks,
   gexSpotGlowCss,
   gexSpotLineTopPct,
 } from "@/lib/options-lab/templates/gex";
@@ -37,6 +40,7 @@ export type HeatmapLimQuadrantProps = {
   errorMessage: string | null;
   ghosts: readonly LimTrailGhost[];
   gexPoints?: readonly GexProfilePoint[] | null;
+  chainCtx?: ChainContext | null;
   spot?: number | null;
   showAnnotations?: boolean;
 };
@@ -57,6 +61,7 @@ export default function HeatmapLimQuadrant({
   errorMessage,
   ghosts,
   gexPoints = null,
+  chainCtx = null,
   spot = null,
   showAnnotations = false,
 }: HeatmapLimQuadrantProps) {
@@ -271,6 +276,7 @@ export default function HeatmapLimQuadrant({
         {gexPoints && gexPoints.length > 0 ? (
           <LimCompanionGex
             points={gexPoints}
+            chainCtx={chainCtx}
             spot={spot}
             result={result}
             showAnnotations={flags.trail && showAnnotations}
@@ -303,17 +309,26 @@ function Cell({
 
 function LimCompanionGex({
   points,
+  chainCtx,
   spot,
   result,
   showAnnotations,
 }: {
   points: readonly GexProfilePoint[];
+  chainCtx?: ChainContext | null;
   spot: number | null;
   result: LimResult | null;
   showAnnotations: boolean;
 }) {
-  const scale = gexProfileScale(points as GexProfilePoint[], "gex_net") || 1;
-  const strikes = points.map((p) => p.strike);
+  const [gexView, setGexView] = useState<ValueModeId>("gex_net");
+  const viewPoints = useMemo(() => {
+    if (chainCtx) return buildGexProfile(chainCtx, gexView);
+    return points as GexProfilePoint[];
+  }, [chainCtx, gexView, points]);
+  const combined = gexView === "gex_all";
+  const scale = gexProfileScale(viewPoints, combined ? "gex_all" : gexView) || 1;
+  const peaks = combined ? gexSidePeaks(viewPoints) : null;
+  const strikes = viewPoints.map((p) => p.strike);
   const glow = gexSpotGlowCss({ spotGlow: true });
   const spotTop = gexSpotLineTopPct(spot, strikes);
   const ann = gexAnnotationMarks({
@@ -332,17 +347,42 @@ function LimCompanionGex({
       data-testid="lim-companion-gex"
       data-lim-spot-line={glow ? "1" : undefined}
     >
-      {points.map((pt) => {
-        const mag = pt.value != null ? Math.abs(pt.value) : 0;
-        const pct = `${((mag / scale) * 50).toFixed(2)}%`;
-        const neg = (pt.value ?? 0) < 0;
+      <label className="mb-1 shrink-0 px-1 text-[10px] text-white/50">
+        <span className="sr-only">GEX view</span>
+        <select
+          data-testid="lim-gex-view"
+          aria-label="GEX view"
+          className="w-full rounded border border-white/15 bg-[#0a0a0e] px-1 py-0.5 text-[11px] text-white/80"
+          value={gexView}
+          onChange={(e) => setGexView(e.target.value as ValueModeId)}
+        >
+          <option value="gex_net">Net</option>
+          <option value="gex_all">Call / Put</option>
+          <option value="gex_abs">Absolute</option>
+        </select>
+      </label>
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+      {viewPoints.map((pt) => {
         const above = spot != null && pt.strike > spot;
         const below = spot != null && pt.strike < spot;
-        const barColor = above
+        const strikeColor = above
           ? LIM_AXIS_GREEN
           : below
             ? LIM_AXIS_RED
             : "rgba(255,255,255,0.35)";
+        const mag = pt.value != null ? Math.abs(pt.value) : 0;
+        const pct = `${((mag / scale) * 50).toFixed(2)}%`;
+        const neg = (pt.value ?? 0) < 0;
+        const callMag = pt.call != null ? Math.abs(pt.call) : 0;
+        const putMag = pt.put != null ? Math.abs(pt.put) : 0;
+        const callPct =
+          peaks && peaks.call > 0
+            ? `${((callMag / peaks.call) * 50).toFixed(2)}%`
+            : "0%";
+        const putPct =
+          peaks && peaks.put > 0
+            ? `${((putMag / peaks.put) * 50).toFixed(2)}%`
+            : "0%";
         return (
           <div
             key={pt.strike}
@@ -355,13 +395,36 @@ function LimCompanionGex({
             </span>
             <div className="relative mx-1 h-[70%] min-h-[2px] flex-1 bg-white/[0.04]">
               <div className="absolute inset-y-0 left-1/2 w-px bg-white/20" />
-              {mag > 0 ? (
+              {combined ? (
+                <>
+                  {putMag > 0 ? (
+                    <div
+                      className="absolute top-0 bottom-0"
+                      style={{
+                        right: "50%",
+                        width: putPct,
+                        background: LIM_AXIS_RED,
+                      }}
+                    />
+                  ) : null}
+                  {callMag > 0 ? (
+                    <div
+                      className="absolute top-0 bottom-0"
+                      style={{
+                        left: "50%",
+                        width: callPct,
+                        background: LIM_AXIS_GREEN,
+                      }}
+                    />
+                  ) : null}
+                </>
+              ) : mag > 0 ? (
                 <div
                   className="absolute top-0 bottom-0"
                   style={
-                    neg
-                      ? { right: "50%", width: pct, background: barColor }
-                      : { left: "50%", width: pct, background: barColor }
+                    gexView === "gex_abs" || !neg
+                      ? { left: "50%", width: pct, background: strikeColor }
+                      : { right: "50%", width: pct, background: strikeColor }
                   }
                 />
               ) : null}
@@ -414,6 +477,7 @@ function LimCompanionGex({
           />
         );
       })}
+      </div>
     </div>
   );
 }

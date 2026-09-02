@@ -287,9 +287,9 @@ assert(limDiscRadiusPx(480, 480) === 20, "E25 20px at 480 plot min");
   assert(at1440 >= 18 && at1440 <= 22, "E25 ~18–22 at 1440-class plot");
 }
 assert(limDiscRadiusPx(200, 200) === LIM_DISC_R_FLOOR_PT, "E25 floor on narrow");
-assert(limGhostOpacity(1) === LIM_GHOST_OPACITY_CAP, "S5 newest ghost 50%");
-assert(limGhostOpacity(0.2) === 0.1, "S5 opacity scales from 50%");
-assert(limGhostOpacity(0) === 0, "S5 oldest near-zero");
+assert(limGhostOpacity(1) === LIM_GHOST_OPACITY_CAP, "newest ghost 30%");
+assert(limGhostOpacity(0.2) === 0.06, "opacity scales from 30%");
+assert(limGhostOpacity(0) === 0, "oldest near-zero");
 assert(quad.includes("limDiscRadiusPx"), "D3 disc scales with plot");
 assert(quad.includes("limGhostOpacity"), "S5 ghost opacity in renderer");
 assert(quad.includes("LIM_DISC_SPHERE"), "S4 live disc has depth");
@@ -305,6 +305,7 @@ assert(panel.includes("overflow-hidden"), "E20 quadrant overflow hidden");
   assert(!gexSrc.includes("#34c759"), "S6 no green in shared gex.ts");
   assert(!gexSrc.includes("#ff3b30"), "S6 no red in shared gex.ts");
   assert(quad.includes("data-lim-bar-side"), "S6 companion colours bars");
+  assert(quad.includes("lim-gex-view"), "companion GEX view menu");
 }
 
 console.log("limQuadrant.test.ts ok");

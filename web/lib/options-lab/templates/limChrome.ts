@@ -73,8 +73,8 @@ export const LIM_DOT_OPACITY = 1;
 export const LIM_DISC_R_PT = 20;
 export const LIM_DISC_REF_MIN_PX = 480;
 export const LIM_DISC_R_FLOOR_PT = 14;
-/** Newest ghost starts at 50% and fades to 0 (LIM21 · LIM9 S5). */
-export const LIM_GHOST_OPACITY_CAP = 0.5;
+/** Newest ghost starts at 30% opacity and fades to 0. */
+export const LIM_GHOST_OPACITY_CAP = 0.3;
 
 export function limDiscRadiusPx(plotW: number, plotH: number): number {
   const minWH = Math.min(plotW, plotH);
