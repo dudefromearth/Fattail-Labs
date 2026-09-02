@@ -4,6 +4,28 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-02 — DL-654 OD-LIM6 merged amendment landed HALF
+
+**Decision (Coach, 2026-09-02):** LIM6-G accepted. LIM board closed. This entry is documentation only — **not** a reopen.
+
+OD-LIM6 called for **one** merged Heatmap Templates amendment: SVP auxiliary-plane prose **plus** `TemplateLayout: "quadrant"` **plus** catalog `lim`. What landed in parent **v0.2.4** (**DL-653**) is **quadrant + lim only**. The SVP half is orphaned.
+
+**Three parent artifacts:**
+
+| Artifact | Status |
+|----------|--------|
+| [`Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md`](../Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) | rev **v0.2.4** — LIVE (`quadrant` + `lim`) |
+| [`Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_3.md`](../Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_3.md) | DRAFT SVP amendment, written against **v0.2.3**. **PENDING RE-BASE onto v0.2.4** before SVP resumes |
+| [`Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-LIM-merge-DRAFT.md`](../Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-LIM-merge-DRAFT.md) | **SUPERSEDED BY DL-653**. Spent. Keep on disk |
+
+v0.2.4 §5.6 / §14 still *say* the SVP seam remains prose / v0.3 §2 carried as text law. That sentence is a pointer to the orphaned draft, **not** a land of the clauses. The clauses live only in v0_3.
+
+The next SVP packet inherits this: rebase v0.3 onto v0.2.4; do not read the merge DRAFT as live law; do not treat v0.3 as already applied. Live **HM21** (inspector tab-session) and v0.3 §2.4 **HM21** (auxiliary read plane) collide — rebase must not steal the live id.
+
+**Does not:** reopen LIM · implement `session-volume` · edit product code · copy SVP clauses into v0.2.4 in this entry.
+
+---
+
 ## 2026-09-02 — DL-653 Heatmap LIM as-built; parent v0.2.4
 
 **Decision (LIM6):** Template **`lim`** (`layout: "quadrant"`, picker **GEX lean (window)**) is as-built on Heatmap. Parent Heatmap Templates Spec **v0.2.4** (`Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md`) catalogs `quadrant` + `lim` only. Frozen `gex` unchanged. **No** `session-volume` enum (E14). LIM geometry remains LIM Spec **v0.4.3** sha1 `01f638f590492520236b3607edde487b949d6016` (JR7: hash in this log, not the LIM Spec body).

@@ -1,11 +1,15 @@
 # FatTail Labs — Options Lab Heatmap Templates Spec v0.3
 
-**Status:** **DRAFT** — amendment. Not build authority.
+**Status:** **DRAFT** — amendment. Not build authority. **PENDING RE-BASE onto v0.2.4** before SVP resumes (**DL-654**).
 **Date:** 2026-09-01
 **Current revision:** **v0.3**
-**Supersedes:** [v0.2](./FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) — **only** in the clauses named in §2. Everything else in v0.2 stands unchanged.
+**Written against:** live parent [`…-Templates-Spec-v0_2.md`](./FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) revision **v0.2.3** (pre-LIM).
+**Now amends (after rebase):** the same file, revision **v0.2.4** (`quadrant` + catalog `lim` already live · **DL-653**). Do not implement against this file until rebased.
+**Supersedes:** [v0.2](./FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) — **only** in the clauses named in §2, and **only after rebase**. Everything else in **v0.2.4** stands unchanged.
 **Canonical filename:** `Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_3.md`
 **Type:** Amendment to the client view-plane Spec — admits a **server-owned auxiliary read plane**
+
+**Rebase note (inherit, do not discover):** OD-LIM6's merged amendment landed **HALF** — quadrant + `lim` shipped; this SVP prose did not. Live **HM21** is inspector tab-session (v0.2.1 · **DL-575**). This draft's §2.4 proposes a **new** HM21 (auxiliary read plane). Rebase must not steal that id. The spent merge draft is **SUPERSEDED BY DL-653**.
 
 **Short name:** **Heatmap Templates** / **HM**
 

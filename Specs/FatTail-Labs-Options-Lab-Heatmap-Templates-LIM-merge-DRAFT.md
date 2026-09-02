@@ -1,18 +1,20 @@
 # FatTail Labs — Options Lab Heatmap Templates — LIM merge DRAFT
 
-**Status:** **LANDED** 2026-09-02 — folded into live parent **v0.2.4** (`…-Templates-Spec-v0_2.md`) · **DL-653**. This file is no longer a second parent.  
+**Status:** **SUPERSEDED BY DL-653** (2026-09-02). Spent. Keep on disk. Do not execute against this file.  
+**Land (HALF · DL-654):** OD-LIM6 called for **one** merged amendment — SVP auxiliary-plane prose **+** `quadrant` **+** catalog `lim`. **DL-653** shipped `quadrant` + `lim` into live parent **v0.2.4**. SVP prose **did not land**. Body below is the proposed merge as drafted; it is not product law.  
 **Date:** 2026-09-02  
 **Opened by:** India · LIM0-1 · **OD-LIM6** · **LIM6-1**  
 **Canonical filename (this draft):** `Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-LIM-merge-DRAFT.md`
 
-**Against live parent:** [`Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md`](./FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md)  
-**Parent header:** Current revision **v0.2.3** · HM21 inspector · **DL-579** · **DL-594**
+**Against live parent (at draft):** [`Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md`](./FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md)  
+**Parent header (at draft):** Current revision **v0.2.3** · HM21 inspector · **DL-579** · **DL-594**  
+**Live parent now:** same file, revision **v0.2.4** (**DL-653**).
 
-**Does not replace:** the live parent on disk. Land is **LIM6** (India LIM6-1) after Coach Accept of OD-LIM6 on `OLLIM-W0.md`. Until then, product law remains **v0_2.md**.
+**Does not replace:** the live parent on disk. This file is spent. Product law is **v0_2.md** rev **v0.2.4**. SVP amendment remains [`…-Spec-v0_3.md`](./FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_3.md) (**PENDING RE-BASE onto v0.2.4** · **DL-654**).
 
 **LIM law:** [`Specs/FatTail Labs — Heatmap LIM Template — Specification v0.4.2.md`](./FatTail%20Labs%20%E2%80%94%20Heatmap%20LIM%20Template%20%E2%80%94%20Specification%20v0.4.2.md) (DRAFT; E1–E14). Geometry and compute stay in that Spec. This document only amends the **Heatmap Templates contract** (layout enum + catalog).
 
-**SVP companion (prose only):** [`Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_3.md`](./FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_3.md) — DRAFT amendment, **not** the live parent. Auxiliary-plane clauses from its **§2** are carried here as **text law**. **No** `session-volume` catalog row. **No** `ValueModeId: "session-volume"` (**E14** · LIM37 · AT-LIM27).
+**SVP companion (prose only):** [`Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_3.md`](./FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_3.md) — DRAFT amendment, **not** the live parent. Auxiliary-plane clauses from its **§2** were **proposed** as text law in this draft. They **did not land** (**DL-654**). **No** `session-volume` catalog row. **No** `ValueModeId: "session-volume"` (**E14** · LIM37 · AT-LIM27).
 
 **Architecture companion (update at LIM6, not now):** `Architecture/29-options-lab-heatmap-templates.md`
 
