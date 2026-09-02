@@ -979,15 +979,33 @@ export default function HeatmapChainPanel() {
     return { points, scale };
   }, [tpl.layout, tpl.id, chainCtx, valueMode]);
 
+  const limGexPoints = useMemo(() => {
+    if (tpl.layout !== "quadrant") return null;
+    return buildGexProfile(chainCtx, "gex_net");
+  }, [tpl.layout, chainCtx]);
+
   const limPack = useMemo(() => {
-    if (tpl.layout !== "quadrant") {
-      return { result: null as LimResult | null, error: null as string | null };
+    if (tpl.layout !== "quadrant" || !limGexPoints) {
+      return {
+        result: null as LimResult | null,
+        error: null as string | null,
+        showAnnotations: false,
+      };
     }
     try {
-      return {
-        result: computeLim(chainCtx, { expiration, oiAsOf: null }),
-        error: null,
-      };
+      const nets = limGexPoints.map((p) => ({
+        strike: p.strike,
+        call: p.call,
+        put: p.put,
+        net: p.value,
+      }));
+      const result = computeLim(chainCtx, {
+        expiration,
+        oiAsOf: null,
+        nets,
+      });
+      const showAnnotations = loadLimConfig().LIM_SHOW_ANNOTATIONS;
+      return { result, error: null, showAnnotations };
     } catch (e) {
       const msg =
         e instanceof LimConfigError
@@ -995,9 +1013,9 @@ export default function HeatmapChainPanel() {
           : e instanceof Error
             ? e.message
             : "LIM failed";
-      return { result: null, error: msg };
+      return { result: null, error: msg, showAnnotations: false };
     }
-  }, [tpl.layout, chainCtx, expiration]);
+  }, [tpl.layout, chainCtx, expiration, limGexPoints]);
 
   useEffect(() => {
     if (tpl.layout !== "quadrant" || !limPack.result) {
@@ -1536,6 +1554,9 @@ export default function HeatmapChainPanel() {
                 result={limPack.result}
                 errorMessage={limPack.error}
                 ghosts={limGhosts}
+                gexPoints={limGexPoints}
+                spot={chainCtx.spot}
+                showAnnotations={limPack.showAnnotations}
               />
             ) : isWidthFitTemplate(templateId) &&
               wfIface === "ranking" &&

@@ -8,6 +8,13 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import SegmentedControl from "@/components/ui/SegmentedControl";
 import type { LimResult } from "@/lib/options-lab/templates/lim";
 import type { LimTrailGhost } from "@/lib/options-lab/templates/limTrail";
+import type { GexProfilePoint } from "@/lib/options-lab/templates/gex";
+import {
+  gexAnnotationMarks,
+  gexProfileScale,
+  gexSpotGlowCss,
+  gexSpotLineTopPct,
+} from "@/lib/options-lab/templates/gex";
 import {
   LIM_AXIS_X,
   LIM_AXIS_Y,
@@ -28,6 +35,9 @@ export type HeatmapLimQuadrantProps = {
   result: LimResult | null;
   errorMessage: string | null;
   ghosts: readonly LimTrailGhost[];
+  gexPoints?: readonly GexProfilePoint[] | null;
+  spot?: number | null;
+  showAnnotations?: boolean;
 };
 
 const PLANE_MIN = 240;
@@ -36,6 +46,9 @@ export default function HeatmapLimQuadrant({
   result,
   errorMessage,
   ghosts,
+  gexPoints = null,
+  spot = null,
+  showAnnotations = false,
 }: HeatmapLimQuadrantProps) {
   const [density, setDensity] = useState<LimDensity>("comfort");
   const [userSet, setUserSet] = useState(false);
@@ -119,6 +132,7 @@ export default function HeatmapLimQuadrant({
         </div>
       </div>
 
+      <div className="flex min-h-0 flex-1 flex-col gap-2 px-2 md:flex-row">
       <div
         className="relative mx-auto min-h-[16rem] w-full max-w-[36rem] flex-1 overflow-visible"
         data-testid="lim-plane"
@@ -241,6 +255,16 @@ export default function HeatmapLimQuadrant({
         </span>
       </div>
 
+      {gexPoints && gexPoints.length > 0 ? (
+        <LimCompanionGex
+          points={gexPoints}
+          spot={spot}
+          result={result}
+          showAnnotations={comfort && showAnnotations}
+        />
+      ) : null}
+      </div>
+
       <div className="shrink-0 space-y-0.5 px-3 py-2 text-[11px] leading-snug text-white/55">
         <p data-testid="lim-state-line">{state}</p>
         {lines.map((line) => (
@@ -249,6 +273,99 @@ export default function HeatmapLimQuadrant({
           </p>
         ))}
       </div>
+    </div>
+  );
+}
+
+function LimCompanionGex({
+  points,
+  spot,
+  result,
+  showAnnotations,
+}: {
+  points: readonly GexProfilePoint[];
+  spot: number | null;
+  result: LimResult | null;
+  showAnnotations: boolean;
+}) {
+  const scale = gexProfileScale(points as GexProfilePoint[], "gex_net") || 1;
+  const strikes = points.map((p) => p.strike);
+  const glow = gexSpotGlowCss({ spotGlow: true });
+  const spotTop = gexSpotLineTopPct(spot, strikes);
+  const ann = gexAnnotationMarks({
+    showAnnotations,
+    spotPrice: spot,
+    centrePts: result?.centrePts,
+    crossings: result?.crossings,
+  });
+  const cogTop = gexSpotLineTopPct(ann.cog, strikes);
+
+  return (
+    <div
+      className="relative min-h-[12rem] w-full max-w-[18rem] flex-1 overflow-hidden"
+      data-testid="lim-companion-gex"
+      data-lim-spot-line={glow ? "1" : undefined}
+    >
+      {points.map((pt) => {
+        const mag = pt.value != null ? Math.abs(pt.value) : 0;
+        const pct = `${((mag / scale) * 50).toFixed(2)}%`;
+        const neg = (pt.value ?? 0) < 0;
+        return (
+          <div
+            key={pt.strike}
+            className="flex h-5 items-center px-1"
+            data-lim-bar=""
+          >
+            <span className="w-12 shrink-0 text-right text-[10px] tabular-nums text-white/40">
+              {pt.label}
+            </span>
+            <div className="relative mx-1 h-3 flex-1 bg-white/[0.04]">
+              <div className="absolute inset-y-0 left-1/2 w-px bg-white/20" />
+              {mag > 0 ? (
+                <div
+                  className="absolute top-0 bottom-0 bg-white/35"
+                  style={
+                    neg
+                      ? { right: "50%", width: pct }
+                      : { left: "50%", width: pct }
+                  }
+                />
+              ) : null}
+            </div>
+          </div>
+        );
+      })}
+      {spotTop != null && glow ? (
+        <div
+          data-testid="lim-spot-line"
+          className="pointer-events-none absolute left-12 right-1 h-px"
+          style={{
+            top: `${spotTop}%`,
+            background: glow.color,
+            boxShadow: glow.boxShadow,
+          }}
+        />
+      ) : null}
+      {ann.cog != null && cogTop != null ? (
+        <div
+          data-testid="lim-cog-hairline"
+          className="pointer-events-none absolute left-12 right-1 h-px bg-white/35"
+          style={{ top: `${cogTop}%` }}
+        />
+      ) : null}
+      {ann.ticks.map((k) => {
+        const top = gexSpotLineTopPct(k, strikes);
+        if (top == null) return null;
+        return (
+          <div
+            key={`tick-${k}`}
+            data-testid="lim-crossing-tick"
+            data-lo-hi={String(k)}
+            className="pointer-events-none absolute left-12 right-1 h-px bg-white/20"
+            style={{ top: `${top}%` }}
+          />
+        );
+      })}
     </div>
   );
 }

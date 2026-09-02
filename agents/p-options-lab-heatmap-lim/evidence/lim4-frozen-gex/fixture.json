@@ -1,0 +1,109 @@
+{
+  "gex_all": [
+    {
+      "strike": 7710,
+      "label": "7710",
+      "isSpot": false,
+      "value": 2371600,
+      "valid": true,
+      "call": 23716000,
+      "put": -21344400
+    },
+    {
+      "strike": 7700,
+      "label": "7700",
+      "isSpot": true,
+      "value": 11858000,
+      "valid": true,
+      "call": 59290000,
+      "put": -47432000
+    }
+  ],
+  "gex_net": [
+    {
+      "strike": 7710,
+      "label": "7710",
+      "isSpot": false,
+      "value": 2371600,
+      "valid": true,
+      "call": 23716000,
+      "put": -21344400
+    },
+    {
+      "strike": 7700,
+      "label": "7700",
+      "isSpot": true,
+      "value": 11858000,
+      "valid": true,
+      "call": 59290000,
+      "put": -47432000
+    }
+  ],
+  "gex_abs": [
+    {
+      "strike": 7710,
+      "label": "7710",
+      "isSpot": false,
+      "value": 45060400,
+      "valid": true,
+      "call": 23716000,
+      "put": -21344400
+    },
+    {
+      "strike": 7700,
+      "label": "7700",
+      "isSpot": true,
+      "value": 106722000,
+      "valid": true,
+      "call": 59290000,
+      "put": -47432000
+    }
+  ],
+  "scale_all": 59290000,
+  "scale_net": 11858000,
+  "peaks": {
+    "call": 59290000,
+    "put": 47432000,
+    "hasCall": true,
+    "hasPut": true
+  },
+  "fmt": "1.25",
+  "axis": "−2.5",
+  "plotY": [
+    140,
+    40,
+    240
+  ],
+  "horizon": "2026-12-18",
+  "template": {
+    "id": "gex",
+    "label": "Chain GEX (estimate)",
+    "layout": "profile",
+    "valueModes": [
+      {
+        "id": "gex_all",
+        "label": "Call / Put"
+      },
+      {
+        "id": "gex_net",
+        "label": "Net"
+      },
+      {
+        "id": "gex_abs",
+        "label": "Absolute"
+      }
+    ],
+    "defaultValueMode": "gex_all"
+  },
+  "keys": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8"
+  ]
+}

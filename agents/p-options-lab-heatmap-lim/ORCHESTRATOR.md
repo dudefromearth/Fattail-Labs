@@ -18,7 +18,7 @@ LIM0 → LIM1 → LIM2 → LIM3 → LIM4 → LIM5 → LIM6
 | **LIM1** | Config + `computeLim` | **LIM1-G PASS** 2026-09-02 — `limConfig.ts` + `computeLim` · Hotel F1–F9 |
 | **LIM2** | Trail | **LIM2-G PASS** 2026-09-02 — `limTrail.ts` · AT-LIM13/14/15/25 |
 | **LIM3** | Quadrant + chrome | **LIM3-G PASS** 2026-09-02 |
-| **LIM4** | GEX spot-line glow | blocked |
+| **LIM4** | GEX spot-line glow | **LIM4-G PASS** 2026-09-02 |
 | **LIM5** | AT-LIM1…28 | blocked |
 | **LIM6** | DL · Arch 29 · parent land · close | blocked |
 
@@ -38,8 +38,8 @@ Gates: `LIM0-G.md` · `LIM1-G.md` · … · `LIM6-G.md`
 
 ### First actions (Juliet)
 
-1. LIM0–LIM3 executed. **LIM3-G PASS.**  
-2. Next: **LIM4** GEX glow — do not start until Coach fires LIM4.
+1. LIM0–LIM4 executed. **LIM4-G PASS.**  
+2. Next: **LIM5** AT pack — do not start until Coach fires LIM5.
 
 ### Do not
 
@@ -52,4 +52,4 @@ Gates: `LIM0-G.md` · `LIM1-G.md` · … · `LIM6-G.md`
 - Fade the dot.  
 - Invent a crossing midpoint.  
 - Read volume.  
-- Start LIM4 without a Coach fire.
+- Start LIM5 without a Coach fire.
