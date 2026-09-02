@@ -1,8 +1,8 @@
 # FatTail Labs — Options Lab Heatmap Templates — LIM merge DRAFT
 
-**Status:** **DRAFT** — not BUILD AUTHORITY. **Not a second live parent.**  
+**Status:** **LANDED** 2026-09-02 — folded into live parent **v0.2.4** (`…-Templates-Spec-v0_2.md`) · **DL-653**. This file is no longer a second parent.  
 **Date:** 2026-09-02  
-**Opened by:** India · LIM0-1 · **OD-LIM6**  
+**Opened by:** India · LIM0-1 · **OD-LIM6** · **LIM6-1**  
 **Canonical filename (this draft):** `Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-LIM-merge-DRAFT.md`
 
 **Against live parent:** [`Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md`](./FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md)  

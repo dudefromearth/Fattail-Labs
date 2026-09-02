@@ -35,7 +35,7 @@ Paths are under `web/lib/options-lab/templates/` unless noted.
 | **AT-LIM23** | `lim.vocab.test.ts` | 68 | `assert(!hit, \`AT-LIM23 rendered "${s}" contains ${hit}\`)` | **PASS** |
 | **AT-LIM24** | `limQuadrant.test.ts` | 111 | `assert(c.ring === true, "AT-LIM24 Compact keeps ring")` | **PASS** |
 | **AT-LIM25** | `limTrail.test.ts` | 215 | `assert(g.length === 0, "AT-LIM25 expiration: first frame empty")` | **PASS** |
-| **AT-LIM26** | `lim.test.ts` | 416 | `assert(!/\byUnclamped\b/.test(limSrc), "AT-LIM26 no yUnclamped identifier in lim.ts")` | **PASS** |
+| **AT-LIM26** | `lim.test.ts` | 422 | `assert(!/clamp\s*\(/.test(mixAssign[0]), "AT-LIM26 nearSpotMix assignment contains no clamp(")` | **PASS** |
 | **AT-LIM27** | `limQuadrant.test.ts` | 123 | `assert(lims.length === 1, "AT-LIM27 one lim template")` | **PASS** |
 | **AT-LIM28** | `lim.test.ts` | 411 | `assert(!text.includes(banned), \`AT-LIM28 ${f} has retired prefix\`)` | **PASS** |
 | **AT-LIM29** | `lim.test.ts` | 260 | `assert(r.crossingProximity > 0 && r.crossingProximity < 1, "AT-LIM29 strictly interior")` | **PASS** |
@@ -60,7 +60,7 @@ Paths are under `web/lib/options-lab/templates/` unless noted.
 | **AT-LIM20** | `lim.test.ts:214` `c.lo !== mid && c.hi !== mid` | Tautology for any `lo ≠ hi` interval (E1-shaped) | L164 chrome omits F7 midpoint 5000; L420 grep; `gex.limLink.test.ts:38` ticks |
 | **AT-LIM21** | `limQuadrant.test.ts:99` `LIM_DOT_OPACITY === 1` | Constant compared to itself | L102 ring radius grows; L193 no proximity×opacity in renderer |
 | **AT-LIM24** | `limQuadrant.test.ts:111` `c.ring === true` | `limSurfaceFlags("compact").ring` is `true` by construction | Renderer mounts `data-testid="lim-ring"` **outside** the Comfort-only branch |
-| **AT-LIM26** | `lim.test.ts:103` `r.y >= 0 && r.y <= 100` | Holds for any clamped or unclamped blend in range | L416 `yUnclamped` absent from `lim.ts` (no Y clamp in the formula) |
+| **AT-LIM26** | `lim.test.ts:103` `r.y >= 0 && r.y <= 100` | Holds for any clamped or unclamped blend in range | **K1 (LIM5-G closure):** L416 identifier grep (E8 field) **and** L422 `nearSpotMix` assignment contains no `clamp(` (clamp half). Range check kept. |
 
 None of the FLAGS is a missing row. None was patched by editing the hollow assert.
 

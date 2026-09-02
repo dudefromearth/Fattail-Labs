@@ -1,6 +1,6 @@
 # Options Lab — Heatmap Template Architecture
 
-**Status:** **AS-BUILT (partial)** (2026-08-24) — dual-side generation + template registry + **Advanced Fly** (id `sym-fly`) + **Width Fit** + gex_v1 + ladder + **HM21** inspector tab-session; vertical/bw-fly landed  
+**Status:** **AS-BUILT (partial)** (2026-09-02) — dual-side generation + template registry + **Advanced Fly** (id `sym-fly`) + **Width Fit** + gex_v1 + ladder + **HM21** inspector tab-session; vertical/bw-fly landed; **LIM** (`lim`, `layout: "quadrant"`) **DL-653**  
 **Surface:** Options Lab → **Heatmap** (`/app/options-lab/heatmap`)  
 **Type:** Design + as-built map — live chain **views** (templates) over one shared option-chain model  
 **Product law:** [`Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md`](../Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) **v0.2.1** (**HM21** · **DL-575**) · **Advanced Fly** [`Specs/FatTail-Labs-Options-Lab-Heatmap-Advanced-Fly-Spec-v0_2.md`](../Specs/FatTail-Labs-Options-Lab-Heatmap-Advanced-Fly-Spec-v0_2.md) (v0.2.4) · **DL-311**  
@@ -26,7 +26,7 @@
 | Workspace chrome | `web/components/options-lab/OptionsLabChrome.tsx` (`workspace`) |
 | Chain panel + template switcher | `web/components/options-lab/HeatmapChainPanel.tsx` |
 | Inspector tab-session (HM21) | `web/lib/options-lab/heatmapSession.ts` — `sessionStorage` `ft_labs_heatmap_session` |
-| Templates (ladder · Advanced Fly/`sym-fly` · gex · history) | `web/lib/options-lab/templates/*` · `flySurfaceHistory.ts` |
+| Templates (ladder · Advanced Fly/`sym-fly` · gex · history · **lim**) | `web/lib/options-lab/templates/*` · `flySurfaceHistory.ts` · `lim.ts` · `limTrail.ts` · `HeatmapLimQuadrant.tsx` |
 | Dual-side push client | `web/lib/market/useOptionChainBus.ts` · `MarketSocket.ts` · `chainLadderApi.ts` |
 | Dual-side ladder + HM18/19/20 | `server/routes/chain_ladder.py` · `server/market_data/chain_ladder.py` · `massive_client.py` |
 | Stream push (key without side) | `server/routes/market_stream.py` |
@@ -45,6 +45,7 @@
 | Template registry + switcher | Landed |
 | Advanced Fly (id `sym-fly`): Long/Debit +1/−2/+1 · Short/Credit −1/+2/−1 · columns 10…50×5 · RoC −/+ slider / tick % / R:R / Δ / Δ² / vel / accel / slope / curvature / C/P + history | Landed (DL-311 · **DL-434** · **DL-435**) |
 | **Width Fit** (template id `width-fit`) | Landed **DL-525** / **DL-526** / **DL-529** — Template switcher sibling of Advanced flies · member criteria weights (equal \(1/7\)) · stability **penalty** outside weights (OD-W6) · footer median + \(n\) · observation-only · member guide [`docs/Options-Lab-Heatmap-Width-Fit-User-Guide.md`](../docs/Options-Lab-Heatmap-Width-Fit-User-Guide.md) · help `server/help_reference/options-lab-heatmap-width-fit.md` (**DL-530**) · TR14 Average / Ranking **DL-574** · inspector tab-session **HM21** **DL-575** |
+| **LIM** (template id `lim`, layout `quadrant`) | Landed **DL-651** / **DL-653** — picker **GEX lean (window)** · one `ValueModeId` `"lim"` · compute `lim.ts` · trail `limTrail.ts` · quadrant `HeatmapLimQuadrant.tsx` · companion GEX spot-line glow opt-in (frozen `gex` byte-identical at e1c1ef1) · no volume · no `session-volume` enum · member guide [`docs/Options-Lab-Heatmap-LIM-User-Guide.md`](../docs/Options-Lab-Heatmap-LIM-User-Guide.md) · help `server/help_reference/options-lab-heatmap-lim.md` · Spec v0.4.3 sha1 `01f638f590492520236b3607edde487b949d6016` |
 | Inspector tab-session (HM21) | Landed **DL-575** — `sessionStorage` `ft_labs_heatmap_session`; listed expiration restores only if still on the pack; glance / TR14 book not in the blob; new tab starts clean |
 | **Time Machine - Instant Replay** | DRAFT spec **DL-594** — Heatmap records TR14; Analyzer + Surface project; playback-time Cache; **green** inner frame on Heatmap / Analyzer / Surface. Not BUILD AUTHORITY. [`Specs/FatTail-Labs-Options-Lab-Time-Machine-Instant-Replay-Spec-v0_1.md`](../Specs/FatTail-Labs-Options-Lab-Time-Machine-Instant-Replay-Spec-v0_1.md) |
 | Client flySurfaceHistory + AF10/AF17 | Landed |

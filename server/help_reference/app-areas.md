@@ -121,8 +121,10 @@ See the Options Lab Heatmap reference for what each Heatmap Value number
 means (Long/Debit, Short/Credit, % Change, Risk to Reward, Delta, Gamma,
 Theta). See **Width Fit** for the Heatmap template that scores listed
 long butterflies against your criteria (color-only tiles, footer n,
-weights). See **This tab session** for inspector choices that stay when
-you leave Heatmap and come back on the same tab.
+weights). See **GEX lean (window)** for the quadrant that publishes GEX
+lean and near-spot mix (factors, not a forecast). See **This tab session**
+for inspector choices that stay when you leave Heatmap and come back on
+the same tab.
 
 ## Heatmap
 Options Lab → Heatmap (`/app/options-lab/heatmap`). Rows are body strikes;
@@ -132,6 +134,8 @@ colors follow how that number changes to the neighbor; the − / + slider
 under Side only changes color sensitivity. **Width Fit** is a sibling
 template (not a Value): color-only tiles (teal = weaker fit, amber =
 stronger fit to your weights), footer median + n, hover/click panels.
+**GEX lean (window)** is another sibling: a quadrant (lean × near-spot
+mix) with a proximity ring; Compact keeps the ring.
 Blank or dark tiles mean the fly is not on the listed chain. Inspector
 choices stay for **this browser tab** when you leave and come back; a new
 tab starts from defaults — see **This tab session**. See Options Lab

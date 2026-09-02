@@ -2,7 +2,7 @@
 
 **Status:** **DRAFT** — product / architecture authority for live options-chain **view templates**  
 **Date:** 2026-08-10  
-**Current revision:** **v0.2.3** (filename remains `…-v0_2.md`) · **HM21** · Verticals two-tier Value **DL-579** · Instant Replay pointer **DL-594**  
+**Current revision:** **v0.2.4** (filename remains `…-v0_2.md`) · **HM21** · Verticals two-tier Value **DL-579** · Instant Replay pointer **DL-594** · LIM `quadrant` + catalog `lim` **DL-653**  
 **Supersedes:** [v0.1 / v0.1.1](./FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_1.md)  
 **Canonical filename:** `Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md`  
 **Type:** Product + client view-plane Spec — switchable analytical panels over **one** dual-side live chain model  
@@ -24,7 +24,7 @@
 
 On Options Lab **Heatmap** (`/app/options-lab/heatmap`), give members a **registry of templates** that each define:
 
-1. **UI layout** for a panel over the options chain (table, matrix tiles, or profile).  
+1. **UI layout** for a panel over the options chain (table, matrix tiles, profile, or quadrant).  
 2. **Logic** that rearranges live quotes and greeks into that panel (flies, verticals, GEX, raw ladder, …).  
 3. Optional **value modes** (debit, R2R, % change, GEX net/call/put, …).  
 
@@ -193,7 +193,7 @@ Stable `id` → template. Unknown id → fail loud in dev; prod fall back to `la
 | Member | Requirement |
 |--------|-------------|
 | `id`, `label`, `description` | Required |
-| `layout` | `table` \| `matrix` \| `profile` |
+| `layout` | `table` \| `matrix` \| `profile` \| `quadrant` |
 | `valueModes[]`, `defaultValueMode` | Non-empty |
 | `resolveColumns` / `resolveRows` | Required |
 | `computeCell` | `{ display, value, valid, tooltip? }` without color |
@@ -214,7 +214,7 @@ Inspector params persist per **HM21** / §6.4 (`sessionStorage`; not server SoR)
 
 ### 4.5 Renderers
 
-v0.2 must ship `table` + `matrix`. `profile` optional.
+v0.2 must ship `table` + `matrix`. `profile` optional. **`quadrant` is required of catalog id `lim` and of no other id in this revision.** A `quadrant` template may stub grid functions (`resolveColumns` / `resolveRows` / `computeCell` empty; `valid: false`). Grid renderers ignore `layout === "quadrant"` rather than coerce it to `matrix`.
 
 ---
 
@@ -301,6 +301,30 @@ Asymmetric \(w_s\), \(w_l\); debit/R2R with explicit max-loss definition.
 **Net mode:** `gex_net` **requires** both call and put γ/OI present at that strike for a valid net cell; else invalid (AT-HM13). Dual-side model (HM15) makes this meaningful.
 
 **Color:** diverging on signed GEX with same hysteresis policy as §5.2.2 using p95 \|GEX\|.
+
+### 5.6 `lim` — GEX lean (window)
+
+**Layout:** `quadrant`. **ValueModeId:** `"lim"` **only**. Picker label: `GEX lean (window)` (LIM35 — neither *intent* nor *friction*). Frozen `gex` stays.
+
+Product law for compute, trail, chrome, config, and AT-LIM1…32 lives in [`FatTail Labs — Heatmap LIM Template — Specification v0.4.3.md`](./FatTail%20Labs%20%E2%80%94%20Heatmap%20LIM%20Template%20%E2%80%94%20Specification%20v0.4.3.md). This catalog does not restate geometry. Where the two disagree about LIM behaviour, **LIM Spec v0.4.3 wins**.
+
+**E14 / LIM37:** this bump ships `lim` and nothing else. No `session-volume` `ValueModeId`, no disabled switcher stub. A future session-volume / SVP auxiliary plane, if any, is **prose** (v0.3 DRAFT §2 carried as text law) — never a shipped enum member.
+
+Registration shape (LIM Spec §3):
+
+```ts
+{
+  id: "lim",
+  label: "GEX lean (window)",
+  layout: "quadrant",
+  valueModes: [{ id: "lim", label: "Lean / near-spot mix" }],
+  defaultValueMode: "lim",
+  resolveColumns: () => [],
+  resolveRows: () => [],
+  computeCell: () => ({ display: null, value: null, valid: false }),
+  assignColors: () => ({ stickyScale: 1 }),
+}
+```
 
 ---
 
@@ -459,6 +483,7 @@ Grid + `template_id`, `value_mode`, `algo` ids (`sym_fly_debit_v1`, `gex_v1`), `
 | **v0.1.1** | 2026-08-10 | Dual-side HM15–HM17 (H1 resolved) |
 | **v0.2** | 2026-08-10 | External review H2–H12: modal step + no-snap; parent citations; Width vocabulary; gex_v1 units; color hysteresis; MSC look vs code; payoff-math sentence; AT extensions; next_url hard error; standard-contracts-only; filename `v0_2` |
 | **v0.2.1** | 2026-08-24 | **HM21** inspector tab-session (`sessionStorage` `ft_labs_heatmap_session`). Restores v0.1 §4.4 sessionStorage intent with Coach’s tab-lifetime rule. Distinct from HM5, §5.2.2, TR14. **AT-HM17**. **DL-575**. |
+| **v0.2.4** | 2026-09-02 | **LIM merge (OD-LIM6 · DL-653).** `TemplateLayout` += `"quadrant"`; catalog id `lim` / `ValueModeId` `"lim"` only. Frozen `gex` unchanged. **No** `session-volume` enum (E14). SVP auxiliary-plane seam remains **prose**. LIM geometry stays in LIM Spec v0.4.3. |
 | **v0.2.3** | 2026-08-26 | Instant Replay pointer: Heatmap records TR14; HM21 persists `replayHorizon` / `hostReplay` / `wfTime=replay`. Product law in TMI Spec v0.1. **DL-594**. |
 | **v0.2.2** | 2026-08-24 | **§5.3 Verticals** Value two-tier: Debit \| Credit main; Type % Change \| R:R secondary on that package. **DL-579**. |
 

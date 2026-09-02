@@ -8,6 +8,10 @@ not tell you what to trade, and it never promises a profit.
 Value on Advanced flies. See the Width Fit help topic for color-only tiles,
 footer median + n, hover/click panels, and criteria weights.
 
+**GEX lean (window)** is a separate Heatmap **template** (quadrant). See that
+help topic for lean / near-spot mix, the proximity ring, and the four
+standing lines. It is not the frozen Chain GEX (estimate) profile.
+
 ## Options Lab
 Options Lab is the in-app suite for inspecting listed options. Open it from the
 apps area. The Heatmap lives at `/app/options-lab/heatmap`. Analyzer and Surface

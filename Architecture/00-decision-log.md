@@ -4,6 +4,22 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-02 — DL-653 Heatmap LIM as-built; parent v0.2.4
+
+**Decision (LIM6):** Template **`lim`** (`layout: "quadrant"`, picker **GEX lean (window)**) is as-built on Heatmap. Parent Heatmap Templates Spec **v0.2.4** (`Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md`) catalogs `quadrant` + `lim` only. Frozen `gex` unchanged. **No** `session-volume` enum (E14). LIM geometry remains LIM Spec **v0.4.3** sha1 `01f638f590492520236b3607edde487b949d6016` (JR7: hash in this log, not the LIM Spec body).
+
+**GO path:** DL-651 BUILD AUTHORITY · DL-652 active program · LIM1–LIM5-G PASS (`192ac9f` pack; K1/K2 closures in the same LIM6 body of work).
+
+**K1:** AT-LIM26 clamp half: `const nearSpotMix =` assignment in `lim.ts` contains no `clamp(`. Identifier grep and range check kept.
+
+**K2:** C2 control vs missing measurements identical (`gex_points=5 af_rows=5 wf_display=null`).
+
+**G1 (member guide):** Session reset is UTC midnight = 20:00 ET (EDT) / 19:00 (EST), not session open. Accepted for v1.
+
+**Does not:** MiniTwo · `session-volume` · cell names · Y clamp · `yUnclamped` · rewrite `gex_v1`.
+
+---
+
 ## 2026-09-02 — DL-652 Active program reassigned IKI Lab → Options Lab Heatmap LIM (JR8 (a))
 
 **Decision (Coach, 2026-09-02):** Active program reassigned from **IKI Lab** to **Options Lab Heatmap LIM**, through **LIM6**. Reasoning: IKI is not the work in flight; LIM is. JR8 option **(a)**. The three-OK log on `agents/go/OLLIM-W0.md` is **N/A** — superseded by this reassignment, **not** satisfied. Coach is not collecting two more OKs to paper over LIM1.

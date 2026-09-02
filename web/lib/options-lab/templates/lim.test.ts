@@ -415,6 +415,12 @@ function hotelEnv(over: LimEnv = {}): LimEnv {
     !/\byUnclamped\b/.test(limSrc),
     "AT-LIM26 no yUnclamped identifier in lim.ts",
   );
+  const mixAssign = limSrc.match(/const nearSpotMix =\s*[\s\S]*?;/);
+  assert(mixAssign, "AT-LIM26 nearSpotMix assignment present");
+  assert(
+    !/clamp\s*\(/.test(mixAssign[0]),
+    "AT-LIM26 nearSpotMix assignment contains no clamp(",
+  );
   assert(
     !/\(\s*(lo|c\.lo)\s*\+\s*(hi|c\.hi)\s*\)\s*\/\s*2/.test(limSrc),
     "AT-LIM20 no (lo+hi)/2 in lim.ts",

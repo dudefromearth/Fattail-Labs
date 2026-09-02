@@ -19,7 +19,7 @@ import {
   type LimEnv,
 } from "./limConfig";
 import { computeLim } from "./lim";
-import type { ChainContext, TemplateParams } from "./types";
+import type { ChainContext } from "./types";
 
 function assert(c: unknown, m: string): void {
   if (!c) throw new Error(`FAIL: ${m}`);
@@ -85,7 +85,46 @@ function hotelEnv(over: LimEnv = {}): LimEnv {
   return { ...env, ...over };
 }
 
+function measure(chain: ChainContext): {
+  gex_points: number;
+  af_rows: number;
+  wf_display: string;
+} {
+  const gexPts = buildGexProfile(chain, "gex_net");
+  const fly = buildGrid(symFlyTemplate, chain, {
+    valueMode: "debit",
+    widthMode: "fixed_points",
+    fixedPoints: [...HEATMAP_FLY_WIDTHS],
+  });
+  const wf = widthFitComputeCell(
+    chain,
+    { strike: 100, label: "100" },
+    { id: "w5", label: "5", widthPts: 5 },
+    {
+      valueMode: "width_fit",
+      widthMode: "fixed_points",
+      fixedPoints: [...HEATMAP_FLY_WIDTHS],
+      flyRowStrikes: [110, 105, 100, 95, 90],
+      flyRowIndex: 2,
+    },
+  );
+  return {
+    gex_points: gexPts.length,
+    af_rows: fly.rows.length,
+    wf_display: String(wf.display),
+  };
+}
+
 const missingKey = "LABS_LIM_BAND_CLOSE_PCT";
+const chain = ctx();
+
+resetLimConfigCache();
+loadLimConfig(hotelEnv());
+const control = measure(chain);
+console.log(
+  `C2 control  gex_points=${control.gex_points} af_rows=${control.af_rows} wf_display=${control.wf_display}`,
+);
+
 resetLimConfigCache();
 let limErr: LimConfigError | null = null;
 try {
@@ -105,35 +144,20 @@ for (const k of LABS_LIM_ENV_KEYS) {
   }
 }
 
-const chain = ctx();
-const gexPts = buildGexProfile(chain, "gex_net");
-assert(gexPts.length > 0, "C2 frozen gex profile still computes");
+const missing = measure(chain);
+console.log(
+  `C2 missing  gex_points=${missing.gex_points} af_rows=${missing.af_rows} wf_display=${missing.wf_display}`,
+);
+assert(
+  control.gex_points === missing.gex_points &&
+    control.af_rows === missing.af_rows &&
+    control.wf_display === missing.wf_display,
+  "C2 control and missing measurements identical",
+);
+
 assert(fmtGexProfile(1e9).length > 0, "C2 frozen gex still formats");
 assert(gexTemplate.id === "gex", "C2 gex template object intact");
 assert(getTemplate("gex").layout === "profile", "C2 getTemplate(gex) still resolves");
-
-const flyParams: TemplateParams = {
-  valueMode: "debit",
-  widthMode: "fixed_points",
-  fixedPoints: [...HEATMAP_FLY_WIDTHS],
-};
-const fly = buildGrid(symFlyTemplate, chain, flyParams);
-assert(fly.rows.length > 0 && fly.cols.length > 0, "C2 Advanced Fly grid still builds");
-assert(fly.cells.some((row) => row.some((c) => c.valid || c.display != null)), "C2 AF cells render");
-
-const wf = widthFitComputeCell(
-  chain,
-  { strike: 100, label: "100" },
-  { id: "w5", label: "5", widthPts: 5 },
-  {
-    valueMode: "width_fit",
-    widthMode: "fixed_points",
-    fixedPoints: [...HEATMAP_FLY_WIDTHS],
-    flyRowStrikes: [110, 105, 100, 95, 90],
-    flyRowIndex: 2,
-  },
-);
-assert(wf.display !== undefined, "C2 Width Fit cell still computes");
 assert(getTemplate(WIDTH_FIT_TEMPLATE_ID).id === WIDTH_FIT_TEMPLATE_ID, "C2 WF template resolves");
 
 assert(HEATMAP_TEMPLATES.some((t) => t.id === "gex"), "C2 gex listed");
@@ -178,5 +202,4 @@ assert(!html.includes("data-testid=\"lim-dot\""), "C2 does not paint a LIM readi
 
 console.log("lim.c2.test.ts ok");
 console.log(`C2 missing_key=${missingKey}`);
-console.log(`C2 gex_points=${gexPts.length} af_rows=${fly.rows.length} wf_display=${String(wf.display)}`);
 console.log(`C2 lim_html_named_key=${html.includes(missingKey) ? "1" : "0"}`);

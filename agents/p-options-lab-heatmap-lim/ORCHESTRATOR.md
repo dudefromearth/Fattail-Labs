@@ -20,7 +20,7 @@ LIM0 → LIM1 → LIM2 → LIM3 → LIM4 → LIM5 → LIM6
 | **LIM3** | Quadrant + chrome | **LIM3-G PASS** 2026-09-02 |
 | **LIM4** | GEX spot-line glow | **LIM4-G PASS** 2026-09-02 |
 | **LIM5** | AT-LIM1…32 | **LIM5-G PASS** 2026-09-02 |
-| **LIM6** | DL · Arch 29 · parent land · close | blocked |
+| **LIM6** | DL · Arch 29 · parent land · close | **LIM6-G PASS** 2026-09-02 |
 
 **Data law:** Same OPF-held dual-side chain. Pure template. **No volume. No second Massive. No MSC.**
 
@@ -38,8 +38,8 @@ Gates: `LIM0-G.md` · `LIM1-G.md` · … · `LIM6-G.md`
 
 ### First actions (Juliet)
 
-1. LIM0–LIM5 executed. **LIM5-G PASS.**  
-2. Next: **LIM6** docs — do not start until Coach fires LIM6.
+1. LIM0–LIM6 executed. **LIM6-G PASS.** Program close on this board.  
+2. Active program remains LIM until Coach reassigns.
 
 ### Do not
 
@@ -52,4 +52,4 @@ Gates: `LIM0-G.md` · `LIM1-G.md` · … · `LIM6-G.md`
 - Fade the dot.  
 - Invent a crossing midpoint.  
 - Read volume.  
-- Start LIM6 without a Coach fire.
+- Reopen frozen `gex` / AF / Width Fit.
