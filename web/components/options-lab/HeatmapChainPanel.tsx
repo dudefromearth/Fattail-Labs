@@ -1280,7 +1280,7 @@ export default function HeatmapChainPanel() {
                       i
                     </summary>
                     <div className="absolute left-0 top-8 z-20 w-[min(22rem,70vw)] space-y-1.5 rounded-md border border-[var(--color-separator)] bg-[var(--color-surface)] p-3 text-[11px] leading-snug text-[var(--color-label-secondary)] shadow-lg">
-                      {limChromeInfoLines().map((line) => (
+                      {limChromeInfoLines(limPack.result?.oiAsOf ?? null).map((line) => (
                         <p key={line} data-testid="lim-chrome-info-line">
                           {line}
                         </p>

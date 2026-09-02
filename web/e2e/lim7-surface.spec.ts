@@ -42,7 +42,8 @@ test("LIM7 surface fit at 1280, 1440, 1920", async ({ page }) => {
   await expect(page.getByTestId("lim-chip-proximity")).toBeVisible();
   await expect(page.getByTestId("lim-ring")).toHaveCount(0);
   await expect(page.getByLabel("LIM density")).toHaveCount(0);
-  await expect(page.getByTestId("lim-chrome-line-3")).toBeVisible();
+  await expect(page.getByTestId("lim-chrome-line-3")).toHaveCount(0);
+  await expect(page.getByTestId("lim-chrome-info")).toBeVisible();
   await expect(page.getByTestId("lim-cell-ul")).toContainText("Weight below");
   await expect(page.getByTestId("lim-companion-gex")).toBeVisible();
 

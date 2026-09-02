@@ -59,7 +59,7 @@ There is no Comfort / Compact toggle. At a narrow panel the trail drops; the chi
    When the as-of date is missing: `Open interest as-of date unavailable. Today's trading is not in it.`
 4. `The near-spot mix is a blend of measured factors. Whether it resists price movement is unmeasured.`
 
-Line **3** (open interest as-of) is always visible. Lines 1, 2 and 4 sit behind the **i** next to the title — one click, same words.
+The four standing lines sit behind the **i** next to the title — one click, same words.
 
 The numeric header prints Lean, Mix, magF, crossings **count**, and proximity. It never prints a single crossing **price**.
 

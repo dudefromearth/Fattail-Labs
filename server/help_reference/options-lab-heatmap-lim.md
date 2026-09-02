@@ -22,8 +22,7 @@ proximity. There is no Comfort/Compact toggle; a narrow panel drops the
 trail and keeps the chip.
 
 ## Chrome
-Four standing lines. Line 3 is always visible. Lines 1, 2 and 4 sit
-behind the **i** next to the title:
+Four standing lines sit behind the **i** next to the title:
 
 1. Chain GEX (estimate). Dealer sign is assumed, not observed.
 2. Window read — mass outside the wings is not counted.

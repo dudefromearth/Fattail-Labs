@@ -23,7 +23,6 @@ import {
   LIM_LABEL_EXPANSION,
   LIM_LABEL_WEIGHT_ABOVE,
   LIM_LABEL_WEIGHT_BELOW,
-  limChromeLine3,
   limDiscRadiusPx,
   limDotXY,
   limGhostOpacity,
@@ -278,13 +277,6 @@ export default function HeatmapLimQuadrant({
           />
         ) : null}
       </div>
-
-      <p
-        className="shrink-0 px-5 py-2 text-[11px] leading-snug text-white/70"
-        data-testid="lim-chrome-line-3"
-      >
-        {limChromeLine3(result?.oiAsOf ?? null)}
-      </p>
     </div>
   );
 }

@@ -235,10 +235,11 @@ const panel = readFileSync(
       "Open interest as of 2026-09-01. Today's trading is not in it.",
     "AT-LIM22 dated line 3",
   );
-  const info = limChromeInfoLines();
+  const info = limChromeInfoLines(null);
   assert(info[0] === LIM_CHROME_1, "AT-LIM22 line 1 verbatim");
   assert(info[1] === LIM_CHROME_2, "AT-LIM22 line 2 verbatim");
-  assert(info[2] === LIM_CHROME_4, "AT-LIM22 line 4 verbatim");
+  assert(info[2] === limChromeLine3(null), "AT-LIM22 line 3 in info");
+  assert(info[3] === LIM_CHROME_4, "AT-LIM22 line 4 verbatim");
   const html = renderToStaticMarkup(
     createElement(HeatmapLimQuadrant, {
       result: run(F2),
@@ -247,11 +248,12 @@ const panel = readFileSync(
     }),
   );
   assert(
-    html.includes("Open interest as-of date unavailable"),
-    "AT-LIM22 line 3 visible without interaction",
+    !html.includes("Open interest as-of date unavailable"),
+    "AT-LIM22 line 3 not on the plane",
   );
+  assert(!html.includes("lim-chrome-line-3"), "AT-LIM22 no plane footer");
   assert(panel.includes("lim-chrome-info"), "AT-LIM22 info affordance beside title");
-  assert(panel.includes("limChromeInfoLines"), "AT-LIM22 info lines 1/2/4 reachable");
+  assert(panel.includes("limChromeInfoLines"), "AT-LIM22 four lines reachable via info");
   const mid = String((4990 + 5010) / 2);
   const chrome = [
     limStateLine(r1),

@@ -32,9 +32,9 @@ export function limChromeLine3(oiAsOf: string | null): string {
   return `Open interest as of ${oiAsOf}. Today's trading is not in it.`;
 }
 
-/** Lines 1, 2, 4 — behind the title info affordance (LIM27 · E24). */
-export function limChromeInfoLines(): string[] {
-  return [LIM_CHROME_1, LIM_CHROME_2, LIM_CHROME_4];
+/** All four Appendix B lines — behind the title info affordance. */
+export function limChromeInfoLines(oiAsOf: string | null = null): string[] {
+  return [LIM_CHROME_1, LIM_CHROME_2, limChromeLine3(oiAsOf), LIM_CHROME_4];
 }
 
 /** State line: facts only. Never a crossing price (AT-LIM18). */
