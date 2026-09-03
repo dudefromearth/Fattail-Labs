@@ -2436,7 +2436,7 @@ export default function OpfRiskAnalyzer() {
           </div>
         ) : null}
         <div
-          className="flex shrink-0 flex-col overflow-hidden border-b border-[var(--color-separator)] bg-[#0a0a0e] px-2 py-1"
+          className="flex shrink-0 flex-col overflow-hidden border-b border-[var(--color-separator)] bg-[#0a0a0e] [--color-on-inverse:#f5f5f7] px-2 py-1"
           style={{ height: bookHeightPx }}
           data-testid="analyzer-positions-region"
         >
