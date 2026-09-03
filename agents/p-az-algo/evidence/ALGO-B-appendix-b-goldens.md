@@ -2,10 +2,10 @@
 
 **Agent:** Hotel  
 **Packet:** ALGO-B re-fire  
-**Spec:** AZ-ALGO **v2.2.1**  
-**sha1:** `6f491ee8f240aa06418b8e813fdb3152ed60deb5` (frozen; recomputed after `git pull` of `396571a`)  
+**Spec:** AZ-ALGO **v2.2.1** (fixtures 1–16) · **v2.2.2** (fixtures 17–18, E23/E24)  
+**sha1 v2.2.1:** `6f491ee8f240aa06418b8e813fdb3152ed60deb5`  
 **Date:** 2026-09-02  
-**Verdict:** **APPROVED** — sixteen rows constructed; E1 holds (fixture 2 PaR > fixture 3 PaR).  
+**Verdict:** **APPROVED** — 1–16 accepted; 17–18 handwritten. E1 holds (128 > 72). E23 reading (c) disposed. E24 tie-break fires.  
 **Constraint:** handwritten before `algoProfitAtRisk.ts` / `algoMoveUnit.ts` / `algoGexNorm.ts`. No module output.
 
 **Sign convention (Hotel input, from §9.4 “taken in the ADVERSE direction”):**  
@@ -362,3 +362,94 @@ Suppression holds until U (or spot vs `x_S`) is back on the hold side for 3 cons
 | No FINDING that stopped the set | none |
 
 **OD-ALGO-1** remains open (Coach). Not a fixture defect.
+
+---
+
+## Fixture 17 — floor binding (E23 / AT-ALGO-33)
+
+Same fly as 2/3 (5950/6000/6050). Spot at body. PaR from fixture 2. `k` from fixture 5 so `proposed_raw` is **below** the end-of-session anchor.
+
+| Quantity | Value | Unit |
+|----------|------:|------|
+| Δ | 0 | $/pt |
+| Γ | −4 | $/pt² |
+| move_unit | 8 | pt |
+| PaR | 128 | $ |
+| H | 1000 | $ |
+| k | 2.34 | — |
+| gMin | 0.25 | — |
+| remainingToDecayEnd | 0.5 | h |
+| remaining_at_arm | 5 | h |
+| FLOOR_REMAINING_H | 1.0 | h |
+
+```
+floor_active               = (0.5 ≤ 1.0) = true
+
+proposed_raw               = H − k × PaR
+                           = 1000 $ − 2.34 × 128 $
+                           = 1000 $ − 299.52 $
+                           = 700.48 $
+
+floor                      = (1 − 0.25) × 1000 $ = 750 $
+
+trail_level (proposed)     = max(700.48 $, 750 $) = 750 $
+```
+
+Legacy line, same instant (clock-only, E(t) null):
+
+```
+clock                      = 1 − 0.5/5 = 0.9
+g                          = 0.75 + (0.25 − 0.75)×0.9 = 0.75 − 0.45 = 0.30
+S(t)                       = (1 − 0.30) × 1000 $ = 700 $
+```
+
+Both lines present: **proposed 750 $** (floor bound) · **legacy 700 $**.
+
+Morning counterfactual (floor must **not** bind — rejects reading (a)):
+
+```
+remainingToDecayEnd        = 4 h  →  floor_active = false
+trail_level                = proposed_raw = 700.48 $
+```
+
+700.48 $ is **wider** than floor 750 $ and **stands**. That is breathe-early.
+
+---
+
+## Fixture 18 — at-body tie-break (E24 / AT-ALGO-34)
+
+Same fly as 2/3. Spot **6000 pt** = body. Δ small, **non-zero**. Γ strongly negative. k = 1.5. H = 1000 $. move_unit = 8 pt.
+
+| Quantity | Value | Unit |
+|----------|------:|------|
+| Δ | 2 | $/pt |
+| Γ | −4 | $/pt² |
+| move_unit | 8 | pt |
+
+Up (`m_adv = +8 pt`):
+
+```
+Δ · m_adv                  = 2 × 8 = 16 $
+½ · Γ · m_adv²             = ½ × (−4) × 64 = −128 $
+pnl_change_up              = 16 − 128 = −112 $
+PaR_up                     = 112 $
+```
+
+Down (`m_adv = −8 pt`):
+
+```
+Δ · m_adv                  = 2 × (−8) = −16 $
+½ · Γ · m_adv²             = −128 $
+pnl_change_down            = −16 − 128 = −144 $
+PaR_down                   = 144 $
+```
+
+```
+PaR_up ≠ PaR_down
+PaR                        = max(112 $, 144 $) = 144 $     (down)
+k × PaR                    = 1.5 × 144 $ = 216 $
+trail_level                = 1000 $ − 216 $ = 784 $
+```
+
+Checks: 784 $ < 1000 $. Tie-break **fires**. Fixture 2 (Δ = 0) had PaR_up = PaR_down = 128 $ and did not exercise the rule.
+

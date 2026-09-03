@@ -1,16 +1,16 @@
-# FatTail Labs — Options Lab Analyzer Algo Alert Spec v2.2.1
+# FatTail Labs — Options Lab Analyzer Algo Alert Spec v2.2.2
 
-**Status:** **SUPERSEDED** as product law by [AZ-ALGO v2.2.2](./FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v2.2.2.md). Kept as the frozen text ALGO-B fixtures 1–16 were written against (sha1 `6f491ee8f240aa06418b8e813fdb3152ed60deb5`). E1–E22 unchanged.
-
-**Status (historical):** **PRODUCT-LAW DRAFT** — Coach 2026-09-02. Arming and trade management is product law for
-Analyzer **Algo**. **Not BUILD AUTHORITY** until Appendix B goldens exist as hand-written numbers and
-Coach stamps it.
-**Current revision:** **v2.2.1** — editorial errata only (**E22**). **The model is frozen.** No
-geometry, formula, state, gate, threshold or acceptance criterion changed from v2.2.
+**Status:** **PRODUCT-LAW DRAFT** — Coach 2026-09-02. Arming and trade management is product law for
+Analyzer **Algo**. **Not BUILD AUTHORITY** until Appendix B fixtures **17 and 18** exist as hand-written
+numbers and Coach disposes **OD-ALGO-1**.
+**Current revision:** **v2.2.2** — authoring errata **E23** (floor formula) and **E24** (at-body
+tie-break fixture). **No geometry change. E1–E22 not reopened.**
+**Supersedes:** [v2.2.1](./FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v2.2.1.md) as product law.
+v2.2.1 remains on disk (sha1 `6f491ee8f240aa06418b8e813fdb3152ed60deb5`) as the frozen model ALGO-B
+fixtures 1–16 were written against.
 **Supersedes:** v2.0 (2026-09-02) as product law — v2.0 is on disk and is marked SUPERSEDED.
 **Review iterations v2.1 and v2.2 were never landed in `Specs/`** and do not exist on disk; they are
-review artifacts only. This file is the first revision after v2.0 to become repo law, and it carries
-every erratum E1–E22 from both of them. Do not look for v2.1 or v2.2 in the tree.
+review artifacts only. Do not look for v2.1 or v2.2 in the tree. This file carries E1–E24.
 **Supersedes:** [AZ-ALGO v1.0.16](./FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v1.0.md) as product
 law. v1.0.16 remains the **as-built characterization** of W1–W4 (Demo-only trail).
 **Seats:** Coach memo [`Arming and Trade Management Specification.md`](./Arming%20and%20Trade%20Management%20Specification.md)
@@ -28,6 +28,16 @@ trail input.
 object** — badged, never stored, never notifying, disposed on Reset with an announcement.
 
 ---
+
+## v2.2.2 errata (E23–E24) — floor formula and at-body tie-break
+
+Hotel's ALGO-B set (fixtures 1–16) exposed two **authoring** gaps. Neither is a golden defect. Neither
+reopens E1–E22. Geometry unchanged.
+
+| # | Change | Why |
+|---|---|---|
+| **E23** | Floor is a **formula**, not prose. Binds only as the close approaches (`remainingToDecayEnd ≤ LABS_ALGO_FLOOR_REMAINING_H`). `floor = (1 − gMin)×H`. `trail_level = max(proposed_raw, floor)` **only while active**. Readings (a) and (b) rejected | v2.2.1 said "hard floor" and never wrote it. Three readings were all defensible. Fixture **17** puts both lines and the floor in one calculation |
+| **E24** | At-body larger-PaR tie-break gets fixture **18**: Δ small but non-zero so up ≠ down | Fixture 2 has Δ = 0, so both directions are equal and the rule never fires |
 
 ## v2.2 errata (E10–E21) — dimensional law, estimators, and chrome
 
@@ -722,6 +732,10 @@ trail_level     = H − k × profit_at_risk                                   [$
 above spot, adverse is **down** while spot is below the body and **up** while spot is above it; for a
 put fly, mirrored. At the body both directions are adverse and the **larger** resulting `PaR` is taken.
 
+**E24 — the at-body tie-break must be exercised.** Δ = 0 makes up and down identical, so fixture 2
+does not fire the rule. Fixture **18** is spot at the body with Δ small but **non-zero**, so the two
+directions yield different `PaR` and the larger is taken (**AT-ALGO-34**).
+
 ### 9.4.1 `move_unit` — the estimator is named (E11)
 
 "Rolling realized movement" is not a definition, and this value enters `PaR` **quadratically**, so a
@@ -813,14 +827,38 @@ v2.1 listed it among the inputs and used it nowhere, which is how it ends up smu
 > strictly between the clamp bounds and not equal to `k_base`. Asserting only the endpoints proves
 > nothing.
 
-**Floor.** The legacy end-of-session anchor is a **hard floor**; the proposed trail cannot stay wide
-into the close.
+**Floor (E23 — formula, not prose).** The legacy **end-of-session anchor** is a hard floor on the
+**proposed** line, and it **binds only as the close approaches**. It does **not** cap the proposed
+line against current legacy `S(t)` all day.
 
-> **E6.** That floor derives from the legacy taper, whose premium-decay pacing has **never executed**
-> — `E(t)` has always been `null` (§3). The floor is retained because an unbounded-wide trail into the
-> close is worse than a crude floor, but it is **not** validated, and the chrome that names the floor
-> says `floor: legacy (clock-only)` whenever `E(t)` is null. Do not present it as decay-paced when it
-> is not.
+**Hotel + Coach disposal of the three readings:**
+
+| Reading | Formula | Verdict |
+|---|---|---|
+| **(a)** `trail_level = max(H − k·PaR, S(t))` at all times | proposed can never be wider than legacy | **Rejected.** Destroys breathe-early, the argument for the computed line |
+| **(b)** `floor = (1 − gMin)·H` at all times | absurdly tight all morning | **Rejected** |
+| **(c)** floor binds only as the close approaches | intended | **Law** |
+
+```
+floor            = (1 − gMin) × H                         [$]   end-of-session anchor
+floor_active     = remainingToDecayEnd ≤ LABS_ALGO_FLOOR_REMAINING_H   [default 1.0 h]
+proposed_raw     = H − k × profit_at_risk                 [$]
+trail_level      = proposed_raw                           if not floor_active
+                 = max(proposed_raw, floor)               if floor_active
+```
+
+Higher `trail_level` is **tighter**. `max` therefore means: once the floor is active, the proposed
+line **cannot stay wider** (lower) than the end-of-session anchor. Before that window, `proposed_raw`
+stands even when it is below `floor` — that is breathe-early.
+
+The **legacy** line remains `S(t) = (1 − g(t)) × H` independently. The floor is **not** applied to
+legacy. Fixture **17** is the first row in which **both** lines and the floor appear in one
+calculation (**AT-ALGO-33**).
+
+> **E6 still:** that floor derives from the legacy taper, whose premium-decay pacing has **never
+> executed** — `E(t)` has always been `null` (§3). Chrome that names the floor says
+> `floor: legacy (clock-only)` whenever `E(t)` is null. Do not present it as decay-paced when it is
+> not. E23 supplies the missing formula; it does not validate the floor.
 
 **Invert to underlier `x_S`:** T+0 invert of the bound card at P&L = `trail_level` as v1 §7.4 (near /
 far through the body — ALGO-B1). Missing invert → named state, last paint, P&L backstop
@@ -1135,6 +1173,8 @@ v1 ATs that still hold keep their numbers. State names map through §4.
 | **AT-ALGO-32** | Feed model receives only §10.1 allowlist fields; no recommendation, target or probability in any post **(E16)**. |
 | **AT-ALGO-T1a** | While `LABS_ALGO_TRIGGER_FORMULA_ID = manual_confirm`, the manual confirm is the **only** Armed → In trade path. A second path is a defect **(E9)**. |
 | **AT-ALGO-T1b** | *(note, not a test)* The trigger formula is unnamed; characterization comes from observed entries per §5.2. |
+| **AT-ALGO-33** | Fixture 17: remaining ≤ `FLOOR_REMAINING_H`, `proposed_raw < floor`, `trail_level = floor`, legacy `S(t)` also recorded. A morning counterfactual (remaining > window) leaves `proposed_raw` unfloored **(E23)**. |
+| **AT-ALGO-34** | Fixture 18: spot at body, Δ ≠ 0, `PaR_up ≠ PaR_down`, `PaR = max(PaR_up, PaR_down)` **(E24)**. |
 
 ---
 
@@ -1162,7 +1202,8 @@ with a live-session transcript. Any plan that lists `algoEval.ts` as a file touc
 has not owned it.
 
 Do **not** start this packet until Coach marks this spec **BUILD AUTHORITY**. **BUILD AUTHORITY
-requires Appendix B fixtures 1–16 on disk as numbers a human wrote**, fixture 1 carrying its units.
+waits on exactly three things:** (1) E23 disposed and fixture **17** handwritten · (2) fixture **18**
+handwritten · (3) **OD-ALGO-1** disposed by Coach. Fixtures 1–16 are already on disk.
 
 ---
 
@@ -1191,6 +1232,7 @@ packet, seed, plan or test may introduce a key that is not here.
 | `LABS_ALGO_GEX_NORM_WINDOW_MIN` | `ALGO_GEX_NORM_WINDOW_MIN` | 90 |
 | `LABS_ALGO_GEX_NORM_MIN_SAMPLES` | `ALGO_GEX_NORM_MIN_SAMPLES` | 30 |
 | `LABS_ALGO_REENTRY_BARS` | `ALGO_REENTRY_BARS` | 3 |
+| `LABS_ALGO_FLOOR_REMAINING_H` | `ALGO_FLOOR_REMAINING_H` | 1.0 (E23; floor binds at/under this remaining hours) |
 
 If the bundler requires a public prefix, the values are read through **literal**
 `process.env.NEXT_PUBLIC_<key>` member expressions, one per key. A computed lookup
@@ -1235,10 +1277,12 @@ position*; comparing two different flies proves nothing. Record both from one se
 | 14 | GEX history 12 samples | `gamma_factor = 1.0`, named, line still paints |
 | 15 | Batman side switch mid-session | `H` resets; `h_prior_side` recorded |
 | 16 | Override while still beyond the guide | no re-fire for `REENTRY_BARS`; HUD `guide: overridden` |
+| 17 | **Floor binding** — both lines present; remaining ≤ `FLOOR_REMAINING_H`; `proposed_raw` below `floor` so the max binds (**E23**) | `proposed_raw`, `floor`, `trail_level`, legacy `S(t)`, remaining hours |
+| 18 | **At-body tie-break** — same fly family as 2/3; spot at body; Δ small **non-zero** so up and down PaR differ; **larger** taken (**E24**) | PaR_up, PaR_down, PaR, trail_level |
 
 ---
 
-## Appendix C — errata index (E1–E22)
+## Appendix C — errata index (E1–E24)
 
 | # | Change |
 |---|---|
@@ -1264,6 +1308,8 @@ position*; comparing two different flies proves nothing. Record both from one se
 | **E20** | Override suppresses re-fire until re-entry. AT-ALGO-29. |
 | **E21** | Time remaining reaches only the legacy floor, never `k`. AT-ALGO-28. |
 | **E22** | AT-ALGO-17 no longer hardcodes the fourth HUD row's label; it follows OD-ALGO-1 and asserts the stable payload key `guide_print`. Appendix C heading corrected. Empty-GEX chrome made persistent, not one-shot. |
+| **E23** | Floor formula: binds only as close approaches; `floor = (1−gMin)×H`; `trail_level = max(proposed_raw, floor)` iff active. (a) and (b) rejected. Fixture 17. AT-ALGO-33. |
+| **E24** | At-body larger-PaR tie-break exercised by fixture 18 (Δ ≠ 0). AT-ALGO-34. |
 
 ---
 
@@ -1283,6 +1329,7 @@ position*; comparing two different flies proves nothing. Record both from one se
 
 | Ver | Date | Notes |
 |-----|------|--------|
+| **v2.2.2** | 2026-09-02 | **E23** floor formula (binds as close approaches; (a)/(b) rejected) · **E24** at-body tie-break fixture 18 · fixtures **17–18** · AT-ALGO-33/34 · `LABS_ALGO_FLOOR_REMAINING_H`. Geometry unchanged. E1–E22 not reopened. BUILD still waits on OD-ALGO-1. |
 | **v2.2.1** | 2026-09-02 | **Editorial errata (E22). Model frozen.** AT-ALGO-17 no longer hardcodes the fourth HUD row's label — it follows OD-ALGO-1 and asserts the stable payload key, so the AT is correct under either disposition · Appendix C heading E1–E22 · empty-GEX chrome made persistent (`gex: warming n/30`) rather than one-shot. **Nothing else changed.** The next artifact is Appendix B, hand-written. |
 | v2.2 | 2026-09-02 | **Product-law draft.** E10 dimensional law (units were unstated; AT-ALGO-6b could pass on garbage) · E11 `move_unit` and GEX-percentile estimators named with windows, min samples and empty-history states · E12 Coach Part II vocabulary is intent not chrome · E13 HUD **Guide** not Stop (OD-ALGO-1) · E14 bounce trigger never encoded on a sibling surface · E15 reduced-motion, muted legacy, overlay/Feed off by default · E16 Feed tool allowlist, closes FI-032 · E17 live eval is its own phase · E18 recording is a tape post not an exit · E19 `H` resets on side switch · E20 override suppresses re-fire · E21 time remaining reaches only the floor. §20 open decisions added. Appendix B grows to 16 fixtures. **BUILD AUTHORITY now requires hand goldens on disk.** |
 | v2.1 | 2026-09-02 | **Full spec.** E1 PaR sign correction (v2.0's formula put the guide above high-water at the apex) · E2 unreachable clamp · E3 HUD freezes not hides · E4 `risk_taken` defined incl. Batman · E5 one GEX-unavailable behaviour · E6 `E(t)` never measured, floor named · E7 grep-based ATs · E8 "proposed" not "primary" · E9 stand-in retirement. Appendix A config (fail loud), Appendix B hand goldens, Appendix C errata index. No Coach text deleted. |
