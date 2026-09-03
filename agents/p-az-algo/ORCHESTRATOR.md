@@ -14,7 +14,7 @@
 
 ```text
 P0  token · seeds · goldens vs landed spec     **P0-G PASS**
-P1  algoConfig + move + gexNorm + PaR          READY · no UI · not fired
+P1  algoConfig + move + gexNorm + PaR          **P1-G PASS** · no UI
 P2  gate · Batman · legacy · floor
 P3  canvas + HUD Guide + freeze + muted + RM
 P4  Trader Feed allowlist
@@ -29,7 +29,7 @@ P6  docs · DL · close
 | **P0-0** | Coach stamp `AZALGO-W0` | **GO** 2026-09-03 |
 | **P0-1…P0-3** | After P0-0 | **DONE** |
 | **P0-G** | After P0-* | **PASS** |
-| **P1** | After P0-G · DL-539 if IKI still listed | **READY** (not fired) |
+| **P1** | After P0-G | **PASS** |
 | **P2** | After P1-G | Blocked |
 | **P3** | After P2-G | Blocked |
 | **P4** | After P3-G | Blocked |
@@ -74,4 +74,4 @@ P6  docs · DL · close
 | Token | `AZALGO-W0` **GO** |
 | Working plan | **v2.0 GO** |
 | P0-G | **PASS** |
-| P1 | **READY** — not fired |
+| P1-G | **PASS** — fixtures 1–18 · AT-ALGO-6d/6e/19/26/28 |

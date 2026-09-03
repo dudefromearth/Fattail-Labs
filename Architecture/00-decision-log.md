@@ -4,6 +4,14 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-03 — DL-665 AZ-ALGO P1-G PASS · four math modules
+
+**Decision:** P1 fired against AZ-ALGO **v2.2.2 BUILD AUTHORITY** (sha1 `b757ba3f4b3816fcaebae857aeda70dff488ecdc`, recomputed before first edit). Four new modules: `algoConfig.ts` · `algoMoveUnit.ts` · `algoGexNorm.ts` · `algoProfitAtRisk.ts`. **P1-G PASS.** Hotel fixtures 1–18 match handwritten numbers exactly. No golden edited.
+
+**Does not:** UI · canvas · HUD · Feed · gate · Batman evaluation · legacy trail module · `algoEval.ts` (NX13 · P5).
+
+---
+
 ## 2026-09-03 — DL-664 AZ-ALGO v2.2.2 BUILD AUTHORITY · plan v2.0 GO
 
 **Decision:** Coach stamped [`agents/go/AZALGO-W0.md`](../agents/go/AZALGO-W0.md) **GO** 2026-09-03. Analyzer Algo Alert Spec **v2.2.2** is **BUILD AUTHORITY**. Plan **v2.0** is stamped with it. v1.0.3 stays the W1–W4 as-built record.
