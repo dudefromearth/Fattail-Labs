@@ -4,6 +4,14 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-03 — DL-666 AZ-ALGO P2-G PASS · gate · Batman · legacy S
+
+**Decision:** P2 fired against v2.2.2 (sha1 `b757ba3f4b3816fcaebae857aeda70dff488ecdc`). `algoTrailMath.ts` gained `risk_taken` / Batman working-side (ambiguous paints nothing; tie does not use `>=`) / legacy `S=(1−g)×H` clock-only chrome / `H` reset on side switch / override `REENTRY_BARS`. **P2-G PASS.** F10 gate 375 on working-side debit, not the pair. F17 legacy 700 beside proposed 750. ALGO-A1 proven on a sequence with a clock reversal, not two samples.
+
+**Does not:** canvas · HUD · Feed · `algoEval.ts` (NX13).
+
+---
+
 ## 2026-09-03 — DL-665 AZ-ALGO P1-G PASS · four math modules
 
 **Decision:** P1 fired against AZ-ALGO **v2.2.2 BUILD AUTHORITY** (sha1 `b757ba3f4b3816fcaebae857aeda70dff488ecdc`, recomputed before first edit). Four new modules: `algoConfig.ts` · `algoMoveUnit.ts` · `algoGexNorm.ts` · `algoProfitAtRisk.ts`. **P1-G PASS.** Hotel fixtures 1–18 match handwritten numbers exactly. No golden edited.

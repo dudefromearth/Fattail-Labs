@@ -1,6 +1,6 @@
 /**
- * AZ-ALGO §7 trail math — pure. No UI.
- * Spec: FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v1.0.md v1.0.1
+ * AZ-ALGO trail math — pure. No UI.
+ * v1 stepper (W1) stands. v2: risk_taken / Batman / legacy S=(1−g)×H / override (P2).
  */
 
 import type { LegInput } from "./positionTypes";
@@ -459,5 +459,191 @@ export function stepAlgoTrailWithPrevSpot(
     invertNamed,
     pulse: phase === "recorded" ? false : pulse,
     exitSide,
+  };
+}
+
+/** v2 name for the give-up running minimum (ALGO-A1). g never increases. */
+export const applyGMonotone = applyFMonotone;
+
+export type BatmanFly = {
+  kind: "call" | "put";
+  body: number;
+  debit: number;
+  U: number;
+};
+
+export type WorkingSide = "call" | "put" | "ambiguous";
+
+/**
+ * Closer body wins. Ties, or spot strictly between bodies → larger U.
+ * Equal U → ambiguous. Never `>=` on a tie (that quietly picks a side).
+ */
+export function resolveWorkingSide(
+  spot: number,
+  call: BatmanFly,
+  put: BatmanFly,
+): WorkingSide {
+  const dCall = Math.abs(spot - call.body);
+  const dPut = Math.abs(spot - put.body);
+  const lo = Math.min(call.body, put.body);
+  const hi = Math.max(call.body, put.body);
+  const between = spot > lo && spot < hi;
+  if (!between && dCall !== dPut) {
+    return dCall < dPut ? "call" : "put";
+  }
+  if (call.U > put.U) return "call";
+  if (put.U > call.U) return "put";
+  return "ambiguous";
+}
+
+export function riskTakenForSide(
+  working: WorkingSide,
+  call: BatmanFly,
+  put: BatmanFly,
+): number | null {
+  if (working === "ambiguous") return null;
+  return working === "call" ? call.debit : put.debit;
+}
+
+export type GateResult = {
+  workingSide: WorkingSide;
+  riskTaken: number | null;
+  U: number | null;
+  gate: number | null;
+  managing: boolean;
+  paint: boolean;
+  named: string | null;
+};
+
+/** Gate = entryPct × risk_taken of the working fly only. Pair debit is not the denominator. */
+export function evaluateBatmanGate(
+  spot: number,
+  call: BatmanFly,
+  put: BatmanFly,
+  entryPct: number,
+): GateResult {
+  const workingSide = resolveWorkingSide(spot, call, put);
+  if (workingSide === "ambiguous") {
+    return {
+      workingSide,
+      riskTaken: null,
+      U: null,
+      gate: null,
+      managing: false,
+      paint: false,
+      named: "working_side: ambiguous",
+    };
+  }
+  const riskTaken = riskTakenForSide(workingSide, call, put)!;
+  const U = workingSide === "call" ? call.U : put.U;
+  const gate = entryPct * riskTaken;
+  const managing = U >= gate;
+  return {
+    workingSide,
+    riskTaken,
+    U,
+    gate,
+    managing,
+    paint: managing,
+    named: null,
+  };
+}
+
+export type LegacyTrail = {
+  g: number;
+  S: number;
+  chrome: string;
+  clockOnly: boolean;
+};
+
+/** Legacy S(t)=(1−g)×H. Floor is not applied here. E null → clock-only chrome. */
+export function legacyTrail(opts: {
+  H: number;
+  g0: number;
+  gMin: number;
+  E: number | null;
+  EArm: number | null;
+  remainingNow: number;
+  remainingAtArm: number;
+  prevG: number | null;
+}): LegacyTrail {
+  const gRaw = trailFractionRaw({
+    f0: opts.g0,
+    fMin: opts.gMin,
+    E: opts.E,
+    EArm: opts.EArm,
+    remainingLastTrade: opts.remainingNow,
+    remainingLastTradeAtArm: opts.remainingAtArm,
+  });
+  const g = applyGMonotone(opts.prevG, gRaw, opts.g0, opts.gMin);
+  const S = trailProfitStop(g, opts.H);
+  const clockOnly = opts.E == null || opts.EArm == null;
+  return {
+    g,
+    S,
+    chrome: clockOnly
+      ? "floor: legacy (clock-only)"
+      : "floor: legacy (decay)",
+    clockOnly,
+  };
+}
+
+export function highWaterOnSideSwitch(opts: {
+  prevWorking: WorkingSide;
+  nextWorking: WorkingSide;
+  prevH: number;
+  nextU: number;
+}): { H: number; h_prior_side: number | null; switched: boolean } {
+  const prev = opts.prevWorking;
+  const next = opts.nextWorking;
+  const switched =
+    prev !== "ambiguous" &&
+    next !== "ambiguous" &&
+    prev !== next;
+  if (!switched) {
+    return { H: Math.max(opts.prevH, opts.nextU), h_prior_side: null, switched: false };
+  }
+  return { H: opts.nextU, h_prior_side: opts.prevH, switched: true };
+}
+
+export type FoldOverrideState = {
+  overridden: boolean;
+  reentryCount: number;
+};
+
+/** Beyond the guide: U still below trail_level. Override suppresses re-fire until re-entry holds. */
+export function foldOverrideTick(opts: {
+  U: number;
+  trailLevel: number;
+  prev: FoldOverrideState;
+  reentryBars: number;
+}): { fire: boolean; hud: string | null; next: FoldOverrideState } {
+  const beyond = opts.U < opts.trailLevel;
+  if (!opts.prev.overridden) {
+    return {
+      fire: beyond,
+      hud: null,
+      next: { overridden: false, reentryCount: 0 },
+    };
+  }
+  if (beyond) {
+    return {
+      fire: false,
+      hud: "guide: overridden",
+      next: { overridden: true, reentryCount: 0 },
+    };
+  }
+  const reentryCount = opts.prev.reentryCount + 1;
+  if (reentryCount >= opts.reentryBars) {
+    return {
+      fire: false,
+      hud: null,
+      next: { overridden: false, reentryCount: 0 },
+    };
+  }
+  return {
+    fire: false,
+    hud: "guide: overridden",
+    next: { overridden: true, reentryCount },
   };
 }

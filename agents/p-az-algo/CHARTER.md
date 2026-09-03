@@ -15,7 +15,7 @@
 |--------|------|------|
 | **P0** | Token · seeds · goldens vs landed spec | **PASS** |
 | **P1** | `algoConfig` + `algoMoveUnit` + `algoGexNorm` + `algoProfitAtRisk` vs fixtures 1–18. No UI. | **PASS** |
-| **P2** | Gate · `risk_taken` incl. Batman · legacy trail · E23 floor | After P1-G |
+| **P2** | Gate · `risk_taken` incl. Batman · legacy trail · E23 floor | **PASS** |
 | **P3** | Canvas + HUD **Guide** + freeze-on-fold + muted legacy + reduced motion | After P2-G |
 | **P4** | Trader Feed allowlist | After P3-G |
 | **P5** | **LIVE EVAL** — only exit **AT-ALGO-18** (E17) | After P2+P3 |
