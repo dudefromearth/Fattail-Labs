@@ -2,6 +2,9 @@
  *   npx --yes tsx lib/options-lab/algoEval.test.ts
  */
 
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { tickAlgoAlert } from "./algoEval";
 import { createAlgoAlert } from "./analyzerBook";
 import type { PnLSample } from "./algoTrailMath";
@@ -43,9 +46,9 @@ function demoAlert() {
   });
 }
 
-console.log("algoEval demo");
+console.log("algoEval AT-ALGO-18");
 
-test("non-demo does not tick", () => {
+test("AT-ALGO-18 live (demo false) ticks on the raw mark", () => {
   const a = createAlgoAlert({
     symbol: "SPX",
     positionId: "p1",
@@ -57,18 +60,43 @@ test("non-demo does not tick", () => {
     overlay: false,
     demo: false,
   });
-  const b = tickAlgoAlert(a, {
+  const waiting = tickAlgoAlert(a, {
     symbol: "SPX",
     spot: 6088,
-    U: 4,
+    U: 1,
     debit: 4,
     legs,
     curve,
     remainingHours: 4,
     E: null,
   });
-  assert(b === a, "live engine not in demo");
-  assert(b.algoPhase === "waiting", "stays waiting");
+  assert(waiting.algoPhase === "waiting", "below gate stays In trade");
+  const managing = tickAlgoAlert(waiting, {
+    symbol: "SPX",
+    spot: 6088,
+    U: 3.1,
+    debit: 4,
+    legs,
+    curve,
+    remainingHours: 4,
+    E: null,
+  });
+  assert(managing !== waiting, "live path mutates");
+  assert(managing.algoPhase === "armed", "crosses into Managing");
+  assert(managing.algo?.demo !== true, "still not Demo");
+  assert(managing.algo?.trail_state?.xH === 6088, "guide high-water on live mark");
+  const moved = tickAlgoAlert(managing, {
+    symbol: "SPX",
+    spot: 6092,
+    U: 3.4,
+    debit: 4,
+    legs,
+    curve,
+    remainingHours: 4,
+    E: null,
+  });
+  assert(moved.algo?.trail_state?.H === 3.4, "high-water ratchets");
+  assert(moved.algo?.trail_state?.xH === 6092, "guide moves with the live mark");
 });
 
 test("demo: move spot to arm, time to tighten f", () => {
@@ -111,9 +139,14 @@ test("demo: move spot to arm, time to tighten f", () => {
   assert(Math.abs(a.algo!.trail_state!.f - 0.25) < 1e-9, "fMin at decay end");
 });
 
+test("AT-ALGO-12 algoEval has no 1s heavy resolve", () => {
+  const dir = dirname(fileURLToPath(import.meta.url));
+  const src = readFileSync(join(dir, "algoEval.ts"), "utf8");
+  assert(!/setInterval\s*\(/.test(src), "no interval in eval");
+  assert(!/setTimeout\s*\(/.test(src), "no timeout loop");
+});
+
 function test(name: string, fn: () => void) {
   fn();
   console.log(`  ok  ${name}`);
 }
-
-console.log("  2 tests passed");

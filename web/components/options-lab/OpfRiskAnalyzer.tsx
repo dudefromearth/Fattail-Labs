@@ -1273,23 +1273,23 @@ export default function OpfRiskAnalyzer() {
   const simSpot = displaySpot > 0 ? displaySpot + simSpotPts : 0;
 
   useEffect(() => {
-    const demoLive = alerts.some(
+    const anyLive = alerts.some(
       (a) =>
         a.alertClass === "algo" &&
-        a.algo?.demo &&
         normalizeAlertRunState(a.runState, a.enabled, a.status) === "live",
     );
-    if (!demoLive) return;
-    const demoSpot =
+    if (!anyLive) return;
+    const liveSpot =
+      rawMarkForAlerts != null && rawMarkForAlerts > 0 ? rawMarkForAlerts : 0;
+    const clockSpot =
       tmCursor && tmCursor.spot > 0
         ? tmCursor.spot
         : timeMachineEnabled && simSpot > 0
           ? simSpot
-          : opfSpot != null && opfSpot > 0
-            ? opfSpot
-            : 0;
-    if (!(demoSpot > 0)) return;
-    const nowMs =
+          : liveSpot;
+    if (!(liveSpot > 0) && !(clockSpot > 0)) return;
+    const liveNowMs = Date.now();
+    const clockNowMs =
       tmCursor != null
         ? tmCursor.t_ms
         : Date.now() + (timeMachineEnabled ? elapsedHours : 0) * 3_600_000;
@@ -1300,12 +1300,18 @@ export default function OpfRiskAnalyzer() {
     setAlerts((prev) => {
       let changed = false;
       const next = prev.map((a) => {
-        if (a.alertClass !== "algo" || !a.algo?.demo) return a;
-        if (a.rehearsal) {
-          if (!(tmCursor && tmCursor.spot > 0)) return a;
-        } else if (tmActive) {
+        if (a.alertClass !== "algo" || !a.algo) return a;
+        if (normalizeAlertRunState(a.runState, a.enabled, a.status) !== "live") {
           return a;
         }
+        const demo = a.algo.demo === true;
+        if (a.rehearsal) {
+          if (!(tmCursor && tmCursor.spot > 0)) return a;
+        } else if (demo && tmActive) {
+          return a;
+        }
+        const spot = demo || a.rehearsal ? clockSpot : liveSpot;
+        if (!(spot > 0)) return a;
         const pos = positions.find((p) => p.id === a.positionId);
         if (!pos) return a;
         const debit = algoEntryDebit({
@@ -1317,11 +1323,12 @@ export default function OpfRiskAnalyzer() {
           priceSide: pos.priceSide,
           netPremium: positionNetPremium(pos.position),
         });
-        const raw = findPnLAtPrice(risk.theoreticalPoints, demoSpot);
+        const raw = findPnLAtPrice(risk.theoreticalPoints, spot);
         const U = raw == null ? 0 : raw / 100;
+        const nowMs = demo || a.rehearsal ? clockNowMs : liveNowMs;
         const ticked = tickAlgoAlert(a, {
           symbol,
-          spot: demoSpot,
+          spot,
           U,
           debit,
           legs: pos.position.legs,
@@ -1343,6 +1350,7 @@ export default function OpfRiskAnalyzer() {
     tmCursor,
     tmActive,
     opfSpot,
+    rawMarkForAlerts,
     risk.theoreticalPoints,
     symbol,
   ]);

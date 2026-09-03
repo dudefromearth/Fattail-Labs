@@ -4,6 +4,14 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-03 — DL-670 AZ-ALGO P5 live path open · P5-G HOLD (RTH)
+
+**Decision:** `tickAlgoAlert` no longer no-ops when `demo === false`. The v1.0.16 test `non-demo does not tick` was **deleted** (it asserted the abolished defect). Demo remains a clock. Call site ticks live alerts on the raw mark.
+
+**P5-G HOLD.** Clock at fire: 08:10 EDT, before RTH. AT-ALGO-18 requires a live-session transcript during RTH. No fixture was substituted.
+
+---
+
 ## 2026-09-03 — DL-669 AZ-ALGO P4-G PASS · Trader Feed algo-reason
 
 **Decision:** P4 fired. Trader Feed host `algo-reason` mounts when Reason is checked. §10.1 allowlist only; as-of stamped. No hold/fold, target, or probability (AT-ALGO-32). House base on `/app/alerts` (admin). Apex phrasing: *short-gamma region — profit-at-risk elevated*. Fail-open: local posts + named **AI quiet**. AI infers only while Managing; Fold suggested keeps last tape. `TimeOrthoEggPanel` not imported. `algoEval.ts` not opened (NX13).

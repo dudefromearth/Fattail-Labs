@@ -18,7 +18,7 @@ P1  algoConfig + move + gexNorm + PaR          **P1-G PASS** · no UI
 P2  gate · Batman · legacy · floor             **P2-G PASS**
 P3  canvas + HUD Guide + freeze + muted + RM   **P3-G PASS**
 P4  Trader Feed allowlist                      **P4-G PASS**
-P5  LIVE EVAL — AT-ALGO-18 only (E17) · NX13
+P5  LIVE EVAL — AT-ALGO-18 only (E17) · NX13   **P5-G HOLD** (RTH)
 P6  docs · DL · close
 ```
 
@@ -33,7 +33,7 @@ P6  docs · DL · close
 | **P2** | After P1-G | **PASS** |
 | **P3** | After P2-G | **PASS** |
 | **P4** | After P3-G | **PASS** |
-| **P5** | After P2+P3; **not** folded into another phase | Blocked |
+| **P5** | After P2+P3; **not** folded into another phase | **HOLD** — live path in; transcript waits RTH |
 | **P6** | After P1–P5 | Blocked |
 
 ## W1–W4 as-built (v1.0.3 — do not re-seed)
@@ -79,3 +79,4 @@ P6  docs · DL · close
 | P3-G | **PASS** — Guide · freeze · muted legacy · reduced motion |
 | P3.1-G | **PASS** — labelled chips; image looked at |
 | P4-G | **PASS** — algo-reason allowlist |
+| P5-G | **HOLD** — 08:10 ET, RTH not open; trap inverted |

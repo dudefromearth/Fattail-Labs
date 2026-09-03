@@ -1,6 +1,7 @@
 /**
- * Tick one Algo alert. Demo uses What-if spot / time / vol (FI-033).
- * No reason prompt → built-in trail engine.
+ * Tick one Algo alert on the mark the caller hands in.
+ * Live: raw underlier (AT-ALGO-18). Demo is a CLOCK (What-if / Time Machine),
+ * not an eval gate. Callers pass the clock's spot when demo is on.
  */
 
 import type { AnalyzerThresholdAlert } from "./analyzerBook";
@@ -55,7 +56,6 @@ export function tickAlgoAlert(
   );
   if (state !== "live") return alert;
   if (alert.algoPhase === "recorded") return alert;
-  if (!alert.algo.demo) return alert;
   if (!(ctx.spot > 0) || !(ctx.debit > 0)) return alert;
   const fly = inferLongFly(ctx.legs);
   if (!fly || !fly.longFly) return alert;
