@@ -2000,7 +2000,7 @@ export default function OpfRiskAnalyzer() {
       >
         {/* Viewport — fills remaining space above book */}
         <section
-          className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#0a0a0e] p-2"
+          className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#0a0a0e] [--color-on-inverse:#f5f5f7] p-2"
           data-testid="analyzer-viewport-region"
         >
           <div
