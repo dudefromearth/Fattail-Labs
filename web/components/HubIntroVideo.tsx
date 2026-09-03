@@ -57,7 +57,10 @@ export default function HubIntroVideo({
       />
       <span className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
       <span className="absolute inset-0 flex items-center justify-center">
-        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/95 text-2xl text-white shadow-xl transition-transform group-hover:scale-110 sm:h-20 sm:w-20 sm:text-3xl">
+        <span
+          className="flex h-16 w-16 items-center justify-center rounded-full text-2xl text-white shadow-xl transition-transform group-hover:scale-110 sm:h-20 sm:w-20 sm:text-3xl"
+          style={{ backgroundColor: "#00B478" }}
+        >
           ▶
         </span>
       </span>
