@@ -1,6 +1,8 @@
 # FatTail Labs — Options Lab Analyzer Algo Alert Spec v2.0
 
-**Status:** **DRAFT** — Coach 2026-09-02. Arming and trade management is now the product law for Analyzer **Algo**. **Not BUILD AUTHORITY** until Coach Phase 5.  
+**Status:** **SUPERSEDED** as product law by [AZ-ALGO v2.2.1](./FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v2.2.1.md) (**DL-661**, sha1 `6f491ee8f240aa06418b8e813fdb3152ed60deb5`). Kept as the **v2.0 seating** of the Arming memo. Review iterations v2.1 and v2.2 never landed as tracked files.
+
+**Status (historical):** **DRAFT** — Coach 2026-09-02. Arming and trade management is now the product law for Analyzer **Algo**. **Not BUILD AUTHORITY** until Coach Phase 5.  
 **Current revision:** **v2.0**  
 **Supersedes:** [AZ-ALGO v1.0.16](./FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v1.0.md) as **product law**. v1.0.16 remains the **as-built characterization** of W1–W4 (Demo-only trail).  
 **Seats:** Coach memo [`Arming and Trade Management Specification.md`](./Arming%20and%20Trade%20Management%20Specification.md) (verbatim in §0.2). Strategy parent [`FatTail 0DTE Strategy Specification.md`](./FatTail%200DTE%20Strategy%20Specification.md).  

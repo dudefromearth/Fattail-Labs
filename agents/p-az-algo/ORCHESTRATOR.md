@@ -3,7 +3,7 @@
 **Juliet** owns this board. Specialists fire only from seeds. No peer-to-peer tasking.
 
 **Plan:** [`docs/Options-Lab-Analyzer-Algo-Alert-Full-Agent-Bench-Plan-v1.0.md`](../../docs/Options-Lab-Analyzer-Algo-Alert-Full-Agent-Bench-Plan-v1.0.md) **v1.0.3** (OD-LLM · Demo `mode` · W4-0 re-sweep)  
-**Law:** AZ-ALGO Spec **v2.0 DRAFT** · **DL-660** (Arming and Trade Management). v1.0.16 SUPERSEDED as product law; W1–W4 as-built still describes Demo-only. **Not BUILD AUTHORITY.** Prior cites: **DL-472** · **DL-473** · **DL-482** · **DL-484** · **DL-485** · **DL-488**
+**Law:** AZ-ALGO Spec **v2.2.1 DRAFT** · sha1 `6f491ee8f240aa06418b8e813fdb3152ed60deb5` · **DL-661**. v2.0 SUPERSEDED. v2.1/v2.2 never landed. **Not BUILD AUTHORITY** until Appendix B goldens + OD-ALGO-1. Prior: **DL-660** · **DL-472** · **DL-473** · **DL-482** · **DL-484** · **DL-485** · **DL-488**
 
 **W0-BA GO · DL-479.** **W1–W3 stand (PASS).** W3-R additive (Reason / `engine`). **W4 HOLD** — 2026-08-20 re-sweep: Packet A W-G unfiled; C2 BLOCKED; return board product-code Forbidden.
 
@@ -54,7 +54,7 @@ W-G Delta
 
 | Packet | State |
 |--------|--------|
-| Spec | **v2.0 DRAFT** · **DL-660** (not BA). W0-BA was v1.0.1/v1.0.2 — do not treat v2.0 as GO |
+| Spec | **v2.2.1 DRAFT** · **DL-661** · sha1 `6f491ee8…` (not BA). ALGO-B goldens in `evidence/` |
 | This plan | **v1.0.3** |
 | W0-BA | **GO** |
 | W1-G | **PASS** (executed · parameterized knobs) |

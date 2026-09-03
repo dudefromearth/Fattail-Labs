@@ -4,6 +4,20 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-02 — DL-661 AZ-ALGO v2.2.1 product law (DRAFT · not BUILD)
+
+**Decision:** Analyzer Algo Alert **v2.2.1** is product law, superseding **v2.0**. File [`Specs/FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v2.2.1.md`](../Specs/FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v2.2.1.md). Landed on `origin/main` at **396571a**. sha1 **`6f491ee8f240aa06418b8e813fdb3152ed60deb5`** (recomputed on StudioTwo after `git pull`; matches Coach transfer check). Errata **E1–E22** are in the file (Appendix C). Model is **frozen**.
+
+**Not BUILD AUTHORITY.** Gated on: Appendix B fixtures **1–16 handwritten** (ALGO-B), and **OD-ALGO-1** disposed by Coach (HUD fourth row Guide default vs Stop).
+
+**Version gap:** **v2.1 and v2.2 were review-only iterations that never landed as tracked files.** Nobody hunts for them in `Specs/`. v2.2.1 is the first revision after v2.0 to become repo law and carries E1–E22 from both.
+
+**Hotel ALGO-B:** two earlier BLOCKED verdicts (spec not on this board) were **correct**. They are not false blocks. Goldens fire against this sha1.
+
+**Does not:** MiniTwo · implementation · opening `algoProfitAtRisk.ts` / `algoMoveUnit.ts` / `algoGexNorm.ts` · disposing OD-ALGO-1.
+
+---
+
 ## 2026-09-02 — DL-660 AZ-ALGO v2.0 Arming and Trade Management (DRAFT)
 
 **Decision:** Coach’s **Arming and Trade Management** memo is seated as Analyzer Algo Alert product law. Spec **v2.0 DRAFT** [`Specs/FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v2.0.md`](../Specs/FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v2.0.md). **Not BUILD AUTHORITY.**
