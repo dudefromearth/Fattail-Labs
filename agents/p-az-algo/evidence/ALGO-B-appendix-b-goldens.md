@@ -361,7 +361,7 @@ Suppression holds until U (or spot vs `x_S`) is back on the hold side for 3 cons
 | k fixture 7 interior ≠ k_base | 1.8 |
 | No FINDING that stopped the set | none |
 
-**OD-ALGO-1** remains open (Coach). Not a fixture defect.
+**OD-ALGO-1 DISPOSED (Coach 2026-09-03): Guide.** HUD fourth row reads Guide. Payload `guide_print` unchanged. Not a fixture defect.
 
 ---
 

@@ -1,5 +1,8 @@
 # Analyzer Algo Alert — Full Agent Bench Plan v1.0
 
+> **Working plan is v2.0.** [`docs/Options-Lab-Analyzer-Algo-Alert-Full-Agent-Bench-Plan-v2.0.md`](./Options-Lab-Analyzer-Algo-Alert-Full-Agent-Bench-Plan-v2.0.md) · token [`agents/go/AZALGO-W0.md`](../agents/go/AZALGO-W0.md).  
+> **This file is the W1–W4 as-built record.** Do not execute remaining W5–W-G against it. Do not bolt a live-eval / PaR phase onto this DAG.
+
 **Date:** 2026-08-20  
 **Plan revision:** **v1.0.3** (OD-LLM Coach-opened · Demo + `mode` provenance · W4-0 re-sweep). **W1–W3 stand as executed — do not replace.**  
 **Canonical filename:** `docs/Options-Lab-Analyzer-Algo-Alert-Full-Agent-Bench-Plan-v1.0.md`  

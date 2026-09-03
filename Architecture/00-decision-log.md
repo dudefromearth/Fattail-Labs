@@ -4,6 +4,43 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-03 — DL-663 AZ-ALGO GO token + plan v2.0 UNSTAMPED · OD-ALGO-1 Guide
+
+**Decision:** Coach disposed **OD-ALGO-1: Guide.** HUD fourth row reads **Guide**. Payload key `guide_print` unchanged. AT-ALGO-17 resolves to Guide. Tango may freeze copy.
+
+Three artifacts land together, **UNSTAMPED**. Coach stamps the token and the plan together. No product code until that stamp.
+
+1. Spec **v2.2.2** already on `origin/main` at **6653745**. Whole-file sha1 **`b757ba3f4b3816fcaebae857aeda70dff488ecdc`**. Fixtures 1–16 remain frozen against v2.2.1 sha1 `6f491ee8f240aa06418b8e813fdb3152ed60deb5` — E23/E24 did not change a 1–16 value.
+2. GO token [`agents/go/AZALGO-W0.md`](../agents/go/AZALGO-W0.md) created. Delta gates P0 / P1-fire by **this file**, not chat (**DL-328**). Stamp block empty.
+3. New bench plan [`docs/Options-Lab-Analyzer-Algo-Alert-Full-Agent-Bench-Plan-v2.0.md`](../docs/Options-Lab-Analyzer-Algo-Alert-Full-Agent-Bench-Plan-v2.0.md) **v2.0**. P0–P6. Live eval is **P5**, only exit **AT-ALGO-18** (E17). v1.0.3 stays as the W1–W4 as-built record.
+
+**Does not:** BUILD AUTHORITY · implementation · opening `algoProfitAtRisk.ts` / `algoMoveUnit.ts` / `algoGexNorm.ts` / `algoEval.ts` · passing Spec §14 · disposing OD-ALGO-2/3/4.
+
+---
+
+## 2026-09-02 — DL-662 AZ-ALGO v2.2.2 E23 floor formula · E24 at-body tie-break
+
+**Decision:** Hotel ALGO-B (fixtures 1–16) **ACCEPTED**. Two **authoring** gaps in v2.2.1, not golden defects. Spec **v2.2.2** [`Specs/FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v2.2.2.md`](../Specs/FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v2.2.2.md). Geometry unchanged. E1–E22 not reopened.
+
+**E23 (Coach + Hotel):** Floor was prose. Readings (a) always-max-with-legacy and (b) `(1−gMin)·H` all morning **rejected**. **(c)** law: floor binds only as the close approaches.
+
+```
+floor_active  = remainingToDecayEnd ≤ LABS_ALGO_FLOOR_REMAINING_H   (default 1.0 h)
+floor         = (1 − gMin) × H
+trail_level   = proposed_raw                         if not floor_active
+              = max(proposed_raw, floor)             if floor_active
+```
+
+Fixture **17** handwritten: both lines in one calculation; floor binds (`proposed_raw` 700.48 → 750); morning counterfactual leaves 700.48 unfloored.
+
+**E24:** At-body larger-PaR rule untested when Δ=0. Fixture **18** handwritten: Δ=2, PaR_up 112 ≠ PaR_down 144, PaR=144.
+
+**BUILD AUTHORITY** now waits on **OD-ALGO-1 only** (HUD Guide vs Stop), once 17/18 are on disk with this file. Not BUILD until Coach disposes that.
+
+**Does not:** implementation · a Juliet bench plan (workflow: plan after Phase 5) · reopening 1–16.
+
+---
+
 ## 2026-09-02 — DL-661 AZ-ALGO v2.2.1 product law (DRAFT · not BUILD)
 
 **Decision:** Analyzer Algo Alert **v2.2.1** is product law, superseding **v2.0**. File [`Specs/FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v2.2.1.md`](../Specs/FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v2.2.1.md). Landed on `origin/main` at **396571a**. sha1 **`6f491ee8f240aa06418b8e813fdb3152ed60deb5`** (recomputed on StudioTwo after `git pull`; matches Coach transfer check). Errata **E1–E22** are in the file (Appendix C). Model is **frozen**.
