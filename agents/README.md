@@ -180,9 +180,9 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
   **Next: W0-0 Coach stamp · no PnLChart code before W0-BA (or impl+DL).**  
   Impl: `docs/Options-Lab-Analyzer-Viewport-Drag-Scroll-Implementation-Plan-v1.0.md`.
 - `agents/p-az-algo/` — **Analyzer Algo Alert** (OTM-fly **advisory guide**, not a flatten).  
-  Spec: `Specs/FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v2.2.2.md` (**v2.2.2** · sha1 `b757ba3f…` · **DL-662** · **DL-663**).  
-  **Working plan:** `docs/Options-Lab-Analyzer-Algo-Alert-Full-Agent-Bench-Plan-v2.0.md` **v2.0 UNSTAMPED**. Token `agents/go/AZALGO-W0.md`.  
-  W1–W4 as-built: plan **v1.0.3**. **OD-ALGO-1 DISPOSED: Guide.** Not BUILD until the token is GO.  
+  Spec: `Specs/FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v2.2.2.md` (**v2.2.2 BUILD AUTHORITY** · sha1 `b757ba3f…` · **DL-664**).  
+  **Working plan:** `docs/Options-Lab-Analyzer-Algo-Alert-Full-Agent-Bench-Plan-v2.0.md` **v2.0 GO**. Token `agents/go/AZALGO-W0.md` **GO**. **P0-G PASS.**  
+  W1–W4 as-built: plan **v1.0.3**. OD-ALGO-1…5 disposed (Guide). Next: P1 (not fired).  
   Board: `agents/p-az-algo/ORCHESTRATOR.md`.  
 - `agents/p-az-atm/` — **PARKED.** 15 seeds; W0-0 / W0-BA / W1-G / W2-G already ran. Remaining W3 Enhanced / W4 TPO are NX on the unified GO. See `PARKED.md`. Use `p-options-lab-tm`.  
   Spec: `Specs/FatTail-Labs-Options-Lab-Analyzer-Time-Machine-Spec-v0.1.md` (**v0.1.1 DRAFT** · **DL-486** · **DL-487**).  

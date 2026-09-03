@@ -4,6 +4,32 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-03 — DL-664 AZ-ALGO v2.2.2 BUILD AUTHORITY · plan v2.0 GO
+
+**Decision:** Coach stamped [`agents/go/AZALGO-W0.md`](../agents/go/AZALGO-W0.md) **GO** 2026-09-03. Analyzer Algo Alert Spec **v2.2.2** is **BUILD AUTHORITY**. Plan **v2.0** is stamped with it. v1.0.3 stays the W1–W4 as-built record.
+
+**Signed:** Coach (Ernie Varitimos).
+
+**Spec sha1 at stamp (recomputed, whole file):** `b757ba3f4b3816fcaebae857aeda70dff488ecdc` — matches land `6653745` and Coach’s expected hash. Spec body was **not** edited (would change the stamp hash).
+
+**OD-ALGO-1…5 disposed:**
+
+| ID | Coach |
+|----|-------|
+| **OD-ALGO-1** | **DISPOSED: Guide** (pre-filled, confirmed). HUD fourth row **Guide**. Payload `guide_print`. AT-ALGO-17 = Guide. |
+| **OD-ALGO-2** | **Accept** — k constant at `k_base` until §14.5 fits it |
+| **OD-ALGO-3** | **Accept** — `manual_confirm` stand-in persists under E9 |
+| **OD-ALGO-4** | **Accept** — percentile normalization as specified |
+| **OD-ALGO-5** | **Accept** — Analyzer VP overlay (FI-031) out of this spec |
+
+**P0:** tokens, seeds, and goldens verified against the landed spec. Fixtures 1–16 remain the v2.2.1 freeze (`6f491ee8f240aa06418b8e813fdb3152ed60deb5`); E23/E24 did not move a value they depend on (`evidence/P0-2-goldens-vs-landed-spec.md`). Exit **P0-G**. No product code in P0. `algoEval.ts` is not a file of P1–P4 (**NX13**); P5 owns it; **AT-ALGO-18** is that phase’s only exit.
+
+**Tango before P3:** inside the floor window proposed prints **tighter** than legacy (fixture 17: 750 vs 700). The lines cross near the close. Copy must not describe proposed as “usually wider.”
+
+**Does not:** fire P1 · open `algoProfitAtRisk.ts` / `algoMoveUnit.ts` / `algoGexNorm.ts` / `algoEval.ts` · pass Spec §14 · fill DL-539 three-OK log · MiniTwo.
+
+---
+
 ## 2026-09-03 — DL-663 AZ-ALGO GO token + plan v2.0 UNSTAMPED · OD-ALGO-1 Guide
 
 **Decision:** Coach disposed **OD-ALGO-1: Guide.** HUD fourth row reads **Guide**. Payload key `guide_print` unchanged. AT-ALGO-17 resolves to Guide. Tango may freeze copy.

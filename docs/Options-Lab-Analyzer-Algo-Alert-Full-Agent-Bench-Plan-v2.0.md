@@ -1,7 +1,7 @@
 # Analyzer Algo Alert — Full Agent Bench Plan v2.0
 
 **Date:** 2026-09-03  
-**Plan revision:** **v2.0 UNSTAMPED**  
+**Plan revision:** **v2.0 STAMPED GO** — Coach 2026-09-03 with `AZALGO-W0`  
 **Canonical filename:** `docs/Options-Lab-Analyzer-Algo-Alert-Full-Agent-Bench-Plan-v2.0.md`  
 **Owner (orchestration):** Juliet  
 **Authority:** Coach (GO / ship)  
@@ -13,14 +13,14 @@
 
 | Record | Path | Role |
 |--------|------|------|
-| **Working plan** | this file **v2.0** | P0–P6. UNSTAMPED until `AZALGO-W0` is GO. |
+| **Working plan** | this file **v2.0** | P0–P6. **STAMPED GO** 2026-09-03 with `AZALGO-W0`. |
 | **W1–W4 as-built** | [`docs/Options-Lab-Analyzer-Algo-Alert-Full-Agent-Bench-Plan-v1.0.md`](./Options-Lab-Analyzer-Algo-Alert-Full-Agent-Bench-Plan-v1.0.md) **v1.0.3** | Keep on disk. Do not execute remaining W5–W-G against it. Do not re-seed W1–W3. |
 
 **Primary law:**
 
 | Doc | Path | Status |
 |-----|------|--------|
-| **AZ-ALGO Spec v2.2.2** | [`Specs/FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v2.2.2.md`](../Specs/FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v2.2.2.md) | **PRODUCT-LAW DRAFT.** E1–E24. sha1 at land **`b757ba3f4b3816fcaebae857aeda70dff488ecdc`**. **Not BUILD AUTHORITY until `AZALGO-W0` is GO.** |
+| **AZ-ALGO Spec v2.2.2** | [`Specs/FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v2.2.2.md`](../Specs/FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v2.2.2.md) | **BUILD AUTHORITY** (token GO 2026-09-03). E1–E24. sha1 at stamp **`b757ba3f4b3816fcaebae857aeda70dff488ecdc`**. Spec file body not edited (would change the hash). |
 | AZ-ALGO v2.2.1 | [`…Spec-v2.2.1.md`](../Specs/FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v2.2.1.md) | **SUPERSEDED as law.** Frozen text for fixtures **1–16** (sha1 `6f491ee8f240aa06418b8e813fdb3152ed60deb5`). |
 | AZ-ALGO v2.0 | [`…Spec-v2.0.md`](../Specs/FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v2.0.md) | SUPERSEDED. Arming memo seating. **DL-660**. |
 | AZ-ALGO v1.0.16 | [`…Spec-v1.0.md`](../Specs/FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v1.0.md) | SUPERSEDED as product law. **As-built** of W1–W4 (Demo-only trail). |
@@ -31,7 +31,7 @@
 | Trader Feed v0.1.3 | TF · DL-514 · DL-517 | Host `algo-reason`. Allowlist only (E16). |
 | Arch 28 | One **market** WS | No client Massive. |
 
-**Spec status:** v2.2.2 **DRAFT**. **P0-0 GO** is the stamp on `AZALGO-W0.md`. Do not fire P1 until that file is GO **and** P0-G PASS.
+**Spec status:** v2.2.2 **BUILD AUTHORITY**. Token `AZALGO-W0` **GO** 2026-09-03. Do not fire P1 until **P0-G PASS** (and DL-539 if IKI remains listed).
 
 Specialists execute **only** via seeds. Coordination only through **Coach** or **Juliet**.  
 Delta gates: **PASS / FAIL / BLOCKED** with evidence — **never waived**.  
@@ -57,18 +57,18 @@ Lock at P0-0 except where the token already records a disposal.
 
 | ID | Decision | Source | State |
 |----|----------|--------|-------|
-| **A1** | Advisory guide. Never flatten. Debit bounds loss. | §0.2 · §1 | LOCK at GO |
-| **A2** | States: Armed → In trade → Managing → Fold suggested (override returns Managing). | §4 | LOCK at GO |
+| **A1** | Advisory guide. Never flatten. Debit bounds loss. | §0.2 · §1 | **LOCKED** |
+| **A2** | States: Armed → In trade → Managing → Fold suggested (override returns Managing). | §4 | **LOCKED** |
 | **A3** | HUD fourth row **Guide**. Payload `guide_print`. AT-ALGO-17 = Guide. | **OD-ALGO-1 DISPOSED** | **LOCKED** |
-| **A4** | Computed line labelled **proposed** until Spec §14. Both lines paint. | E8 · AT-ALGO-22 | LOCK at GO |
-| **A5** | PaR = `max(0, −pnl_change_adv)`. `trail_level = H − k×PaR` then E23 floor. | E1 · E10 · E23 | LOCK at GO |
-| **A6** | `k = clamp(k_base × gamma_factor × proximity_factor, 1.0, 2.5)` defensive. Achievable `[0.84, 2.34]`. | E2 | LOCK at GO |
-| **A7** | Live eval is **P5**. Only exit AT-ALGO-18. | E17 | LOCK at GO |
-| **A8** | Appendix A keys fail-loud. No silent default. | AT-ALGO-26 | LOCK at GO |
-| **A9** | Fixtures 1–16 frozen on v2.2.1 `6f491ee8…`. 17–18 on v2.2.2. | ALGO-B | LOCK at GO |
-| **A10** | §14 validation is **not** this DAG’s close. This GO does not promote “proposed”. | §14 · E8 | LOCK at GO |
+| **A4** | Computed line labelled **proposed** until Spec §14. Both lines paint. | E8 · AT-ALGO-22 | **LOCKED** |
+| **A5** | PaR = `max(0, −pnl_change_adv)`. `trail_level = H − k×PaR` then E23 floor. | E1 · E10 · E23 | **LOCKED** |
+| **A6** | `k = clamp(k_base × gamma_factor × proximity_factor, 1.0, 2.5)` defensive. Achievable `[0.84, 2.34]`. | E2 | **LOCKED** |
+| **A7** | Live eval is **P5**. Only exit AT-ALGO-18. | E17 | **LOCKED** |
+| **A8** | Appendix A keys fail-loud. No silent default. | AT-ALGO-26 | **LOCKED** |
+| **A9** | Fixtures 1–16 frozen on v2.2.1 `6f491ee8…`. 17–18 on v2.2.2. | ALGO-B | **LOCKED** |
+| **A10** | §14 validation is **not** this DAG’s close. This GO does not promote “proposed”. | §14 · E8 | **LOCKED** |
 
-**OD-ALGO-2 / 3 / 4 stay open** (after §14.5 · trigger formula · six-vendor GEX). **OD-ALGO-5** (VP overlay FI-031) is out of this spec.
+**OD-ALGO-1…5 disposed on `AZALGO-W0` 2026-09-03.** `k` stays constant at `k_base` until a later §14.5 fit (OD-ALGO-2 Accept, not a fit).
 
 ---
 
@@ -155,11 +155,11 @@ P6  docs, DL, close
 
 | # | Question | Owner | This stamp |
 |---|----------|-------|------------|
-| **OD-ALGO-1** | HUD Guide vs Stop | Coach | **DISPOSED: Guide** (token) |
-| **OD-ALGO-2** | `k` constant vs regime | Coach, after §14.5 | Open. Constant `k_base` until fitted. |
-| **OD-ALGO-3** | Entry trigger formula | Coach · Hotel | Open. `manual_confirm` under E9. |
-| **OD-ALGO-4** | Six-vendor GEX into `gamma_factor` | Coach | Open. Percentile as specified. |
-| **OD-ALGO-5** | Analyzer VP overlay | Juliet | **Out of this spec.** |
+| **OD-ALGO-1** | HUD Guide vs Stop | Coach | **DISPOSED: Guide** (token, confirmed) |
+| **OD-ALGO-2** | `k` constant vs regime | Coach | **Accept** — constant at `k_base` until §14.5 fits it |
+| **OD-ALGO-3** | Entry trigger formula | Coach · Hotel | **Accept** — `manual_confirm` stand-in persists under E9 |
+| **OD-ALGO-4** | Six-vendor GEX into `gamma_factor` | Coach | **Accept** — percentile normalization as specified |
+| **OD-ALGO-5** | Analyzer VP overlay | Juliet | **Accept** — out of this spec |
 
 ---
 
@@ -342,11 +342,11 @@ Seeds live under [`agents/p-az-algo/seeds/`](../agents/p-az-algo/seeds/). **v1 W
 
 | Seed | Agent | Intent |
 |------|-------|--------|
-| **P0-0** | Coach | Stamp [`agents/go/AZALGO-W0.md`](../agents/go/AZALGO-W0.md). Spec v2.2.2 BUILD AUTHORITY. Plan v2.0 accept. OD-ALGO-1 already DISPOSED Guide. |
+| **P0-0** | Coach | **DONE 2026-09-03.** Stamp [`agents/go/AZALGO-W0.md`](../agents/go/AZALGO-W0.md) **GO**. Spec v2.2.2 BUILD AUTHORITY. Plan v2.0 accept. OD-ALGO-1…5 disposed. |
 | **P0-1** | Juliet | P* seeds on disk. Cite spec v2.2.2 sha1 `b757ba3f…`. Cite goldens path. E17 P5 isolation in every seed. |
 | **P0-2** | Hotel · India | Goldens 1–18 still match the landed spec. 1–16 still match v2.2.1 `6f491ee8…`. 17–18 still match E23 (c) and E24. No value rewritten. |
 | **P0-3** | Lima | DL-663 stamp block ready (sha1, OD-ALGO-1, plan v2.0). |
-| **P0-G** | Delta | Token is **GO**. sha1 on the token matches the spec file. Fixtures 1–18 on disk handwritten. Seeds P0–P6 named and present. No code opened. |
+| **P0-G** | Delta | **PASS 2026-09-03.** Token is **GO**. sha1 matches. Fixtures 1–18 on disk. 1–16 freeze holds. Seeds P0–P6 present. No code opened. |
 
 ### Phase P1 — Pure calculation (no UI)
 
@@ -370,7 +370,7 @@ Seeds live under [`agents/p-az-algo/seeds/`](../agents/p-az-algo/seeds/). **v1 W
 | Seed | Agent | Intent |
 |------|-------|--------|
 | **P3-0** | Echo · Charlie | HUD **High · Profit · Trail · Guide**. Freeze on Fold suggested. Proposed labelled *proposed*. Legacy muted token. Overlay default off. |
-| **P3-1** | Tango · Echo | Copy freeze Guide. AT-ALGO-27 scan list. No Stop on the fourth row. |
+| **P3-1** | Tango · Echo | Copy freeze Guide. AT-ALGO-27 scan list. No Stop on the fourth row. **Coach 2026-09-03:** inside the floor window proposed prints **tighter** than legacy (fixture 17: 750 vs 700). Lines cross near the close. Do not say proposed is “usually wider.” |
 | **P3-2** | Charlie | `prefers-reduced-motion` kills pulse (AT-ALGO-31). Overlay density still conveys threat. |
 | **P3-G** | Delta · Echo · Tango | AT-ALGO-7 / 17 / 22 / 31. Fourth row reads Guide. Position stays. |
 
@@ -435,7 +435,7 @@ Hotel / India: no second pricer; no expected move; no silent 100×; no invented 
 - Live eval smuggled into P2 “because tickAlgoAlert was open”.  
 - “Proposed” dropped from the label because it looked finished.  
 - §14 cited as closed.  
-- A chat “go” with `AZALGO-W0` still UNSTAMPED.
+- A chat “go” with `AZALGO-W0` still unstamped (this file is the stamp — **DL-328**).
 
 ---
 
@@ -443,5 +443,5 @@ Hotel / India: no second pricer; no expected move; no silent 100×; no invented 
 
 | Ver | Date | Notes |
 |-----|------|-------|
-| **v2.0** | 2026-09-03 | New plan for AZ-ALGO v2.2.2. P0–P6. Live eval isolated (E17). HUD Guide (OD-ALGO-1). UNSTAMPED with `AZALGO-W0`. |
+| **v2.0** | 2026-09-03 | New plan for AZ-ALGO v2.2.2. P0–P6. Live eval isolated (E17). HUD Guide (OD-ALGO-1). **STAMPED GO** with `AZALGO-W0`. |
 | v1.0.3 | 2026-08-20 | W1–W4 as-built record. Kept on disk. |

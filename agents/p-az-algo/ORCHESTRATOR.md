@@ -2,23 +2,23 @@
 
 **Juliet** owns this board. Specialists fire only from seeds. No peer-to-peer tasking.
 
-**Working plan:** [`docs/Options-Lab-Analyzer-Algo-Alert-Full-Agent-Bench-Plan-v2.0.md`](../../docs/Options-Lab-Analyzer-Algo-Alert-Full-Agent-Bench-Plan-v2.0.md) **v2.0 UNSTAMPED**  
-**W0 artifact:** [`agents/go/AZALGO-W0.md`](../go/AZALGO-W0.md) — Delta gates by **this file**, not chat (**DL-328**).  
+**Working plan:** [`docs/Options-Lab-Analyzer-Algo-Alert-Full-Agent-Bench-Plan-v2.0.md`](../../docs/Options-Lab-Analyzer-Algo-Alert-Full-Agent-Bench-Plan-v2.0.md) **v2.0 STAMPED GO**  
+**W0 artifact:** [`agents/go/AZALGO-W0.md`](../go/AZALGO-W0.md) — **STAMPED GO** 2026-09-03. Delta gates by **this file**, not chat (**DL-328**).  
 **W1–W4 as-built record:** [`docs/Options-Lab-Analyzer-Algo-Alert-Full-Agent-Bench-Plan-v1.0.md`](../../docs/Options-Lab-Analyzer-Algo-Alert-Full-Agent-Bench-Plan-v1.0.md) **v1.0.3** — keep. Do not execute leftover W5–W-G against it.
 
-**Law:** AZ-ALGO Spec **v2.2.2** · sha1 `b757ba3f4b3816fcaebae857aeda70dff488ecdc` · **DL-662** (E23/E24) · **DL-663** (token + plan). v2.2.1 SUPERSEDED as law (fixtures 1–16 freeze `6f491ee8…`). **Not BUILD AUTHORITY** until `AZALGO-W0` is **GO**. **OD-ALGO-1 DISPOSED: Guide.** Prior: **DL-661** · **DL-660** · **DL-472** · **DL-473** · **DL-482** · **DL-484** · **DL-485** · **DL-488** · **DL-479** (W0-BA, v1)
+**Law:** AZ-ALGO Spec **v2.2.2 BUILD AUTHORITY** · sha1 `b757ba3f4b3816fcaebae857aeda70dff488ecdc` · **DL-664** (stamp) · **DL-662** (E23/E24) · **DL-663** (token land). v2.2.1 SUPERSEDED as law (fixtures 1–16 freeze `6f491ee8…`). **OD-ALGO-1…5 disposed** (Guide · k_base · manual_confirm · percentile · VP overlay out). Prior: **DL-661** · **DL-660** · **DL-472** · **DL-473** · **DL-482** · **DL-484** · **DL-485** · **DL-488** · **DL-479** (W0-BA, v1)
 
-**No product code until the stamp.**
+**P0-G PASS.** No product code in P0. P1 does not fire until Juliet/Coach open P1-0 (DL-539 if IKI still listed).
 
 ## DAG (v2)
 
 ```text
-P0  token · seeds · goldens vs landed spec     UNSTAMPED
-P1  algoConfig + move + gexNorm + PaR          after P0-G · no UI
+P0  token · seeds · goldens vs landed spec     **P0-G PASS**
+P1  algoConfig + move + gexNorm + PaR          READY · no UI · not fired
 P2  gate · Batman · legacy · floor
 P3  canvas + HUD Guide + freeze + muted + RM
 P4  Trader Feed allowlist
-P5  LIVE EVAL — AT-ALGO-18 only (E17)
+P5  LIVE EVAL — AT-ALGO-18 only (E17) · NX13
 P6  docs · DL · close
 ```
 
@@ -26,9 +26,10 @@ P6  docs · DL · close
 
 | Packet | Fire when | Board |
 |--------|-----------|-------|
-| **P0-0** | Coach stamp `AZALGO-W0` | **UNSTAMPED** |
-| **P0-1…P0-G** | After P0-0 GO | Blocked |
-| **P1** | After P0-G · DL-539 if IKI still listed | Blocked |
+| **P0-0** | Coach stamp `AZALGO-W0` | **GO** 2026-09-03 |
+| **P0-1…P0-3** | After P0-0 | **DONE** |
+| **P0-G** | After P0-* | **PASS** |
+| **P1** | After P0-G · DL-539 if IKI still listed | **READY** (not fired) |
 | **P2** | After P1-G | Blocked |
 | **P3** | After P2-G | Blocked |
 | **P4** | After P3-G | Blocked |
@@ -58,17 +59,19 @@ P6  docs · DL · close
 
 - `p-alerts`: C1 PASS. C2 = threshold apply, **not** this canvas.  
 - `p-az-viewport-2d` / `p-az-viewport-return`: do not steal pan/handles.  
-- Demo is a clock (DL-485 / DL-488). Live eval is **P5**.  
+- Demo is a clock (DL-485 / DL-488). Live eval is **P5**. `algoEval.ts` is **NX13** for P1–P4.  
 - Time Machine chrome is not this DAG.  
-- Heatmap / LIM / Strike Turnover / SVP: do not encode the bounce trigger (E14).
+- Heatmap / LIM / Strike Turnover / SVP: do not encode the bounce trigger (E14).  
+- **Tango P3-1:** proposed can print **tighter** than legacy inside the floor window (fixture 17: 750 vs 700). Do not say “usually wider.”
 
 ## Status (live)
 
 | Packet | State |
 |--------|--------|
-| Spec | **v2.2.2** · sha1 `b757ba3f…` · land `6653745` · **DL-662** |
-| Goldens | Fixtures **1–18** handwritten. 1–16 frozen on v2.2.1 `6f491ee8…` |
-| OD-ALGO-1 | **DISPOSED: Guide** |
-| Token | `AZALGO-W0` **UNSTAMPED** |
-| Working plan | **v2.0 UNSTAMPED** |
-| P0–P6 | Blocked on stamp |
+| Spec | **v2.2.2 BUILD AUTHORITY** · sha1 `b757ba3f…` · **DL-664** |
+| Goldens | Fixtures **1–18**. 1–16 freeze holds (`P0-2` PASS) |
+| OD-ALGO-1…5 | **Disposed** on the token |
+| Token | `AZALGO-W0` **GO** |
+| Working plan | **v2.0 GO** |
+| P0-G | **PASS** |
+| P1 | **READY** — not fired |
