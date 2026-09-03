@@ -230,6 +230,7 @@ export function holderAlertToBuilderSeed(a: AnalyzerThresholdAlert): {
   touchedSpot?: number;
   demo?: boolean;
   overlay?: boolean;
+  reason?: boolean;
   entryPct?: number;
   trailStartPct?: number;
   trailFloorPct?: number;
@@ -266,6 +267,7 @@ export function holderAlertToBuilderSeed(a: AnalyzerThresholdAlert): {
       ? {
           demo: a.algo.demo === true,
           overlay: a.algo.overlay === true,
+          reason: a.algo.reason === true || Boolean(a.algo.trail_stop_reason),
           entryPct: a.algo.entry_pct,
           trailStartPct: a.algo.trail_start_pct,
           trailFloorPct: a.algo.trail_floor_pct,
@@ -319,6 +321,8 @@ export type AnalyzerThresholdAlert = {
     e_at_arm?: number | null;
     prev_spot?: number;
     overlay: boolean;
+    /** ALGO-R1: Reason checked → Trader Feed mounts. */
+    reason?: boolean;
     high_water_color: string;
     trail_color: string;
   };
@@ -1308,6 +1312,7 @@ export function createAlgoAlert(opts: {
   trailEndReason?: string;
   demo?: boolean;
   overlay: boolean;
+  reason?: boolean;
   runState?: AlertRunState;
   id?: string;
   rehearsal?: boolean;
@@ -1342,6 +1347,7 @@ export function createAlgoAlert(opts: {
       trail_end_reason: opts.trailEndReason,
       demo: opts.demo === true,
       overlay: opts.overlay,
+      reason: opts.reason === true,
       high_water_color: opts.color,
       trail_color: opts.trailColor,
     },

@@ -143,6 +143,8 @@ import {
 } from "@/lib/options-lab/algoDayReplay";
 import { useTimeMachineHost } from "@/lib/options-lab/useTimeMachineHost";
 import ReplayWatermark from "@/components/options-lab/ReplayWatermark";
+import AlgoReasonFeed from "@/components/options-lab/AlgoReasonFeed";
+import { algoFeedTape } from "@/lib/options-lab/algoReasonFeed";
 import {
   clampSpotPts,
   spotPctFromPts,
@@ -1037,6 +1039,18 @@ export default function OpfRiskAnalyzer() {
         a.runState === "touched" ||
         a.algoPhase === "recorded"),
   );
+  const algoReasonPosts = useMemo(() => {
+    if (!liveAlgo?.algo?.reason) return null;
+    const phase = liveAlgo.algo.trail_state?.phase ?? liveAlgo.algoPhase;
+    return algoFeedTape({
+      reasonOn: true,
+      phase,
+      asOf: liveAlgo.createdAt,
+      measurements: {},
+      lastTape: [],
+      modelFailed: true,
+    });
+  }, [liveAlgo]);
 
   const algoHudLive = useMemo(() => {
     if (!liveAlgo?.algo) return null;
@@ -2207,6 +2221,12 @@ export default function OpfRiskAnalyzer() {
               />
           </div>
           <div className="relative min-h-0 flex-1 overflow-hidden rounded-xl border border-white/10">
+            {algoReasonPosts ? (
+              <AlgoReasonFeed
+                phase={liveAlgo?.algo?.trail_state?.phase ?? liveAlgo?.algoPhase}
+                posts={algoReasonPosts}
+              />
+            ) : null}
             {tmActive ? (
               <ReplayWatermark
                 testId="analyzer-replay-watermark"
@@ -2495,6 +2515,7 @@ export default function OpfRiskAnalyzer() {
               trailEndReason: ag.trail_end_reason,
               demo: ag.demo === true,
               overlay: ag.overlay,
+              reason: ag.reason === true || Boolean(ag.trail_stop_reason),
               runState: draft.run_state,
               rehearsal: tm.tmActive,
             });

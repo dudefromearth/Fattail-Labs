@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Banner from "@/components/ui/Banner";
 import Button from "@/components/ui/Button";
+import { useIsAdmin } from "@/lib/useIsAdmin";
+import { ALGO_REASON_HOUSE_BASE } from "@/lib/options-lab/algoReasonFeed";
 
 type Stats = {
   armed: number;
@@ -25,6 +27,8 @@ export default function AlertsManagerPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [rows, setRows] = useState<AlertRow[]>([]);
   const [err, setErr] = useState<string | null>(null);
+  const isAdmin = useIsAdmin();
+  const [houseBase, setHouseBase] = useState(ALGO_REASON_HOUSE_BASE);
 
   useEffect(() => {
     let cancel = false;
@@ -64,6 +68,19 @@ export default function AlertsManagerPage() {
           Destinations are saved. Delivery is not live yet.
         </Banner>
       </div>
+      {isAdmin ? (
+        <section className="mt-6 rounded-[var(--radius-lg)] bg-[var(--color-surface-secondary)] p-4">
+          <h2 className="text-[length:var(--text-headline)] font-semibold">
+            Algo Reason house base
+          </h2>
+          <textarea
+            className="mt-3 min-h-[8rem] w-full rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface)] p-3 text-[length:var(--text-subheadline)]"
+            value={houseBase}
+            onChange={(e) => setHouseBase(e.target.value)}
+            data-testid="algo-reason-house-base"
+          />
+        </section>
+      ) : null}
       {err ? (
         <p className="mt-4 text-sm text-[var(--color-label-secondary)]">{err}</p>
       ) : null}

@@ -58,6 +58,7 @@ import type { ValueModeId } from "@/lib/options-lab/templates/types";
 import {
   ALGO_HUD_FOURTH_LABEL,
   algoOverlayAlpha,
+  guideLabelChipRect,
   type AlgoGuideLine,
 } from "@/lib/options-lab/algoHud";
 
@@ -129,7 +130,7 @@ function paintAlgoHud(
     ctx.fillStyle = "rgba(255,255,255,0.72)";
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
-    ctx.fillText(hud.caption, plotLeft + 8, plotTop + 8);
+    ctx.fillText(hud.caption, plotLeft + 8, zeroY + 10);
   }
 }
 
@@ -570,13 +571,25 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
           ctx.moveTo(cx, PAD.top);
           ctx.lineTo(cx, PAD.top + ch);
           ctx.stroke();
-          if (proposed && line.label) {
+          if (line.label) {
             ctx.globalAlpha = 1;
-            ctx.fillStyle = line.color || "#f59e0b";
             ctx.font = "12px ui-sans-serif, system-ui, sans-serif";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "bottom";
-            ctx.fillText(line.label, cx, PAD.top + 22);
+            const tw = ctx.measureText(line.label).width;
+            const chip = guideLabelChipRect({
+              lineX: cx,
+              textWidth: tw,
+              plotLeft: PAD.left,
+              plotRight: PAD.left + cw,
+              top: PAD.top + 6,
+            });
+            ctx.fillStyle = "#0a0a0e";
+            ctx.fillRect(chip.x, chip.y, chip.w, chip.h);
+            ctx.fillStyle = muted
+              ? "rgba(245,158,11,0.7)"
+              : line.color || "#f59e0b";
+            ctx.textAlign = "left";
+            ctx.textBaseline = "middle";
+            ctx.fillText(line.label, chip.x + 6, chip.y + chip.h / 2);
           }
         }
         ctx.globalAlpha = 1;

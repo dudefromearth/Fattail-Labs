@@ -61,12 +61,55 @@ export function algoOverlayAlpha(opts: {
 
 export type AlgoGuideRole = "high-water" | "proposed" | "legacy";
 
+export const ALGO_GUIDE_LABELS: Record<AlgoGuideRole, string> = {
+  "high-water": "High-water",
+  proposed: "Proposed",
+  legacy: "Legacy",
+};
+
+/** Horizontal gap from the stroke to the chip. Line must not run through the letters. */
+export const ALGO_GUIDE_LABEL_GAP = 8;
+
 export type AlgoGuideLine = {
   role: AlgoGuideRole;
   price: number;
   color: string;
-  label?: string;
+  label: string;
 };
+
+export type GuideLabelChip = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
+/** Opaque chip to the right of the stroke (left if it would clip). Stroke x is outside the chip. */
+export function guideLabelChipRect(opts: {
+  lineX: number;
+  textWidth: number;
+  plotLeft: number;
+  plotRight: number;
+  top?: number;
+}): GuideLabelChip {
+  const padX = 6;
+  const h = 18;
+  const w = opts.textWidth + padX * 2;
+  const y = opts.top ?? 8;
+  let x = opts.lineX + ALGO_GUIDE_LABEL_GAP;
+  if (x + w > opts.plotRight - 2) {
+    x = opts.lineX - ALGO_GUIDE_LABEL_GAP - w;
+  }
+  if (x < opts.plotLeft + 2) x = opts.plotLeft + 2;
+  return { x, y, w, h };
+}
+
+export function guideLabelClearsStroke(
+  lineX: number,
+  chip: GuideLabelChip,
+): boolean {
+  return lineX < chip.x - 0.5 || lineX > chip.x + chip.w + 0.5;
+}
 
 export function buildAlgoGuideLines(opts: {
   xHigh: number | null | undefined;
@@ -78,18 +121,28 @@ export function buildAlgoGuideLines(opts: {
 }): AlgoGuideLine[] {
   const out: AlgoGuideLine[] = [];
   if (opts.xHigh != null && Number.isFinite(opts.xHigh)) {
-    out.push({ role: "high-water", price: opts.xHigh, color: opts.highWaterColor });
+    out.push({
+      role: "high-water",
+      price: opts.xHigh,
+      color: opts.highWaterColor,
+      label: ALGO_GUIDE_LABELS["high-water"],
+    });
   }
   if (opts.xProposed != null && Number.isFinite(opts.xProposed)) {
     out.push({
       role: "proposed",
       price: opts.xProposed,
       color: opts.proposedColor,
-      label: "proposed",
+      label: ALGO_GUIDE_LABELS.proposed,
     });
   }
   if (opts.xLegacy != null && Number.isFinite(opts.xLegacy)) {
-    out.push({ role: "legacy", price: opts.xLegacy, color: opts.legacyColor });
+    out.push({
+      role: "legacy",
+      price: opts.xLegacy,
+      color: opts.legacyColor,
+      label: ALGO_GUIDE_LABELS.legacy,
+    });
   }
   return out;
 }

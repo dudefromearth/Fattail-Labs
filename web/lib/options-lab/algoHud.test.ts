@@ -8,6 +8,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   ALGO_FLOOR_WINDOW_CAPTION,
+  ALGO_GUIDE_LABELS,
   ALGO_HUD_FOURTH_LABEL,
   ALGO_HUD_GUIDE_KEY,
   algoHudFrozen,
@@ -16,6 +17,8 @@ import {
   algoPulseAllowed,
   buildAlgoGuideLines,
   buildAlgoHudModel,
+  guideLabelChipRect,
+  guideLabelClearsStroke,
 } from "./algoHud";
 
 function assert(cond: unknown, msg: string): void {
@@ -110,7 +113,7 @@ test("AT-ALGO-31 reduced motion kills pulse; density remains", () => {
   assert(dense !== 0.28 || true, "not the pulse bump as the only signal");
 });
 
-test("three verticals: high-water, proposed labelled, legacy muted role", () => {
+test("three verticals: all three labelled; chip does not sit on the stroke", () => {
   const lines = buildAlgoGuideLines({
     xHigh: 6000,
     xProposed: 5980,
@@ -120,10 +123,20 @@ test("three verticals: high-water, proposed labelled, legacy muted role", () => 
     legacyColor: "#f59e0b",
   });
   assertEq(lines.length, 3, "three");
-  assertEq(lines[0].role, "high-water", "hw");
-  assertEq(lines[1].role, "proposed", "proposed");
-  assertEq(lines[1].label, "proposed", "label");
-  assertEq(lines[2].role, "legacy", "legacy");
+  assertEq(lines[0].label, ALGO_GUIDE_LABELS["high-water"], "hw");
+  assertEq(lines[1].label, ALGO_GUIDE_LABELS.proposed, "proposed");
+  assertEq(lines[2].label, ALGO_GUIDE_LABELS.legacy, "legacy");
+  for (const line of lines) {
+    const chip = guideLabelChipRect({
+      lineX: 400,
+      textWidth: 72,
+      plotLeft: 80,
+      plotRight: 1360,
+      top: 8,
+    });
+    assert(guideLabelClearsStroke(400, chip), `${line.role} chip clears stroke`);
+    assert(chip.x > 400, `${line.role} offset to the right of the dash`);
+  }
 });
 
 test("Tango floor-window caption does not say usually wider", () => {

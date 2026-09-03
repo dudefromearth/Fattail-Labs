@@ -4,6 +4,18 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-03 — DL-669 AZ-ALGO P4-G PASS · Trader Feed algo-reason
+
+**Decision:** P4 fired. Trader Feed host `algo-reason` mounts when Reason is checked. §10.1 allowlist only; as-of stamped. No hold/fold, target, or probability (AT-ALGO-32). House base on `/app/alerts` (admin). Apex phrasing: *short-gamma region — profit-at-risk elevated*. Fail-open: local posts + named **AI quiet**. AI infers only while Managing; Fold suggested keeps last tape. `TimeOrthoEggPanel` not imported. `algoEval.ts` not opened (NX13).
+
+---
+
+## 2026-09-03 — DL-668 AZ-ALGO P3.1 · three labelled chips, not overstruck
+
+**Decision:** P3.1. Canvas labels are opaque chips offset off the stroke. All three verticals named: **High-water**, **Proposed**, **Legacy**. A grepped string is not evidence of legibility — P3.1-G **looked at** the 1440 screenshot.
+
+---
+
 ## 2026-09-03 — DL-667 AZ-ALGO P3-G PASS · HUD Guide · freeze · muted legacy
 
 **Decision:** P3 fired. HUD fourth row **Guide**, payload `guide_print` (OD-ALGO-1). HUD visible Managing and **frozen visible** in Fold suggested (E3). Three verticals: high-water, proposed (labelled *proposed*), legacy muted. Overlay default off; `prefers-reduced-motion: reduce` kills pulse (AT-ALGO-31). Floor-window caption: lines can cross near the close — proposed is not always wider (F17).

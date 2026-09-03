@@ -41,17 +41,24 @@ function vline(x, color, alpha, width, label) {
   ctx.stroke();
   if (label) {
     ctx.globalAlpha = 1;
-    ctx.fillStyle = color;
     ctx.font = "12px ui-sans-serif, system-ui, sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "bottom";
-    ctx.fillText(label, x, PAD.top + 22);
+    const tw = ctx.measureText(label).width;
+    const padX = 6, hChip = 18, gap = 8;
+    const wChip = tw + padX * 2;
+    const cx = x + gap;
+    const cy = PAD.top + 6;
+    ctx.fillStyle = "#0a0a0e";
+    ctx.fillRect(cx, cy, wChip, hChip);
+    ctx.fillStyle = color;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, cx + padX, cy + hChip / 2);
   }
   ctx.restore();
 }
-vline(980, "#f59e0b", 0.38, 1, null);
-vline(640, "#3b82f6", 1, 1, null);
-vline(860, "#f59e0b", 1, 1.75, "proposed");
+vline(980, "#f59e0b", 0.38, 1, "Legacy");
+vline(640, "#3b82f6", 1, 1, "High-water");
+vline(860, "#f59e0b", 1, 1.75, "Proposed");
 const rows = [
   ["High", "$1,000.00"],
   ["Profit", "$750.00"],
@@ -82,7 +89,7 @@ ctx.font = "13px ui-sans-serif, system-ui, sans-serif";
 ctx.fillStyle = "rgba(255,255,255,0.72)";
 ctx.textAlign = "left";
 ctx.textBaseline = "top";
-ctx.fillText("Near the close the lines can cross — proposed is not always wider.", PAD.left + 8, PAD.top + 8);
+ctx.fillText("Near the close the lines can cross — proposed is not always wider.", PAD.left + 8, zeroY + 16);
 </script>
 </body></html>`;
 

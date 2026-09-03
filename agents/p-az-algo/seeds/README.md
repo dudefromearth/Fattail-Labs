@@ -13,6 +13,6 @@ v1 W0–W6 seed files in this folder are the **W1–W4 as-built record**. Do not
 | P1-0 … P1-G | Charlie · Kilo · Hotel · Delta | **PASS** |
 | P2-* | Charlie · Kilo · Delta | **PASS** |
 | P3-* | Echo · Charlie · Tango · Delta | **PASS** |
-| P4-* | Charlie · Tango · Delta | Blocked |
+| P4-* | Charlie · Tango · Delta | **PASS** |
 | P5-* | Charlie · Kilo · Delta | Blocked — **AT-ALGO-18 only** · owns `algoEval.ts` |
 | P6-* | Lima · India · Delta | Blocked |

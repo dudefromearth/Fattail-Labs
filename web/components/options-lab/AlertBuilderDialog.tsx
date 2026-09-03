@@ -60,6 +60,7 @@ export type AlertBuilderSeed = {
   /** Session clock for EoD (playhead `t_ms` on a TM day). */
   clockMs?: number;
   overlay?: boolean;
+  reason?: boolean;
   entryPct?: number;
   trailStartPct?: number;
   trailFloorPct?: number;
@@ -152,10 +153,8 @@ export default function AlertBuilderDialog({
   );
   const [decayEod, setDecayEod] = useState(true);
   const [decayEndAt, setDecayEndAt] = useState("");
-  const [stopReasonOn, setStopReasonOn] = useState(false);
-  const [stopReason, setStopReason] = useState("");
-  const [endReasonOn, setEndReasonOn] = useState(false);
-  const [endReason, setEndReason] = useState("");
+  const [reasonOn, setReasonOn] = useState(false);
+  const [reasonFocus, setReasonFocus] = useState("");
   const [demoOn, setDemoOn] = useState(false);
   const [overlayOn, setOverlayOn] = useState(false);
   const [hwColorId, setHwColorId] = useState<(typeof ALERT_TAG_CHIPS)[number]["id"]>("target");
@@ -230,11 +229,8 @@ export default function AlertBuilderDialog({
       );
     }
     const stop = (seed?.trailStopReason || "").trim();
-    setStopReasonOn(stop.length > 0);
-    setStopReason(stop);
-    const end = (seed?.trailEndReason || "").trim();
-    setEndReasonOn(end.length > 0);
-    setEndReason(end);
+    setReasonOn(seed?.reason === true || stop.length > 0);
+    setReasonFocus(stop);
     setDemoOn(seed?.demo === true);
     setOverlayOn(seed?.overlay === true);
     setHwColorId(chipIdForPaint(seed?.highWaterColor, "target"));
@@ -362,13 +358,10 @@ export default function AlertBuilderDialog({
                         decayEod || !decayEndAt
                           ? "eod"
                           : new Date(decayEndAt).toISOString(),
+                      reason: reasonOn,
                       trail_stop_reason: algoReasonPrompt(
-                        stopReasonOn,
-                        stopReason,
-                      ),
-                      trail_end_reason: algoReasonPrompt(
-                        endReasonOn,
-                        endReason,
+                        reasonOn,
+                        reasonFocus,
                       ),
                       demo: demoOn,
                       overlay: overlayOn,
@@ -539,9 +532,29 @@ export default function AlertBuilderDialog({
               }
               data-testid="algo-trail-range"
             >
-              <h4 className="text-[length:var(--text-subheadline)] font-semibold text-[var(--color-label)]">
-                Trail Settings
-              </h4>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h4 className="text-[length:var(--text-subheadline)] font-semibold text-[var(--color-label)]">
+                  Trail Settings
+                </h4>
+                <label className="flex min-h-[var(--hit-min)] items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={reasonOn}
+                    onChange={(e) => setReasonOn(e.target.checked)}
+                    data-testid="algo-reason-on"
+                  />
+                  Reason
+                </label>
+              </div>
+              {reasonOn ? (
+                <textarea
+                  className={field + " min-h-[5.5rem] py-2"}
+                  value={reasonFocus}
+                  onChange={(e) => setReasonFocus(e.target.value)}
+                  placeholder="Optional focus. Leave blank to follow the house base."
+                  data-testid="algo-reason-focus"
+                />
+              ) : null}
               <div className="flex flex-wrap items-end gap-3">
                 <div className="min-w-[10rem] flex-1">
                   <label className={lab} htmlFor="algo-trail-start">
@@ -560,62 +573,24 @@ export default function AlertBuilderDialog({
                     data-testid="algo-trail-start"
                   />
                 </div>
-                <label className="flex min-h-[var(--hit-min)] items-center gap-2 pb-1">
-                  <input
-                    type="checkbox"
-                    checked={stopReasonOn}
-                    onChange={(e) => setStopReasonOn(e.target.checked)}
-                    data-testid="algo-trail-stop-reason-on"
-                  />
-                  Reason
-                </label>
               </div>
-              {stopReasonOn ? (
-                <textarea
-                  className={field + " min-h-[5.5rem] py-2"}
-                  value={stopReason}
-                  onChange={(e) => setStopReason(e.target.value)}
-                  placeholder="Prompt the AI will use to hold or fold at this stop. Off = built-in engine."
-                  data-testid="algo-trail-stop-reason"
-                />
-              ) : null}
-              <div className="flex flex-wrap items-end gap-3">
-                <div className="min-w-[10rem] flex-1">
-                  <label className={lab} htmlFor="algo-trail-floor">
-                    End Trail %
-                  </label>
-                  <input
-                    id="algo-trail-floor"
-                    className={field}
-                    type="number"
-                    min={1}
-                    max={99}
-                    value={trailFloorPct}
-                    onChange={(e) =>
-                      setTrailFloorPct(Number(e.target.value) || 0)
-                    }
-                    data-testid="algo-trail-floor"
-                  />
-                </div>
-                <label className="flex min-h-[var(--hit-min)] items-center gap-2 pb-1">
-                  <input
-                    type="checkbox"
-                    checked={endReasonOn}
-                    onChange={(e) => setEndReasonOn(e.target.checked)}
-                    data-testid="algo-trail-end-reason-on"
-                  />
-                  Reason
+              <div className="min-w-[10rem] flex-1">
+                <label className={lab} htmlFor="algo-trail-floor">
+                  End Trail %
                 </label>
-              </div>
-              {endReasonOn ? (
-                <textarea
-                  className={field + " min-h-[5.5rem] py-2"}
-                  value={endReason}
-                  onChange={(e) => setEndReason(e.target.value)}
-                  placeholder="Prompt the AI will use to hold or fold at trail end. Off = built-in engine."
-                  data-testid="algo-trail-end-reason"
+                <input
+                  id="algo-trail-floor"
+                  className={field}
+                  type="number"
+                  min={1}
+                  max={99}
+                  value={trailFloorPct}
+                  onChange={(e) =>
+                    setTrailFloorPct(Number(e.target.value) || 0)
+                  }
+                  data-testid="algo-trail-floor"
                 />
-              ) : null}
+              </div>
               <label className="flex min-h-[var(--hit-min)] items-center gap-3">
                 <input
                   type="checkbox"
