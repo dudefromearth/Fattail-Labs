@@ -4,7 +4,7 @@
  * Analyzer ISO PiP — 3D tent only. Corner docks are tiny squares on the frame.
  */
 
-import { useLayoutEffect, useMemo, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   bindListedSurfaceLegs,
   computeSurfaceSheet,
@@ -82,6 +82,7 @@ export default function AnalyzerSurfacePip({
   const hostRef = useRef<HTMLDivElement | null>(null);
   const sceneRef = useRef<ReturnType<typeof mountSurfaceScene> | null>(null);
   const dim = PIP_SIZE_PX[size];
+  const [mountError, setMountError] = useState<string | null>(null);
 
   const sheet = useMemo(() => {
     const nowMs = Date.now() + (Number(timeOffsetHours) || 0) * 3_600_000;
@@ -142,15 +143,34 @@ export default function AnalyzerSurfacePip({
     if (!host) return;
     host.style.width = `${dim.w}px`;
     host.style.height = `${dim.h}px`;
-    if (!sceneRef.current) {
-      const scene = mountSurfaceScene(host, { sheet, windowLift: false });
-      scene.applyFactoryView("iso");
-      scene.setSurfaceLocked(false);
-      applyPipLook(scene, sheet);
-      sceneRef.current = scene;
-    } else {
-      sceneRef.current.setSheet(sheet);
-      applyPipLook(sceneRef.current, sheet);
+    try {
+      if (!sceneRef.current) {
+        const scene = mountSurfaceScene(host, { sheet, windowLift: false });
+        scene.applyFactoryView("iso");
+        scene.setSurfaceLocked(false);
+        applyPipLook(scene, sheet);
+        sceneRef.current = scene;
+      } else {
+        sceneRef.current.setSheet(sheet);
+        applyPipLook(sceneRef.current, sheet);
+      }
+      host.dataset.scene = "ok";
+      delete host.dataset.sceneError;
+      setMountError(null);
+    } catch (err) {
+      // The 3D surface (Three.js/WebGL) can fail to init in some browsers
+      // (e.g. a WebGL context is denied). Never let that crash the whole
+      // Analyzer page — degrade to an empty inset and record the reason on the
+      // element for diagnosis (mirrors SurfaceApp's guard around mountSurfaceScene).
+      host.dataset.scene = "fail";
+      host.dataset.sceneError = err instanceof Error ? err.message : String(err);
+      try {
+        sceneRef.current?.dispose();
+      } catch {
+        /* ignore secondary dispose errors */
+      }
+      sceneRef.current = null;
+      setMountError(err instanceof Error ? err.message : "3D preview unavailable");
     }
   }, [sheet, dim.w, dim.h]);
 
@@ -181,6 +201,14 @@ export default function AnalyzerSurfacePip({
         style={{ width: dim.w, height: dim.h }}
         data-testid="analyzer-pip-scene"
       />
+      {mountError ? (
+        <div
+          className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-2 text-center text-[11px] text-white/55"
+          data-testid="analyzer-pip-fallback"
+        >
+          3D preview unavailable
+        </div>
+      ) : null}
       {DOCKS.map((c) => {
         const on = c === corner;
         return (
