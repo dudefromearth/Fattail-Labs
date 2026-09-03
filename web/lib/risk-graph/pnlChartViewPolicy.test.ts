@@ -169,20 +169,19 @@ test("AT-CLICK-1 / AT-WH-1 / AT-AZ-WIRE-1 source", () => {
     host.includes("strikeCenteredXRange"),
     "Autofit X is strike-span, not ATM wings",
   );
-  assert(az.includes("sessionOpenSpot"), "TM session open helper");
+  assert(az.includes("tmOpenSpot"), "TM session open helper");
   assert(az.includes("setSpotStr(formatFixed2(tmOpenSpot))"), "Spot fills from session open");
   assert(az.includes("autofitCenterPrice={tmOpenSpot}"), "Autofit X centers on session open");
   assert(host.includes("openCenteredXRange"), "TM Autofit recenters on open");
-  assert(host.includes('lab: "High"'), "Algo HUD High (not Highest)");
-  assert(host.includes('lab: "Profit"'), "Algo HUD Profit between High and Trail");
-  assert(host.includes('lab: "Trail"'), "Algo HUD Trail");
-  assert(host.includes('lab: "Stop"'), "Algo HUD Stop");
+  assert(host.includes('lab: ALGO_HUD_FOURTH_LABEL') || host.includes('lab: "Guide"'), "Algo HUD Guide");
+  assert(host.includes("guide_print"), "payload guide_print");
+  assert(!host.includes('lab: "Stop"'), "Stop row gone (OD-ALGO-1)");
   assert(host.includes("algoProfit"), "Profit dataset");
-  assert(host.includes("fmtAlgoPrint"), "Stop is ticker print, not $");
+  assert(host.includes("fmtAlgoPrint"), "Guide print is ticker, not $");
   assert(az.includes("algoHud={algoHud}"), "Algo HUD wired");
   assert(az.includes("resetSim()"), "Demo Exit also ends What-if");
-  assert(az.includes('liveAlgo.runState !== "live"'), "HUD hidden unless Live");
-  assert(az.includes('st.phase !== "armed"'), "HUD hidden unless Armed");
+  assert(az.includes("buildAlgoHudModel"), "HUD visibility from algoHud");
+  assert(az.includes("algoHudFrozen"), "E3 freeze on fold");
   assert(az.includes("sessionSpotNow"), "TM entry/eligibility uses playhead");
   assert(az.includes("demo: tmActive"), "Create Alert during TM defaults Demo");
   assert(

@@ -16,7 +16,7 @@
 P0  token · seeds · goldens vs landed spec     **P0-G PASS**
 P1  algoConfig + move + gexNorm + PaR          **P1-G PASS** · no UI
 P2  gate · Batman · legacy · floor             **P2-G PASS**
-P3  canvas + HUD Guide + freeze + muted + RM
+P3  canvas + HUD Guide + freeze + muted + RM   **P3-G PASS**
 P4  Trader Feed allowlist
 P5  LIVE EVAL — AT-ALGO-18 only (E17) · NX13
 P6  docs · DL · close
@@ -31,7 +31,7 @@ P6  docs · DL · close
 | **P0-G** | After P0-* | **PASS** |
 | **P1** | After P0-G | **PASS** |
 | **P2** | After P1-G | **PASS** |
-| **P3** | After P2-G | Blocked |
+| **P3** | After P2-G | **PASS** |
 | **P4** | After P3-G | Blocked |
 | **P5** | After P2+P3; **not** folded into another phase | Blocked |
 | **P6** | After P1–P5 | Blocked |
@@ -76,3 +76,4 @@ P6  docs · DL · close
 | P0-G | **PASS** |
 | P1-G | **PASS** — fixtures 1–18 · AT-ALGO-6d/6e/19/26/28 |
 | P2-G | **PASS** — F10/11/12/15/16/17 · A1 ratchet · AT-ALGO-23 |
+| P3-G | **PASS** — Guide · freeze · muted legacy · reduced motion |

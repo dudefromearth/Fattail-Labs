@@ -55,6 +55,11 @@ import {
   type GexProfilePoint,
 } from "@/lib/options-lab/templates/gex";
 import type { ValueModeId } from "@/lib/options-lab/templates/types";
+import {
+  ALGO_HUD_FOURTH_LABEL,
+  algoOverlayAlpha,
+  type AlgoGuideLine,
+} from "@/lib/options-lab/algoHud";
 
 const PAD = CHART_HOST_PAD;
 const AXIS_FONT = "19.5px ui-monospace, monospace";
@@ -83,7 +88,9 @@ function paintAlgoHud(
     highest: number | null;
     profit: number | null;
     trailPct: number;
-    stop: number | null;
+    guide_print: number | null;
+    frozen?: boolean;
+    caption?: string | null;
   },
   zeroY: number,
   plotLeft: number,
@@ -93,7 +100,7 @@ function paintAlgoHud(
     { lab: "High", val: fmtAlgoMoney(hud.highest) },
     { lab: "Profit", val: fmtAlgoMoney(hud.profit) },
     { lab: "Trail", val: `${Math.round(hud.trailPct)}%` },
-    { lab: "Stop", val: fmtAlgoPrint(hud.stop) },
+    { lab: ALGO_HUD_FOURTH_LABEL, val: fmtAlgoPrint(hud.guide_print) },
   ];
   ctx.font = AXIS_FONT;
   ctx.textAlign = "left";
@@ -116,6 +123,13 @@ function paintAlgoHud(
     ctx.fillText(":", colonX, y);
     ctx.fillText(rows[i].val, colonX + ctx.measureText(":").width + 6, y);
     y -= lineH;
+  }
+  if (hud.caption) {
+    ctx.font = "13px ui-sans-serif, system-ui, sans-serif";
+    ctx.fillStyle = "rgba(255,255,255,0.72)";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText(hud.caption, plotLeft + 8, plotTop + 8);
   }
 }
 
@@ -231,16 +245,23 @@ export type HostPnLChartProps = {
     hi: number;
     color: string;
     pulse?: boolean;
+    density?: number;
+    reduceMotion?: boolean;
+    frozen?: boolean;
   } | null;
   algoPhase?: string;
   algoSide?: string;
-  /** Armed/recorded tracker, lower-left above $0. */
+  /** Managing / Fold suggested tracker, lower-left above $0. Fourth row Guide. */
   algoHud?: {
     highest: number | null;
     profit: number | null;
     trailPct: number;
-    stop: number | null;
+    guide_print: number | null;
+    frozen?: boolean;
+    caption?: string | null;
   } | null;
+  /** High-water, proposed (labelled), legacy (muted). Not peers. */
+  algoGuideLines?: AlgoGuideLine[];
   /** Per Shown card at-expiration series — MSC 8px hit, that card only. */
   positionExpirationCurves?: PositionExpirationCurve[];
   positionAlertChoices?: PositionAlertChoice[];
@@ -286,6 +307,7 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       algoPhase,
       algoSide,
       algoHud = null,
+      algoGuideLines = [],
       positionExpirationCurves = [],
       positionAlertChoices = [],
       onCanvasAlert,
@@ -484,7 +506,12 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
         ctx.clip();
         const x0 = toX(algoBand.lo);
         const x1 = toX(algoBand.hi);
-        ctx.globalAlpha = algoBand.pulse ? 0.28 : 0.12;
+        ctx.globalAlpha = algoOverlayAlpha({
+          density: algoBand.density ?? (algoBand.pulse ? 1 : 0),
+          pulse: algoBand.pulse === true,
+          reduceMotion: algoBand.reduceMotion === true,
+          frozen: algoBand.frozen === true,
+        });
         ctx.fillStyle = algoBand.color || "#f59e0b";
         ctx.fillRect(
           Math.min(x0, x1),
@@ -512,6 +539,47 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
           ctx.lineTo(cx, PAD.top + ch);
           ctx.stroke();
         }
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+
+      if (algoGuideLines.length) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(PAD.left, PAD.top, cw, ch);
+        ctx.clip();
+        const rank: Record<string, number> = {
+          legacy: 0,
+          "high-water": 1,
+          proposed: 2,
+        };
+        const ordered = [...algoGuideLines].sort(
+          (a, b) => (rank[a.role] ?? 1) - (rank[b.role] ?? 1),
+        );
+        for (const line of ordered) {
+          if (!Number.isFinite(line.price)) continue;
+          if (line.price < xMin || line.price > xMax) continue;
+          const cx = toX(line.price);
+          const muted = line.role === "legacy";
+          const proposed = line.role === "proposed";
+          ctx.globalAlpha = muted ? 0.38 : 1;
+          ctx.strokeStyle = line.color || "#f59e0b";
+          ctx.lineWidth = proposed ? 1.75 : 1;
+          ctx.setLineDash([5, 4]);
+          ctx.beginPath();
+          ctx.moveTo(cx, PAD.top);
+          ctx.lineTo(cx, PAD.top + ch);
+          ctx.stroke();
+          if (proposed && line.label) {
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = line.color || "#f59e0b";
+            ctx.font = "12px ui-sans-serif, system-ui, sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "bottom";
+            ctx.fillText(line.label, cx, PAD.top + 22);
+          }
+        }
+        ctx.globalAlpha = 1;
         ctx.setLineDash([]);
         ctx.restore();
       }
@@ -720,12 +788,20 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
         host.dataset.algoHighest = fmtAlgoMoney(algoHud.highest);
         host.dataset.algoProfit = fmtAlgoMoney(algoHud.profit);
         host.dataset.algoTrail = `${Math.round(algoHud.trailPct)}%`;
-        host.dataset.algoStop = fmtAlgoPrint(algoHud.stop);
+        host.dataset.algoGuidePrint = fmtAlgoPrint(algoHud.guide_print);
+        host.dataset.algoHudFourth = ALGO_HUD_FOURTH_LABEL;
+        host.dataset.algoHudFrozen = algoHud.frozen ? "1" : "0";
+        if (algoHud.caption) host.dataset.algoGapCaption = algoHud.caption;
+        delete host.dataset.algoStop;
       } else {
         delete host.dataset.algoHighest;
         delete host.dataset.algoProfit;
         delete host.dataset.algoTrail;
         delete host.dataset.algoStop;
+        delete host.dataset.algoGuidePrint;
+        delete host.dataset.algoHudFourth;
+        delete host.dataset.algoHudFrozen;
+        delete host.dataset.algoGapCaption;
       }
 
       const spotMark = spotIndicatorPrice ?? spotPrice;
@@ -1017,6 +1093,7 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       alertLines,
       algoBand,
       algoHud,
+      algoGuideLines,
     ]);
 
     drawRef.current = draw;
@@ -1212,6 +1289,7 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
         data-testid="pnl-chart-host"
         data-algo-phase={algoPhase || undefined}
         data-algo-side={algoSide || undefined}
+        data-algo-hud-fourth={algoHud ? ALGO_HUD_FOURTH_LABEL : undefined}
         className="relative h-full min-h-[240px] w-full"
         style={{ width: "100%", height: "100%", minHeight: 240 }}
       >

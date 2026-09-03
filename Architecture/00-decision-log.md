@@ -4,6 +4,16 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-03 — DL-667 AZ-ALGO P3-G PASS · HUD Guide · freeze · muted legacy
+
+**Decision:** P3 fired. HUD fourth row **Guide**, payload `guide_print` (OD-ALGO-1). HUD visible Managing and **frozen visible** in Fold suggested (E3). Three verticals: high-water, proposed (labelled *proposed*), legacy muted. Overlay default off; `prefers-reduced-motion: reduce` kills pulse (AT-ALGO-31). Floor-window caption: lines can cross near the close — proposed is not always wider (F17).
+
+**Undeclared P2 UI disposed:** `OpfRiskAnalyzer.tsx` `[--color-on-inverse:#f5f5f7]` (`c2c77d6`) **rolled into this phase’s declared file list**, not reverted.
+
+**Does not:** Feed · `algoEval.ts` (NX13).
+
+---
+
 ## 2026-09-03 — DL-666 AZ-ALGO P2-G PASS · gate · Batman · legacy S
 
 **Decision:** P2 fired against v2.2.2 (sha1 `b757ba3f4b3816fcaebae857aeda70dff488ecdc`). `algoTrailMath.ts` gained `risk_taken` / Batman working-side (ambiguous paints nothing; tie does not use `>=`) / legacy `S=(1−g)×H` clock-only chrome / `H` reset on side switch / override `REENTRY_BARS`. **P2-G PASS.** F10 gate 375 on working-side debit, not the pair. F17 legacy 700 beside proposed 750. ALGO-A1 proven on a sequence with a clock reversal, not two samples.

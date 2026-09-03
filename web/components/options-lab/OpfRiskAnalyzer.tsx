@@ -127,6 +127,12 @@ import {
   isOtmDebitButterfly,
 } from "@/lib/options-lab/algoTrailMath";
 import {
+  algoHudFrozen,
+  algoPulseAllowed,
+  buildAlgoGuideLines,
+  buildAlgoHudModel,
+} from "@/lib/options-lab/algoHud";
+import {
   remainingHoursForAlgo,
   tickAlgoAlert,
 } from "@/lib/options-lab/algoEval";
@@ -222,6 +228,7 @@ export default function OpfRiskAnalyzer() {
   const [epochStale, setEpochStale] = useState(false);
 
   const [timeMachineEnabled, setTimeMachineEnabled] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
   const [simElapsedHours, setSimElapsedHours] = useState(0);
   const [simIvPct, setSimIvPct] = useState<number | null>(null);
   const [simSpotPts, setSimSpotPts] = useState(0);
@@ -232,6 +239,14 @@ export default function OpfRiskAnalyzer() {
   const [wiredVolPts, setWiredVolPts] = useState(0);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const lastMeasuredRef = useRef<number | null>(null);
+  const algoHudFrozenRef = useRef<ReturnType<typeof buildAlgoHudModel>>(null);
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setReduceMotion(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
   const sessionVolOffsetRef = useRef(0);
   const [whatIfHydrated, setWhatIfHydrated] = useState(false);
 
@@ -1023,21 +1038,27 @@ export default function OpfRiskAnalyzer() {
         a.algoPhase === "recorded"),
   );
 
-  const algoHud = useMemo(() => {
+  const algoHudLive = useMemo(() => {
     if (!liveAlgo?.algo) return null;
-    if (liveAlgo.runState !== "live") return null;
     const st = liveAlgo.algo.trail_state;
-    if (!st || st.phase !== "armed") return null;
+    if (!st) return null;
     const g = Number.isFinite(st.f)
       ? st.f
       : (liveAlgo.algo.trail_start_pct || 75) / 100;
-    return {
-      highest: st.H,
-      profit: Number.isFinite(st.U) ? st.U : null,
+    return buildAlgoHudModel({
+      phase: st.phase,
+      H: st.H,
+      U: Number.isFinite(st.U) ? st.U : null,
       trailPct: Math.round(g * 100),
-      stop: st.xS != null && Number.isFinite(st.xS) ? st.xS : null,
-    };
+      guide_print: st.xS != null && Number.isFinite(st.xS) ? st.xS : null,
+    });
   }, [liveAlgo]);
+  if (algoHudLive?.frozen) {
+    if (!algoHudFrozenRef.current) algoHudFrozenRef.current = algoHudLive;
+  } else {
+    algoHudFrozenRef.current = null;
+  }
+  const algoHud = algoHudLive?.frozen ? algoHudFrozenRef.current : algoHudLive;
 
   const algoPulse =
     alertBuilderPositions.some((p) => p.algoEligible) &&
@@ -1502,40 +1523,39 @@ export default function OpfRiskAnalyzer() {
         })),
     [alerts, symbol, sessionHeld, displaySpot],
   );
-  const algoTrailLines = useMemo(() => {
-    const out: { price: number; color: string; active?: boolean }[] = [];
-    for (const a of alerts) {
-      if (a.alertClass !== "algo" || !a.algo?.trail_state) continue;
-      const st = a.algo.trail_state;
-      if (st.phase === "waiting") continue;
-      if (st.xH != null && Number.isFinite(st.xH)) {
-        out.push({
-          price: st.xH,
-          color: a.algo.high_water_color || a.color,
-          active: st.phase === "armed",
-        });
-      }
-      if (st.xS != null && Number.isFinite(st.xS)) {
-        out.push({
-          price: st.xS,
-          color: a.algo.trail_color || "#f59e0b",
-          active: st.pulse,
-        });
-      }
-    }
-    return out;
-  }, [alerts]);
+  const algoGuideLines = useMemo(() => {
+    const a = liveAlgo;
+    const st = a?.algo?.trail_state;
+    if (!a?.algo || !st || st.phase === "waiting") return [];
+    return buildAlgoGuideLines({
+      xHigh: st.xH,
+      xProposed: st.xS,
+      xLegacy: st.xS,
+      highWaterColor: a.algo.high_water_color || a.color,
+      proposedColor: a.algo.trail_color || "#f59e0b",
+      legacyColor: a.algo.trail_color || "#f59e0b",
+    });
+  }, [liveAlgo]);
   const algoBand = (() => {
     const st = liveAlgo?.algo?.trail_state;
     if (!liveAlgo?.algo?.overlay || !st) return null;
     if (st.phase === "waiting") return null;
     if (st.xH == null || st.xS == null) return null;
     if (!Number.isFinite(st.xH) || !Number.isFinite(st.xS)) return null;
+    const frozen = algoHudFrozen(st.phase);
+    const pulse = algoPulseAllowed({
+      reduceMotion,
+      frozen,
+      pulse: st.pulse === true,
+    });
     return {
       lo: Math.min(st.xH, st.xS),
       hi: Math.max(st.xH, st.xS),
       color: liveAlgo.algo.trail_color || "#f59e0b",
-      pulse: st.pulse === true,
+      pulse,
+      density: pulse ? 1 : 0,
+      reduceMotion,
+      frozen,
     };
   })();
 
@@ -2270,14 +2290,12 @@ export default function OpfRiskAnalyzer() {
                   onStrikeDrag={onStrikeDrag}
                   onStrikeCommit={onStrikeCommit}
                   snapStrike={snapStrike}
-                  alertLines={[
-                    ...alertLines.map((l) => ({
-                      price: l.price,
-                      color: l.color,
-                      active: l.style === "active",
-                    })),
-                    ...algoTrailLines,
-                  ]}
+                  alertLines={alertLines.map((l) => ({
+                    price: l.price,
+                    color: l.color,
+                    active: l.style === "active",
+                  }))}
+                  algoGuideLines={algoGuideLines}
                   algoBand={algoBand}
                   algoPhase={liveAlgo?.algoPhase}
                   algoSide={liveAlgo?.algo?.trail_state?.side}
