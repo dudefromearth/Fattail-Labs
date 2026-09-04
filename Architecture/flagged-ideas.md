@@ -71,8 +71,10 @@ Do **not** use `DISCARDED` / `REJECTED` as idea status.
 | FI-042 | 2026-08-28 | TM One Source DRAFT v0.1 | Today hold **grows** from StudioOne while scrubbing (TMI-88) vs snapshot at raise | Juliet (draft) | Coach may prefer a frozen download | `OPEN` | Spec §9 · **DL-613** |
 | FI-043 | 2026-08-28 | TM One Source DRAFT v0.1 | Browser decay ladder (TMI-50/68) still has a seat if today is a StudioOne download | Juliet (draft) | Collection cadence is StudioOne's; coarse-then-infill may replace decay | `OPEN` | Spec §9 · **DL-613** |
 | FI-044 | 2026-09-02 | AZ-ALGO v2.0 | Name the **entry trigger** from observed bounce confirmations (not theory) | Coach · Arming memo §3 | Stand-in = manual confirm Armed→In trade | `OPEN` | AZ-ALGO v2.0 §5.2 · **AT-ALGO-T1** · **DL-660** |
-| FI-045 | 2026-09-02 | AZ-ALGO v2.0 | `k` constant vs regime-dependent; six-vendor GEX comparison | Coach · Arming memo §15 · §21 | Starting k=1.5; do not pick in code | `OPEN` | AZ-ALGO v2.0 §9.4 · §14 · **DL-660** |
+| FI-045 | 2026-09-02 | AZ-ALGO v2.0 | `k` constant vs regime-dependent; six-vendor GEX comparison | Coach · Arming memo §15 · §21 | Starting k=1.5; do not pick in code. **v2.3 review-2 (2026-09-04):** seating must now name **`p`**, not `k`. Do not close this flag by grepping `k` to zero. | `OPEN` | AZ-ALGO v2.0 §9.4 · §14 · **DL-660** · v2.3 E29 |
 | FI-046 | 2026-09-02 | AZ-ALGO v2.0 | Ship **computed-only** (hide legacy taper) after §14 evidence | Coach · dual-line teaching is v2 law until then | Dual line is the teaching mechanism | `OPEN` | AZ-ALGO v2.0 §9.3 · §16 · **DL-660** |
+| FI-047 | 2026-09-04 | AZ-ALGO v2.3 | Persist-N-bars `H` before it shrinks headroom (wick vs held peak) | Review-2 India/Hotel (E26) | E26 as written folds (or keeps folding) on a print the member never held. Filter is a modelling program, same family as OD-ALGO-6. Do not smuggle into v2.3. | `OPEN` | Spec v2.3 §9.4.3 · Review-2 seam 4 · wick fixture 25 |
+| FI-048 | 2026-09-04 | AZ-ALGO v2.3.2 | Adverse horizon as a Γ-conditional function | Review v2.3.2 India/Hotel (E37) | Discriminating band depends on `Γ` and `H`. Making the *key* a function double-counts convexity already in `PaR`. Modelling program. Do not smuggle. §14.5 reports whether a constant horizon can serve apex and wing. | `OPEN` | Spec v2.3.2 §9.4.1 · Review v2.3.2 seam E37 |
 
 ---
 
