@@ -4,6 +4,77 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-05 — DL-673 Hosts pillar reopened · staging retired · DudeOne seated as the analysis node
+
+**Decision (Coach, 2026-09-05).** The hosts pillar as written in `CLAUDE.md` no longer
+describes the system. It is reopened here.
+
+> *"Forget staging, and flyonthewall.io — both are available to use. We are using our dev
+> servers as staging, plus MiniTwo will eventually be a spare when we transfer
+> labs.fattail.ai to one of the Dudes."*
+
+| | Was (CLAUDE.md, now stale) | Is |
+|---|---|---|
+| dev | localhost | localhost — **and serves as staging** |
+| staging | **DudeTwo** (`labs-stage.fattail.ai`) | **Retired.** DudeTwo released |
+| production | **MiniTwo**, sole Labs host | MiniTwo **today**; migrates to a Dude, after which **MiniTwo is a spare** |
+| — | — | **DudeOne — analysis node** (new role) |
+| `flyonthewall.io` | unused | **Available as infrastructure** |
+
+**DudeOne is the analysis node, and the reason is already in the Read API.**
+`FatTail-Labs-StudioOne-Archive-Read-API-Spec-v0_8.md` §1:
+
+> Collection outranks reads … the concurrency ceiling is **per machine, not per feature** —
+> the next function added must not silently halve the tap's headroom.
+
+Derived-store builds (ATRV §2) and Monte Carlo sweeps (ATRV §3.8) on StudioOne would be
+exactly that. They move to DudeOne. StudioOne remains **collector and corpus**, and its
+headroom stays the tap's.
+
+The hardware supports the split rather than merely permitting it: the traversal benchmark
+(`scripts/atrv-bench.py`) reports **parse-dominated** cost, and parse is bound by per-core
+throughput, not memory bandwidth. The M4 beats the M1 Max there; the M1 Max's ~400 GB/s
+advantage does not apply. Nightly build ≈3.4 s on DudeOne — and **zero** on StudioOne.
+
+**Data flow.** The nightly build pulls ~1.6 GB once (≈13 s on 1 GbE). The derived store —
+~108 MB/day, ~27 GB/year — lives **local to DudeOne**, memory-mapped. Every query is local
+and never touches StudioOne. This also makes ATRV §2.1's *"the derived store is a cache,
+never authoritative"* **physically** true: it is on a different machine from the corpus, and
+losing DudeOne costs a rebuild, not data.
+
+**`flyonthewall.io` is permitted as infrastructure.** AGENTS.md retires FlyOnTheWall for
+**member-facing UI and marketing copy** and explicitly exempts the technical `/fotw-sso`
+path as *"not treated as public brand debt."* A hostname sits on the same side of that line.
+**If it ever serves a member-facing page, the trademark question returns** and this
+permission does not extend to it.
+
+**Documentation debt this creates — Lima.** The retired pillar is repeated in at least six
+places, including **`agents/bench/foxtrot.md`**, which means the infrastructure engineer is
+seated with a wrong map:
+
+`CLAUDE.md` · `infra/deploy.md` · `agents/bench/foxtrot.md` ·
+`Specs/Strategy-Lab-Process-Runtime-Spec-v1.0.md` and `v1.1` ·
+`Specs/FatTail-Labs-Course-Hosting-Spec-v1.0.md` ·
+`Specs/FatTail-Labs-Options-Lab-Time-Machine-Instant-Replay-Spec-v0_2.md`
+
+A decision-log entry alone does not fix a pillar quoted in seven documents. Until they are
+swept, an agent reading `CLAUDE.md` as law will refuse to touch DudeTwo or will deploy to
+the wrong host.
+
+**Open.**
+
+| # | Question | Owner |
+|---|---|---|
+| 1 | **How many Dudes, and their specs.** This entry assumes DudeOne = M4 / 24 GB. If DudeTwo is the M4 and DudeOne is something else, the roles swap and this entry is amended | **Coach · Foxtrot** |
+| 2 | Which Dude takes `labs.fattail.ai`, and when | **Coach** |
+| 3 | Does an analysis host belong **in** the pillar, or outside it as StudioOne effectively sits today? | **India** |
+| 4 | What `flyonthewall.io` is actually for | **Coach** |
+
+**Not decided here:** the migration itself. Moving `labs.fattail.ai` is its own change with
+its own DL entry, Cloudflare records, launchd supervision and a Delta gate.
+
+---
+
 ## 2026-09-05 — DL-672 Dev bootstrap repaired · fresh checkout boots
 
 **Decision:** `.env.example` and `server/requirements.txt` did not describe the
