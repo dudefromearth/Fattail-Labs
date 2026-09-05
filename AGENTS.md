@@ -215,7 +215,7 @@ marks are **severity: high** (member capital-adjacent judgment).
 | **Lima** | Technical Writer | Decision log entries, docs, interface contracts, institutional memory |
 | **Tango** | Member Archetype Guardian | Trader-learner experience: cognitive load, capacity-over-dependency, honest marketing |
 | **Hotel** | Trading-Domain Guardian | Trading/options education accuracy; blocks false or reckless claims |
-| **Sigma** | Quantitative Researcher | Estimators, study design, model fitting; blocks findings the data does not support |
+| **Sheldon** | Quantitative Researcher | Estimators, study design, model fitting; blocks findings the data does not support |
 
 ### Lineage Channels (philosophy & strategy)
 
@@ -224,6 +224,16 @@ marks are **severity: high** (member capital-adjacent judgment).
 | **Victor** | Taleb Doctrine Channel | Antifragility, skin in the game, via negativa, epistemic humility |
 | **Whiskey** | Spitznagel Strategy Channel | Capital preservation as strategy, tail hedges, safe-haven process |
 | **Yankee** | Mandelbrot Lineage Channel | Fat tails, wild randomness, discontinuity vs mild Gaussian stories |
+
+### Callsign convention
+
+NATO alphabet, one seat per letter. That set is now **exhausted**: Golf is reserved for
+P3 (Ask Vexy), and Uniform / X-ray / Zulu belong to the Business Knowledge Vault bench
+(`~/.grok/agents/` — see below). **Seats added from here take sitcom names** (Coach,
+2026-09-05), beginning with *The Big Bang Theory*. Oscar appears on both benches for
+historical reasons; no new seat may repeat a name used on either.
+
+---
 
 ### Not yet seated
 
