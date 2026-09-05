@@ -15,6 +15,16 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 [ -f .env ] || { echo "!! no .env — run: bash scripts/dev-setup-macos.sh"; exit 1; }
+
+# Fail loud up front rather than halfway through an install (Invariant 2 spirit).
+MISSING=""
+command -v npm  >/dev/null 2>&1 || MISSING="$MISSING  brew install node"$'\n'
+command -v mysql >/dev/null 2>&1 || MISSING="$MISSING  brew install mysql && brew services start mysql"$'\n'
+if [ -n "$MISSING" ]; then
+  echo "!! missing prerequisites:"; printf '%s' "$MISSING"
+  echo "   then re-run this script; it resumes where it left off."
+  exit 1
+fi
 set -a; source .env; set +a
 PORT="${LABS_PORT:-4000}"
 
@@ -59,10 +69,8 @@ try:
     import config, db
     cfg = config.get_config()
     c = db.connect(); cur = c.cursor()
-    cur.execute("SELECT COUNT(*) AS n FROM schema_migrations")
-    row = cur.fetchone()
-    n = row["n"] if isinstance(row, dict) else row[0]   # db.py uses a dict cursor
-    print(f"    config OK · db {cfg.db_name}@{cfg.db_host} · {n} migrations")
+    cur.execute("SELECT COUNT(*) FROM schema_migrations")
+    print(f"    config OK · db {cfg.db_name}@{cfg.db_host} · {cur.fetchone()[0]} migrations")
 except Exception as e:
     print(f"!! {type(e).__name__}: {e}")
     print("   Config is fail-loud by design; the message above names what is wrong.")
