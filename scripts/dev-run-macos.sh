@@ -69,8 +69,10 @@ try:
     import config, db
     cfg = config.get_config()
     c = db.connect(); cur = c.cursor()
-    cur.execute("SELECT COUNT(*) FROM schema_migrations")
-    print(f"    config OK · db {cfg.db_name}@{cfg.db_host} · {cur.fetchone()[0]} migrations")
+    cur.execute("SELECT COUNT(*) AS n FROM schema_migrations")
+    row = cur.fetchone()
+    n = row["n"] if isinstance(row, dict) else row[0]   # db.py uses a dict cursor
+    print(f"    config OK · db {cfg.db_name}@{cfg.db_host} · {n} migrations")
 except Exception as e:
     print(f"!! {type(e).__name__}: {e}")
     print("   Config is fail-loud by design; the message above names what is wrong.")
