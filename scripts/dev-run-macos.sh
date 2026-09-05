@@ -20,6 +20,11 @@ cd "$REPO_ROOT"
 MISSING=""
 command -v npm  >/dev/null 2>&1 || MISSING="$MISSING  brew install node"$'\n'
 command -v mysql >/dev/null 2>&1 || MISSING="$MISSING  brew install mysql && brew services start mysql"$'\n'
+# Redis is only required when the Market Bus is on, but that is where live
+# marks, chain generations and SSR capture run — so check it when the flag is set.
+if grep -qE '^LABS_MARKET_BUS=(1|true|yes|on)$' .env 2>/dev/null; then
+  command -v redis-cli >/dev/null 2>&1 || MISSING="$MISSING  brew install redis && brew services start redis"$'\n'
+fi
 if [ -n "$MISSING" ]; then
   echo "!! missing prerequisites:"; printf '%s' "$MISSING"
   echo "   then re-run this script; it resumes where it left off."
