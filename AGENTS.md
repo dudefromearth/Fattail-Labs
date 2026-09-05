@@ -215,6 +215,7 @@ marks are **severity: high** (member capital-adjacent judgment).
 | **Lima** | Technical Writer | Decision log entries, docs, interface contracts, institutional memory |
 | **Tango** | Member Archetype Guardian | Trader-learner experience: cognitive load, capacity-over-dependency, honest marketing |
 | **Hotel** | Trading-Domain Guardian | Trading/options education accuracy; blocks false or reckless claims |
+| **Sigma** | Quantitative Researcher | Estimators, study design, model fitting; blocks findings the data does not support |
 
 ### Lineage Channels (philosophy & strategy)
 
