@@ -4,6 +4,57 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-05 — DL-672 Dev bootstrap repaired · fresh checkout boots
+
+**Decision:** `.env.example` and `server/requirements.txt` did not describe the
+config or the dependency set the code requires, so a second machine could not
+boot from the repo's own template. Four defects, all Invariant 2 / Invariant 6:
+
+| Defect | Effect |
+|---|---|
+| `LABS_WIKI_ROOT` in no template | `create_app()` calls `wiki_store.wiki_root()` eagerly — server cannot start; the key existed only in the traceback |
+| 9 further required/conditional keys absent | wiki agent identity + drain/cap, `LABS_ALERTS_MANAGER`, `LABS_MARKET_DATA_MOUNTS`, `LABS_VP_MAX_N_BINS`, `LABS_SSR_ARCHIVE_*` |
+| 5 inline trailing comments | loader does not strip them; `LABS_ENV` parsed as `"dev   # dev \| staging \| production"` and aborted boot on a value that looks correct in an editor |
+| `LABS_SMTP_HOST` defaulted to production mail | dev run dials `smtp.hostinger.com:465`; suite hung on `test_awaiting_approval_notifies_admins`. Empty host = mail off (`notify.py`) |
+| `requirements.txt` bare `>=` | fresh install resolves `anyio` 4.15, whose deprecation warning this suite escalates to an error — `conftest` fails at collection. Python ≥ 3.11 (`typing.NotRequired`) was undeclared |
+
+**Evidence.** Clean venv from the pinned requirements + a fresh `.env` generated
+from the corrected template: app boots (77 routes), suite runs
+**1429 passed, 9 failed, 6 skipped in 33.07s**. The 9 are environmental for a
+host lacking market-data mounts, parquet, a real lab-wiki checkout and media
+write permission. No `server/` or `web/` source touched. Commit `db9c37b`.
+
+`scripts/dev-setup-macos.sh` added: one command creates the `labs` database and
+user and writes a valid `.env`; the password is generated locally and never
+printed.
+
+---
+
+## 2026-09-05 — DL-671 AZ-ALGO Coach stamps `MOVE_HORIZON_MIN` and `REGIME_NEAR_FRAC`
+
+**Decision (Coach, 2026-09-05):** both constants stamped at their v2.3.3
+defaults. **Starting constants under E8, not findings** — §14.5 fits them and
+nothing else moves them.
+
+| Key | Stamped | Why this value |
+|---|---|---|
+| `LABS_ALGO_MOVE_HORIZON_MIN` | **3** | E37. As written the estimator was a **one-minute** move. `PaR` is quadratic in it: at 1 min clause A needs `headroom < $192`, i.e. `H` above **93% of ceiling**, so the reward term is decorative; at 20 min it needs `headroom > $3,847` on a `$2,700` ceiling, so A is **permanently true** and everything folds. `P_BASE` cannot absorb the gap — preserving the boundary would need `P_BASE = 7.0`. 3 min sits inside the ≈1.3–5.6 min band where the clause-A boundary lands **inside** `p`'s achievable `[0.157, 0.655]`, the only regime in which `p` does any work. **Slice named:** `Γ = −$28/pt²`, `H = 60%` of a 30-wide $300-debit fly — not "the" horizon (OD-ALGO-7). |
+| `LABS_ALGO_REGIME_NEAR_FRAC` | **0.10** | E45. The `approaching` threshold is a fraction of `max(p × headroom, at_risk)`, **never of `H`** — a fraction of `H` grows as the margin it gates shrinks, giving a **0.7%** warning window at the 75% gate where the modal trade lives, and no constant repairs a wrong denominator. At 0.10 the window holds at **14–28%** of the margin's range across the whole span (OD-ALGO-11). |
+
+**Closes** OD-ALGO-7 (value; the joint `(HORIZON_MIN, P_BASE)` fit at §14.5
+remains open) and **OD-ALGO-11**. **`REGIME_NEAR_PCT` stays retired** — the old
+key aborts boot rather than being read as the new one, because the denominator
+changed, not the number.
+
+**Unblocks** P0b goldens, which could not be written before the horizon was
+stamped. **Does not** unblock P5: fixture 27-continuation still gates
+AZALGO-REGIME, and no packet paints clause A before that AT passes.
+
+**Still SUSPENDED:** BUILD AUTHORITY. `AZALGO-W0` does not carry forward. A new
+GO token is required (DL-328: chat is not a stamp).
+
+---
+
 ## 2026-09-03 — DL-670 AZ-ALGO P5 live path open · P5-G HOLD (RTH)
 
 **Decision:** `tickAlgoAlert` no longer no-ops when `demo === false`. The v1.0.16 test `non-demo does not tick` was **deleted** (it asserted the abolished defect). Demo remains a clock. Call site ticks live alerts on the raw mark.
