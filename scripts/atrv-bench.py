@@ -192,6 +192,64 @@ def pass_one_contract(day: Path, field: str = "mid") -> dict:
             "points": len(series), "ns": ns}
 
 
+
+def pass_gaps(day: Path, expect_s: float = 2.0) -> dict:
+    """Pass 4 — cadence holes.
+
+    A gap is NOT missing-at-random: a two-hour hole in the late morning is a
+    specific regime absent from the record. A study that drops the day, or
+    interpolates across it, biases toward whatever the rest of the session was.
+    So gaps are measured and NAMED, never smoothed (Archive Read API §5).
+    """
+    files = snaps_for(day)
+    if len(files) < 2:
+        return {"pass": "gaps", "files": len(files), "skipped": "too few"}
+
+    # filenames are time-of-day only: snap-HHMMSSmmmZ.json / snap-HHMMSSZ.json
+    ts: list[float] = []
+    for f in files:
+        stem = f.stem.replace("snap-", "").rstrip("Z")
+        try:
+            hh, mm = int(stem[0:2]), int(stem[2:4])
+            ss = int(stem[4:6])
+            ms = int(stem[6:9]) if len(stem) >= 9 else 0
+            ts.append(hh * 3600 + mm * 60 + ss + ms / 1000.0)
+        except Exception:
+            continue
+    ts.sort()
+    if len(ts) < 2:
+        return {"pass": "gaps", "files": len(files), "skipped": "unparseable"}
+
+    # unwrap a single UTC-midnight rollover
+    unwrapped = [ts[0]]
+    for t in ts[1:]:
+        while t < unwrapped[-1] - 43200:
+            t += 86400
+        unwrapped.append(t)
+
+    deltas = [b - a for a, b in zip(unwrapped, unwrapped[1:])]
+    med = statistics.median(deltas) if deltas else expect_s
+    thresh = max(med * 5, expect_s * 5)
+
+    holes = []
+    for (a, b), d in zip(zip(unwrapped, unwrapped[1:]), deltas):
+        if d > thresh:
+            holes.append({
+                "from_utc": f"{int(a//3600)%24:02d}:{int(a%3600//60):02d}:{int(a%60):02d}",
+                "to_utc":   f"{int(b//3600)%24:02d}:{int(b%3600//60):02d}:{int(b%60):02d}",
+                "seconds": round(d, 1), "minutes": round(d / 60, 1),
+            })
+
+    span = unwrapped[-1] - unwrapped[0]
+    lost = sum(h["seconds"] for h in holes)
+    return {"pass": "gaps", "files": len(files),
+            "median_cadence_s": round(med, 2),
+            "span_h": round(span / 3600, 2),
+            "holes": holes, "hole_count": len(holes),
+            "lost_minutes": round(lost / 60, 1),
+            "coverage_pct": round(100.0 * (span - lost) / span, 2) if span else None}
+
+
 # --------------------------------------------------------------------------- main
 
 def run(root: Path, ndays: int, field: str) -> dict:
@@ -209,8 +267,8 @@ def run(root: Path, ndays: int, field: str) -> dict:
 
     for d in days:
         row: dict = {"day": d.name}
-        for fn in (pass_index_only, pass_full_scan, pass_one_contract):
-            r = fn(d, field) if fn is not pass_index_only else fn(d)
+        for fn in (pass_index_only, pass_full_scan, pass_one_contract, pass_gaps):
+            r = fn(d) if fn in (pass_index_only, pass_gaps) else fn(d, field)
             row[r["pass"]] = r
         out["results"].append(row)
 
@@ -221,6 +279,15 @@ def run(root: Path, ndays: int, field: str) -> dict:
               f"   {human(idx['bytes'])}")
         print(f"  full scan  : {scan['ns']/1e6:>8.1f} ms   {human(scan['bytes'])}"
               f"   split {scan['split_pct']}")
+        g = row["gaps"]
+        if g.get("hole_count"):
+            print(f"  GAPS       : {g['hole_count']} hole(s), {g['lost_minutes']} min lost"
+                  f"   coverage {g['coverage_pct']}%   cadence {g['median_cadence_s']}s")
+            for h in g["holes"][:4]:
+                print(f"               {h['from_utc']} → {h['to_utc']}  ({h['minutes']} min)")
+        elif g.get("coverage_pct") is not None:
+            print(f"  gaps       : none    coverage {g['coverage_pct']}%"
+                  f"   cadence {g['median_cadence_s']}s")
         if "waste_ratio" in one:
             print(f"  1 contract : {one['ns']/1e6:>8.1f} ms   touched"
                   f" {human(one['bytes_touched'])} to want"
