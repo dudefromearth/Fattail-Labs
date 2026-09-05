@@ -1,17 +1,25 @@
-fastapi>=0.115
-uvicorn>=0.32
+# Requires Python >= 3.11 (code uses typing.NotRequired). 3.12 recommended.
+#
+# Upper bounds are deliberate: with bare >= pins a fresh install resolves to
+# untested majors. anyio 4.15 + starlette 1.6 raises a DeprecationWarning that
+# this suite escalates to an error, so conftest fails to import at collection.
+anyio>=4.4,<4.10
+
+fastapi>=0.115,<1.0
+uvicorn>=0.32,<1.0
 # Required for WS /api/me/market/stream — without it uvicorn logs
 # "No supported WebSocket library" and returns HTTP 404 on upgrade
 # (live heatmap looks static until hard refresh).
-websockets>=12
-pymysql>=1.1
-pyjwt>=2.9
+websockets>=12,<16
+pymysql>=1.1,<3
+pyjwt>=2.9,<3
 python-multipart>=0.0.9
-stripe>=11
-httpx>=0.27
-redis>=5.0
+stripe>=11,<13
+httpx>=0.27,<1.0
+redis>=5.0,<7
 # Broker token encryption at rest (Tradier integration — Fernet)
-cryptography>=42
+cryptography>=42,<50
 
 # dev/test
-pytest>=8
+pytest>=8,<10
+pytest-timeout>=2.3
