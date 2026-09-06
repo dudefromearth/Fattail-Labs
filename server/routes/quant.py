@@ -22,7 +22,7 @@ from fastapi import APIRouter, Body, HTTPException, Query, Request, Response
 from config import validate_quant_env
 from guards import require_session
 from quant.layout import ALL_FIELDS
-from quant.simulate import Leg, Params, SimulateRefusal, simulate, sweep_entries
+from quant.simulate import ExitRule, Leg, Params, SimulateRefusal, simulate, sweep_entries
 from quant.store import StoreError, list_days, open_day
 
 router = APIRouter(tags=["quant"])
@@ -73,6 +73,19 @@ def _parse_legs(raw: str) -> list[tuple[float, str, int]]:
     if not out:
         raise HTTPException(status_code=422, detail="NO_LEGS")
     return out
+
+
+def _exit_rule(body: dict) -> ExitRule:
+    kind = str(body.get("exit_kind", "time"))
+    if kind not in ("time", "target"):
+        raise HTTPException(status_code=422, detail="exit_kind must be time|target")
+    try:
+        pct = float(body.get("target_pct", 150.0))
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail="target_pct must be a number") from exc
+    if kind == "target" and not (0 < pct <= 10_000):
+        raise HTTPException(status_code=422, detail="target_pct must be in (0, 10000]")
+    return ExitRule(kind=kind, pct=pct)
 
 
 def _resolve(st, legs: list[tuple[float, str, int]]) -> list[tuple[int, int]]:
@@ -233,7 +246,7 @@ def quant_simulate(request: Request, body: dict = Body(...)) -> Any:
                  p_fill=s["p_fill"], fee_per_contract=s["fee_per_contract"],
                  latency_snapshots=latency)
     try:
-        out = simulate(st, [Leg(c, q) for c, q in resolved], t_entry, t_exit, prm)
+        out = simulate(st, [Leg(c, q) for c, q in resolved], t_entry, t_exit, prm, _exit_rule(body))
     except SimulateRefusal as exc:
         raise HTTPException(status_code=409, detail={"refusal": exc.code, "detail": exc.detail}) from exc
     out["api_version"] = API_VERSION
@@ -269,7 +282,8 @@ def quant_sweep(request: Request, body: dict = Body(...)) -> Any:
     prm = Params(seed=seed, paths=ppe, strategy_id=strategy_id, p_fill=s["p_fill"],
                  fee_per_contract=s["fee_per_contract"], latency_snapshots=latency)
     try:
-        out = sweep_entries(st, [Leg(c, q) for c, q in resolved], t_from, t_to, t_exit, step, prm, ppe)
+        out = sweep_entries(st, [Leg(c, q) for c, q in resolved], t_from, t_to, t_exit, step, prm, ppe,
+                            _exit_rule(body))
     except SimulateRefusal as exc:
         raise HTTPException(status_code=409, detail={"refusal": exc.code, "detail": exc.detail}) from exc
     out["api_version"] = API_VERSION; out["day"], out["book"] = st.day, st.book

@@ -17,7 +17,8 @@ export type Bands = Record<"p01" | "p05" | "p10" | "p25" | "p50" | "p75" | "p90"
 
 export type SimulateResponse = {
   n: number; n_traded: number; seed: number; strategy_id: string;
-  t_entry: number; t_exit: number; t_entry_acted: number; t_exit_acted: number;
+  t_entry: number; t_exit: number; t_exit_resolved: number; t_entry_acted: number; t_exit_acted: number;
+  exit: { kind: "time" } | { kind: "target"; pct: number; hit: boolean; mark_at_hit?: number; debit_mid: number };
   time_entry_ms: number; time_exit_ms: number;
   ecdf: { x: number[]; F: number[] };
   bands: Bands;
@@ -58,10 +59,12 @@ export function fetchMark(day: string, book: string, legs: string): Promise<Mark
   return get(`/api/me/quant/mark?${q}`);
 }
 
+export type ExitSpec = { exit_kind: "time" } | { exit_kind: "target"; target_pct: number };
+
 export async function runSimulate(body: {
   day: string; book: string; legs: string; t_entry: number; t_exit: number;
   paths: number; seed: number; latency_snapshots?: number;
-}): Promise<SimulateResponse> {
+} & ExitSpec): Promise<SimulateResponse> {
   const r = await fetch("/api/me/quant/simulate", {
     method: "POST", credentials: "same-origin",
     headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
@@ -86,13 +89,15 @@ export function hhmm(ms: number, tz = "America/New_York"): string {
 export type SweepResponse = Omit<SimulateResponse, "n" | "n_traded" | "t_entry" | "t_exit" | "t_entry_acted" | "t_exit_acted" | "time_entry_ms" | "tax" | "provenance"> & {
   entries: number; refused_entries: number; paths_per_entry: number; n_pooled: number;
   t_exit: number; time_exit_ms: number; window: { t_from: number; t_to: number; step: number };
-  per_entry: ({ t_entry: number; time_ms: number; n_traded: number; bands: Bands } | { t_entry: number; refused: true })[];
+  per_entry: ({ t_entry: number; time_ms: number; n_traded: number; bands: Bands; exit?: SimulateResponse["exit"]; t_exit_resolved?: number } | { t_entry: number; refused: true })[];
+  exit_rule: { kind: string; pct: number };
+  target: { entries_hit: number; of: number; minutes_in_bands: Bands | null } | null;
 };
 
 export async function runSweep(body: {
   day: string; book: string; legs: string; t_from: number; t_to: number; t_exit: number;
   step: number; paths_per_entry: number; seed: number; latency_snapshots?: number;
-}): Promise<SweepResponse> {
+} & ExitSpec): Promise<SweepResponse> {
   const r = await fetch("/api/me/quant/sweep", {
     method: "POST", credentials: "same-origin",
     headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),

@@ -115,3 +115,27 @@ def test_zero_traded_paths_is_a_named_refusal_not_nan(st, monkeypatch):
     with pytest.raises(SimulateRefusal) as ei:
         simulate(st, fly(st), 5, 100, prm(paths=50))
     assert ei.value.code == "NO_PATH_TRADED"
+
+
+def test_target_exit_leaves_at_first_touch_and_says_so(st):
+    """Doctrine exit: first instant the mid-mark reaches +pct on the debit."""
+    from quant.simulate import ExitRule
+    legs = fly(st)
+    # find a window where the fly's mid-mark rises >= 1.5% above entry; the
+    # fixture drifts, so search for one rather than assume
+    mark, ok = st.mark([(l.c, l.qty) for l in legs], "mid", 5, st.T)
+    d = mark[0]
+    hit = next((i for i, v in enumerate(mark) if i and v is not None and v >= d * 1.015), None)
+    if hit is None:
+        pytest.skip("fixture never rose 1.5%")
+    r = simulate(st, legs, 4, st.T - 1, prm(paths=50), ExitRule("target", 1.5))
+    assert r["exit"]["hit"] is True and r["t_exit_resolved"] == 5 + hit
+    assert r["t_exit_acted"] == r["t_exit_resolved"] + 1          # latency applies to the exit too
+    r2 = simulate(st, legs, 4, st.T - 1, prm(paths=50), ExitRule("target", 100000.0))
+    assert r2["exit"]["hit"] is False and r2["t_exit_resolved"] == st.T - 1
+
+
+def test_time_exit_is_default_and_unchanged(st):
+    a = simulate(st, fly(st), 5, 100, prm(paths=50))
+    b = simulate(st, fly(st), 5, 100, prm(paths=50), None)
+    assert a["exit"] == {"kind": "time"} and json.dumps(a, sort_keys=True) == json.dumps(b, sort_keys=True)

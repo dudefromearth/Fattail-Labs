@@ -208,19 +208,57 @@ def stability_of(pnls: list[float], seed: int) -> dict:
     return {"n_half_vs_n": worst, "enough": worst < 0.05}
 
 
+# ---------------------------------------------------------------- exit rules
+
+@dataclass(frozen=True)
+class ExitRule:
+    """How the trade leaves. Resolved on the mid-mark series (the archive), so
+    the exit instant is a fact of the path; fills are then drawn at it.
+
+      kind = "time"    exit at t_exit
+      kind = "target"  first t after entry where mark >= (1 + pct/100) x debit,
+                       else t_exit (the doctrine's take-100-200%-and-go)
+    """
+    kind: str = "time"
+    pct: float = 150.0
+
+
+def resolve_exit(st: DayStore, legs: Sequence[Leg], t_in: int, t_exit: int,
+                 rule: ExitRule) -> tuple[int, dict]:
+    if rule.kind == "time":
+        return t_exit, {"kind": "time"}
+    if rule.kind != "target":
+        raise SimulateRefusal("BAD_EXIT_RULE", f"unknown exit rule {rule.kind!r}")
+    mark, ok = st.mark([(l.c, l.qty) for l in legs], "mid", t_in, t_exit + 1)
+    if not ok or not ok[0] or mark[0] is None or mark[0] <= 0:
+        raise SimulateRefusal("NO_DEBIT_AT_ENTRY", f"mid-mark at entry t={t_in} is not a positive debit")
+    debit = mark[0]
+    goal = debit * (1.0 + rule.pct / 100.0)
+    for i, v in enumerate(mark):
+        if i and v is not None and v >= goal:
+            return t_in + i, {"kind": "target", "pct": rule.pct, "hit": True,
+                              "mark_at_hit": v / st.scale("mid"), "debit_mid": debit / st.scale("mid")}
+    return t_exit, {"kind": "target", "pct": rule.pct, "hit": False,
+                    "debit_mid": debit / st.scale("mid")}
+
+
 # ---------------------------------------------------------------- run
 
 def simulate(st: DayStore, legs: Sequence[Leg], t_entry: int, t_exit: int,
-             prm: Params) -> dict:
+             prm: Params, exit_rule: ExitRule | None = None) -> dict:
     if not legs:
         raise SimulateRefusal("NO_LEGS", "a strategy needs at least one leg")
     if prm.paths < 1:
         raise SimulateRefusal("BAD_N", "paths must be >= 1")
     t_in = t_entry + prm.latency_snapshots
-    t_out = t_exit + prm.latency_snapshots
-    if not (0 <= t_in < t_out < st.T):
-        raise SimulateRefusal("BAD_WINDOW",
-                              f"entry+latency={t_in}, exit+latency={t_out}, T={st.T}")
+    if not (0 <= t_in < t_exit < st.T):
+        raise SimulateRefusal("BAD_WINDOW", f"entry+latency={t_in}, exit={t_exit}, T={st.T}")
+    rule = exit_rule or ExitRule()
+    t_exit_resolved, exit_info = resolve_exit(st, legs, t_in, t_exit, rule)
+    t_out = t_exit_resolved + (prm.latency_snapshots if exit_info.get("hit") else 0)
+    t_out = min(t_out, st.T - 1)
+    if not (t_in < t_out):
+        raise SimulateRefusal("BAD_WINDOW", f"resolved exit {t_out} not after entry {t_in}")
 
     results = [simulate_path(st, legs, t_in, t_out, prm, i) for i in range(prm.paths)]
     traded = [r for r in results if r["traded"]]
@@ -244,7 +282,8 @@ def simulate(st: DayStore, legs: Sequence[Leg], t_entry: int, t_exit: int,
     out = {
         "n": prm.paths, "n_traded": len(traded), "seed": prm.seed,
         "strategy_id": prm.strategy_id,
-        "t_entry": t_entry, "t_exit": t_exit,
+        "t_entry": t_entry, "t_exit": t_exit, "t_exit_resolved": t_exit_resolved,
+        "exit": exit_info,
         "t_entry_acted": t_in, "t_exit_acted": t_out,
         "time_entry_ms": st.time_ms(t_in), "time_exit_ms": st.time_ms(t_out),
         "ecdf": ecdf_of(pnls),
@@ -284,7 +323,8 @@ def simulate(st: DayStore, legs: Sequence[Leg], t_entry: int, t_exit: int,
 # ---------------------------------------------------------------- sweep
 
 def sweep_entries(st: DayStore, legs: Sequence[Leg], t_from: int, t_to: int,
-                  t_exit: int, step: int, prm: Params, paths_per_entry: int) -> dict:
+                  t_exit: int, step: int, prm: Params, paths_per_entry: int,
+                  exit_rule: ExitRule | None = None) -> dict:
     """Same structure, EVERY entry in [t_from, t_to] at `step` snapshots, one
     exit, fill Monte Carlo on each. The pooled distribution is the shape of
     "this structure, entered any time in this window" — the series answer
@@ -299,13 +339,13 @@ def sweep_entries(st: DayStore, legs: Sequence[Leg], t_from: int, t_to: int,
         raise SimulateRefusal("BAD_WINDOW", "no entries in window before exit")
     pooled: list[float] = []
     per_entry: list[dict] = []
-    n_nofill = 0; n_total = 0; refused = 0
+    n_nofill = 0; n_total = 0; refused = 0; hits = 0; minutes_in: list[float] = []
     sub = Params(seed=prm.seed, paths=paths_per_entry, strategy_id=prm.strategy_id,
                  p_fill=prm.p_fill, fee_per_contract=prm.fee_per_contract,
                  latency_snapshots=prm.latency_snapshots, multiplier=prm.multiplier)
     for k, t_e in enumerate(entries):
         try:
-            r = simulate(st, legs, t_e, t_exit, Params(**{**sub.__dict__, "seed": prm.seed * 1_000_003 + k}))
+            r = simulate(st, legs, t_e, t_exit, Params(**{**sub.__dict__, "seed": prm.seed * 1_000_003 + k}), exit_rule)
         except SimulateRefusal:
             refused += 1
             per_entry.append({"t_entry": t_e, "refused": True})
@@ -313,8 +353,12 @@ def sweep_entries(st: DayStore, legs: Sequence[Leg], t_from: int, t_to: int,
         xs = r["ecdf"]["x"]
         pooled.extend(sorted(_pnl_list_from(r)))
         n_total += r["n"]; n_nofill += round(r["no_fill_rate"]["entry"] * r["n"])
+        if r["exit"].get("hit"):
+            hits += 1
+            minutes_in.append((st.time_ms(r["t_exit_resolved"]) - st.time_ms(t_e)) / 60000.0)
         per_entry.append({"t_entry": t_e, "time_ms": st.time_ms(t_e), "n_traded": r["n_traded"],
-                          "bands": r["bands"]})
+                          "bands": r["bands"], "exit": r["exit"],
+                          "t_exit_resolved": r["t_exit_resolved"]})
     pooled.sort()
     return {
         "entries": len(entries), "refused_entries": refused, "paths_per_entry": paths_per_entry,
@@ -326,6 +370,10 @@ def sweep_entries(st: DayStore, legs: Sequence[Leg], t_from: int, t_to: int,
         "fidelity": FIDELITY_ERA1, "seed": prm.seed, "strategy_id": prm.strategy_id,
         "t_exit": t_exit, "time_exit_ms": st.time_ms(t_exit),
         "window": {"t_from": t_from, "t_to": t_to, "step": step},
+        "exit_rule": (exit_rule or ExitRule()).__dict__,
+        "target": ({"entries_hit": hits, "of": len(entries) - refused,
+                    "minutes_in_bands": bands_of(sorted(minutes_in)) if minutes_in else None}
+                   if (exit_rule and exit_rule.kind == "target") else None),
         "assumptions": {"fill_model": FILL_MODEL_UNFITTED, "p_fill": prm.p_fill,
                         "latency_snapshots": prm.latency_snapshots,
                         "fee_per_contract": prm.fee_per_contract, "multiplier": prm.multiplier,

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   fetchMark, fetchQuantDays, fetchSpot, hhmm, runSimulate, runSweep,
-  type Bands, type MarkResponse, type QuantDay, type SimulateResponse, type SweepResponse,
+  type Bands, type ExitSpec, type MarkResponse, type QuantDay, type SimulateResponse, type SweepResponse,
 } from "@/lib/quantApi";
 
 /**
@@ -43,6 +43,9 @@ export default function MonteCarloLab() {
   const [sim, setSim] = useState<SimulateResponse | null>(null);
   const [sweep, setSweep] = useState<SweepResponse | null>(null);
   const [stepS, setStepS] = useState(60);
+  const [exitKind, setExitKind] = useState<"time" | "target">("target");
+  const [targetPct, setTargetPct] = useState(150);
+  const exitSpec = (): ExitSpec => (exitKind === "target" ? { exit_kind: "target", target_pct: targetPct } : { exit_kind: "time" });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [axis, setAxis] = useState<{ time_ms: number[]; spot: (number | null)[]; strikes: number[] } | null>(null);
@@ -90,10 +93,10 @@ export default function MonteCarloLab() {
     setErr(null); setBusy(true);
     try {
       setSim(await runSimulate({ day: sel.day, book: sel.book, legs: legs.trim(),
-        t_entry: tEntry, t_exit: tExit, paths, seed }));
+        t_entry: tEntry, t_exit: tExit, paths, seed, ...exitSpec() }));
     } catch (e) { setErr(String((e as Error).message || e)); setSim(null); }
     finally { setBusy(false); }
-  }, [sel, legs, tEntry, tExit, paths, seed]);
+  }, [sel, legs, tEntry, tExit, paths, seed, exitKind, targetPct]);
 
   /** Every entry from the Entry slider to the Exit, `stepS` seconds apart, one exit. */
   const doSweep = useCallback(async () => {
@@ -102,10 +105,10 @@ export default function MonteCarloLab() {
     try {
       setSweep(await runSweep({ day: sel.day, book: sel.book, legs: legs.trim(),
         t_from: tEntry, t_to: tExit - 2, t_exit: tExit, step: Math.max(1, Math.round(stepS / 2)),
-        paths_per_entry: 100, seed }));
+        paths_per_entry: 100, seed, ...exitSpec() }));
     } catch (e) { setErr(String((e as Error).message || e)); setSweep(null); }
     finally { setBusy(false); }
-  }, [sel, legs, tEntry, tExit, stepS, seed]);
+  }, [sel, legs, tEntry, tExit, stepS, seed, exitKind, targetPct]);
 
   return (
     <main className="mx-auto w-full max-w-[1200px] px-4 py-6 space-y-6">
@@ -145,6 +148,14 @@ export default function MonteCarloLab() {
           <label>Seed <input type="number" className="ml-2 w-24 rounded border px-2 py-1 bg-transparent" value={seed} onChange={(e) => setSeed(Number(e.target.value))} />
             <button type="button" className="ml-3 rounded bg-[var(--color-accent,#2563eb)] px-3 py-1 text-white" onClick={run} disabled={!sel || busy || !legs.trim()}>{busy ? "…" : "Run"}</button>
           </label>
+        </section>
+      )}
+      {sel && (
+        <section className="flex flex-wrap items-center gap-3 text-sm">
+          <span className="text-[var(--color-label-secondary)]">Exit rule</span>
+          <label className="cursor-pointer"><input type="radio" name="exit" checked={exitKind === "target"} onChange={() => setExitKind("target")} className="mr-1" />
+            first instant the mid-mark reaches <input type="number" min={1} max={2000} step={10} className="mx-1 w-20 rounded border px-2 py-1 bg-transparent" value={targetPct} onChange={(e) => setTargetPct(Number(e.target.value))} />% on the debit, else the Exit time</label>
+          <label className="cursor-pointer"><input type="radio" name="exit" checked={exitKind === "time"} onChange={() => setExitKind("time")} className="mr-1" />hold to the Exit time</label>
         </section>
       )}
       {sel && (
@@ -236,6 +247,7 @@ function Distribution({ s }: { s: SimulateResponse }) {
       <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-[var(--color-label-secondary)]">
         <span>{s.n.toLocaleString()} paths · {s.n_traded.toLocaleString()} traded · seed {s.seed}</span>
         <span>entry {hhmm(s.time_entry_ms)} → exit {hhmm(s.time_exit_ms)} (acted +{(s.assumptions.latency_snapshots as number) ?? 1} snap)</span>
+        {s.exit.kind === "target" && <span>{s.exit.hit ? `target +${s.exit.pct}% HIT — left at ${hhmm(s.time_exit_ms)} (mark $${((s.exit.mark_at_hit ?? 0) * MULT).toFixed(0)} on $${(s.exit.debit_mid * MULT).toFixed(0)} in)` : `target +${s.exit.pct}% not reached — held to exit`}</span>}
         <span>modes: <b>{s.modality.n_modes ?? "—"}</b>{s.modality.n_modes && s.modality.n_modes > 1 ? " — bimodal; the middle is the valley" : ""}</span>
         <span>no-fill: entry {(nf.entry * 100).toFixed(1)}% · exit {nf.exit == null ? "—" : `${(nf.exit * 100).toFixed(1)}%`}</span>
         <span>stability: {s.stability.n_half_vs_n == null ? "—" : `${(s.stability.n_half_vs_n * 100).toFixed(1)}% band drift at N/2 ${s.stability.enough ? "(enough)" : "(raise N)"}`}</span>
@@ -293,6 +305,7 @@ function SweepView({ s }: { s: SweepResponse }) {
     <section className="space-y-3 border-t pt-4">
       <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-[var(--color-label-secondary)]">
         <span><b>Entry sweep</b> · {s.entries} entries every {s.window.step * 2}s · {s.paths_per_entry} fill paths each · {s.n_pooled.toLocaleString()} pooled · exit {hhmm(s.time_exit_ms)}</span>
+        {s.target && <span>target reached on <b>{s.target.entries_hit}</b> of {s.target.of} entries{s.target.minutes_in_bands ? ` · minutes in trade p10 ${s.target.minutes_in_bands.p10.toFixed(0)} · p50 ${s.target.minutes_in_bands.p50.toFixed(0)} · p90 ${s.target.minutes_in_bands.p90.toFixed(0)}` : ""}</span>}
         <span>modes: <b>{s.modality.n_modes ?? "—"}</b>{(s.modality.n_modes ?? 0) > 1 ? " — the mean would sit in a valley" : ""}</span>
         <span>no-fill at entry: {s.no_fill_rate.entry == null ? "—" : `${(s.no_fill_rate.entry * 100).toFixed(1)}%`}</span>
         <span>stability: {s.stability.n_half_vs_n == null ? "—" : `${(s.stability.n_half_vs_n * 100).toFixed(1)}% ${s.stability.enough ? "(enough)" : "(raise N)"}`}</span>
