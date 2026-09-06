@@ -129,30 +129,65 @@ function Slider({ label, t, max, onChange, times }: { label: string; t: number; 
   );
 }
 
-/** Realized mark through the day. Withheld instants are GAPS — never bridged. */
+/** Session window in ET. The capture runs 04:00–20:00 ET; the contract lives 09:30–16:15. */
+const RTH_OPEN_MIN = 9 * 60 + 30, RTH_CLOSE_MIN = 16 * 60 + 15;
+function etMinutes(ms: number): number {
+  const p = new Intl.DateTimeFormat("en-US", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/New_York" }).formatToParts(new Date(ms));
+  const h = Number(p.find((x) => x.type === "hour")?.value ?? 0), mi = Number(p.find((x) => x.type === "minute")?.value ?? 0);
+  return h * 60 + mi;
+}
+function quantile(sorted: number[], p: number): number {
+  if (!sorted.length) return 0;
+  const k = (sorted.length - 1) * p, lo = Math.floor(k), hi = Math.min(lo + 1, sorted.length - 1);
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (k - lo);
+}
+
+/** Realized mark through the day. Withheld instants are GAPS — never bridged.
+ *  Y-range is robust (p1–p99) so one crossed quote at the open cannot flatten
+ *  the session; instants outside the range are COUNTED, not hidden. */
 function MarkStrip({ m, tEntry, tExit }: { m: MarkResponse; tEntry: number; tExit: number }) {
+  const [session, setSession] = useState(true);
   const W = 1100, H = 180, P = 28;
-  const vals = m.mark.map((v) => (v == null ? null : v * MULT));
-  const finite = vals.filter((v): v is number => v != null);
-  const lo = Math.min(...finite), hi = Math.max(...finite);
-  const x = (i: number) => P + (i / Math.max(m.mark.length - 1, 1)) * (W - 2 * P);
-  const y = (v: number) => H - P - ((v - lo) / Math.max(hi - lo, 1e-9)) * (H - 2 * P);
-  // build segments broken at every withheld instant
+  const n = m.mark.length;
+  // window
+  let i0 = 0, i1 = n;
+  if (session && m.time_ms.length === n) {
+    const inRth = m.time_ms.map((t) => { const mm = etMinutes(t); return mm >= RTH_OPEN_MIN && mm <= RTH_CLOSE_MIN; });
+    const first = inRth.indexOf(true), last = inRth.lastIndexOf(true);
+    if (first >= 0 && last > first) { i0 = first; i1 = last + 1; }
+  }
+  const vals = m.mark.slice(i0, i1).map((v) => (v == null ? null : v * MULT));
+  const finite = vals.filter((v): v is number => v != null).sort((a, b) => a - b);
+  const lo = quantile(finite, 0.01), hi = quantile(finite, 0.99);
+  const outliers = finite.filter((v) => v < lo || v > hi).length;
+  const span = Math.max(hi - lo, 1e-9);
+  const x = (i: number) => P + ((i - i0) / Math.max(i1 - i0 - 1, 1)) * (W - 2 * P);
+  const y = (v: number) => H - P - (Math.min(Math.max(v, lo), hi) - lo) / span * (H - 2 * P);
   const segs: string[] = []; let cur: string[] = [];
-  vals.forEach((v, i) => { if (v == null) { if (cur.length) segs.push(cur.join(" ")); cur = []; } else cur.push(`${x(i).toFixed(1)},${y(v).toFixed(1)}`); });
+  vals.forEach((v, j) => { if (v == null) { if (cur.length) segs.push(cur.join(" ")); cur = []; } else cur.push(`${x(i0 + j).toFixed(1)},${y(v).toFixed(1)}`); });
   if (cur.length) segs.push(cur.join(" "));
+  const withheldInWindow = m.leg_present.slice(i0, i1).filter((p) => !p).length;
+  const inWin = (t: number) => t >= i0 && t < i1;
   return (
     <section className="space-y-1">
-      <div className="flex justify-between text-xs text-[var(--color-label-secondary)]">
+      <div className="flex flex-wrap justify-between gap-x-4 text-xs text-[var(--color-label-secondary)]">
         <span>Realized mark, package $ (×{MULT}) · {m.legs.map((l) => `${l.strike}${l.side}:${l.qty > 0 ? "+" : ""}${l.qty}`).join(" ")}</span>
-        <span>{m.withheld > 0 ? `${m.withheld} instants withheld — a leg was outside the band (not interpolated)` : "no withheld instants"}</span>
+        <span className="flex gap-3">
+          <label className="cursor-pointer"><input type="checkbox" checked={session} onChange={(e) => setSession(e.target.checked)} className="mr-1" />session only (09:30–16:15 ET)</label>
+          <span>{withheldInWindow > 0 ? `${withheldInWindow} instants withheld — a leg was outside the band (not interpolated)` : "no withheld instants"}</span>
+          {outliers > 0 && <span title="plotted range is p1–p99 of the window; these instants sit outside it and are clamped, not removed">{outliers} outside plotted range</span>}
+        </span>
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto rounded border" role="img" aria-label="Realized mark through the day">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto rounded border" role="img" aria-label="Realized mark through the session">
         {segs.map((d, i) => <polyline key={i} points={d} fill="none" stroke="currentColor" strokeWidth={1.2} />)}
-        <line x1={x(tEntry)} x2={x(tEntry)} y1={P} y2={H - P} stroke="#16a34a" strokeDasharray="3 3" />
-        <line x1={x(tExit)} x2={x(tExit)} y1={P} y2={H - P} stroke="#dc2626" strokeDasharray="3 3" />
+        {inWin(tEntry) && <line x1={x(tEntry)} x2={x(tEntry)} y1={P} y2={H - P} stroke="#16a34a" strokeDasharray="3 3" />}
+        {inWin(tExit) && <line x1={x(tExit)} x2={x(tExit)} y1={P} y2={H - P} stroke="#dc2626" strokeDasharray="3 3" />}
         <text x={P} y={12} fontSize={10} fill="currentColor">{hi.toFixed(0)}</text>
         <text x={P} y={H - 4} fontSize={10} fill="currentColor">{lo.toFixed(0)}</text>
+        {m.time_ms.length === n && <>
+          <text x={P} y={H - 14} fontSize={9} fill="currentColor" opacity={0.6}>{hhmm(m.time_ms[i0])}</text>
+          <text x={W - P - 44} y={H - 14} fontSize={9} fill="currentColor" opacity={0.6}>{hhmm(m.time_ms[i1 - 1])}</text>
+        </>}
       </svg>
     </section>
   );
