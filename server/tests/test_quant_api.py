@@ -99,3 +99,19 @@ def test_idealised_label_at_zero_latency(app, monkeypatch):
                                                             "t_exit": 60, "paths": 50,
                                                             "latency_snapshots": 0}).json()
     assert r["assumptions"]["label"] == "idealised"
+
+
+def test_chain_at_t_is_the_snapshot_at_or_before_never_a_blend(app, monkeypatch):
+    a, root = app
+    _configure(monkeypatch, root)
+    c = TestClient(a)
+    sp = c.get("/api/me/quant/spot", params={"day": "2026-09-04", "book": "XSP"}).json()
+    t_ms = sp["time_ms"][10] + 1300                       # inside the 2 s gap after t=10
+    r = c.get("/api/me/quant/chain", params={"day": "2026-09-04", "book": "XSP", "t_ms": t_ms}).json()
+    assert r["t"] == 10 and r["lag_ms"] == 1300 and r["time_ms"] == sp["time_ms"][10]
+    sides = {(row["strike"], row["side"]) for row in r["rows"]}
+    assert (630.0, "C") in sides and (630.0, "P") in sides   # both sides survive
+    assert r["quantised"]["delta"] is True
+    before = c.get("/api/me/quant/chain", params={"day": "2026-09-04", "book": "XSP",
+                                                  "t_ms": sp["time_ms"][0] - 1})
+    assert before.status_code == 404 and "BEFORE_FIRST_SNAPSHOT" in before.json()["detail"]

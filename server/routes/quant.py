@@ -108,6 +108,47 @@ def quant_spot(request: Request, day: str, book: str) -> Any:
             "strikes": sorted({c[0] for c in st.contracts()})}
 
 
+@router.get("/api/me/quant/chain")
+def quant_chain(request: Request, day: str, book: str,
+                t_ms: int = Query(..., description="playhead, epoch ms")) -> Any:
+    """The whole chain at the snapshot that WAS the decision surface at t_ms.
+
+    Time Machine's per-instant read. Slices column t across every contract
+    present at that instant — no snapshot file opened (AT-ATRV-3), no
+    nearest-neighbour search, nothing between snapshots invented
+    (t_at_or_before, never interpolated). Greeks are quantised and say so.
+    """
+    require_session(request)
+    st = _store(day, book)
+    if st is None:
+        return _not_configured()
+    t = st.t_at_or_before(t_ms)
+    if t is None:
+        raise HTTPException(status_code=404, detail="BEFORE_FIRST_SNAPSHOT")
+    rows = []
+    sc = st.scale("mid")
+    for c, (k, side, exp) in enumerate(st.contracts()):
+        if not st.present(c, t):
+            continue
+        def val(f, scale=None):
+            v = st.value(f, c, t)
+            return None if v is None else (v / (scale or st.scale(f)) if st.scale(f) != 1 else v)
+        rows.append({"strike": k, "side": side, "expiration": exp,
+                     "mid": val("mid"), "bid": val("bid"), "ask": val("ask"),
+                     "delta": val("delta"), "gamma": val("gamma"), "theta": val("theta"),
+                     "vega": val("vega"), "iv": val("iv"),
+                     "volume": val("volume"), "open_interest": val("open_interest"),
+                     "quote_age_ms": (None if st.value("last_updated", c, t) is None
+                                      else -st.value("last_updated", c, t))})
+    return {"api_version": API_VERSION, "day": st.day, "book": st.book,
+            "t": t, "time_ms": st.time_ms(t), "requested_ms": t_ms,
+            "lag_ms": t_ms - st.time_ms(t), "spot": st.spot(t), "rows": rows,
+            "quantised": {f: st.quantised(f) for f in ("delta", "gamma", "theta", "vega", "iv")},
+            "greeks_quantum_decimals": st.meta.get("greeks_quantum_decimals"),
+            "content_hash": f"store:{st.meta.get('source_sha1','')[:12]}:{t}",
+            "note": "the snapshot at or before t — never a blend of two"}
+
+
 @router.get("/api/me/quant/series")
 def quant_series(request: Request, day: str, book: str,
                  contracts: str = Query(..., description="'628C,630P'"),

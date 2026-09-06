@@ -132,6 +132,51 @@ export function marksFromChain(
   return out;
 }
 
+/**
+ * Store-first chain at t (Quant Lab [C][T] store, ATRV). One request, every
+ * contract present at the snapshot that WAS the surface at t — no dyadic
+ * search, no snapshot file, nothing between snapshots invented. Returns null
+ * when the day is not built (404 NO_BUILD) or the store is off (501), and
+ * the caller falls through to the StudioOne archive path unchanged.
+ */
+export async function chainFromStore(opts: {
+  day: string;
+  symbol: string;
+  tMs: number;
+  viewSide: "call" | "put";
+  wings: number;
+}): Promise<ChainContext | null> {
+  const q = new URLSearchParams({ day: opts.day, book: opts.symbol.toUpperCase(), t_ms: String(Math.round(opts.tMs)) });
+  let res: Response;
+  try {
+    res = await fetch(`/api/me/quant/chain?${q}`, { credentials: "same-origin", cache: "no-store" });
+  } catch {
+    return null;
+  }
+  if (!res.ok) return null;
+  const body = (await res.json()) as {
+    time_ms: number; spot: number | null; content_hash: string;
+    rows: { strike: number; side: string; mid: number | null; bid: number | null; ask: number | null;
+            delta: number | null; gamma: number | null; theta: number | null; vega: number | null; iv: number | null }[];
+  };
+  if (!Array.isArray(body.rows) || !body.rows.length) return null;
+  const contracts = new Map<string, LadderRow>();
+  for (const r of body.rows) {
+    const side = r.side === "P" || r.side === "put" ? "put" : "call";
+    contracts.set(contractKey(side, r.strike), {
+      strike: r.strike, side, mid: r.mid, bid: r.bid, ask: r.ask,
+      delta: r.delta, gamma: r.gamma, theta: r.theta, vega: r.vega, iv: r.iv,
+    });
+  }
+  const ctx: ChainContext = {
+    symbol: opts.symbol, viewSide: opts.viewSide, spot: body.spot,
+    strikeStep: null, wings: opts.wings, contracts,
+    asOf: new Date(body.time_ms).toISOString(), contentHash: body.content_hash,
+  };
+  rememberChain(ctx);
+  return ctx;
+}
+
 export async function fetchChainAtT(opts: {
   day: string;
   symbol: string;
@@ -140,6 +185,11 @@ export async function fetchChainAtT(opts: {
   wings: number;
   get?: ArchiveGet;
 }): Promise<ChainContext | null> {
+  // Quant Lab store first — the compressed [C][T] book, if this day is built.
+  if (!opts.get) {
+    const fromStore = await chainFromStore(opts);
+    if (fromStore) return fromStore;
+  }
   const get = opts.get ?? defaultArchiveGet;
   const from = new Date(opts.tMs - 1500).toISOString();
   const to = new Date(opts.tMs + 1500).toISOString();
