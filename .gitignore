@@ -39,3 +39,6 @@ server/var/
 
 # Local dev stub for LABS_WIKI_ROOT when no lab-wiki checkout is present
 .dev-wiki/
+
+# Quant Lab hot store (built on the collector, copied here; never committed)
+.quant-store/
