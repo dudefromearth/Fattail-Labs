@@ -1,5 +1,7 @@
 # ATRV Track A — measurement note, 2026-09-05/06
 
+*Revised 2026-09-06 after the second StudioOne run (`28a6d22`): four PENDING items closed, one opened.*
+
 **Status: MEASUREMENT NOTE. Not a spec. Not product law.** Nothing here amends ATRV,
 SSR-MEXP, QLAB or AZ-ALGO. Anything that should, goes through Foxtrot (host/format),
 Sheldon (types touching estimators), Coach, and a decision-log entry — not through this file.
@@ -26,8 +28,8 @@ figure is tagged:
 | Corpus | `/Volumes/FatTail2TB/fattail-market-data/ssr/live_capture`, era-1 layout `day=D/chain/<SYM>/snap-*.json` |
 | Days | `2026-09-01` … `2026-09-04` (Tue–Fri). `2026-09-05` is a Saturday and is correctly empty |
 | Python | 3.x system; `zstandard 0.25.0` installed for jobs 2–4 |
-| Tree at run time | `d756df4` for the probe / encode / layout runs; the first bench ran at `7bd496e` |
-| Raw outputs | `docs/evidence/{atrv-bench-era1,mexp-field-probe,atrv-encode,atrv-layout-warm,atrv-layout-cold}.{txt,json}` — **on StudioOne, not yet committed** |
+| Tree at run time | `d756df4` for the probe / encode / layout runs; `4498a02` for transpose, per-field and per-book; the first bench ran at `7bd496e` |
+| Raw outputs | **Committed at `28a6d22`** — 15 files under `docs/evidence/`: bench, probe, encode, encode-perfield, encode-perbook, layout-warm, layout-cold, transpose |
 
 Cache state: **warm** throughout. `sudo purge` requires a password and was not run, so
 no figure below is a true cold number. Where cold matters it is said.
@@ -63,6 +65,20 @@ per-file overhead, not byte throughput. §3 below tests which.
 At ~11,700 snapshots per book-day that implies 6–28 books per day. **MEASURED count,
 MODELLED interpretation** — OD-2 owns the reconciliation.
 
+**Bytes per day. MEASURED** from `atrv-bench-era1.json`:
+
+| Day | Files | Raw JSON | Per file |
+|---|---|---|---|
+| 09-01 | 217,793 | 4.25 GB | 20.5 KB |
+| 09-02 | 330,224 | 7.25 GB | 23.0 KB |
+| 09-03 | 74,609 | 1.48 GB | 20.7 KB |
+| 09-04 | 261,019 | 5.72 GB | 23.0 KB |
+
+**RETRACTED by this:** SSR-MEXP §5.1's *≈1.6 GB/day* (MODELLED). Measured raw is
+**2.7–4.5× that.** The read rate on 09-02 was 7.25 GB / 126 s ≈ **59 MB/s** — far below
+what the volume can deliver sequentially, which is the per-file-overhead signature §3 then
+confirmed.
+
 ---
 
 ## 2. What the archive carries
@@ -82,9 +98,16 @@ AT-ATRV-29, and AZ-ALGO E50 **as written**. After-tax §14 waits on era-2. Packa
 on era-1 remains a lookup.
 
 **`expiration` present in the payload is not era-2.** The era distinction is the *path*
-(`exp=YYYY-MM-DD/`), not a row field, and a present field is not multiple expirations
-captured. Distinct-expiration count per day is **PENDING** (`atrv-encode-experiment.py`
-now reports it). AT-MEXP-13/14 stand.
+(`exp=YYYY-MM-DD/`), not a row field. **Distinct expirations captured: 0 — MEASURED**
+(`atrv-encode-perbook.txt`). The key exists; the value is empty. Era-1 is 0DTE-only and
+labelled as such. AT-MEXP-13/14 stand.
+
+**`last_updated` — a per-row field no spec names. MEASURED present** on every XSP row,
+integer, ~1.7e12 magnitude (an epoch-milliseconds timestamp; float32 damages 100% of them,
+which is what a 41-bit integer does in a 24-bit mantissa). If this is the vendor's quote
+update time it is **ATRV §3.6 gap 2 (quote staleness) on era-1 after all**, under a name
+the probe was not looking for. If it is the collector's write time it is nothing. **Semantics
+PENDING** — one look at the vendor's field documentation settles it; do not assume.
 
 ---
 
@@ -114,6 +137,26 @@ result — correctly.
 0.002% of the 2 s budget. **MEASURED.** Scope: a mark for a structure *known when the
 snapshot arrives*. It is a registration list on the tap. It does not replace `[C][T]`.
 
+### 3.1 The closed-day transpose — pack → `[C][T]`
+
+`atrv-layout-experiment.py --transpose` @ `4498a02` · XSP, 6,000 snapshots, pack=30, warm
+
+| Source | read + parse + transpose | C | T | 4-leg gather |
+|---|---|---|---|---|
+| A loose JSON | 3.22 s | 51 | 6,000 | 1.54 ms |
+| C packs | **3.02 s** | 51 | 6,000 | 1.63 ms |
+| D packs + zstd | 3.10 s | 51 | 6,000 | 1.61 ms |
+
+**MEASURED. Projected full day: ~6 s from packs.** The nightly transpose is **cheap**, as
+the advisor's hypothesis had it. `C` was discovered as it grew — the closed-day answer to
+the ratcheting band — and no absent cell was filled.
+
+Scale caveat: XSP is a 51-contract book. A 200-contract SPX book scales roughly linearly —
+call it ~25 s. Still nothing. Packs vs loose JSON at 1.07× here is a warm, single-book,
+6k-file sample — not a storm — and says nothing against §3's 2.27×.
+
+**This closes §5 item 1.** The in-session `[C][T]` argument has no remaining evidence.
+
 ---
 
 ## 4. Encoding — lossless size
@@ -129,15 +172,45 @@ snapshot arrives*. It is a registration list on the tap. It does not replace `[C
 
 **float32 does not represent 76.6% of values exactly. MEASURED.** ATRV §2.2's `float32`
 is lossy by construction; byte-identical replay (AT-ATRV-20, AT-QLAB-2) cannot pass on it.
-**Per-field breakdown is PENDING** — the aggregate hides whether prices (cent grid, unambiguous)
-or greeks (need a stated quantum) are the problem. Law until the table exists: quotes are
-scaled ints; greeks get an explicit scale or stay out of the byte-identical AT.
 
-**Predictor sweep: RETRACTED as run.** "Strike wins on every field" included `volume` and
-`open_interest`, monotone counters that cannot prefer a strike neighbour — a tell. Cause:
-snapshots were concatenated book-major, so the time axis was scrambled. Fixed in `3f65c47`
-(`--symbol`). **Per-book rerun PENDING.** The synthetic result (planar ≈ 2× on prices and
-greeks) is **MODELLED** until then.
+**Per field — MEASURED** (`atrv-encode-perfield.txt`):
+
+| Field | Inferred scale | float32 damaged |
+|---|---|---|
+| bid, ask | 100 (cents) | 92.7%, 88.4% |
+| mid | 1,000 (half-cents) | 87.0% |
+| volume, open_interest | 1 | **0%** — integers survive |
+| last_updated | 1 | 100% — a 41-bit integer |
+| **delta, gamma, theta, vega, iv** | **10¹⁷ – 10²⁰** | 100% |
+
+**The greek scales are the finding.** The vendor's greeks are float64 with noise far below
+any meaningful quantum; "lossless" preserved a gamma of `2.3e-17`. On the per-book run that
+made the greeks **98% of the compressed output** (411–720 KB each against ~6 KB for every
+quote and counter) and made *delta+varint* (14.3 MB) **larger** than plain int32 (8.6 MB).
+
+So the advisor's split is confirmed and sharpened: **quotes sit on a tick grid, where "exact"
+is well-defined and free. Greeks do not, and "lossless" is the wrong standard for a computed
+double.** The honest standard is *exact at a declared quantum*, with the max error introduced
+reported beside it, and the raw bytes remaining in the pack. `atrv-encode-experiment.py`
+@ `19f23d1` implements `--greeks-quantum`; on a fixture with vendor-style noise the ratio
+went **11.2× → 101×** at 1e-6 with max error 5.0e-07. **Real-data rerun PENDING.**
+
+**Per-book size, MEASURED:** XSP, 3,000 snapshots — JSON 68.6 MB → **5.1 MB, 13.5×**,
+with greek noise intact. That figure is a **floor**; the mixed-book 26.1× is not the
+comparable number and is retired.
+
+**Predictor sweep, per book — MEASURED** (`atrv-encode-perbook.txt`, real time axis):
+
+| Field | Winner | Why it makes physical sense |
+|---|---|---|
+| ask, mid, volume, OI, last_updated | **time** | a quote barely moves in 2 s; counters are monotone |
+| bid | strike (by 0.1 KB) | tie |
+| delta, gamma, theta, vega, iv | **strike** | a smile is smooth across strikes |
+
+The scrambled-axis result ("strike on every field") is **retired**. The split is the one
+Grok predicted from first principles. On quotes the predictors tie at ~6 KB — there is
+nothing left to win — so the per-field choice matters only for greeks, and only after their
+quantum is declared.
 
 **Smoothness is a codec on `present = 1` cells only.** Predicting an absent cell from its
 neighbours is interpolation (ATRV AT-ATRV-5/6). Any spec sentence that cites a smoothness
@@ -153,8 +226,8 @@ Recorded here so they are not fished out later.
    That figure was measured on **loose JSON files** — the old layout. A nightly transpose
    in a world of packs reads ~11k pack files, not 330k JSON files. The exhibit argues against
    JSON-on-disk, which both designs already abandon. It does not argue against a closed-day
-   build. **Pack → `[C][T]` timing is PENDING** (`1e999fe`, `--transpose`); hypothesis on
-   record: it is cheap.
+   build. **Pack → `[C][T]` timing is now MEASURED at ~6 s/day (§3.1).** Hypothesis held.
+   Closed.
 2. **"A 6.6 KB columnar write per snapshot is smaller than the 23 KB JSON, so co-write it."**
    Withdrawn. That 6.6 KB is a **moment** — all strikes at one `t`, column-ordered. It is
    still snapshot-major. Writing it in-session does not yield the gather; the transpose is
@@ -171,23 +244,27 @@ socket loop is allowed to be fragile.
 
 **Settles (MEASURED):** transpose waste is real and large · read, not parse, dominates on
 loose JSON · depth is absent on era-1 · float32 is lossy on this data · packing beats
-compression for speed, compression wins storage, both compose · in-stream marking is free.
+compression for speed, compression wins storage, both compose · in-stream marking is free ·
+**the nightly transpose is ~6 s/day and is not a problem** · era-1 captured one expiration ·
+quotes compress to nothing under any predictor; greeks are the whole size question, and
+"lossless" is the wrong word for them.
 
 **Opens (each with a run attached, not a paragraph):**
 
 | | Question | Run |
 |---|---|---|
 | **OD-ATRV-5** (proposed) | Hot book encoding — plain scaled-int mmap vs delta+varint. Cannot mmap a varint stream and keep 26× | tier benchmark |
-| — | Nightly transpose cost from packs | `--transpose`, PENDING |
-| — | Per-field float32 damage; greeks' quantum | table from `atrv-encode.json`, PENDING |
-| — | Per-book predictor | `--symbol --predictors`, PENDING |
-| — | True cold layout numbers | `sudo purge` + rerun, PENDING |
-| **OD-2** | File count vs SSR-MEXP §5.1 model | Foxtrot |
+| — | ~~Nightly transpose cost from packs~~ | **MEASURED ~6 s/day. Closed.** |
+| — | ~~Per-field float32 damage~~ | **MEASURED. Closed** — greeks need a quantum |
+| — | **Greek quantum** — 1e-6 proposed; Sheldon's call, it touches estimators | rerun with `--greeks-quantum 6`, PENDING |
+| — | ~~Per-book predictor~~ | **MEASURED. Closed** — time for quotes, strike for greeks |
+| — | `last_updated` semantics — vendor quote time or collector write time? | vendor docs, PENDING |
+| — | True cold layout numbers | `sudo purge` + rerun, PENDING (needs a terminal password) |
+| **OD-2** | File count **and bytes/day** vs SSR-MEXP §5.1 — both off by 3–20× | Foxtrot |
 
 ---
 
-## 7. Commit the raw outputs
+## 7. Raw outputs
 
-The `.txt`/`.json` under `docs/evidence/` exist only on StudioOne. They contain timings,
-key names and counts — no market values, no secrets — and should be committed from that
-host so this note points at bytes rather than at a chat.
+Committed from StudioOne at **`28a6d22`** — 15 files under `docs/evidence/`. Timings, key
+names and counts only; no market values. This note cites those bytes.
