@@ -4,6 +4,196 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-06 — DL-676 AZ-ALGO v2.3.4 · the promotion gate cites the tax
+
+**Decision.** `Specs/FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v2.3.4.md` supersedes
+v2.3.3. **Errata only** — no geometry change, no product decisions, no formula change to the
+two clauses, no reopening of E44–E48. BUILD AUTHORITY remains **SUSPENDED**; `AZALGO-W0` does
+not cover this file. Advisor review accepted v2.3.3's E44–E48 as P0-closing; these three are
+what that review found still open in the *document*, as opposed to open in a person's hands.
+
+| # | What landed |
+|---|---|
+| **E49** | §0's E37 history row and the §17 errata index both still printed `move_unit = … × √HORIZON_MIN × spot` — the naked minute count E44 corrected — with no pointer to E44, **eight hundred lines above** the live §9.4.1 (verified correct and unchanged). Both marked `SUPERSEDED BY E44`, scoped to the formula: the key and the joint `(HORIZON, P_BASE)` calibration stand |
+| **E50** | §14 cites ATRV. Criterion 3 is a **taxed shape transform** (ATRV §3.7, AT-ATRV-26) — untrailed versus trailed, each tail separate — not two fold counts on mid-marks. Era-1 evaluations are `idealised` and **do not promote** (AT-ATRV-29) |
+| **E51** | `LABS_ALGO_REGIME_FOLD_ENABLED`, default **false**, fail loud. While false clause A is computed and logged but emits no Fold suggested on its own |
+
+**Why E49 matters beyond the two lines.** This is the **fourth partial sweep** in this
+document — a defect fixed in one place and left standing in its twin — and the first one
+caught *before* a builder read the stale line rather than after. The historical text is
+correct to preserve; an errata log records what was written. An **unmarked** superseded
+formula is indistinguishable from a current one, and `move_unit` is the quantity `PaR` is
+quadratic in.
+
+**Why E50 is a gate and not a citation.** A three-strike butterfly is four contracts, so a
+round trip crosses **eight contract-spreads** — 13–67% of a $300 debit at plausible spreads
+(ATRV §3.7). A guide that improves the top return band on mid-marks can lose it entirely to
+friction. §14.3 previously had no sentence preventing exactly that reading, and this spec
+cited ATRV **zero times**. It now cites it 21 times.
+
+And era-1 cannot answer it at all: the tax's probability component is fitted from
+`bid_size`/`ask_size`, which the era-1 write path discarded and SSR-MEXP §3.1 makes
+forward-only. Package `PaR` on era-1 remains a **lookup available today** — the two claims
+are different and E50 exists so they are not conflated.
+
+**Why E51 is a switch.** §16 already said in prose that a packet painting clause A outside
+AZALGO-REGIME's gate ships a fold the member cannot see coming. Between P2 computing clause A
+and P3/P4 ticking a Demo, prose was the only thing stopping a Fold-suggested-from-A reaching
+a member. **Law with no switch is E48's defect class under another name.**
+
+**New:** AT-ALGO-60, 61, 62. **OD-ALGO-12 opened** — the `approaching` visual law is still a
+phrase list (no glyph, no position on the Guide object, no reduced-motion, no HUD fallback)
+and **blocks AZALGO-REGIME**. Echo and Tango owe one page; the spec declines to invent it.
+
+**Still blocking BUILD:** handwritten goldens 19–27 and 27c (Hotel) · re-record 1–8, 17, 18 ·
+OD-ALGO-11 `REGIME_NEAR_FRAC` as a stamped constant (Coach) · OD-ALGO-12 (Echo · Tango) ·
+Coach re-stamp of starting constants.
+
+**Commit:** `8af924c`.
+
+---
+
+## 2026-09-06 — DL-675 ATRV v0.8 · four self-contradictions closed in the read API
+
+**Decision.** `Specs/FatTail-Labs-Archive-Traversal-API-Spec-v0_8.md` supersedes v0.7. Still
+**DRAFT, not BUILD AUTHORITY.** The design stands unchanged — snapshot-major write is the
+transpose of contract-major analysis reads, and the answer is a derived, rebuildable,
+non-authoritative columnar store. What changed is four places where the document contradicted
+**itself** or SSR-MEXP.
+
+| Where | The contradiction |
+|---|---|
+| **§3.8** | The paragraph reading *"Not a mean."* was immediately followed by a payload returning `worst_1pct_mean`, `best_1pct_mean` and a featured `p50` — two means and a median, in the default shape, of a distribution the same document argues is **bimodal as the normal case**. For a fly the median sits in the valley between the modes |
+| **§3.8** | A mandated **standard error** — which estimates the precision of the *mean* §3.10 bans, and assumes the finite variance that already disqualified Sharpe |
+| **§3.5** | **AT-ATRV-11 contradicted AT-ATRV-10 three paragraphs above it.** Archived Δ and Γ were quoted at the *observed* spot; carrying them unchanged to a hypothetical spot is sticky-strike applied to the greek surface — a silent model wearing an archived name, which is the exact defect AT-ATRV-10 exists to prevent |
+| **§3.6** | AT-ATRV-12…18 read as runnable on era-1, which discarded **every** field that closes fidelity gaps 1–3 and, SSR-MEXP §3.1 being forward-only, never will have them |
+
+**Resolutions.**
+
+- **The ECDF is the object.** The quantile band set survives — stochastic dominance needs it —
+  but as a **set**: no single band may be extracted or rendered alone, and there is no `p50`
+  field. Tail means are honestly named `tail_cvar` (a CVaR *is* a legitimate tail statistic)
+  and marked **researcher-only**. `display_legal[]` is **returned, not inferred**, so a Lab
+  Bot builder is not left guessing where QLAB's publish seam falls — and the guess would be
+  `p50`.
+- **`stability{n_half_vs_n}`** replaces the standard error: recompute the bands on a random
+  half of the paths and compare. Order-free, assumes no moment, and answers *"was N enough to
+  separate these two?"* directly instead of through a moment the distribution does not offer.
+- **Lookup at the observed `t`; model on the grid.** Package greeks and `PaR = Δ·m + ½Γ·m²` at
+  the observed state are a lookup — which is what AZ-ALGO §14 asks for. Greeks at hypothetical
+  spots live inside `model{}`. The package sum is **signed** (AZ-ALGO **E39**, which already
+  found this arithmetic wrong inside a landed fixture).
+- **`fidelity: era1_no_depth`.** An endpoint whose answer needs depth, quote age, or an
+  intraperiod bound **refuses** rather than defaulting — the presence-mask rule (§2.3) applied
+  to a whole era. This is also the split SSR-MEXP §1.10 needed.
+
+**Also:** `fitted` leaves the callable stickiness enum (§3.5.1) — a value backed by a map
+nobody has built is OD-ALGO-9's defect family. §5 stops pinning analysis to **StudioOne** and
+names the lab node QLAB §3 places. §5 gains the layering sentence: **ATRV serves, QLAB
+governs** — an unregistered `/api/simulate` is the 11pm holdout leak QLAB AT-QLAB-23 fails.
+
+**New:** AT-ATRV-27…31 · OD-ATRV-5 (stickiness map, Sheldon) · OD-ATRV-6 (fill model,
+Sheldon) · OD-ATRV-7 (`tail_cvar` display-legality — default **no**) · OD-ATRV-8 (retention
+alignment with QLAB).
+
+**Commit:** `e2b04b1`.
+
+---
+
+## 2026-09-06 — DL-674 Quant Lab seated · backfill is a workload · Lab Bot is not a new object
+
+**Decision.** `Specs/FatTail-Labs-Quant-Lab-Topology-Spec-v0_3.md` (v0.1 → v0.2 → v0.3, same
+day) places the Quant Lab against DL-673's freed hardware. Still **DRAFT, not BUILD
+AUTHORITY.**
+
+**The layout, and the tension that dictates it.** A Monte Carlo sweep across months (ATRV
+§3.8) pegs a machine for hours. **Studies and serving therefore cannot share hardware** — that,
+not hostnames, settles the topology: **collector captures · lab node builds and studies ·
+production serves published artifacts only**. The publish seam is the whole architecture:
+the Lab produces, production serves, nothing member-facing calls the Lab live, and the corpus
+is reachable by two machines.
+
+**Producer with a queue (OD-QLAB-3, resolved by Coach).**
+
+> *"The member interface to the quant lab is indirect, or not real-time … the user simply
+> selects the one they want, with minor configuration … if not, it will become another that
+> will get delivered in a timely manner."*
+
+On-grid configurations are served instantly from a published artifact; off-grid ones are
+**queued and delivered**, never computed live. **The member never waits on a computation —
+they get an answer or a commitment.** The load-bearing rule is that **the configuration UI
+*is* the study grid**, generated from it rather than authored separately, so hit rate is a
+number chosen at grid-sizing time rather than an emergent property of two teams guessing at
+each other. Interpolation between grid points is **forbidden**: these are distributions, and
+the midpoint of two distributions is not the distribution of the midpoint.
+
+**Three corrections v0.3 made to its own earlier drafts:**
+
+1. **Backfill is a sixth workload, and it must never read the collector.** v0.2 modelled only
+   the steady-state nightly build — one day, ~1.6 GB. A **new derived model re-reads all
+   history** (~400 GB/yr at era-2 rates), which is precisely the function the Read API forbids:
+   *"the next function added must not silently halve the tap's headroom."* Coach named this as
+   a required capability, not an edge case. So **the Lab holds its own corpus mirror**, and
+   ATRV §2.1's *"rebuildable cache"* stops secretly depending on the collector.
+2. **A Lab Bot is not a new object.** v0.2 introduced "Lab Bots" with their own lifecycle when
+   **DL-247** and `Specs/FatTail-Labs-Bot-Marketplace-Framework-Spec-v0.1.md` already define
+   FatTail Lab Bots — admin-versioned, house catalog as SoR, delivered into Strategy Lab
+   Curate. That was a **parallel store of truth** committed in a spec that invokes the rule
+   against them. Catalog identity and versioning return to the Marketplace; QLAB owns the
+   **study and its grid** only. On fork into Design (DL-232 phases), **study artifacts do not
+   travel** — the pane clears and names `unstudied · your design`, because a manifest-backed
+   number shown for a structure that was never studied is worse than nothing: it is credible.
+3. **Reproducibility rests on order-free operators, not a thread pin.** ATRV §3.9 makes the
+   random stream `f(seed, strategy_id, path_index)`, so per-path results are schedule-
+   independent (**AT-ATRV-23**). The residual is the *reduction across* paths — and §3.10's ban
+   on the mean removes the only order-dependent one. AT-QLAB-2 survives **because** the two
+   specs agree; that was an accident and is now law. `OMP_NUM_THREADS=1` is explicitly
+   rejected — it would buy determinism by discarding the parallelism ATRV §3.9 licenses.
+
+**Amendment to DL-673, open item 1.** Coach confirms **DudeOne and DudeTwo are identical
+configurations** (M4-class, 24 GB, 500 GB SSD), with 2–4 TB drives to be attached later. The
+Dude inventory question therefore **can no longer swap the design, only the label**, and QLAB
+§3 names roles with **no hostname at all** until Foxtrot stamps one in `infra/deploy.md`.
+DudeTwo, once recommissioned, is an exact peer — a second lab node or a warm standby, **not**
+a third environment. MiniTwo is removed from the allocation.
+
+Two consequences worth recording:
+
+- **500 GB is not a constraint.** Derived store ~27 GB/yr, compressed corpus mirror ~40 GB/yr —
+  both together fit for roughly six years. Only a **raw** mirror (~400 GB/yr) needs the big
+  drives, and on a parse-dominated path a compressed mirror is not measurably slower.
+  **OD-QLAB-10** carries the measurement.
+- **Identical Dudes cannot satisfy AT-QLAB-2**, which asks for reproduction on a different host
+  and core count. That check runs against the collector or MiniTwo.
+
+**Evidence status — recorded deliberately.** `scripts/atrv-bench.py` has **not** been run
+against the era-1 corpus and no output is committed. Parse dominance (~82%, from a smoke
+fixture), the ~13 s pull, the ~3.4 s build and the M4-over-M1-Max argument are all **modelled**
+and marked as such in §3. **None is capacity law until track A runs.** If parse is not
+dominant, the lab-node choice needs rewriting before anyone builds against it.
+
+**Also in v0.3:** the admin surface is a **lab notebook, not a dashboard** — hypothesis
+registered before a query executes, the holdout physically unservable, a running hypothesis
+count multiplicity correction must consume, in-sample and out-of-sample never collapsed — and
+those controls bind the **study runner**, not the notebook, because a control only the UI
+enforces is a costume. Admin export is a **publish event**. Day grades are a written object
+graded by the **collector** (so a grade is evidence, not self-assessment), and a regrade makes
+replay **fail closed**. The publish transport is named: production **pulls**, and "published"
+means production serves the artifact with the Lab powered off. ATs renumbered **1–26** in
+document order.
+
+**Stamped-pending, drafted so nothing blocks:** **OD-QLAB-8** per-bot grid ceiling (Coach,
+drafted 64) · **OD-QLAB-11** studied Lab Bot as the Marketplace object or a linked record
+(India, drafted as one object with a study attached).
+
+**Blocking:** OD-QLAB-12 — `cadence_threshold` and the named decision-window table (Sheldon ·
+Hotel). AT-QLAB-11 cannot fail a study that consumed a **C** it believed was a **B** without
+them, and a C-grade resting on *"e.g. ~15:45 ET"* is not a grade.
+
+**Commits:** `653e468` (v0.1) · `974b0d6` (v0.2) · `41c659d` (v0.3).
+
+---
+
 ## 2026-09-05 — DL-673 Hosts pillar reopened · staging retired · DudeOne seated as the analysis node
 
 **Decision (Coach, 2026-09-05).** The hosts pillar as written in `CLAUDE.md` no longer
