@@ -141,3 +141,16 @@ def test_time_lookup_never_interpolates(built):
     assert st.t_at_or_before(t5) == 5
     assert st.t_at_or_before(t5 + 999) == 5        # inside the 2 s gap -> the snapshot that WAS the surface
     assert st.t_at_or_before(st.time_ms(0) - 1) is None
+
+
+def test_last_updated_nanoseconds_become_quote_age_ms(built):
+    """The vendor stamps in NANOSECONDS (19 digits, real archive). The store
+    holds an int32 offset from time[t]; a 250-750 ms stale quote must come back
+    as exactly that, not as a scale violation and not as garbage."""
+    _, path, meta = built
+    assert meta["fields"]["last_updated"]["scale_violations"] == 0
+    st = DayStore(path)
+    c = st.find(630.0, "C")
+    off = st.value("last_updated", c, 5)
+    assert off is not None and -800 <= off <= -200          # quote OLDER than the snapshot
+    assert st.last_updated_ms(c, 5) == st.time_ms(5) + off

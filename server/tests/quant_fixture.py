@@ -25,6 +25,8 @@ def write_day(root: Path, day: str = "2026-09-04", book: str = "XSP",
         spot += rng.uniform(-0.08, 0.08)
         lo = 620 - (n // 60)          # ratchet: widens every 60 snaps
         hi = 640 + (n // 60)
+        ts = t0 + timedelta(seconds=2 * n)
+        ts_ms = ts.timestamp() * 1000
         rows = []
         for k in range(lo, hi + 1):
             for side in ("C", "P"):
@@ -41,7 +43,9 @@ def write_day(root: Path, day: str = "2026-09-04", book: str = "XSP",
                     "strike": float(k), "side": side, "is_spot": abs(k - spot) < 0.5,
                     "ticker": f"O:{book}{day.replace('-', '')[2:]}{side}{k*1000:08.0f}",
                     "mid": mid, "bid": bid, "ask": ask, "mid_source": "quote",
-                    "volume": n * 3 + k % 7, "last_updated": int(t0.timestamp() * 1000) + n * 2000,
+                    "volume": n * 3 + k % 7,
+                    # vendor sends NANOSECONDS; a quote a few hundred ms stale
+                    "last_updated": (int(ts_ms) - 250 - (k % 5) * 100) * 1_000_000,
                     "open_interest": 1000 + k,
                     "delta": None if null_g else dl,
                     "gamma": None if null_g else g,
@@ -49,7 +53,6 @@ def write_day(root: Path, day: str = "2026-09-04", book: str = "XSP",
                     "vega": None if null_g else g * 400,
                     "iv": 0.15 + 0.0004 * abs(k - spot) + rng.uniform(-1e-13, 1e-13),
                 })
-        ts = t0 + timedelta(seconds=2 * n)
         doc = {
             "provenance": "test", "captured_at": ts.isoformat().replace("+00:00", "Z"),
             "phase": "rth", "symbol": book, "expiration": day, "topic": "chain",

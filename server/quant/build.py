@@ -82,6 +82,21 @@ def snap_time_ms(doc: dict, fname: str, day: str) -> int | None:
     return None
 
 
+# ---------------------------------------------------------------- stamps
+
+def epoch_to_ms(v: int) -> int:
+    """Normalise an epoch stamp to milliseconds by magnitude.
+    ns ~1.8e18 (19 digits) · µs ~1.8e15 · ms ~1.8e12 · s ~1.8e9."""
+    a = abs(v)
+    if a >= 10**17:
+        return v // 1_000_000
+    if a >= 10**14:
+        return v // 1_000
+    if a >= 10**11:
+        return v
+    return v * 1000
+
+
 # ---------------------------------------------------------------- scaling
 
 def to_int(v, scale: int, *, quantise: bool) -> tuple[int, float] | None:
@@ -160,12 +175,13 @@ class DayBuild:
                 if v is None:
                     continue
                 if f in STAMP_FIELDS:
-                    # epoch ms overflows int32; the OFFSET from the snapshot's own
-                    # time fits, loses nothing given time[t], and IS the quote-age
-                    # quantity ATRV §3.6 gap 2 asks for. Semantics of the vendor
-                    # field itself are still PENDING (measurement note §2).
+                    # epoch stamps overflow int32; the OFFSET from the snapshot's
+                    # own time fits, loses nothing given time[t], and IS the
+                    # quote-age quantity ATRV §3.6 gap 2 asks for. The vendor
+                    # sends NANOSECONDS (19 digits, measured on the real archive);
+                    # normalise by magnitude rather than assume a unit.
                     try:
-                        v = int(v) - snap_ms
+                        v = epoch_to_ms(int(v)) - snap_ms
                     except (TypeError, ValueError):
                         continue
                 got = to_int(v, self.scale[f], quantise=(f in self.quantised))
