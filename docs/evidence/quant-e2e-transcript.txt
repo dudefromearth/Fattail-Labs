@@ -1,0 +1,38 @@
+# Quant Lab end-to-end evidence — FastAPI TestClient, in-process, REAL store server/data/quant-store (XSP 2026-09-04)
+# tree: d0e1106  store sha1: ffc4560cb18a249a
+
+$ GET /api/me/quant/days
+  HTTP 200  days=[{"day": "2026-09-04", "book": "XSP", "T": 20472, "C": 110, "greeks_quantum_decimals": 6}]  greeks_quantum_decimals=6
+
+$ GET /api/me/quant/spot?day=2026-09-04&book=XSP
+  HTTP 200  T=20472  strikes=55 (746..800)  spot[0]=774.77
+
+$ GET /api/me/quant/series?contracts=771P,767P&fields=mid,iv,delta
+  HTTP 200  23 ms  values.mid rows=2 x T=20472  quantised={'mid': False, 'iv': True, 'delta': True}  present[0] true=20472
+
+$ GET /api/me/quant/mark?legs=762P:+1,767P:-2,772P:+1
+  HTTP 200  17 ms  len(mark)=20472  withheld=0  note='withheld where any leg was absent — never interpolated (AT-ATRV-6)'
+
+$ GET /api/me/quant/chain?t_ms=14:00:01Z
+  HTTP 200  t=10424  lag_ms=2215  spot=773.92  rows=62  quantised=True  note='the snapshot at or before t — never a blend of two'
+
+$ POST /api/me/quant/simulate  {"day": "2026-09-04", "book": "XSP", "legs": "762P:+1,767P:-2,772P:+1", "t_entry": 10425, "t_exit": 16171, "paths": 2000, "seed": 1, "exit_kind": "target", "target_pct": 150}
+  HTTP 200  55 ms  n=2000 traded=1221  exit={'kind': 'target', 'pct': 150.0, 'hit': True, 'mark_at_hit': 0.905, 'debit_mid': 0.36}  bands={'p01': 43, 'p05': 44, 'p10': 44, 'p25': 44, 'p50': 44, 'p75': 45, 'p90': 45, 'p95': 45, 'p99': 45}
+  fidelity=era1_no_depth  fill_model=unfitted_pessimistic  display_legal=['ecdf', 'bands', 'modality', 'no_fill_rate', 'tax', 'stability', 'fidelity', 'assumptions', 'n', 'seed']  'p50' top-level? False
+  byte-identical rerun: True  sha256=892a6bf7f52095f4
+
+$ POST /api/me/quant/sweep  (every 60s 10:00->15:00, exit target 150% else 15:45)
+  HTTP 200  623 ms  entries=167  pooled=10202  target={'entries_hit': 38, 'of': 167, 'minutes_in_bands': {'p01': 27.936080666666665, 'p05': 30.668724166666667, 'p10': 32.453408333333336, 'p25': 36.04552916666667, 'p50': 43.58918333333334, 'p75': 62.297850000000004, 'p90': 78.35802000000001, 'p95': 80.64458833333333, 'p99': 84.44449066666668}}
+  bands={'p01': -109, 'p05': -94, 'p10': -88, 'p25': -69, 'p50': -33, 'p75': -6, 'p90': 64, 'p95': 70, 'p99': 78}  modes=3
+
+$ GET /api/me/quant/mark?legs=999C:+1
+  HTTP 404  CONTRACT_NOT_IN_BOOK 999C — never in the band this day
+
+$ POST /api/me/quant/simulate  (exit before entry)
+  HTTP 409  {'refusal': 'BAD_WINDOW', 'detail': 'entry+latency=16172, exit=10425, T=20472'}
+
+$ GET /api/me/quant/chain?t_ms=<before first snapshot>
+  HTTP 404  BEFORE_FIRST_SNAPSHOT
+
+$ GET /api/me/quant/days  (LABS_QUANT_* unset)
+  HTTP 501  {'error': 'QUANT STORE NOT CONFIGURED', 'api_version': 1}

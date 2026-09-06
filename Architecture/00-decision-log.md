@@ -4,6 +4,75 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-06 — DL-677 Quant Lab vertical slice built and demonstrated on real data · the distribution is live
+
+**Decision (Coach, 2026-09-06).** *"We need to finish this project today … end to end, not
+only the collection side, but also the player side … on Strategy Lab I want to at the very
+least demonstrate a Monte Carlo analysis from the compressed data … on the Options Lab I
+want the Time Machine working to its fullest capability with the compressed data."*
+
+Built, declared before touching, tested, and demonstrated on **XSP 2026-09-04**:
+
+| Piece | What | Evidence |
+|---|---|---|
+| Builder | `quant.build` — closed-day, runs on the collector, read-only against the archive, refuses to write inside it. One read of the day → **packs** (original bytes, length-prefixed, zstd, byte-identical on decode) + **`[C][T]` scaled-int columns** with presence mask | `meta.json`: 20,472 snapshots · 110 contracts · 1.4 M rows · 44 s · packs 473 → 41.6 MB · 739 cells vs snapshots, 0 mismatched |
+| Store | `quant.store` — mmap, presence-first, stdlib. Two absences never conflated (not-in-band vs null). Nothing interpolated; `t_at_or_before` returns the snapshot that *was* the surface | AT-ATRV-3, 5, 6 tests |
+| Monte Carlo | `quant.simulate` — over **fills** on the archived path. RNG = `f(seed, strategy_id, path_index)`. Every fill taxed. ECDF, bands as a set, modality, `no_fill_rate`, `stability` (no standard error), `fidelity`, `display_legal[]`. No `pnl`, mean, `p50` field, Sharpe, win rate. **Exit rules:** time, or **target +N% on the debit** resolved on the mid-mark. **Entry sweep** pools every entry minute | byte-identical rerun; 31 tests |
+| API | `/api/me/quant/{days,spot,series,mark,chain,simulate,sweep}` · 501 when unconfigured · partial `LABS_QUANT_*` aborts boot · every refusal named | `docs/evidence/quant-e2e-transcript.txt` |
+| Strategy Lab | `/app/strategy-lab/montecarlo` — member rules enforced in the component: gaps never bridged, bands as a set, no headline number, assumptions on the face | Coach screenshots |
+| Time Machine | chain at the playhead served from the store — one local read instead of up to nine StudioOne fetches; falls through for unbuilt days | `tmChainAtT.chainFromStore` |
+| Demonstration store | **`server/data/quant-store/day=2026-09-04/book=XSP`, committed (141 MB, `39aa7ee`)** so the slice runs from the repo alone. A one-off: recurring days go through the publish transport (QLAB §5.2), not git | |
+
+**Config keys (all four or none; malformed aborts boot):** `LABS_QUANT_STORE_ROOT`,
+`LABS_QUANT_GREEKS_QUANTUM`, `LABS_QUANT_FEE_PER_CONTRACT`, `LABS_QUANT_FILL_P_UNFITTED`.
+
+**Type law, stamped by the data.** Quotes are **scaled integers**, exact on their tick grid.
+Greeks are **quantised at a declared decimal count** with the max error introduced recorded
+in the store header — *not* "lossless," because the vendor's greeks carry float64 noise down
+to 1e-30 and preserving it made the greeks 98% of the output. ATRV §2.2's `float32` is
+**retired** (measured: 76.6% of values not exactly representable). Quantum value **6** is a
+starting constant; **Sheldon stamps it** (it touches every estimator).
+
+**Three corrections the real shape forced.** Rows carry `side` not `right` — the Track A
+experiments keyed on `right` and collapsed calls and puts into one id (C=51 in the note; the
+store has 110). `expiration` sits on the snapshot, not the row. `last_updated` is
+**nanoseconds**; stored as an offset from the snapshot time, which is the quote-age quantity.
+
+**What the day said, and what it does not settle.** Against Coach's placement rule (debit
+≤ 10% of width, one strike further OTM if needed): the rule-compliant put flies hit +150% on
+the debit before 10:50 and netted +122–134% after tax; held to the close instead they were
+flat — the **exit rule changed the reading of the entry rule**. Swept across every entry
+minute, the same fly hit on 38 of 167 entries; the 10:00 entry was the trade. **One day.
+Recorded as the first query, not as a finding.** It is a registered hypothesis for the grid
+with its falsifier attached (`docs/evidence/quant-e2e-2026-09-06.md` §5).
+
+**The fill model is a placeholder and every response says so.** `p_fill = 0.85` per leg-side
+is a constant, not a measurement; placement is uniform on [0.5, 1.0] of the half-spread; legs
+fill independently (a real fly is a complex order); time-to-fill is one snapshot. Labelled
+`fidelity: era1_no_depth · fill_model: unfitted_pessimistic` on every response.
+
+**Next job (Coach): a realistic fill-friction algorithm.** Direction stated: **spread-based
+fill probability first** (the store has the spread at every leg at every instant; fittable
+now from Coach's fill history joined to the market state at each fill), VIX as a regime dial
+on top, then **time-to-fill** — fills take 10–30 s, and a working order is exposed to the
+path and may be missed or re-seated. Shape may be designed now; **parameters are fitted, not
+chosen** (Sheldon, OD-ATRV-6). No made-up curve replaces the made-up constant.
+
+**Doctrine notes.** Spec-first was inverted for this slice by Coach's direction; every file
+was declared before touching, the characterization suite covers the behaviour, and ATRV
+v0.9 is written from this evidence rather than ahead of it. The archive was never written
+to. Capture was never touched.
+
+**PENDING for Delta:** full suite on the dev venv (Coach, MacBook) · real-server curl
+transcript · nav entry (Tango) · quantum stamp (Sheldon) · the pre-existing 31 TypeScript
+errors in `algoP1.fixtures.test.ts` are not from this work and were not touched.
+
+**Commits:** `074b747` builder/store/MC/API · `a021c3e` page · `51c82bb` Time Machine ·
+`39aa7ee` store · `8effbb9` ns fix · `4cb1fb5` mark strip · `843084c` sweep · `0261cfe`
+defaults · `d915521` NO_PATH_TRADED · `d0e1106` exit rule.
+
+---
+
 ## 2026-09-06 — DL-676 AZ-ALGO v2.3.4 · the promotion gate cites the tax
 
 **Decision.** `Specs/FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v2.3.4.md` supersedes
