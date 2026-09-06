@@ -1,6 +1,6 @@
 # ATRV Track A — measurement note, 2026-09-05/06
 
-*Revised 2026-09-06 after the second StudioOne run (`28a6d22`): four PENDING items closed, one opened.*
+*Revised 2026-09-06 after the second (`28a6d22`) and third (`31777de`) StudioOne runs. The encoding question is closed with a cited figure.*
 
 **Status: MEASUREMENT NOTE. Not a spec. Not product law.** Nothing here amends ATRV,
 SSR-MEXP, QLAB or AZ-ALGO. Anything that should, goes through Foxtrot (host/format),
@@ -193,7 +193,45 @@ is well-defined and free. Greeks do not, and "lossless" is the wrong standard fo
 double.** The honest standard is *exact at a declared quantum*, with the max error introduced
 reported beside it, and the raw bytes remaining in the pack. `atrv-encode-experiment.py`
 @ `19f23d1` implements `--greeks-quantum`; on a fixture with vendor-style noise the ratio
-went **11.2× → 101×** at 1e-6 with max error 5.0e-07. **Real-data rerun PENDING.**
+went **11.2× → 101×** at 1e-6 with max error 5.0e-07.
+
+### 4.1 The closing figure — greeks at a declared 1e-6 quantum
+
+`atrv-encode-experiment.py --greeks-quantum 6 --predictors` @ `19f23d1` · XSP, 3,000
+snapshots, zstd 10 · **MEASURED** (`atrv-encode-perbook-q6.txt`, committed `31777de`)
+
+| Form | Greeks "lossless" (noise kept) | **Greeks at 1e-6** |
+|---|---|---|
+| JSON as archived | 68.6 MB | 68.6 MB |
+| scaled int32 columns | 8.6 MB | 8.6 MB |
+| + delta-in-time + varint | 14.3 MB *(larger — noise)* | 7.0 MB |
+| + zstd | 5.1 MB — 13.5× | **1,019 KB — 69×** |
+| **+ per-field predictor** | — | **346 KB — 198×** |
+
+Quotes stay exact (cent grid; mid on a half-cent grid). Every greek is **QUANTISED**, labelled
+as such, **max error introduced 5.0e-07**, measured not assumed. Inferred noise floors were
+1e-17 (theta) down to **1e-30 (gamma)** — none of it information.
+
+**Per field at 1e-6, real time axis:**
+
+| Field | time | strike | winner |
+|---|---|---|---|
+| bid, ask, mid, volume, OI, last_updated | ~6 KB | ~6 KB | tie — nothing left to win |
+| delta | 60.6 KB | **26.7 KB** | strike, 2.3× |
+| gamma | 21.1 KB | **18.0 KB** | strike |
+| iv | 155.9 KB | **69.3 KB** | strike, 2.2× |
+| theta | 190.8 KB | **102.3 KB** | strike, 1.9× |
+| vega | 138.8 KB | **89.9 KB** | strike |
+
+With the noise removed the physical picture is clean: a smile is smooth across strikes, so
+greeks want the strike predictor, ~2×. Greeks are still **88% of the remaining bytes**
+(theta and iv especially); a coarser quantum would take more, and whether 1e-6 is the right
+number is Sheldon's call, not this note's.
+
+**Scaled to a year, MODELLED from these MEASURED ratios** (11,700 snapshots/day, ~28 books,
+250 days): per book-day **1.3 MB**; all books **~37 MB/day**; **~9 GB/year** for the entire hot
+store, against 1.0–1.8 TB/year of raw JSON. The stock 500 GB Dude SSD holds it with ~98% to
+spare; the 2–4 TB drives are for the verbatim packs, not for this.
 
 **Per-book size, MEASURED:** XSP, 3,000 snapshots — JSON 68.6 MB → **5.1 MB, 13.5×**,
 with greek noise intact. That figure is a **floor**; the mixed-book 26.1× is not the
@@ -247,7 +285,8 @@ loose JSON · depth is absent on era-1 · float32 is lossy on this data · packi
 compression for speed, compression wins storage, both compose · in-stream marking is free ·
 **the nightly transpose is ~6 s/day and is not a problem** · era-1 captured one expiration ·
 quotes compress to nothing under any predictor; greeks are the whole size question, and
-"lossless" is the wrong word for them.
+"lossless" is the wrong word for them · **the hot store is 198× smaller than the JSON at a
+declared 1e-6 greek quantum, quotes exact — ~9 GB/year for everything.**
 
 **Opens (each with a run attached, not a paragraph):**
 
@@ -256,7 +295,7 @@ quotes compress to nothing under any predictor; greeks are the whole size questi
 | **OD-ATRV-5** (proposed) | Hot book encoding — plain scaled-int mmap vs delta+varint. Cannot mmap a varint stream and keep 26× | tier benchmark |
 | — | ~~Nightly transpose cost from packs~~ | **MEASURED ~6 s/day. Closed.** |
 | — | ~~Per-field float32 damage~~ | **MEASURED. Closed** — greeks need a quantum |
-| — | **Greek quantum** — 1e-6 proposed; Sheldon's call, it touches estimators | rerun with `--greeks-quantum 6`, PENDING |
+| — | **Greek quantum** — 1e-6 measured at 198× (§4.1); coarser would take more. **Sheldon's to stamp** — every estimator reads it | stamp, not a run |
 | — | ~~Per-book predictor~~ | **MEASURED. Closed** — time for quotes, strike for greeks |
 | — | `last_updated` semantics — vendor quote time or collector write time? | vendor docs, PENDING |
 | — | True cold layout numbers | `sudo purge` + rerun, PENDING (needs a terminal password) |
