@@ -53,7 +53,20 @@ whether Navigator survives is answered in substance: **group coaching is the pro
 name is packaging. What expires at the end of the trial is coaching and the coaching Discord —
 never the tools (capacity over dependency, invariant 9, kept by design). Mike/India write the
 `observer-light` plan and its entitlement set into the identity spec; Lakesia's Observer
-lifecycle gets the extra state. Three consequences named there for the
+lifecycle gets the extra state.
+
+**What observer-light contains, and what IKI is (Coach, same day):** *"Observer Light gives a
+gratuitous Runner with a Heat map for picking strategies and an Analyzer for viewing them. IKI
+products are more pluggable products, like the heatmap, for the Runner."* This settles the
+naming question from earlier in the day: **the Runner and the Analyzer are Options Lab** (main
+service, DudeOne, paired with Practice and Journey); **IKI products are plug-ins to the Runner**
+— the heatmap is the first — produced by the K&I service on DudeTwo and published into the Labs
+app. The free package is therefore: Runner + one heatmap (pick) + Analyzer (view). Everything IKI
+sells afterwards is another plug-in for a Runner the member already has, which is the whole
+mechanism of the email offers. Consequence for the topology: the **plug-in contract between
+Runner and an IKI product is the seam between the two boxes**, and the Runner's template
+mechanism (Heatmap templates, LIM) is already that contract. HOST §2.1a row for "IKI Labs
+Runner + Analyzer" reads **Options Lab Runner + Analyzer** from here. Three consequences named there for the
 owners to pick up, none acted on here: (1) **1DTE on the show makes era-2 multi-expiration
 capture load-bearing** (SSR-MEXP) — the collector's Tuesday start is now show infrastructure;
 (2) the Option Bot service is a **paid** product living on the lab node — entitlement goes
