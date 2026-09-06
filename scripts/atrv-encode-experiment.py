@@ -214,6 +214,10 @@ def main() -> None:
     ap.add_argument("--root", required=True)
     ap.add_argument("--day")
     ap.add_argument("--limit", type=int, default=3000)
+    ap.add_argument("--max-contracts", type=int, default=400,
+                    help="cap distinct contracts held in memory (default 400). "
+                         "THIS RUNS ON THE COLLECTOR: capture never yields, so "
+                         "the cap is a safety limit, not a tuning knob")
     ap.add_argument("--predictors", action="store_true",
                     help="sweep time / strike / planar predictors per field")
     ap.add_argument("--json", help="write results here")
@@ -231,10 +235,12 @@ def main() -> None:
     codec_name, comp, real_zstd = pick_codec()
     print(f"archive : {root}  (read-only)")
     print(f"day     : {day.name}   {len(files):,} snapshots")
-    print(f"codec   : {codec_name}\n")
+    print(f"codec   : {codec_name}")
+    print(f"cap     : {a.max_contracts} contracts held in memory\n")
 
     # ---- read into column form, keeping the ORIGINAL values for verification
     raw_bytes = 0
+    kept: set = set()                               # contract cap -- see --max-contracts
     cols: dict[tuple, list] = defaultdict(list)     # (contract, field) -> [values]
     order: list[tuple] = []
     seen = set()
@@ -246,6 +252,10 @@ def main() -> None:
             if not isinstance(r, dict):
                 continue
             cid = (r.get("strike"), r.get("right"), r.get("expiration"))
+            if cid not in kept:
+                if len(kept) >= a.max_contracts:
+                    continue
+                kept.add(cid)
             for k, v in r.items():
                 if k in ("strike", "right", "expiration"):
                     continue
