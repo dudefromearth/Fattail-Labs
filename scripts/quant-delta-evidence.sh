@@ -3,6 +3,9 @@
 #
 # ▶ RUN ON: MacBook, from the repo root, with the dev API already running
 #   (scripts/dev-run-macos.sh) and .env sourced. Never on StudioOne.
+#   If the suite fails at conftest import with an anyio DeprecationWarning, the
+#   venv is behind requirements.txt (anyio must be <4.10):
+#       cd server && .venv/bin/pip install -r requirements.txt
 #
 # Produces docs/evidence/quant-delta-macbook-<date>.txt containing:
 #   1. the full characterization suite on the dev venv (not --noconftest)
@@ -27,8 +30,10 @@ mkdir -p docs/evidence
   echo
   echo "## 1. Full characterization suite (server/.venv, conftest ON)"
   echo '$ cd server && .venv/bin/python -m pytest tests -q'
-  ( cd server && .venv/bin/python -m pytest tests -q 2>&1 | tail -25 )
-  echo "exit: ${PIPESTATUS[0]}"
+  PYLOG="$(mktemp)"
+  ( cd server && .venv/bin/python -m pytest tests -q >"$PYLOG" 2>&1 ); RC=$?
+  tail -25 "$PYLOG"; rm -f "$PYLOG"
+  echo "exit: ${RC}"
   echo
   echo "## 2. Real-server curl transcript (http://localhost:\$LABS_PORT)"
   B="http://localhost:${LABS_PORT}"
