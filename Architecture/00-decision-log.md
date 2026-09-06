@@ -27,7 +27,18 @@ distribution-only surface (QLAB §4.4, ATRV §3.10, AT-QLAB-21) is the Option Bo
 **differentiator, not a limitation.** No packet may soften it to close a sale — a win rate, a
 featured mean, a "typical" percentile or a single equity curve on the member surface is a
 doctrine violation, not a growth experiment. The product spec for Option Bot carries this
-sentence in §0. Three consequences named there for the
+sentence in §0.
+
+**How they are sold (Coach, same day):** *"Option Bots will be sold by comparing risk profiles as
+Monte Carlo distributions."* The **comparison of distributions is the sales surface** — which is
+already law for comparison inside the product: ATRV §3.10 / AT-ATRV-25 (stochastic dominance,
+never a scalar tie-break) and QLAB §4.4 / AT-QLAB-21 (shape and assumptions only). Consequence:
+the **catalog page** where a prospect chooses a bot is a Lab Bot member surface under AT-QLAB-21,
+not a marketing page exempt from it — the same distribution object, the same `display_legal[]`,
+the same fill-model label, side by side. A bot may not be ranked; two may be compared, and where
+neither dominates the page says so. Every displayed distribution is **after tax** and carries its
+fidelity (era-1 / era-2, fitted / unfitted). Invariant 8 applies verbatim: the distribution is a
+process outcome; a dollar figure lifted from it is a profit claim. Three consequences named there for the
 owners to pick up, none acted on here: (1) **1DTE on the show makes era-2 multi-expiration
 capture load-bearing** (SSR-MEXP) — the collector's Tuesday start is now show infrastructure;
 (2) the Option Bot service is a **paid** product living on the lab node — entitlement goes
