@@ -38,7 +38,22 @@ not a marketing page exempt from it — the same distribution object, the same `
 the same fill-model label, side by side. A bot may not be ranked; two may be compared, and where
 neither dominates the page says so. Every displayed distribution is **after tax** and carries its
 fidelity (era-1 / era-2, fitted / unfitted). Invariant 8 applies verbatim: the distribution is a
-process outcome; a dollar figure lifted from it is a profit claim. Three consequences named there for the
+process outcome; a dollar figure lifted from it is a profit claim.
+
+**The funnel, whole (Coach, same day):** *"The main product is group coaching, the Observer trial
+is the entry point, if they don't buy the group coaching we keep them on with a free
+observer-light package, everything minus the coaching. Then they are on our email list, get
+offers from Strategy Lab and IKI Lab."* So: **0DTE Live → Observer trial → group coaching
+(Navigator annual) — or observer-light (free, everything minus coaching) → email list → Option
+Bot and K&I offers.** Two things this settles: (1) the "gift" of Runner, Analyzer and token
+heatmaps is not an entitlement without a plan — it is **a free plan, `observer-light`, in
+`provider_plan_map`**, mapping to the existing floor role `observer`; the P1 identity model
+already has the seat, and no charge is invented (commerce invariant). (2) The Aug 31 question of
+whether Navigator survives is answered in substance: **group coaching is the product**; the tier
+name is packaging. What expires at the end of the trial is coaching and the coaching Discord —
+never the tools (capacity over dependency, invariant 9, kept by design). Mike/India write the
+`observer-light` plan and its entitlement set into the identity spec; Lakesia's Observer
+lifecycle gets the extra state. Three consequences named there for the
 owners to pick up, none acted on here: (1) **1DTE on the show makes era-2 multi-expiration
 capture load-bearing** (SSR-MEXP) — the collector's Tuesday start is now show infrastructure;
 (2) the Option Bot service is a **paid** product living on the lab node — entitlement goes
