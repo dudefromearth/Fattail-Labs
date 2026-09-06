@@ -18,7 +18,16 @@ them IKI products."*
 Then: *"the 0DTE Live show is our top-level funnel for all products. Particularly Observer trials."*
 
 **Recorded** in HOST v0.1 §2.1a as seating, not scope. The show is the mouth of the funnel; every
-service is downstream of a live broadcast at 14:00 ET on a trading day. Three consequences named there for the
+service is downstream of a live broadcast at 14:00 ET on a trading day.
+
+**The Option Alpha bet, stated (Coach, same day).** Asked whether a product that bans win rates,
+equity curves and headline P&L can compete for Option Alpha's customers: *"I'm betting that some
+of those customers will switch to risk-adjusted opportunities."* **Binding consequence:** the
+distribution-only surface (QLAB §4.4, ATRV §3.10, AT-QLAB-21) is the Option Bot product's
+**differentiator, not a limitation.** No packet may soften it to close a sale — a win rate, a
+featured mean, a "typical" percentile or a single equity curve on the member surface is a
+doctrine violation, not a growth experiment. The product spec for Option Bot carries this
+sentence in §0. Three consequences named there for the
 owners to pick up, none acted on here: (1) **1DTE on the show makes era-2 multi-expiration
 capture load-bearing** (SSR-MEXP) — the collector's Tuesday start is now show infrastructure;
 (2) the Option Bot service is a **paid** product living on the lab node — entitlement goes
