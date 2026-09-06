@@ -112,6 +112,9 @@ def decimals_of(x) -> int | None:
     return None
 
 
+GREEK_FIELDS = ("delta", "gamma", "theta", "vega", "iv")
+
+
 def to_scaled(x, scale: int) -> int | None:
     """Exact integer, or None if it does not fit the scale (caller fails loud)."""
     if x is None or isinstance(x, bool):
@@ -120,6 +123,16 @@ def to_scaled(x, scale: int) -> int | None:
     if d != d.to_integral_value():
         return None
     return int(d)
+
+
+def to_quantised(x, scale: int) -> tuple[int | None, float]:
+    """Rounded integer at a DECLARED quantum, plus the absolute error introduced.
+    Not lossless by definition; the error is the point of reporting it."""
+    if x is None or isinstance(x, bool):
+        return None, 0.0
+    d = Decimal(repr(x)) * scale
+    q = int(d.to_integral_value())
+    return q, abs(float(d - q)) / scale
 
 
 # ---------------------------------------------------------------- predictors
@@ -169,7 +182,8 @@ def predict_encode(grid: list[list[int | None]], mode: str) -> bytes:
     return bytes(out)
 
 
-def predictor_sweep(cols, order, files, field_dec, comp) -> dict:
+def predictor_sweep(cols, order, files, field_dec, comp, declared=None) -> dict:
+    declared = declared or {}
     """Per FIELD, which predictor wins? The answer differs by field and that
     IS the finding: prices move little in time but a lot across strikes;
     greeks and IV are smooth in both."""
@@ -184,8 +198,12 @@ def predictor_sweep(cols, order, files, field_dec, comp) -> dict:
         grid: list[list[int | None]] = []
         for cid in cids:
             vals = cols[(cid, fname)]
-            grid.append([to_scaled(v, scale) if v is not None else None
-                         for v in vals])
+            if fname in declared:
+                grid.append([to_quantised(v, scale)[0] if v is not None else None
+                             for v in vals])
+            else:
+                grid.append([to_scaled(v, scale) if v is not None else None
+                             for v in vals])
         if not grid or not grid[0]:
             continue
         sizes = {}
@@ -237,6 +255,14 @@ def main() -> None:
                     "is book-major and the time axis is scrambled")
     ap.add_argument("--list-books", action="store_true",
                     help="print the book directories for the chosen day and exit")
+    ap.add_argument("--quantum", action="append", default=[],
+                    metavar="FIELD=DECIMALS",
+                    help="declare a precision for a field instead of inferring it, e.g. "
+                         "delta=6. Repeatable. Values are ROUNDED to it and the max error "
+                         "introduced is reported. Use for computed doubles (greeks, iv) whose "
+                         "trailing digits are float noise, not information")
+    ap.add_argument("--greeks-quantum", type=int, default=None,
+                    help="shorthand: apply this many decimals to delta gamma theta vega iv")
     ap.add_argument("--max-contracts", type=int, default=400,
                     help="cap distinct contracts held in memory (default 400). "
                          "THIS RUNS ON THE COLLECTOR: capture never yields, so "
@@ -307,25 +333,49 @@ def main() -> None:
         while len(cols[key]) < len(files):
             cols[key].append(None)
 
-    # ---- per-field scale, inferred and checked
-    field_dec: dict[str, int] = {}
+    # ---- per-field scale: inferred from the data, OR declared
+    inferred: dict[str, int] = {}
     for (cid, fname), vals in cols.items():
         for v in vals:
             d = decimals_of(v)
             if d is not None:
-                field_dec[fname] = max(field_dec.get(fname, 0), d)
+                inferred[fname] = max(inferred.get(fname, 0), d)
+
+    declared: dict[str, int] = {}
+    if a.greeks_quantum is not None:
+        for g in GREEK_FIELDS:
+            declared[g] = a.greeks_quantum
+    for spec in a.quantum:
+        f, _, n = spec.partition("=")
+        declared[f.strip()] = int(n)
+
+    field_dec = dict(inferred)
+    field_dec.update({k: v for k, v in declared.items() if k in inferred})
+
+    # A quantum is a PRECISION CHOICE, not lossless. Say so, and measure it.
+    if declared:
+        print("DECLARED QUANTA (rounded, NOT lossless — max error introduced is measured):")
+        for f in sorted(k for k in declared if k in inferred):
+            print(f"  {f:<14} inferred 1e-{inferred[f]:<3} -> declared 1e-{declared[f]}")
+        print()
+    noisy = [f for f, d in inferred.items() if d > 12 and f not in declared]
+    if noisy:
+        print(f"!! {len(noisy)} field(s) carry >12 decimals of float noise and have NO declared")
+        print(f"   quantum: {sorted(noisy)}. 'Lossless' here preserves 1e-17 gamma — that is")
+        print(f"   not information, and it will dominate the output. Use --greeks-quantum.\n")
 
     known = sorted(e for e in exps if e is not None)
     print(f"expirations captured: {len(known)}"
           + (f"  -> {known[:8]}{' …' if len(known) > 8 else ''}" if known else "")
           + ("   ** MULTI-EXPIRATION ALREADY IN ERA-1 **" if len(known) > 1 else ""))
     print()
-    print(f"{'field':<16}{'scale':>8}{'exact?':>9}{'f32 damage':>13}")
-    print("-" * 46)
+    print(f"{'field':<16}{'scale':>8}{'exact?':>10}{'f32 damage':>13}")
+    print("-" * 60)
     encoded: dict[str, bytes] = {}
     broken: list[str] = []
     f32_damaged: dict[str, int] = {}
     f32_total: dict[str, int] = {}
+    max_err: dict[str, float] = {}
     per_field_raw = defaultdict(int)
 
     for fname in sorted(field_dec):
@@ -340,11 +390,15 @@ def main() -> None:
             for v in vals:
                 if v is None:
                     ints.append(None); continue
-                iv = to_scaled(v, scale)
-                if iv is None:
-                    exact = False
-                    ints.append(None)
-                    continue
+                if fname in declared:
+                    iv, err = to_quantised(v, scale)
+                    max_err[fname] = max(max_err.get(fname, 0.0), err)
+                else:
+                    iv = to_scaled(v, scale)
+                    if iv is None:
+                        exact = False
+                        ints.append(None)
+                        continue
                 ints.append(iv)
                 # float32 check, against the same original value
                 tot += 1
@@ -357,8 +411,10 @@ def main() -> None:
         if not exact:
             broken.append(fname)
         pct = (100.0 * dmg / tot) if tot else 0.0
-        print(f"{fname:<16}{scale:>8}{'YES' if exact else 'NO -- BROKEN':>9}"
-              f"{pct:>12.1f}%")
+        status = ("QUANTISED" if fname in declared else
+                  ("YES" if exact else "NO -- BROKEN"))
+        tail = (f"   max err {max_err.get(fname, 0.0):.1e}" if fname in declared else "")
+        print(f"{fname:<16}{scale:>8}{status:>10}{pct:>12.1f}%{tail}")
 
     if broken:
         print(f"\n  !! NOT EXACT at the inferred scale: {broken}")
@@ -392,7 +448,7 @@ def main() -> None:
         print("\nPREDICTOR SWEEP — compressed bytes per field, lower is better")
         print(f"{'field':<16}{'time':>11}{'strike':>11}{'planar':>11}{'best':>9}")
         print("-" * 58)
-        sweep = predictor_sweep(cols, order, files, field_dec, comp)
+        sweep = predictor_sweep(cols, order, files, field_dec, comp, declared)
         tot = {"time": 0, "strike": 0, "planar": 0, "mixed": 0}
         for r in sweep:
             print(f"{r['field']:<16}{human(r['time']):>11}{human(r['strike']):>11}"
@@ -419,6 +475,8 @@ def main() -> None:
             "compressed_bytes": len(packed), "broken_fields": broken,
             "float32_damaged": f32_damaged, "float32_total": f32_total,
             "scales": {k: 10**v for k, v in field_dec.items()},
+            "inferred_decimals": inferred, "declared_decimals": declared,
+            "max_quantisation_error": max_err,
         }, indent=2) + "\n")
         print(f"\nwrote {a.json}")
 
