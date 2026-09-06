@@ -32,6 +32,9 @@ ATRV v0.9 §5 (host-agnostic) · Read API v0.8 §1 (collection outranks reads)
 > the legacy coaching service site. They both provide access to FatTail Labs, which houses all
 > the other services I mentioned. FatTail is the main site. Just to punctuate it."*
 
+> *"StudioOne is nothing more than a collector and hosts the API to advanced market data for
+> the other services."*
+
 Success criteria, as this draft reads them: `labs.fattail.ai` served from DudeOne with no member
 able to tell the difference except that it is faster; MiniTwo out of the production path and
 available; the quant machinery on its own boxes so the collector's headroom stays the tap's;
@@ -59,10 +62,16 @@ the Labs origin changes box, not name, and the providers pillar (`CLAUDE.md`) st
 | **DudeTwo** | M4 · 24 GB · 500 GB (identical peer, DL-674) | staging retired; `stage.flyonthewall.io` | **Lab node** — the QLAB §3 box, OD-QLAB-1 answered | Strategy Lab → **Option Bot service** · IKI Lab → **Knowledge & Intelligence service** · IKI Factory (member-facing) · IKI LB · Quant Lab (admin) |
 | **MiniTwo** | M2 Mac Mini | production, sole Labs host | **Rollback host for 7 days after cutover, then lab peer** (§6 OD-HOST-3) | derived-store builds · backfill · second Monte Carlo runner — or spare |
 | **MiniThree** | — | nginx, Cloudflare origin | unchanged — **upstream for `labs` changes from MiniTwo to DudeOne** | routing only |
-| **StudioOne** | M1 Max | collector and corpus | **unchanged, untouched by this program** | `live_capture`, Read API |
+| **StudioOne** | M1 Max | collector and corpus | **unchanged, untouched by this program.** Coach: *"nothing more than a collector, and hosts the API to advanced market data for the other services"* | `live_capture` (the tap) · **the Read API** — the only way any other box gets at the archive. Nothing else runs here; collection outranks reads (Read API §1) |
 | **StudioTwo** | — | dev; Generation Plane host (OD-GP3) | unchanged | dev only |
 
 **Staging stays retired** (DL-673). Dev is staging. Nothing in this spec reintroduces a staging host.
+
+**StudioOne's contract, restated so no phase forgets it:** it collects, and it serves the archive
+over the Read API to DudeOne and DudeTwo. It builds nothing, sweeps nothing, indexes nothing.
+The derived store, the Monte Carlo runner, the K&I indexer, and every backfill live on the lab
+node and pull from StudioOne once (QLAB §2.1). A service that wants market data asks the Read
+API; a service that wants to compute on it copies what it needs to its own box first.
 
 **What does not move:** the archive; the collector; the Generation Plane; the MSC decommission is
 a *removal*, not a migration — nothing from MarketSwarm-Canonical is carried onto the new Labs

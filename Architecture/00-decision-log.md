@@ -22,6 +22,9 @@ is now DudeTwo. StudioOne is untouched.
 and membership site. 0-DTE.com is the legacy coaching service site. They both provide access to
 FatTail Labs, which houses all the other services I mentioned. FatTail is the main site."* Neither
 front door moves; "main service" in HOST v0.1 means the Labs app on DudeOne, not the site.
+And: *"StudioOne is nothing more than a collector and hosts the API to advanced market data for
+the other services."* StudioOne collects and serves the Read API; every build, sweep, and index
+lives on the lab node and pulls from it once.
 
 **Product seating, as stated:** Strategy Lab becomes the **Option Bot service**; IKI Lab becomes
 the **Knowledge and Intelligence service**; Options Lab is **paired with Practice and Journey** on
