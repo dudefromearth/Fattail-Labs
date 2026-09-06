@@ -1,0 +1,63 @@
+FFFFF....FF....FF                                                        [100%]
+=================================== FAILURES ===================================
+________________________ test_ai_run_bravo_live_via_api ________________________
+/sessions/rcw-01rvqg2enprfoafqucryt5gp/mnt/Fattail-Labs/server/tests/test_ai_admin_api.py:80: in test_ai_run_bravo_live_via_api
+    ???
+E   AssertionError: {"detail":"xAI HTTP 403: {\"code\":\"permission-denied\",\"error\":\"Your team 4343cf2a-70f3-4240-b404-88e31bbdcec7 has either used all available credits or reached its monthly spending limit. To continue making API requests, please purchase more credits or raise your spending limit.\"}"}
+E   assert 502 == 200
+E    +  where 502 = <Response [502 Bad Gateway]>.status_code
+______________________ test_catalog_lists_published_only _______________________
+/sessions/rcw-01rvqg2enprfoafqucryt5gp/mnt/Fattail-Labs/server/tests/test_catalog.py:12: in test_catalog_lists_published_only
+    ???
+E   AssertionError: assert 'fattail-foundations' in {'butterfly-foundations', 'convexity-and-asymmetry', 'first-stop-the-bleeding', 'marketswarm-platform-primer', 'options-foundations', 'sizing-and-capital-gates', ...}
+__________ test_member_context_pack_covers_journey_book_journal_retro __________
+/sessions/rcw-01rvqg2enprfoafqucryt5gp/mnt/Fattail-Labs/server/tests/test_journal_sessions.py:506: in test_member_context_pack_covers_journey_book_journal_retro
+    ???
+E   AssertionError: assert 'sized half if unsure' in 'Member identity (fact, not inference):\n- Display name: JSession Tester\nAddress them by this name when it is natural...): none.\nDo not invent prior journal notes.\n\nPast retrospectives: none completed yet.\nDo not invent prior reviews.'
+__________________ test_cl21_ladder_http_carries_opf_session ___________________
+/sessions/rcw-01rvqg2enprfoafqucryt5gp/mnt/Fattail-Labs/server/tests/test_opf_session_envelope.py:475: in test_cl21_ladder_http_carries_opf_session
+    ???
+E   AssertionError: assert 'open' == 'extended'
+E     
+E     - extended
+E     + open
+________________ TestRefreshUsesCursor.test_prune_uses_a_cursor ________________
+/sessions/rcw-01rvqg2enprfoafqucryt5gp/mnt/Fattail-Labs/server/tests/test_progress_db_contract.py:86: in test_prune_uses_a_cursor
+    ???
+progress/refresh.py:92: in prune
+    cutoff = dt.datetime.utcnow() - dt.timedelta(days=keep_days)
+             ^^^^^^^^^^^^^^^^^^^^
+E   DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+___________________ test_parquet_schema_projects_conditions ____________________
+/sessions/rcw-01rvqg2enprfoafqucryt5gp/mnt/Fattail-Labs/server/tests/test_volume_profile_plane.py:86: in test_parquet_schema_projects_conditions
+    ???
+market_data/parquet_schema.py:12: in <module>
+    import pyarrow as pa
+E   ModuleNotFoundError: No module named 'pyarrow'
+__________________________ test_raw_day_open_contract __________________________
+/sessions/rcw-01rvqg2enprfoafqucryt5gp/mnt/Fattail-Labs/server/tests/test_volume_profile_plane.py:104: in test_raw_day_open_contract
+    ???
+market_data/parquet_schema.py:12: in <module>
+    import pyarrow as pa
+E   ModuleNotFoundError: No module named 'pyarrow'
+_______________________ test_volume_against_full_corpus ________________________
+/sessions/rcw-01rvqg2enprfoafqucryt5gp/mnt/Fattail-Labs/server/tests/test_wiki_agent_wa3.py:259: in test_volume_against_full_corpus
+    ???
+E   AssertionError: expected grown corpus, got 0
+E   assert 0 >= 40
+E    +  where 0 = len([])
+______________________ test_reindex_admin_only_and_counts ______________________
+/sessions/rcw-01rvqg2enprfoafqucryt5gp/mnt/Fattail-Labs/server/tests/test_wiki_api.py:182: in test_reindex_admin_only_and_counts
+    ???
+E   assert (0 >= 1)
+=========================== short test summary info ============================
+FAILED tests/test_ai_admin_api.py::test_ai_run_bravo_live_via_api - Assertion...
+FAILED tests/test_catalog.py::test_catalog_lists_published_only - AssertionEr...
+FAILED tests/test_journal_sessions.py::test_member_context_pack_covers_journey_book_journal_retro
+FAILED tests/test_opf_session_envelope.py::test_cl21_ladder_http_carries_opf_session
+FAILED tests/test_progress_db_contract.py::TestRefreshUsesCursor::test_prune_uses_a_cursor
+FAILED tests/test_volume_profile_plane.py::test_parquet_schema_projects_conditions
+FAILED tests/test_volume_profile_plane.py::test_raw_day_open_contract - Modul...
+FAILED tests/test_wiki_agent_wa3.py::test_volume_against_full_corpus - Assert...
+FAILED tests/test_wiki_api.py::test_reindex_admin_only_and_counts - assert (0...
+9 failed, 8 passed in 0.72s

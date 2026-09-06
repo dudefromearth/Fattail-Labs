@@ -1,0 +1,37 @@
+# Quant Lab — Delta evidence (MacBook) 2026-09-06
+host: Ernies-MacBook-Pro.local  commit: dd114c0  branch: main
+env present: LABS_PORT=yes LABS_QUANT_STORE_ROOT=yes LABS_QUANT_GREEKS_QUANTUM=yes FT_SESSION=no
+
+## 1. Full characterization suite (server/.venv, conftest ON)
+$ cd server && .venv/bin/python -m pytest tests -q
+E   AssertionError: expected grown corpus, got 0
+E   assert 0 >= 40
+E    +  where 0 = len([])
+
+/sessions/rcw-01rvqg2enprfoafqucryt5gp/mnt/Fattail-Labs/server/tests/test_wiki_agent_wa3.py:259: AssertionError
+______________________ test_reindex_admin_only_and_counts ______________________
+
+client = <tests.conftest.LabsTestClient object at 0x10d55c8c0>
+seeded_index = PosixPath('/private/var/folders/cb/6ytsh2m56_s812g51xvvdpd00000gn/T/pytest-of-ernie/pytest-0/vault0')
+
+>   ???
+E   assert (0 >= 1)
+
+/sessions/rcw-01rvqg2enprfoafqucryt5gp/mnt/Fattail-Labs/server/tests/test_wiki_api.py:182: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_ai_admin_api.py::test_ai_run_bravo_live_via_api - Assertion...
+FAILED tests/test_catalog.py::test_catalog_lists_published_only - AssertionEr...
+FAILED tests/test_journal_sessions.py::test_member_context_pack_covers_journey_book_journal_retro
+FAILED tests/test_opf_session_envelope.py::test_cl21_ladder_http_carries_opf_session
+FAILED tests/test_progress_db_contract.py::TestRefreshUsesCursor::test_prune_uses_a_cursor
+FAILED tests/test_volume_profile_plane.py::test_parquet_schema_projects_conditions
+FAILED tests/test_volume_profile_plane.py::test_raw_day_open_contract - Modul...
+FAILED tests/test_wiki_agent_wa3.py::test_volume_against_full_corpus - Assert...
+FAILED tests/test_wiki_api.py::test_reindex_admin_only_and_counts - assert (0...
+9 failed, 1461 passed, 5 skipped in 45.55s
+exit: 1
+
+## 2. Real-server curl transcript (http://localhost:$LABS_PORT)
+$ curl -s -o /dev/null -w "%{http_code}" $B/api/me/quant/days   # no cookie
+401
+(FT_SESSION not set — authenticated transcript skipped; export FT_SESSION=<your ft_session cookie> and rerun)
