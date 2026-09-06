@@ -4,6 +4,65 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-06 — DL-678 Fill-friction model gets controls · spread probe retires the placement law · ATRV v0.10 (design only)
+
+**Decision (Coach, 2026-09-06).** *"We need controls on the friction model."* Earlier the same
+day, on how fills should be modelled: *"Based on spread is probably most realistic"*; *"sometimes
+it can take 10–30 seconds to fill"*; *"or you can just apply a certain probability based on the
+VIX."* Coach approved drafting the specification before any build (*"Do your recommendation"*).
+
+**Landed:** `Specs/FatTail-Labs-Archive-Traversal-API-Spec-v0_10.md` — v0.9 as built plus
+**§3.7.1**, the friction model's shape and controls. **Design only. Nothing in `server/quant/`
+changes under this entry.** Build begins when Coach stamps §3.7.1.
+
+**The measurement that shaped it** (`scripts/quant-spread-probe.py`, read-only, 0.5 s per
+book-day; evidence `docs/evidence/quant-spread-probe-XSP-2026-09-04.*`). On XSP 2026-09-04,
+session only, sorted quantiles:
+
+- **Where Coach trades the quoted spread is one tick.** OTM puts 2–10 points from spot: half-spread
+  p50 **$0.005**, p90 $0.010, all session. v0.9's placement law ("rest inside the half-spread")
+  places at a price that does not exist on a one-tick market. **Retired.**
+- **The friction is one-sidedness.** Bid is **null** on 14% of 2–5 OTM put quotes, **35%** at
+  5–10, **69%** at 10–20, 96% beyond. A leg sold into a null bid does not fill at any price.
+- The vendor's mid on a null-bid quote is `ask/2`. Measured **immaterial** on this day (where bid
+  is null the ask is ≤ $0.02 at p99). Left unchanged; OD-ATRV-12 decides whether the mark labels
+  it. A chat line the same morning calling it "a fiction the mark series trusts" is **corrected**
+  by this measurement — the convention is standard and, here, harmless.
+- The first pass of the probe pooled |strike − spot| and mixed ITM puts (half-spread $0.27) into
+  "5–10 OTM". Caught and corrected to signed OTM distance before any number was recorded.
+
+**The model (ATRV §3.7.1).** The unit is the **complex order at a net limit**, resting in the
+archived path for a declared window with a re-seat policy — one order, fills whole at its limit
+or not at all, **never better than the limit**. A sell leg into a null bid never fills; at a forced
+exit it is abandoned at $0 and named. `target` exit becomes a **resting closing order** from the
+fill instant, subject to the same law — which is what Coach actually does — rather than "the
+first mid-mark touch." The unfitted constant (`LABS_QUANT_FILL_P_UNFITTED`, 0.85) keeps an honest
+meaning: **the probability of filling within the window**, spread across its snapshots as a
+constant hazard (0.85 *per snapshot* over fifteen snapshots would be near-certain — the opposite
+of pessimistic).
+
+**Six controls, each on a declared grid, echoed verbatim, off-grid refused** (QLAB §4.2, 64-cell
+ceiling holds): `order_type` (complex | legged-as-contrast), `limit` (Coach's 10%-of-width rule as
+an absolute, or an offset in ticks from the complex mid), `window_s` (10–60), `reseat`
+(improve × max), `regime_factor` (Coach's VIX dial, declared until a VIX column exists),
+fees (config). **The probabilities are not controls** — `P_fit` and `p_miss_marketable` are
+**fitted by Sheldon** from Coach's fill history joined to the store's state at each order
+(OD-ATRV-13, schema in §3.7.1). Twenty orders make a first curve labelled `n_orders: 20`; the
+label is what keeps a small fit from being read as a law.
+
+**Opened:** OD-ATRV-12 (null-bid mark basis, Sheldon), OD-ATRV-13 (fill history source and
+schema, Coach), OD-ATRV-14 (regime dial, Sheldon · Foxtrot). **AT-ATRV-39…44.**
+
+**Also this entry — Delta packet for DL-677 advanced.** Full characterization suite on the dev
+venv: **1,461 pass, 9 fail, 5 skip**; all 31 quant tests pass; the nine are classified in
+`docs/evidence/quant-e2e-2026-09-06.md` §7 — none touches a file the quant commits changed, four
+proven identical on a clean tree, two pre-existing code issues logged for their owners
+(`datetime.utcnow()` in `progress/refresh.py` on Python 3.12; OPF session envelope surfacing
+`open` for a Massive `extended-hours` doc). Not fixed here. Unauthenticated
+`/api/me/quant/days` → 401 on the real server. Still owed: authenticated curl, browser walk.
+
+---
+
 ## 2026-09-06 — DL-677 Quant Lab vertical slice built and demonstrated on real data · the distribution is live
 
 **Decision (Coach, 2026-09-06).** *"We need to finish this project today … end to end, not
