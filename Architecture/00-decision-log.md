@@ -4,6 +4,28 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-06 — DL-681 0DTE Live and the funnel — what each service is for
+
+**Stated (Coach, 2026-09-06).** *"The new public show, called 0DTE Live, runs Mon–Fri from 2 PM
+to 3:15 PM, except holidays. It will feature developing strategies for late-day 0DTE and 1DTE
+strategies. These are some of the strategies we will feature in Strategy Lab. And it will be a
+show that demonstrates our Strategy Life Cycle. Strategy Lab will become a paid service competing
+for Option Alpha customers. IKI Factory products are used mostly to attract and engage Observers.
+We try to convert Observers into Navigator annuals. And if they don't convert we give them IKI
+Labs Runner and Analyzer as gifts, along with some token heatmaps to keep them close and market
+them IKI products."*
+
+**Recorded** in HOST v0.1 §2.1a as seating, not scope. Three consequences named there for the
+owners to pick up, none acted on here: (1) **1DTE on the show makes era-2 multi-expiration
+capture load-bearing** (SSR-MEXP) — the collector's Tuesday start is now show infrastructure;
+(2) the Option Bot service is a **paid** product living on the lab node — entitlement goes
+through `provider_plan_map` like any plan, served through the Labs app (OD-HOST-6); (3) a
+**gift** is an entitlement with no plan behind it — Mike/India define the grant without the app
+inventing a charge. Invariant 8 (process outcomes, never profit claims) binds the show's copy as
+it binds the product's.
+
+---
+
 ## 2026-09-06 — DL-680 Hosts reallocated · DudeOne becomes production · DudeTwo is the lab node · MiniTwo rolls back then joins the lab
 
 **Decision (Coach, 2026-09-06).** *"We need to set up DudeOne (currently at flyonthewall.io) as

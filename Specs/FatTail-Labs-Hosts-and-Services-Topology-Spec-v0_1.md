@@ -100,6 +100,29 @@ where a member uses it on a charter day, Journey is where the record of that use
 The three share a box because they share a member session and a database. **India confirms at
 W0 whether this pairing changes any existing spec's boundary; this draft says it does not.**
 
+### 2.1a What each service is for — Coach, 2026-09-06 (verbatim, seating only)
+
+> *"The new public show, called 0DTE Live, runs Mon–Fri from 2 PM to 3:15 PM, except holidays.
+> It will feature developing strategies for late-day 0DTE and 1DTE strategies. These are some
+> of the strategies we will feature in Strategy Lab. And it will be a show that demonstrates
+> our Strategy Life Cycle. Strategy Lab will become a paid service competing for Option Alpha
+> customers. IKI Factory products are used mostly to attract and engage Observers. We try to
+> convert Observers into Navigator annuals. And if they don't convert we give them IKI Labs
+> Runner and Analyzer as gifts, along with some token heatmaps to keep them close and market
+> them IKI products."*
+
+| Service | Role in the funnel | Box | What that asks of the topology |
+|---|---|---|---|
+| **0DTE Live** (show, Mon–Fri 14:00–15:15 ET, ex-holidays) | Public. Demonstrates the **Strategy Life Cycle** on late-day 0DTE / **1DTE** structures | not a service on these boxes — a show | The strategies it develops are Strategy Lab's; the data it needs is the collector's. **1DTE means the era-2 multi-expiration capture (SSR-MEXP) is load-bearing for the show**, not optional |
+| **Strategy Lab → Option Bot service** | **Paid**, competing for Option Alpha customers | DudeTwo, served through DudeOne | A member-facing paid product on the lab node — OD-HOST-6 (served through the Labs app, no session on DudeTwo) becomes a commerce question too: entitlement via `provider_plan_map`, like every other plan |
+| **IKI Factory** | Attracts and engages **Observers** | DudeTwo, served through DudeOne | Observer-tier gating — the P1 role ladder already has it |
+| **IKI Labs Runner + Analyzer**, token heatmaps | **Gifts** to Observers who do not convert, to keep them close and market IKI products | DudeOne (Options Lab surface) | A "gift" is an entitlement with no plan behind it — Mike/India name how it is granted without inventing a charge (§2 commerce invariant) |
+| Observer → **Navigator annual** | the conversion the funnel exists for | — | unchanged |
+
+Nothing above changes scope of any spec; it says what each box is *for* so the cutover and
+the lab node are sized for the products that will actually sell. **Invariant 8 stands on the
+show and on every product page: process outcomes only, never profit claims.**
+
 ### 2.2 The two-box law
 
 Everything **member-facing in the Labs app** is on DudeOne. Everything that **computes at
@@ -198,4 +221,4 @@ upstream changes) · a cutover during market hours.
 
 | Ver | Date | Notes |
 |---|---|---|
-| **v0.1** | 2026-09-06 | First draft from Coach's direction. **Same day:** §1.0 added — `fattail.ai` is the main site (WooCommerce front door), `0-dte.com` the legacy coaching site, both open onto Labs; "main service" in this document means the Labs app, never the site. DudeOne → production main service (Courses, Practice, Journey, Toughness, Options Lab); DudeTwo → lab node (Option Bot, K&I, IKI Factory, IKI LB, Quant Lab); MiniTwo → 7-day rollback then lab peer (OD-HOST-3); MSC on DudeOne decommissioned by deletion. Reverses DL-673's DudeOne-as-analysis-node; keeps staging retired and the collector untouched. Cutover in seven gated phases; Foxtrot writes the runbook. OD-HOST-1…6, AT-HOST-1…8. |
+| **v0.1** | 2026-09-06 | First draft from Coach's direction. **Same day:** §2.1a added — 0DTE Live (Mon–Fri 14:00–15:15 ET) demonstrates the Strategy Life Cycle on late-day 0DTE/1DTE; Strategy Lab is a paid service vs Option Alpha; IKI Factory attracts Observers; non-converters get Runner + Analyzer + token heatmaps as gifts. §1.0 added — `fattail.ai` is the main site (WooCommerce front door), `0-dte.com` the legacy coaching site, both open onto Labs; "main service" in this document means the Labs app, never the site. DudeOne → production main service (Courses, Practice, Journey, Toughness, Options Lab); DudeTwo → lab node (Option Bot, K&I, IKI Factory, IKI LB, Quant Lab); MiniTwo → 7-day rollback then lab peer (OD-HOST-3); MSC on DudeOne decommissioned by deletion. Reverses DL-673's DudeOne-as-analysis-node; keeps staging retired and the collector untouched. Cutover in seven gated phases; Foxtrot writes the runbook. OD-HOST-1…6, AT-HOST-1…8. |
