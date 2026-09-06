@@ -122,6 +122,80 @@ def to_scaled(x, scale: int) -> int | None:
     return int(d)
 
 
+# ---------------------------------------------------------------- predictors
+
+def predict_encode(grid: list[list[int | None]], mode: str) -> bytes:
+    """Encode a [contract][time] integer grid under one predictor.
+
+    Coach asked whether the 3D surface libraries help storage. They do not --
+    they are renderers, and their buffers are lossy float32. But the INSTINCT
+    is right: a chain across strike and time IS a surface, and it is smooth in
+    BOTH directions. That is exactly what lossless predictive coding exploits
+    (PNG filters, FLAC linear prediction) -- predict each value from its
+    neighbours, store only the small residual.
+
+      time    v[c][t]   - v[c][t-1]              quotes barely move in 2 s
+      strike  v[c][t]   - v[c-1][t]              adjacent strikes are similar
+      planar  v[c][t] - (v[c][t-1] + v[c-1][t] - v[c-1][t-1])
+    """
+    out = bytearray()
+    C = len(grid)
+    T = len(grid[0]) if C else 0
+    for c in range(C):
+        for t in range(T):
+            v = grid[c][t]
+            if v is None:
+                out.append(0xFF); out.append(0xFF)
+                continue
+            if mode == "time":
+                prev = grid[c][t - 1] if t else 0
+                base = prev if prev is not None else 0
+            elif mode == "strike":
+                prev = grid[c - 1][t] if c else 0
+                base = prev if prev is not None else 0
+            else:  # planar
+                a_ = grid[c][t - 1] if t else None
+                b_ = grid[c - 1][t] if c else None
+                d_ = grid[c - 1][t - 1] if (c and t) else None
+                if a_ is not None and b_ is not None and d_ is not None:
+                    base = a_ + b_ - d_
+                elif a_ is not None:
+                    base = a_
+                elif b_ is not None:
+                    base = b_
+                else:
+                    base = 0
+            put_uvarint(out, zigzag(v - base))
+    return bytes(out)
+
+
+def predictor_sweep(cols, order, files, field_dec, comp) -> dict:
+    """Per FIELD, which predictor wins? The answer differs by field and that
+    IS the finding: prices move little in time but a lot across strikes;
+    greeks and IV are smooth in both."""
+    by_field: dict[str, list] = defaultdict(list)
+    for (cid, fn) in order:
+        by_field[fn].append(cid)
+
+    rows = []
+    for fname in sorted(field_dec):
+        scale = 10 ** field_dec[fname]
+        cids = sorted(by_field[fname], key=lambda x: (x[0] is None, x[0]))
+        grid: list[list[int | None]] = []
+        for cid in cids:
+            vals = cols[(cid, fname)]
+            grid.append([to_scaled(v, scale) if v is not None else None
+                         for v in vals])
+        if not grid or not grid[0]:
+            continue
+        sizes = {}
+        for mode in ("time", "strike", "planar"):
+            sizes[mode] = len(comp(predict_encode(grid, mode)))
+        best = min(sizes, key=sizes.get)
+        rows.append({"field": fname, **sizes, "best": best})
+    return rows
+
+
 # ---------------------------------------------------------------- load
 
 def snaps_for(day: Path) -> list[Path]:
@@ -140,6 +214,8 @@ def main() -> None:
     ap.add_argument("--root", required=True)
     ap.add_argument("--day")
     ap.add_argument("--limit", type=int, default=3000)
+    ap.add_argument("--predictors", action="store_true",
+                    help="sweep time / strike / planar predictors per field")
     ap.add_argument("--json", help="write results here")
     a = ap.parse_args()
 
@@ -260,8 +336,31 @@ def main() -> None:
     if not real_zstd:
         print("\n  NOTE: gzip fallback. zstd is both smaller and much faster here.")
 
+    if a.predictors:
+        print("\nPREDICTOR SWEEP — compressed bytes per field, lower is better")
+        print(f"{'field':<16}{'time':>11}{'strike':>11}{'planar':>11}{'best':>9}")
+        print("-" * 58)
+        sweep = predictor_sweep(cols, order, files, field_dec, comp)
+        tot = {"time": 0, "strike": 0, "planar": 0, "mixed": 0}
+        for r in sweep:
+            print(f"{r['field']:<16}{human(r['time']):>11}{human(r['strike']):>11}"
+                  f"{human(r['planar']):>11}{r['best']:>9}")
+            for m in ("time", "strike", "planar"):
+                tot[m] += r[m]
+            tot["mixed"] += r[r["best"]]
+        print("-" * 58)
+        print(f"{'ALL ONE PREDICTOR':<16}{human(tot['time']):>11}"
+              f"{human(tot['strike']):>11}{human(tot['planar']):>11}")
+        single = min(tot['time'], tot['strike'], tot['planar'])
+        print(f"\n  best single predictor : {human(single)}")
+        print(f"  PER-FIELD choice      : {human(tot['mixed'])}"
+              f"   ({single/max(tot['mixed'],1):.2f}x better)")
+        print("  -> the winner differs BY FIELD, so the encoder stores one")
+        print("     predictor id per field. That is a byte of header, not a design.")
+
     if a.json:
         Path(a.json).write_text(json.dumps({
+            "predictor_sweep": (sweep if a.predictors else None),
             "day": day.name, "snapshots": len(files), "codec": codec_name,
             "raw_bytes": raw_bytes, "float32_bytes": f32_size,
             "scaled_int_bytes": i32_size, "delta_varint_bytes": len(body),
