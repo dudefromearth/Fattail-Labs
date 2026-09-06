@@ -199,6 +199,37 @@ def validate_ssr_archive_env() -> dict:
     return {"url": url, "token": token, "cache_root": cache_root}
 
 
+
+def validate_quant_env() -> dict:
+    """Read LABS_QUANT_* . All-empty is OK (feature off, routes answer 501).
+    Any one present makes ALL required and malformed raises ConfigError —
+    fail loud, no partial configuration (Invariant 2)."""
+    keys = ("LABS_QUANT_STORE_ROOT", "LABS_QUANT_GREEKS_QUANTUM",
+            "LABS_QUANT_FEE_PER_CONTRACT", "LABS_QUANT_FILL_P_UNFITTED")
+    raw = {k: os.environ.get(k, "").strip() for k in keys}
+    if not any(raw.values()):
+        return {"root": None}
+    missing = [k for k, v in raw.items() if not v]
+    if missing:
+        raise ConfigError(f"LABS_QUANT_* partially set; missing {missing}")
+    root = Path(raw["LABS_QUANT_STORE_ROOT"]).expanduser()
+    if not root.is_dir():
+        raise ConfigError(f"LABS_QUANT_STORE_ROOT is not a directory: {root}")
+    try:
+        gq = int(raw["LABS_QUANT_GREEKS_QUANTUM"])
+        fee = float(raw["LABS_QUANT_FEE_PER_CONTRACT"])
+        pf = float(raw["LABS_QUANT_FILL_P_UNFITTED"])
+    except ValueError as exc:
+        raise ConfigError(f"LABS_QUANT_* malformed: {exc}") from exc
+    if not (0 <= gq <= 12):
+        raise ConfigError("LABS_QUANT_GREEKS_QUANTUM must be 0..12 decimals")
+    if fee < 0:
+        raise ConfigError("LABS_QUANT_FEE_PER_CONTRACT must be >= 0")
+    if not (0.0 < pf <= 1.0):
+        raise ConfigError("LABS_QUANT_FILL_P_UNFITTED must be in (0, 1]")
+    return {"root": str(root.resolve()), "greeks_quantum": gq,
+            "fee_per_contract": fee, "p_fill": pf}
+
 _config: Config | None = None
 
 

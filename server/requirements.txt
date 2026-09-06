@@ -23,3 +23,4 @@ cryptography>=42,<50
 # dev/test
 pytest>=8,<10
 pytest-timeout>=2.3
+zstandard>=0.22,<1.0   # quant.build only (packs); the reader needs no zstd
