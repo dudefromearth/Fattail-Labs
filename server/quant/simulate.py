@@ -224,6 +224,12 @@ def simulate(st: DayStore, legs: Sequence[Leg], t_entry: int, t_exit: int,
 
     results = [simulate_path(st, legs, t_in, t_out, prm, i) for i in range(prm.paths)]
     traded = [r for r in results if r["traded"]]
+    if not traded:
+        # every path failed to get on — a quote with no bid AND no ask cannot be
+        # crossed. A distribution of nothing is not a distribution; name it.
+        raise SimulateRefusal("NO_PATH_TRADED",
+                              f"0 of {prm.paths} paths filled at entry t={t_in} — "
+                              f"unpriced quote (no bid/ask) or p_fill too low")
     pnls = sorted(r["pnl"] for r in traded)
     n_entry_nf = sum(1 for r in results if r["entry_nofill"])
     n_exit_nf = sum(1 for r in traded if r["exit_nofill"])

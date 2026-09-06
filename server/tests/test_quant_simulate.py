@@ -107,3 +107,11 @@ def test_sweep_pools_every_entry_and_is_reproducible(st):
     assert "p50" not in r and set(r["bands"]) == set(BAND_KEYS)
     r2 = sweep_entries(st, fly(st), 5, 60, 100, step=5, prm=prm(paths=40), paths_per_entry=40)
     assert json.dumps(r, sort_keys=True) == json.dumps(r2, sort_keys=True)
+
+
+def test_zero_traded_paths_is_a_named_refusal_not_nan(st, monkeypatch):
+    import quant.simulate as qs
+    monkeypatch.setattr(qs, "_half_spread", lambda q: None)     # unpriced: no bid, no ask
+    with pytest.raises(SimulateRefusal) as ei:
+        simulate(st, fly(st), 5, 100, prm(paths=50))
+    assert ei.value.code == "NO_PATH_TRADED"
