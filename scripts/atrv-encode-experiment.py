@@ -198,14 +198,32 @@ def predictor_sweep(cols, order, files, field_dec, comp) -> dict:
 
 # ---------------------------------------------------------------- load
 
-def snaps_for(day: Path) -> list[Path]:
+def snaps_for(day: Path, symbol: str | None = None) -> list[Path]:
+    """Snapshots for a day.
+
+    WITHOUT --symbol this concatenates every book's directory, so the file
+    order is book-major, not time-major. A contract's column then has huge
+    gaps in it and the TIME predictor is measured against a scrambled axis --
+    which will make `strike` win for the wrong reason. Pass --symbol to hold
+    one book's real timeline. See the header note on predictor results.
+    """
     chain = day / "chain"
     if not chain.is_dir():
         return []
+    if symbol:
+        d = chain / symbol
+        return sorted(d.glob("snap-*.json")) if d.is_dir() else []
     out = sorted(chain.glob("snap-*.json"))
     for sym in sorted(p for p in chain.iterdir() if p.is_dir()):
         out.extend(sorted(sym.glob("snap-*.json")))
     return out
+
+
+def list_books(day: Path) -> list[str]:
+    chain = day / "chain"
+    if not chain.is_dir():
+        return []
+    return sorted(p.name for p in chain.iterdir() if p.is_dir())
 
 
 def main() -> None:
@@ -214,6 +232,11 @@ def main() -> None:
     ap.add_argument("--root", required=True)
     ap.add_argument("--day")
     ap.add_argument("--limit", type=int, default=3000)
+    ap.add_argument("--symbol", help="restrict to ONE book directory. Required for a "
+                    "trustworthy time-predictor number — without it the file order "
+                    "is book-major and the time axis is scrambled")
+    ap.add_argument("--list-books", action="store_true",
+                    help="print the book directories for the chosen day and exit")
     ap.add_argument("--max-contracts", type=int, default=400,
                     help="cap distinct contracts held in memory (default 400). "
                          "THIS RUNS ON THE COLLECTOR: capture never yields, so "
@@ -231,16 +254,29 @@ def main() -> None:
     if day is None:
         sys.exit(f"!! {a.day} not found or empty")
 
-    files = snaps_for(day)[:a.limit]
+    if a.list_books:
+        books = list_books(day)
+        print(f"{day.name}: {len(books)} book directories")
+        for b in books:
+            print(f"  {b:<24}{len(snaps_for(day, b)):>8,} snapshots")
+        return
+
+    files = snaps_for(day, a.symbol)[:a.limit]
+    if not files:
+        sys.exit(f"!! no snapshots for {day.name}"
+                 + (f" symbol={a.symbol}" if a.symbol else ""))
     codec_name, comp, real_zstd = pick_codec()
     print(f"archive : {root}  (read-only)")
-    print(f"day     : {day.name}   {len(files):,} snapshots")
+    print(f"day     : {day.name}   {len(files):,} snapshots"
+          + (f"   book={a.symbol}" if a.symbol
+             else "   ALL BOOKS -- time axis is scrambled, see --symbol"))
     print(f"codec   : {codec_name}")
     print(f"cap     : {a.max_contracts} contracts held in memory\n")
 
     # ---- read into column form, keeping the ORIGINAL values for verification
     raw_bytes = 0
     kept: set = set()                               # contract cap -- see --max-contracts
+    exps: set = set()                               # distinct expirations actually captured
     cols: dict[tuple, list] = defaultdict(list)     # (contract, field) -> [values]
     order: list[tuple] = []
     seen = set()
@@ -251,6 +287,7 @@ def main() -> None:
         for r in gen.get("rows") or []:
             if not isinstance(r, dict):
                 continue
+            exps.add(r.get("expiration"))
             cid = (r.get("strike"), r.get("right"), r.get("expiration"))
             if cid not in kept:
                 if len(kept) >= a.max_contracts:
@@ -278,6 +315,11 @@ def main() -> None:
             if d is not None:
                 field_dec[fname] = max(field_dec.get(fname, 0), d)
 
+    known = sorted(e for e in exps if e is not None)
+    print(f"expirations captured: {len(known)}"
+          + (f"  -> {known[:8]}{' …' if len(known) > 8 else ''}" if known else "")
+          + ("   ** MULTI-EXPIRATION ALREADY IN ERA-1 **" if len(known) > 1 else ""))
+    print()
     print(f"{'field':<16}{'scale':>8}{'exact?':>9}{'f32 damage':>13}")
     print("-" * 46)
     encoded: dict[str, bytes] = {}
