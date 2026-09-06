@@ -115,3 +115,26 @@ def test_chain_at_t_is_the_snapshot_at_or_before_never_a_blend(app, monkeypatch)
     before = c.get("/api/me/quant/chain", params={"day": "2026-09-04", "book": "XSP",
                                                   "t_ms": sp["time_ms"][0] - 1})
     assert before.status_code == 404 and "BEFORE_FIRST_SNAPSHOT" in before.json()["detail"]
+
+
+def test_controls_grid_endpoint_and_off_grid_422(app, monkeypatch):
+    a, root = app
+    _configure(monkeypatch, root)
+    c = TestClient(a)
+    g = c.get("/api/me/quant/controls").json()
+    assert g["cell_ceiling"] == 64 and 30 in g["window_s"]
+    assert g["defaults"]["order_type"] == "complex"
+    bad = c.post("/api/me/quant/simulate", json={"day": "2026-09-04", "book": "XSP",
+                                                 "legs": "630C:+1", "t_entry": 2, "t_exit": 60,
+                                                 "paths": 20, "controls": {"window_s": 15}})
+    assert bad.status_code == 422 and bad.json()["detail"]["refusal"] == "CONTROL_OFF_GRID"
+    ceil = c.post("/api/me/quant/sweep", json={"day": "2026-09-04", "book": "XSP",
+                                               "legs": "630C:+1", "t_from": 2, "t_to": 40,
+                                               "t_exit": 60, "step": 5, "paths_per_entry": 5,
+                                               "controls_sweep": [{}] * 65})
+    assert ceil.status_code == 422 and ceil.json()["detail"]["refusal"] == "CELL_CEILING"
+    ok = c.post("/api/me/quant/sweep", json={"day": "2026-09-04", "book": "XSP",
+                                             "legs": "628C:+1,630C:-2,632C:+1",
+                                             "t_from": 3, "t_to": 40, "t_exit": 70,
+                                             "step": 5, "paths_per_entry": 10, "seed": 7})
+    assert ok.status_code == 200 and ok.json()["entries"] > 1

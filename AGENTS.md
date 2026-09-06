@@ -23,7 +23,8 @@ LearnDash. No shared code with MarketSwarm-Canonical (HTTP only).
 
 | Priority | Guidance for agents |
 |----------|---------------------|
-| **Options Lab Heatmap LIM (active program · DL-651 · DL-652 · LIM7)** | **Only** LIM. Board reopened for **LIM7** (surface fit). Do not drift. Do not touch existing work. Exception: raise to Coach **three times**, **three successive OKs**, recorded on the GO token, **before** any edit outside LIM. IKI Lab is **parked**, not cancelled. DL-539 §8 five-module freeze is **unchanged**. |
+| **Options Lab Heatmap LIM (active program · DL-651 · DL-652 · LIM7)** | LIM remains active (LIM7 surface fit). Do not drift LIM. IKI Lab is **parked**, not cancelled. DL-539 §8 five-module freeze is **unchanged** except the Quant line below. |
+| **Quant Lab fill-friction (active program · DL-679 · QFRIC)** | ATRV v0.10 §3.7.1 BUILD. Board `agents/p-quant-friction/`. Token `agents/go/QFRIC-W0.md`. Isolation: DL-677 quant files + Monte Carlo page + `validate_quant_env` + `.env.example`. No LIM file, no OPF file, no store/builder. P4 skipped until fill history (never in the repo). |
 | **Strategy Lab NOW** | Lock **Design + Curate** for entitled members. Multi-member Curate is absolute. |
 | **Deploy** | Members get **Deploy UX** except **real-broker (Tradier) real-money**. Admin dogfoods Tradier, then provision. **DL-251 / DL-252**. |
 | **Market Bus (shipped core)** | Live chains/symbols: **Massive → feeds → Redis → one WS/tab → shared client**. Options Lab at `/app/options-lab`. See Arch **28**. |
@@ -272,7 +273,7 @@ to the packet.
 5. **Change control.** Declare exact files + changes before touching; only touch what was approved.
 6. **Stop the bleeding.** Process outcomes in marketing, never profit claims. Pathway
    routes everyone through the flagship first.
-7. **No drift; do not touch existing work (DL-539 · doctrine §15 · DL-652).** The active program is the only tree in play. **Now:** Options Lab Heatmap LIM, LIM7 packet (DL-651 · DL-652 · DL-656). IKI Lab is parked. If touching existing work feels necessary, bring it to Coach **at least three times** and get **three successive OKs** on the GO token **before** the first edit. One OK is not three. A break resets the count. India / Delta block.
+7. **No drift; do not touch existing work (DL-539 · doctrine §15 · DL-652).** The active programs are the only trees in play. **Now:** Options Lab Heatmap LIM, LIM7 packet (DL-651 · DL-652 · DL-656) **and** Quant Lab fill-friction (DL-679 · QFRIC). IKI Lab is parked. If touching existing work feels necessary, bring it to Coach **at least three times** and get **three successive OKs** on the GO token **before** the first edit. One OK is not three. A break resets the count. India / Delta block.
 
 ---
 

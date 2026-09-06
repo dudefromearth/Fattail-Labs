@@ -1,5 +1,6 @@
 """Config — env-driven, fail loud. No silent defaults for anything structural."""
 
+import json
 import os
 from pathlib import Path
 from urllib.parse import urlparse
@@ -227,8 +228,20 @@ def validate_quant_env() -> dict:
         raise ConfigError("LABS_QUANT_FEE_PER_CONTRACT must be >= 0")
     if not (0.0 < pf <= 1.0):
         raise ConfigError("LABS_QUANT_FILL_P_UNFITTED must be in (0, 1]")
+    fit_path = os.environ.get("LABS_QUANT_FILL_FIT_PATH", "").strip()
+    if fit_path:
+        fp = Path(fit_path).expanduser()
+        if not fp.is_file():
+            raise ConfigError(f"LABS_QUANT_FILL_FIT_PATH is not a file: {fp}")
+        try:
+            doc = json.loads(fp.read_text())
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ConfigError(f"LABS_QUANT_FILL_FIT_PATH unreadable: {exc}") from exc
+        if not doc.get("fit_id"):
+            raise ConfigError("LABS_QUANT_FILL_FIT_PATH has no fit_id")
     return {"root": str(root.resolve()), "greeks_quantum": gq,
-            "fee_per_contract": fee, "p_fill": pf}
+            "fee_per_contract": fee, "p_fill": pf,
+            "fit_path": fit_path or None}
 
 _config: Config | None = None
 

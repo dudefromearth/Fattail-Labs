@@ -469,3 +469,24 @@ Content lives in the **lab-wiki repo** (`~/lab-wiki`, GitHub `dudefromearth/lab-
 | **New pages** | Author in Obsidian (or let the lab-wiki bench compile); `[[wikilinks]]` resolve automatically; unresolved links render muted until the target page exists |
 
 Members only ever see `status: published` pages. No wiki content is edited in `/admin`.
+
+---
+
+## Quant Lab fill-friction (operator)
+
+**Spec:** ATRV v0.10 §3.7.1 · plan `docs/Quant-Lab-Fill-Friction-Full-Agent-Bench-Plan-v1.1.md` · token `agents/go/QFRIC-W0.md` · **DL-679**.
+
+Required keys (all four or none; partial aborts boot):
+
+| Key | Meaning |
+|---|---|
+| `LABS_QUANT_STORE_ROOT` | Built `[C][T]` store root |
+| `LABS_QUANT_GREEKS_QUANTUM` | Decimal count, recorded in the store header |
+| `LABS_QUANT_FEE_PER_CONTRACT` | Dollars per contract per side |
+| `LABS_QUANT_FILL_P_UNFITTED` | **`complex`:** P(fill within the resting window), spread as constant hazard. **`legged` (contrast):** still the v0.9 per-snapshot constant |
+
+Optional: `LABS_QUANT_FILL_FIT_PATH` — if **set**, the file must exist, parse, and carry `fit_id`, or boot aborts. If **unset**, every response is `fill_model: unfitted_pessimistic`, `fit_id: null`. This GO: unset. Fill history **never** enters the repo.
+
+Controls (each on a declared grid; off-grid → `CONTROL_OFF_GRID`, never rounded): `order_type` complex\|legged · `limit` abs ($0.01 inside $0.05…$5.00; page chips $0.30/$0.50/$1.00) or offset ticks {−1,0,+1,+2,natural} · `window_s` {10,20,30,60} · `reseat` improve {0,1} × max {0..3} · `regime_factor` {0.5,0.75,1.0} (fitted `P_fit` only). Defaults: complex · offset +1 · 30 s · (1, 2) · 1.0.
+
+`unfitted_pessimistic` to an operator: the 0.85 is **not** a measurement and **not** a per-snapshot coin flip on a complex order. A fill is at the limit or not at all. A sell into a null bid does not fill.

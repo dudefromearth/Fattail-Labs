@@ -22,6 +22,7 @@ from fastapi import APIRouter, Body, HTTPException, Query, Request, Response
 from config import validate_quant_env
 from guards import require_session
 from quant.layout import ALL_FIELDS
+from quant.friction import CELL_CEILING, ControlOffGrid, FrictionRefusal, grids, parse_controls
 from quant.simulate import ExitRule, Leg, Params, SimulateRefusal, simulate, sweep_entries
 from quant.store import StoreError, list_days, open_day
 
@@ -73,6 +74,40 @@ def _parse_legs(raw: str) -> list[tuple[float, str, int]]:
     if not out:
         raise HTTPException(status_code=422, detail="NO_LEGS")
     return out
+
+
+def _controls(body: dict):
+    try:
+        return parse_controls(body.get("controls"))
+    except ControlOffGrid as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"refusal": exc.code, "axis": exc.axis, "detail": exc.detail},
+        ) from exc
+    except (TypeError, ValueError, KeyError) as exc:
+        raise HTTPException(status_code=422, detail=f"BAD_CONTROLS {exc}") from exc
+
+
+def _cell_count(body: dict) -> int:
+    extra = body.get("controls_sweep")
+    if extra is None:
+        return 1
+    if not isinstance(extra, list):
+        raise HTTPException(status_code=422, detail="controls_sweep must be a list of control tuples")
+    n = len(extra)
+    if n > CELL_CEILING:
+        raise HTTPException(
+            status_code=422,
+            detail={"refusal": "CELL_CEILING", "detail": f"{n} control-axis tuples > {CELL_CEILING}"},
+        )
+    return n
+
+
+@router.get("/api/me/quant/controls")
+def quant_controls(request: Request) -> Any:
+    """Serving seam (O1). Grids are data in friction.py — this does not govern them."""
+    require_session(request)
+    return {"api_version": API_VERSION, **grids()}
 
 
 def _exit_rule(body: dict) -> ExitRule:
@@ -244,7 +279,7 @@ def quant_simulate(request: Request, body: dict = Body(...)) -> Any:
     strategy_id = f"{book}:{day}:" + ",".join(f"{k:g}{sd}:{q:+d}" for k, sd, q in parsed)
     prm = Params(seed=seed, paths=paths, strategy_id=strategy_id,
                  p_fill=s["p_fill"], fee_per_contract=s["fee_per_contract"],
-                 latency_snapshots=latency)
+                 latency_snapshots=latency, controls=_controls(body))
     try:
         out = simulate(st, [Leg(c, q) for c, q in resolved], t_entry, t_exit, prm, _exit_rule(body))
     except SimulateRefusal as exc:
@@ -276,11 +311,13 @@ def quant_sweep(request: Request, body: dict = Body(...)) -> Any:
     n_entries = max(0, (t_to - t_from) // max(step, 1) + 1)
     if n_entries * ppe > MAX_PATHS * 10:
         raise HTTPException(status_code=422, detail=f"TOO_LARGE {n_entries} entries x {ppe} paths")
+    _cell_count(body)  # 64 control-axis tuples; entry pooling is not a cell (D2)
     st = _store(day, book)
     parsed = _parse_legs(legs_raw); resolved = _resolve(st, parsed)
     strategy_id = f"{book}:{day}:" + ",".join(f"{k:g}{sd}:{q:+d}" for k, sd, q in parsed)
     prm = Params(seed=seed, paths=ppe, strategy_id=strategy_id, p_fill=s["p_fill"],
-                 fee_per_contract=s["fee_per_contract"], latency_snapshots=latency)
+                 fee_per_contract=s["fee_per_contract"], latency_snapshots=latency,
+                 controls=_controls(body))
     try:
         out = sweep_entries(st, [Leg(c, q) for c, q in resolved], t_from, t_to, t_exit, step, prm, ppe,
                             _exit_rule(body))

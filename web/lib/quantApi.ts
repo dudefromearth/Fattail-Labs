@@ -59,11 +59,35 @@ export function fetchMark(day: string, book: string, legs: string): Promise<Mark
   return get(`/api/me/quant/mark?${q}`);
 }
 
+export type QuantControls = {
+  order_type: "complex" | "legged";
+  limit: { kind: "abs"; debit: number } | { kind: "offset"; ticks: number | "natural" };
+  window_s: number;
+  reseat: { improve_ticks: number; max_reseats: number };
+  regime_factor: number;
+};
+
+export type ControlsGrid = {
+  order_type: string[];
+  limit: { kinds: string[]; abs_chips: number[]; abs_grid: { min: number; max: number; step: number }; offset_ticks: (number | "natural")[] };
+  window_s: number[];
+  reseat: { improve_ticks: number[]; max_reseats: number[] };
+  regime_factor: number[];
+  defaults: QuantControls;
+  tick_by_book: Record<string, number>;
+  cell_ceiling: number;
+};
+
+export function fetchQuantControls(): Promise<ControlsGrid> {
+  return get("/api/me/quant/controls");
+}
+
 export type ExitSpec = { exit_kind: "time" } | { exit_kind: "target"; target_pct: number };
 
 export async function runSimulate(body: {
   day: string; book: string; legs: string; t_entry: number; t_exit: number;
   paths: number; seed: number; latency_snapshots?: number;
+  controls?: QuantControls;
 } & ExitSpec): Promise<SimulateResponse> {
   const r = await fetch("/api/me/quant/simulate", {
     method: "POST", credentials: "same-origin",
@@ -77,7 +101,13 @@ export async function runSimulate(body: {
   }
   if (!r.ok) {
     const body = await r.json().catch(() => ({}));
-    throw new Error(typeof body.detail === "string" ? body.detail : `API ${r.status}`);
+    const d = (body as { detail?: unknown }).detail;
+    if (typeof d === "string") throw new Error(d);
+    if (d && typeof d === "object" && "refusal" in d) {
+      const rfs = d as { refusal: string; detail?: string };
+      throw new Error(`${rfs.refusal}${rfs.detail ? `: ${rfs.detail}` : ""}`);
+    }
+    throw new Error(`API ${r.status}`);
   }
   return r.json();
 }
@@ -97,6 +127,7 @@ export type SweepResponse = Omit<SimulateResponse, "n" | "n_traded" | "t_entry" 
 export async function runSweep(body: {
   day: string; book: string; legs: string; t_from: number; t_to: number; t_exit: number;
   step: number; paths_per_entry: number; seed: number; latency_snapshots?: number;
+  controls?: QuantControls;
 } & ExitSpec): Promise<SweepResponse> {
   const r = await fetch("/api/me/quant/sweep", {
     method: "POST", credentials: "same-origin",

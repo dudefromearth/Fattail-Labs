@@ -27,6 +27,10 @@ from dataclasses import dataclass
 from typing import Sequence
 
 from quant.store import DayStore
+from quant.friction import (
+    Controls, FrictionRefusal, complex_quotes, n_contracts,
+    rest_order, window_indices,
+)
 
 FIDELITY_ERA1 = "era1_no_depth"
 FILL_MODEL_UNFITTED = "unfitted_pessimistic"
@@ -59,6 +63,7 @@ class Params:
     fee_per_contract: float       # LABS_QUANT_FEE_PER_CONTRACT, dollars
     latency_snapshots: int = 1    # act no earlier than observed + latency (§3.6)
     multiplier: int = 100
+    controls: Controls | None = None  # None → v0.9 legged path (byte-identical)
 
 
 def path_rng(seed: int, strategy_id: str, path_index: int) -> random.Random:
@@ -242,6 +247,177 @@ def resolve_exit(st: DayStore, legs: Sequence[Leg], t_in: int, t_exit: int,
                     "debit_mid": debit / st.scale("mid")}
 
 
+# ---------------------------------------------------------------- complex order (ATRV §3.7.1)
+
+def _salvage_close(st: DayStore, legs: Sequence[Leg], t: int) -> tuple[float, list]:
+    """Forced time exit: longs with a null bid abandoned at $0 and named (F3)."""
+    abandoned = []
+    credit = 0.0
+    sc = st.scale("mid")
+    for lg in legs:
+        if not st.present(lg.c, t):
+            abandoned.append({"c": lg.c, "qty": lg.qty, "at": 0.0, "reason": "absent"})
+            continue
+        bid = st.value("bid", lg.c, t)
+        ask = st.value("ask", lg.c, t)
+        if lg.qty > 0:
+            if bid is None:
+                abandoned.append({"c": lg.c, "qty": lg.qty, "at": 0.0, "reason": "null_bid"})
+            else:
+                credit += lg.qty * (bid / sc)
+        else:
+            if ask is None:
+                abandoned.append({"c": lg.c, "qty": lg.qty, "at": 0.0, "reason": "null_ask"})
+            else:
+                credit += lg.qty * (ask / sc)
+    return credit, abandoned
+
+
+def _simulate_complex(st: DayStore, legs: Sequence[Leg], t_entry: int, t_exit: int,
+                      t_in: int, prm: Params, rule: ExitRule) -> dict:
+    ctr: Controls = prm.controls  # type: ignore[assignment]
+    for lg in legs:
+        if _quote(st, lg.c, t_in) is None:
+            raise SimulateRefusal("LEG_ABSENT_AT_INSTANT",
+                                  f"contract {lg.c} unpriced at t={t_in}")
+    n_ct = n_contracts(legs)
+    results = []
+    k_entry = 0
+    for i in range(prm.paths):
+        rng = path_rng(prm.seed, prm.strategy_id, i)
+        ent = rest_order(st, legs, "buy", t_in, ctr, rng, prm.p_fill)
+        k_entry = ent.K
+        if not ent.filled:
+            results.append({"traded": False, "entry_nofill": True, "exit_nofill": False,
+                            "pnl": None, "friction": 0.0, "fees": 0.0, "per_leg": [],
+                            "abandoned": [], "t_exit_resolved": t_exit,
+                            "exit": {"kind": rule.kind}})
+            continue
+        debit = ent.limit
+        mid_in = ent.mid_at_fill or debit
+        fric_in = max(debit - mid_in, 0.0) * prm.multiplier
+        fees = n_ct * prm.fee_per_contract
+        abandoned: list = []
+        exit_nf = False
+        touched_at = None
+        filled_at = None
+        t_out = t_exit
+        credit = debit
+        hit = False
+        if rule.kind == "target":
+            goal = debit * (1.0 + rule.pct / 100.0)
+            t_start = min(ent.t_fill + 1, st.T - 1)
+            for t in range(t_start, t_exit + 1):
+                q = complex_quotes(st, legs, t)
+                if q["mid"] is not None and q["mid"] >= goal and touched_at is None:
+                    touched_at = t
+            ex = rest_order(st, legs, "sell", t_start, ctr, rng, prm.p_fill,
+                            limit_override=goal)
+            if ex.filled:
+                credit = ex.limit
+                t_out = ex.t_fill
+                filled_at = ex.t_fill
+                hit = True
+                fric_out = max((ex.mid_at_fill or credit) - credit, 0.0) * prm.multiplier
+            else:
+                exit_nf = True
+                credit, abandoned = _salvage_close(st, legs, t_exit)
+                t_out = t_exit
+                fric_out = 0.0
+            fees += n_ct * prm.fee_per_contract
+            exit_info = {"kind": "target", "pct": rule.pct, "hit": hit,
+                         "touched_at": touched_at, "filled_at": filled_at,
+                         "debit_mid": debit}
+        else:
+            t_start = min(t_exit, st.T - 1)
+            ex = rest_order(st, legs, "sell", t_start, ctr, rng, prm.p_fill)
+            if ex.filled:
+                credit = ex.limit
+                t_out = ex.t_fill
+                filled_at = ex.t_fill
+                fric_out = max((ex.mid_at_fill or credit) - credit, 0.0) * prm.multiplier
+            else:
+                exit_nf = True
+                credit, abandoned = _salvage_close(st, legs, t_exit)
+                t_out = t_exit
+                fric_out = 0.0
+            fees += n_ct * prm.fee_per_contract
+            exit_info = {"kind": "time", "filled_at": filled_at}
+        pnl = (credit - debit) * prm.multiplier - fees
+        results.append({"traded": True, "entry_nofill": False, "exit_nofill": exit_nf,
+                        "pnl": pnl, "friction": fric_in + fric_out, "fees": fees,
+                        "per_leg": [], "abandoned": abandoned,
+                        "t_exit_resolved": t_out, "exit": exit_info})
+
+    traded = [r for r in results if r["traded"]]
+    if not traded:
+        raise SimulateRefusal("NO_PATH_TRADED",
+                              f"0 of {prm.paths} paths filled at entry t={t_in} — "
+                              f"complex order did not fill within the window")
+    pnls = sorted(r["pnl"] for r in traded)
+    n_entry_nf = sum(1 for r in results if r["entry_nofill"])
+    n_exit_nf = sum(1 for r in traded if r["exit_nofill"])
+    fric = sorted(r["friction"] for r in traded)
+    fees_l = sorted(r["fees"] for r in traded)
+    abandoned_all = [a for r in traded for a in r["abandoned"]]
+    t_exit_resolved = traded[0]["t_exit_resolved"]
+    exit_info = traded[0]["exit"]
+    # representative exit: hit if any path hit the target fill
+    if rule.kind == "target":
+        n_hit = sum(1 for r in traded if r["exit"].get("hit"))
+        n_touch = sum(1 for r in traded if r["exit"].get("touched_at") is not None)
+        exit_info = {**exit_info, "hit": n_hit > 0,
+                     "paths_filled_at_target": n_hit, "paths_touched": n_touch}
+    t_out = min(max(t_exit_resolved, t_in + 1), st.T - 1)
+    idx0 = window_indices(st, t_in, ctr.window_s)
+    out = {
+        "n": prm.paths, "n_traded": len(traded), "seed": prm.seed,
+        "strategy_id": prm.strategy_id,
+        "t_entry": t_entry, "t_exit": t_exit, "t_exit_resolved": t_exit_resolved,
+        "exit": exit_info,
+        "t_entry_acted": t_in, "t_exit_acted": t_out,
+        "time_entry_ms": st.time_ms(t_in), "time_exit_ms": st.time_ms(t_out),
+        "ecdf": ecdf_of(pnls),
+        "bands": bands_of(pnls),
+        "modality": modality_of(pnls),
+        "no_fill_rate": {"entry": n_entry_nf / prm.paths,
+                         "exit": (n_exit_nf / len(traded)) if traded else None},
+        "tax": {
+            "friction_bands": bands_of(fric), "fees_bands": bands_of(fees_l),
+            "probability": prm.p_fill,
+            "form": "complex: (limit - complex_mid) + per-contract fees, per order side",
+            "per_side": "entry and exit both taxed; a net-limit fill has no independent crossings",
+        },
+        "stability": stability_of(pnls, prm.seed),
+        "fidelity": FIDELITY_ERA1,
+        "assumptions": {
+            "fill_model": FILL_MODEL_UNFITTED, "p_fill": prm.p_fill,
+            "fit_id": None,
+            "controls": ctr.as_echo(),
+            "window_s": ctr.window_s, "K": len(idx0) or k_entry,
+            "tick": complex_quotes(st, legs, t_in)["tick"],
+            "mark_basis": "vendor_ask_over_2",
+            "fill_placement": "at the limit, never better",
+            "entry_no_fill": "no trade, no partial credit, excluded from the distribution",
+            "exit_no_fill": "resting close; unfilled at last window salvages; null-bid longs abandoned at $0",
+            "latency_snapshots": prm.latency_snapshots,
+            "fee_per_contract": prm.fee_per_contract, "multiplier": prm.multiplier,
+            "path_dependence": "price path is archived, not simulated (§3.8)",
+            "stickiness": "n/a — realized path, no curve",
+            "abandoned_legs": abandoned_all[:12],
+            "regime_factor_applies_to": "fitted P_fit only",
+        },
+        "display_legal": list(DISPLAY_LEGAL),
+        "researcher_only": {
+            "tail_cvar": {
+                "worst_1pct": (sum(pnls[: max(1, len(pnls)//100)]) / max(1, len(pnls)//100)) if pnls else None,
+                "best_1pct": (sum(pnls[-max(1, len(pnls)//100):]) / max(1, len(pnls)//100)) if pnls else None,
+            },
+        },
+    }
+    return out
+
+
 # ---------------------------------------------------------------- run
 
 def simulate(st: DayStore, legs: Sequence[Leg], t_entry: int, t_exit: int,
@@ -253,6 +429,11 @@ def simulate(st: DayStore, legs: Sequence[Leg], t_entry: int, t_exit: int,
     t_in = t_entry + prm.latency_snapshots
     if not (0 <= t_in < t_exit < st.T):
         raise SimulateRefusal("BAD_WINDOW", f"entry+latency={t_in}, exit={t_exit}, T={st.T}")
+    if prm.controls is not None and prm.controls.order_type == "complex":
+        try:
+            return _simulate_complex(st, legs, t_entry, t_exit, t_in, prm, exit_rule or ExitRule())
+        except FrictionRefusal as exc:
+            raise SimulateRefusal(exc.code, exc.detail) from exc
     rule = exit_rule or ExitRule()
     t_exit_resolved, exit_info = resolve_exit(st, legs, t_in, t_exit, rule)
     t_out = t_exit_resolved + (prm.latency_snapshots if exit_info.get("hit") else 0)
@@ -342,7 +523,8 @@ def sweep_entries(st: DayStore, legs: Sequence[Leg], t_from: int, t_to: int,
     n_nofill = 0; n_total = 0; refused = 0; hits = 0; minutes_in: list[float] = []
     sub = Params(seed=prm.seed, paths=paths_per_entry, strategy_id=prm.strategy_id,
                  p_fill=prm.p_fill, fee_per_contract=prm.fee_per_contract,
-                 latency_snapshots=prm.latency_snapshots, multiplier=prm.multiplier)
+                 latency_snapshots=prm.latency_snapshots, multiplier=prm.multiplier,
+                 controls=prm.controls)
     for k, t_e in enumerate(entries):
         try:
             r = simulate(st, legs, t_e, t_exit, Params(**{**sub.__dict__, "seed": prm.seed * 1_000_003 + k}), exit_rule)

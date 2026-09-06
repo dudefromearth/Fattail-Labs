@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  fetchMark, fetchQuantDays, fetchSpot, hhmm, runSimulate, runSweep,
-  type Bands, type ExitSpec, type MarkResponse, type QuantDay, type SimulateResponse, type SweepResponse,
+  fetchMark, fetchQuantControls, fetchQuantDays, fetchSpot, hhmm, runSimulate, runSweep,
+  type Bands, type ControlsGrid, type ExitSpec, type MarkResponse, type QuantControls, type QuantDay, type SimulateResponse, type SweepResponse,
 } from "@/lib/quantApi";
 
 /**
@@ -49,6 +49,27 @@ export default function MonteCarloLab() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [axis, setAxis] = useState<{ time_ms: number[]; spot: (number | null)[]; strikes: number[] } | null>(null);
+  const [grid, setGrid] = useState<ControlsGrid | null>(null);
+  const [orderType, setOrderType] = useState<"complex" | "legged">("complex");
+  const [limitKind, setLimitKind] = useState<"offset" | "abs">("offset");
+  const [offsetTicks, setOffsetTicks] = useState<number | "natural">(1);
+  const [absChip, setAbsChip] = useState(0.5);
+  const [windowS, setWindowS] = useState(30);
+  const [improveTicks, setImproveTicks] = useState(1);
+  const [maxReseats, setMaxReseats] = useState(2);
+  const [regime, setRegime] = useState(1.0);
+
+  useEffect(() => {
+    fetchQuantControls().then(setGrid).catch((e) => setErr(String(e.message || e)));
+  }, []);
+
+  const controls = (): QuantControls => ({
+    order_type: orderType,
+    limit: limitKind === "abs" ? { kind: "abs", debit: absChip } : { kind: "offset", ticks: offsetTicks },
+    window_s: windowS,
+    reseat: { improve_ticks: improveTicks, max_reseats: maxReseats },
+    regime_factor: regime,
+  });
 
   useEffect(() => {
     fetchQuantDays().then((d) => { setDays(d.days); if (d.days[0]) setSel(d.days[0]); })
@@ -93,10 +114,10 @@ export default function MonteCarloLab() {
     setErr(null); setBusy(true);
     try {
       setSim(await runSimulate({ day: sel.day, book: sel.book, legs: legs.trim(),
-        t_entry: tEntry, t_exit: tExit, paths, seed, ...exitSpec() }));
+        t_entry: tEntry, t_exit: tExit, paths, seed, controls: controls(), ...exitSpec() }));
     } catch (e) { setErr(String((e as Error).message || e)); setSim(null); }
     finally { setBusy(false); }
-  }, [sel, legs, tEntry, tExit, paths, seed, exitKind, targetPct]);
+  }, [sel, legs, tEntry, tExit, paths, seed, exitKind, targetPct, orderType, limitKind, offsetTicks, absChip, windowS, improveTicks, maxReseats, regime]);
 
   /** Every entry from the Entry slider to the Exit, `stepS` seconds apart, one exit. */
   const doSweep = useCallback(async () => {
@@ -105,10 +126,10 @@ export default function MonteCarloLab() {
     try {
       setSweep(await runSweep({ day: sel.day, book: sel.book, legs: legs.trim(),
         t_from: tEntry, t_to: tExit - 2, t_exit: tExit, step: Math.max(1, Math.round(stepS / 2)),
-        paths_per_entry: 100, seed, ...exitSpec() }));
+        paths_per_entry: 100, seed, controls: controls(), ...exitSpec() }));
     } catch (e) { setErr(String((e as Error).message || e)); setSweep(null); }
     finally { setBusy(false); }
-  }, [sel, legs, tEntry, tExit, stepS, seed, exitKind, targetPct]);
+  }, [sel, legs, tEntry, tExit, stepS, seed, exitKind, targetPct, orderType, limitKind, offsetTicks, absChip, windowS, improveTicks, maxReseats, regime]);
 
   return (
     <main className="mx-auto w-full max-w-[1200px] px-4 py-6 space-y-6">
@@ -154,8 +175,27 @@ export default function MonteCarloLab() {
         <section className="flex flex-wrap items-center gap-3 text-sm">
           <span className="text-[var(--color-label-secondary)]">Exit rule</span>
           <label className="cursor-pointer"><input type="radio" name="exit" checked={exitKind === "target"} onChange={() => setExitKind("target")} className="mr-1" />
-            first instant the mid-mark reaches <input type="number" min={1} max={2000} step={10} className="mx-1 w-20 rounded border px-2 py-1 bg-transparent" value={targetPct} onChange={(e) => setTargetPct(Number(e.target.value))} />% on the debit, else the Exit time</label>
+            resting close at <input type="number" min={1} max={2000} step={10} className="mx-1 w-20 rounded border px-2 py-1 bg-transparent" value={targetPct} onChange={(e) => setTargetPct(Number(e.target.value))} />% on the debit (a mid-mark touch is not an exit)</label>
           <label className="cursor-pointer"><input type="radio" name="exit" checked={exitKind === "time"} onChange={() => setExitKind("time")} className="mr-1" />hold to the Exit time</label>
+        </section>
+      )}
+      {grid && (
+        <section className="space-y-2 rounded border px-3 py-2 text-sm">
+          <div className="text-xs uppercase tracking-wide text-[var(--color-label-secondary)]">Fill controls — on the grid only; defaults marked. Not advice.</div>
+          <div className="flex flex-wrap gap-4 items-center">
+            <Chip label="order" value={orderType} options={[{ v: "complex", n: "complex (default)" }, { v: "legged", n: "legged — contrast" }]} onChange={(v) => setOrderType(v as "complex" | "legged")} />
+            <Chip label="limit" value={limitKind} options={[{ v: "offset", n: "offset (default)" }, { v: "abs", n: "abs $" }]} onChange={(v) => setLimitKind(v as "offset" | "abs")} />
+            {limitKind === "offset" ? (
+              <Chip label="ticks" value={String(offsetTicks)} options={(grid.limit.offset_ticks).map((t) => ({ v: String(t), n: t === 1 ? "+1 (default)" : String(t) }))} onChange={(v) => setOffsetTicks(v === "natural" ? "natural" : Number(v))} />
+            ) : (
+              <Chip label="debit" value={String(absChip)} options={grid.limit.abs_chips.map((c) => ({ v: String(c), n: `$${c.toFixed(2)}` }))} onChange={(v) => setAbsChip(Number(v))} />
+            )}
+            <Chip label="window" value={String(windowS)} options={grid.window_s.map((s) => ({ v: String(s), n: s === 30 ? `${s}s (default)` : `${s}s` }))} onChange={(v) => setWindowS(Number(v))} />
+            <Chip label="improve" value={String(improveTicks)} options={grid.reseat.improve_ticks.map((n) => ({ v: String(n), n: n === 1 ? "1 (default)" : String(n) }))} onChange={(v) => setImproveTicks(Number(v))} />
+            <Chip label="max reseats" value={String(maxReseats)} options={grid.reseat.max_reseats.map((n) => ({ v: String(n), n: n === 2 ? "2 (default)" : String(n) }))} onChange={(v) => setMaxReseats(Number(v))} />
+            <Chip label="regime" value={String(regime)} options={grid.regime_factor.map((n) => ({ v: String(n), n: n === 1 ? "1.0 (default)" : String(n) }))} onChange={(v) => setRegime(Number(v))} />
+          </div>
+          <p className="text-xs text-[var(--color-label-secondary)]">legged is a labelled contrast with the old per-snapshot fill. regime scales a fitted curve only — this store is unfitted.</p>
         </section>
       )}
       {sel && (
@@ -170,6 +210,18 @@ export default function MonteCarloLab() {
       {sim && <Distribution s={sim} />}
       {sweep && <SweepView s={sweep} />}
     </main>
+  );
+}
+
+function Chip({ label, value, options, onChange }: { label: string; value: string; options: { v: string; n: string }[]; onChange: (v: string) => void }) {
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1">
+      <span className="text-[var(--color-label-secondary)]">{label}</span>
+      {options.map((o) => (
+        <button key={o.v} type="button" onClick={() => onChange(o.v)}
+          className={`rounded border px-2 py-0.5 text-xs ${value === o.v ? "border-current" : "opacity-60"}`}>{o.n}</button>
+      ))}
+    </span>
   );
 }
 
@@ -251,7 +303,11 @@ function Distribution({ s }: { s: SimulateResponse }) {
         <span>modes: <b>{s.modality.n_modes ?? "—"}</b>{s.modality.n_modes && s.modality.n_modes > 1 ? " — bimodal; the middle is the valley" : ""}</span>
         <span>no-fill: entry {(nf.entry * 100).toFixed(1)}% · exit {nf.exit == null ? "—" : `${(nf.exit * 100).toFixed(1)}%`}</span>
         <span>stability: {s.stability.n_half_vs_n == null ? "—" : `${(s.stability.n_half_vs_n * 100).toFixed(1)}% band drift at N/2 ${s.stability.enough ? "(enough)" : "(raise N)"}`}</span>
-        <span className="uppercase tracking-wide">{s.fidelity}{s.assumptions.label ? ` · ${s.assumptions.label}` : ""}</span>
+        <span className="uppercase tracking-wide">{s.fidelity} · {String(s.assumptions.fill_model ?? "")}{s.assumptions.fit_id ? ` · ${String(s.assumptions.fit_id)}` : " · fit none"}{s.assumptions.label ? ` · ${s.assumptions.label}` : ""}</span>
+        {s.assumptions.K != null && <span>window {String(s.assumptions.window_s)}s · K={String(s.assumptions.K)}</span>}
+        {Array.isArray(s.assumptions.abandoned_legs) && (s.assumptions.abandoned_legs as unknown[]).length > 0 && (
+          <span>abandoned at $0: {(s.assumptions.abandoned_legs as { c: number; reason: string }[]).map((a) => `${a.c} ${a.reason}`).join(", ")} — there was no bid</span>
+        )}
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto rounded border" role="img" aria-label="Empirical distribution of after-tax P&L">
         <line x1={x(0)} x2={x(0)} y1={P} y2={H - P} stroke="currentColor" strokeOpacity={0.35} />

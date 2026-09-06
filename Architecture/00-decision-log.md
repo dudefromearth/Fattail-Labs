@@ -4,6 +4,22 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-06 — DL-679 Quant Lab fill-friction is BUILD · plan v1.1 · active alongside LIM
+
+**Decision (Coach, 2026-09-06).** *"execute the build plan"* then *"go all the way through unless there is a problem."* Recorded on `agents/go/QFRIC-W0.md` W0-0.
+
+**Stamped:** ATRV v0.10 §3.7.1 **BUILD AUTHORITY**. Plan **v1.1** Accept (`4d3d4030fd9bd4a0590dd7c77087e2ba5ea9501c`). Spec sha1 unchanged `9e148f787d87b8eda6435f4b0ea3014814380a3f`.
+
+**Dispositions:** OD-ATRV-12 keep vendor `ask/2`, labelled. OD-ATRV-13 **Not yet** — W-G closes unfitted; P4 does not fire; fill history never in the repo. OD-ATRV-14 declared {0.5, 0.75, 1.0} on fitted `P_fit` only. O1: `GET /api/me/quant/controls` serves the grids. O6: window grid includes 60 s.
+
+**B1:** Quant Lab fill-friction is an **active program alongside** Options Lab Heatmap LIM. LIM is not cancelled, not parked. This board touches only DL-677 quant files plus `.env.example`, `validate_quant_env`, the Monte Carlo page, and this line of `AGENTS.md`. No LIM file, no OPF file. DL-539 freeze otherwise unchanged.
+
+**v1.1 folds** (Grok review RETURN on v1.0): F5 split (`complex` window hazard / `legged` per-snapshot contrast); cell count = control-axis tuples only; AT-36 test rewritten as AT-44; suite criterion = no new fail outside the classified nine; complex tax = `(limit − complex_mid)` + fees; K from snapshots in the window; `regime_factor` does not scale unfitted `h`.
+
+**Next:** P1 engine (`friction.py`) · P2 API · P3 page · W-G unfitted. P4 when history is delivered out of band.
+
+---
+
 ## 2026-09-06 — DL-678 Fill-friction model gets controls · spread probe retires the placement law · ATRV v0.10 (design only)
 
 **Decision (Coach, 2026-09-06).** *"We need controls on the friction model."* Earlier the same
