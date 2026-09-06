@@ -82,3 +82,23 @@ export async function runSimulate(body: {
 export function hhmm(ms: number, tz = "America/New_York"): string {
   return new Date(ms).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false, timeZone: tz });
 }
+
+export type SweepResponse = Omit<SimulateResponse, "n" | "n_traded" | "t_entry" | "t_exit" | "t_entry_acted" | "t_exit_acted" | "time_entry_ms" | "tax" | "provenance"> & {
+  entries: number; refused_entries: number; paths_per_entry: number; n_pooled: number;
+  t_exit: number; time_exit_ms: number; window: { t_from: number; t_to: number; step: number };
+  per_entry: ({ t_entry: number; time_ms: number; n_traded: number; bands: Bands } | { t_entry: number; refused: true })[];
+};
+
+export async function runSweep(body: {
+  day: string; book: string; legs: string; t_from: number; t_to: number; t_exit: number;
+  step: number; paths_per_entry: number; seed: number; latency_snapshots?: number;
+}): Promise<SweepResponse> {
+  const r = await fetch("/api/me/quant/sweep", {
+    method: "POST", credentials: "same-origin",
+    headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  });
+  if (r.status === 501) throw new Error("QUANT STORE NOT CONFIGURED");
+  if (r.status === 409) { const b = await r.json(); const d = b.detail as QuantRefusal; throw new Error(`${d.refusal}: ${d.detail}`); }
+  if (!r.ok) { const body = await r.json().catch(() => ({})); throw new Error(typeof body.detail === "string" ? body.detail : `API ${r.status}`); }
+  return r.json();
+}

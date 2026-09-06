@@ -273,3 +273,63 @@ def simulate(st: DayStore, legs: Sequence[Leg], t_entry: int, t_exit: int,
         },
     }
     return out
+
+
+# ---------------------------------------------------------------- sweep
+
+def sweep_entries(st: DayStore, legs: Sequence[Leg], t_from: int, t_to: int,
+                  t_exit: int, step: int, prm: Params, paths_per_entry: int) -> dict:
+    """Same structure, EVERY entry in [t_from, t_to] at `step` snapshots, one
+    exit, fill Monte Carlo on each. The pooled distribution is the shape of
+    "this structure, entered any time in this window" — the series answer
+    SSR-MEXP §1.8 promised, taxed.
+
+    Not a study (QLAB §4.5 registers those). A grid cell's worth of it.
+    """
+    if step < 1:
+        raise SimulateRefusal("BAD_STEP", "step must be >= 1")
+    entries = list(range(t_from, min(t_to, t_exit - prm.latency_snapshots - 1) + 1, step))
+    if not entries:
+        raise SimulateRefusal("BAD_WINDOW", "no entries in window before exit")
+    pooled: list[float] = []
+    per_entry: list[dict] = []
+    n_nofill = 0; n_total = 0; refused = 0
+    sub = Params(seed=prm.seed, paths=paths_per_entry, strategy_id=prm.strategy_id,
+                 p_fill=prm.p_fill, fee_per_contract=prm.fee_per_contract,
+                 latency_snapshots=prm.latency_snapshots, multiplier=prm.multiplier)
+    for k, t_e in enumerate(entries):
+        try:
+            r = simulate(st, legs, t_e, t_exit, Params(**{**sub.__dict__, "seed": prm.seed * 1_000_003 + k}))
+        except SimulateRefusal:
+            refused += 1
+            per_entry.append({"t_entry": t_e, "refused": True})
+            continue
+        xs = r["ecdf"]["x"]
+        pooled.extend(sorted(_pnl_list_from(r)))
+        n_total += r["n"]; n_nofill += round(r["no_fill_rate"]["entry"] * r["n"])
+        per_entry.append({"t_entry": t_e, "time_ms": st.time_ms(t_e), "n_traded": r["n_traded"],
+                          "bands": r["bands"]})
+    pooled.sort()
+    return {
+        "entries": len(entries), "refused_entries": refused, "paths_per_entry": paths_per_entry,
+        "n_pooled": len(pooled),
+        "ecdf": ecdf_of(pooled), "bands": bands_of(pooled), "modality": modality_of(pooled),
+        "no_fill_rate": {"entry": (n_nofill / n_total) if n_total else None},
+        "stability": stability_of(pooled, prm.seed),
+        "per_entry": per_entry,
+        "fidelity": FIDELITY_ERA1, "seed": prm.seed, "strategy_id": prm.strategy_id,
+        "t_exit": t_exit, "time_exit_ms": st.time_ms(t_exit),
+        "window": {"t_from": t_from, "t_to": t_to, "step": step},
+        "assumptions": {"fill_model": FILL_MODEL_UNFITTED, "p_fill": prm.p_fill,
+                        "latency_snapshots": prm.latency_snapshots,
+                        "fee_per_contract": prm.fee_per_contract, "multiplier": prm.multiplier,
+                        "pooling": "every entry weighted equally; each entry is its own fill Monte Carlo"},
+        "display_legal": list(DISPLAY_LEGAL) + ["per_entry", "entries", "window"],
+    }
+
+
+def _pnl_list_from(r: dict) -> list[float]:
+    """Recover traded-path P&Ls from a simulate() result's ECDF sample.
+    The ECDF keeps up to 200 evenly spaced order statistics; for pooling
+    across many entries that is the right resolution and keeps payloads sane."""
+    return list(r["ecdf"]["x"])

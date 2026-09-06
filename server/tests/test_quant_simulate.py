@@ -98,3 +98,12 @@ def test_refuses_bad_window(st):
     with pytest.raises(SimulateRefusal) as ei:
         simulate(st, fly(st), 100, 5, prm())
     assert ei.value.code == "BAD_WINDOW"
+
+
+def test_sweep_pools_every_entry_and_is_reproducible(st):
+    from quant.simulate import sweep_entries
+    r = sweep_entries(st, fly(st), 5, 60, 100, step=5, prm=prm(paths=40), paths_per_entry=40)
+    assert r["entries"] == 12 and r["n_pooled"] > 0
+    assert "p50" not in r and set(r["bands"]) == set(BAND_KEYS)
+    r2 = sweep_entries(st, fly(st), 5, 60, 100, step=5, prm=prm(paths=40), paths_per_entry=40)
+    assert json.dumps(r, sort_keys=True) == json.dumps(r2, sort_keys=True)

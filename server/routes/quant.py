@@ -22,7 +22,7 @@ from fastapi import APIRouter, Body, HTTPException, Query, Request, Response
 from config import validate_quant_env
 from guards import require_session
 from quant.layout import ALL_FIELDS
-from quant.simulate import Leg, Params, SimulateRefusal, simulate
+from quant.simulate import Leg, Params, SimulateRefusal, simulate, sweep_entries
 from quant.store import StoreError, list_days, open_day
 
 router = APIRouter(tags=["quant"])
@@ -243,4 +243,35 @@ def quant_simulate(request: Request, body: dict = Body(...)) -> Any:
         out["assumptions"]["label"] = "idealised"   # §3.6: zero latency is superhuman
     out["provenance"] = {"store": st.meta.get("source_sha1"), "built_at": st.meta.get("built_at"),
                          "greeks_quantum_decimals": st.meta.get("greeks_quantum_decimals")}
+    return out
+
+
+@router.post("/api/me/quant/sweep")
+def quant_sweep(request: Request, body: dict = Body(...)) -> Any:
+    """Entry sweep: one structure, every entry in a window, one exit, fill MC each."""
+    require_session(request)
+    s = _settings()
+    if not s["root"]:
+        return _not_configured()
+    try:
+        day = str(body["day"]); book = str(body["book"]); legs_raw = str(body["legs"])
+        t_from = int(body["t_from"]); t_to = int(body["t_to"]); t_exit = int(body["t_exit"])
+        step = int(body.get("step", 30)); ppe = int(body.get("paths_per_entry", 100))
+        seed = int(body.get("seed", 1)); latency = int(body.get("latency_snapshots", 1))
+    except (KeyError, ValueError, TypeError) as exc:
+        raise HTTPException(status_code=422, detail=f"BAD_BODY {exc}") from exc
+    n_entries = max(0, (t_to - t_from) // max(step, 1) + 1)
+    if n_entries * ppe > MAX_PATHS * 10:
+        raise HTTPException(status_code=422, detail=f"TOO_LARGE {n_entries} entries x {ppe} paths")
+    st = _store(day, book)
+    parsed = _parse_legs(legs_raw); resolved = _resolve(st, parsed)
+    strategy_id = f"{book}:{day}:" + ",".join(f"{k:g}{sd}:{q:+d}" for k, sd, q in parsed)
+    prm = Params(seed=seed, paths=ppe, strategy_id=strategy_id, p_fill=s["p_fill"],
+                 fee_per_contract=s["fee_per_contract"], latency_snapshots=latency)
+    try:
+        out = sweep_entries(st, [Leg(c, q) for c, q in resolved], t_from, t_to, t_exit, step, prm, ppe)
+    except SimulateRefusal as exc:
+        raise HTTPException(status_code=409, detail={"refusal": exc.code, "detail": exc.detail}) from exc
+    out["api_version"] = API_VERSION; out["day"], out["book"] = st.day, st.book
+    out["legs"] = [{"strike": k, "side": sd, "qty": q} for k, sd, q in parsed]
     return out

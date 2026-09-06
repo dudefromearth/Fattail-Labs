@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  fetchMark, fetchQuantDays, fetchSpot, hhmm, runSimulate,
-  type MarkResponse, type QuantDay, type SimulateResponse,
+  fetchMark, fetchQuantDays, fetchSpot, hhmm, runSimulate, runSweep,
+  type Bands, type MarkResponse, type QuantDay, type SimulateResponse, type SweepResponse,
 } from "@/lib/quantApi";
 
 /**
@@ -27,6 +27,8 @@ export default function MonteCarloLab() {
   const [paths, setPaths] = useState(2000);
   const [seed, setSeed] = useState(1);
   const [sim, setSim] = useState<SimulateResponse | null>(null);
+  const [sweep, setSweep] = useState<SweepResponse | null>(null);
+  const [stepS, setStepS] = useState(60);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [axis, setAxis] = useState<{ time_ms: number[]; spot: (number | null)[]; strikes: number[] } | null>(null);
@@ -39,7 +41,7 @@ export default function MonteCarloLab() {
   // day changed: load the time/spot axis, reset the study window
   useEffect(() => {
     if (!sel) return;
-    setSim(null); setMark(null); setAxis(null);
+    setSim(null); setSweep(null); setMark(null); setAxis(null);
     setTEntry(Math.floor(sel.T * 0.1)); setTExit(Math.floor(sel.T * 0.6));
     fetchSpot(sel.day, sel.book).then(setAxis).catch((e) => setErr(String(e.message || e)));
   }, [sel]);
@@ -73,6 +75,18 @@ export default function MonteCarloLab() {
     } catch (e) { setErr(String((e as Error).message || e)); setSim(null); }
     finally { setBusy(false); }
   }, [sel, legs, tEntry, tExit, paths, seed]);
+
+  /** Every entry from the Entry slider to the Exit, `stepS` seconds apart, one exit. */
+  const doSweep = useCallback(async () => {
+    if (!sel || !legs.trim()) return;
+    setErr(null); setBusy(true);
+    try {
+      setSweep(await runSweep({ day: sel.day, book: sel.book, legs: legs.trim(),
+        t_from: tEntry, t_to: tExit - 2, t_exit: tExit, step: Math.max(1, Math.round(stepS / 2)),
+        paths_per_entry: 100, seed }));
+    } catch (e) { setErr(String((e as Error).message || e)); setSweep(null); }
+    finally { setBusy(false); }
+  }, [sel, legs, tEntry, tExit, stepS, seed]);
 
   return (
     <main className="mx-auto w-full max-w-[1200px] px-4 py-6 space-y-6">
@@ -114,9 +128,17 @@ export default function MonteCarloLab() {
           </label>
         </section>
       )}
+      {sel && (
+        <section className="flex flex-wrap items-end gap-3 text-sm">
+          <span className="text-[var(--color-label-secondary)]">Or sweep <b>every entry</b> from the Entry slider to the Exit, one exit, fill Monte Carlo on each —</span>
+          <label>every <input type="number" min={2} max={900} step={2} className="mx-1 w-20 rounded border px-2 py-1 bg-transparent" value={stepS} onChange={(e) => setStepS(Number(e.target.value))} /> s</label>
+          <button type="button" className="rounded border px-3 py-1" onClick={doSweep} disabled={!sel || busy || !legs.trim()}>{busy ? "…" : "Sweep entries"}</button>
+        </section>
+      )}
 
       {mark && <MarkStrip m={mark} tEntry={tEntry} tExit={tExit} />}
       {sim && <Distribution s={sim} />}
+      {sweep && <SweepView s={sweep} />}
     </main>
   );
 }
@@ -237,6 +259,61 @@ function Distribution({ s }: { s: SimulateResponse }) {
         <summary className="cursor-pointer text-[var(--color-label-secondary)]">Assumptions — always visible on request, never hidden</summary>
         <pre className="mt-2 whitespace-pre-wrap font-mono">{JSON.stringify({ ...s.assumptions, provenance: s.provenance, display_legal: s.display_legal }, null, 2)}</pre>
       </details>
+    </section>
+  );
+}
+
+
+/** The series answer: the same structure entered at every instant in a window.
+ *  Top: how the outcome BANDS move with entry time (p10 / p25 / p50 / p75 / p90,
+ *  drawn as a ribbon — a set, nothing featured). Bottom: the pooled ECDF. */
+function SweepView({ s }: { s: SweepResponse }) {
+  const W = 1100, H = 220, P = 32;
+  const ok = s.per_entry.filter((e): e is { t_entry: number; time_ms: number; n_traded: number; bands: Bands } => !("refused" in e));
+  const keys = ["p10", "p25", "p50", "p75", "p90"] as const;
+  const all = ok.flatMap((e) => keys.map((k) => e.bands[k]));
+  const lo = Math.min(...all, 0), hi = Math.max(...all, 0);
+  const x = (i: number) => P + (i / Math.max(ok.length - 1, 1)) * (W - 2 * P);
+  const y = (v: number) => H - P - ((v - lo) / Math.max(hi - lo, 1e-9)) * (H - 2 * P);
+  const line = (k: typeof keys[number]) => ok.map((e, i) => `${x(i).toFixed(1)},${y(e.bands[k]).toFixed(1)}`).join(" ");
+  const band = (a: typeof keys[number], b: typeof keys[number]) =>
+    ok.map((e, i) => `${x(i).toFixed(1)},${y(e.bands[a]).toFixed(1)}`).join(" ") + " " +
+    ok.slice().reverse().map((e, i) => `${x(ok.length - 1 - i).toFixed(1)},${y(e.bands[b]).toFixed(1)}`).join(" ");
+  const ecdf = s.ecdf; const elo = ecdf.x[0] ?? 0, ehi = ecdf.x[ecdf.x.length - 1] ?? 1;
+  const ex = (v: number) => P + ((v - elo) / Math.max(ehi - elo, 1e-9)) * (W - 2 * P);
+  const ey = (F: number) => H - P - F * (H - 2 * P);
+  const bandKeys = Object.keys(s.bands) as (keyof Bands)[];
+  return (
+    <section className="space-y-3 border-t pt-4">
+      <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-[var(--color-label-secondary)]">
+        <span><b>Entry sweep</b> · {s.entries} entries every {s.window.step * 2}s · {s.paths_per_entry} fill paths each · {s.n_pooled.toLocaleString()} pooled · exit {hhmm(s.time_exit_ms)}</span>
+        <span>modes: <b>{s.modality.n_modes ?? "—"}</b>{(s.modality.n_modes ?? 0) > 1 ? " — the mean would sit in a valley" : ""}</span>
+        <span>no-fill at entry: {s.no_fill_rate.entry == null ? "—" : `${(s.no_fill_rate.entry * 100).toFixed(1)}%`}</span>
+        <span>stability: {s.stability.n_half_vs_n == null ? "—" : `${(s.stability.n_half_vs_n * 100).toFixed(1)}% ${s.stability.enough ? "(enough)" : "(raise N)"}`}</span>
+        {s.refused_entries > 0 && <span>{s.refused_entries} entries refused (a leg absent)</span>}
+        <span className="uppercase tracking-wide">{s.fidelity}</span>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto rounded border" role="img" aria-label="Outcome bands by entry time">
+        <polygon points={band("p10", "p90")} fill="currentColor" fillOpacity={0.08} stroke="none" />
+        <polygon points={band("p25", "p75")} fill="currentColor" fillOpacity={0.14} stroke="none" />
+        <polyline points={line("p50")} fill="none" stroke="currentColor" strokeWidth={1.2} strokeDasharray="4 3" />
+        <line x1={P} x2={W - P} y1={y(0)} y2={y(0)} stroke="currentColor" strokeOpacity={0.35} />
+        <text x={P} y={12} fontSize={10} fill="currentColor">after-tax $ by ENTRY time — p10–p90 shade, p25–p75 darker, p50 dashed (a set, not an answer)</text>
+        <text x={P} y={H - 4} fontSize={10} fill="currentColor">{lo.toFixed(0)}</text>
+        <text x={P + 40} y={H - 4} fontSize={9} fill="currentColor" opacity={0.6}>{ok[0] ? hhmm(ok[0].time_ms) : ""}</text>
+        <text x={W - P - 44} y={H - 4} fontSize={9} fill="currentColor" opacity={0.6}>{ok.length ? hhmm(ok[ok.length - 1].time_ms) : ""}</text>
+        <text x={P} y={P - 4} fontSize={10} fill="currentColor">{hi.toFixed(0)}</text>
+      </svg>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto rounded border" role="img" aria-label="Pooled empirical distribution across all entries">
+        <line x1={ex(0)} x2={ex(0)} y1={P} y2={H - P} stroke="currentColor" strokeOpacity={0.35} />
+        {bandKeys.map((k) => <line key={k} x1={ex(s.bands[k])} x2={ex(s.bands[k])} y1={H - P} y2={H - P + 8} stroke="currentColor" strokeOpacity={0.6} />)}
+        {s.modality.valleys.map((v, i) => <line key={`v${i}`} x1={ex(v)} x2={ex(v)} y1={P} y2={H - P} stroke="#f59e0b" strokeDasharray="2 4" />)}
+        <polyline points={ecdf.x.map((v, i) => `${ex(v).toFixed(1)},${ey(ecdf.F[i]).toFixed(1)}`).join(" ")} fill="none" stroke="currentColor" strokeWidth={1.6} />
+        <text x={P} y={12} fontSize={10} fill="currentColor">pooled F(x) across every entry — valleys marked</text>
+        <text x={ex(elo)} y={H - 6} fontSize={10} fill="currentColor">{elo.toFixed(0)}</text>
+        <text x={ex(ehi) - 30} y={H - 6} fontSize={10} fill="currentColor">{ehi.toFixed(0)}</text>
+      </svg>
+      <div className="text-xs font-mono">{bandKeys.map((k) => <span key={k} className="pr-3">{k} {s.bands[k].toFixed(0)}</span>)}</div>
     </section>
   );
 }
