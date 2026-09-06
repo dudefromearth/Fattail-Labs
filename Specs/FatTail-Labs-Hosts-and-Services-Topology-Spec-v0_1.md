@@ -1,0 +1,176 @@
+# FatTail Labs — Hosts and Services Topology Spec v0.1
+
+**Status:** **DRAFT** — Coach's direction of 2026-09-06, written down for review. Not stamped.
+Needs Coach (§6 dispositions), **Foxtrot** (§3 cutover runbook — this spec names the shape,
+Foxtrot writes the commands), **India** (§2 product seating and boundary), Mike (cookie domain,
+SSO issuers on the new origin), Sierra (canonical host unchanged), Lima (DL, pillar rewrite).
+**Date:** 2026-09-06 · **Short name:** **HOST** · **Owner:** Juliet (draft) → Foxtrot
+**Reverses:** the host allocation of **DL-673 / DL-674** (DudeOne as analysis node). Keeps their
+retirement of staging and their reasoning that analysis must not live on the collector.
+**Parents:** `CLAUDE.md` hosts pillar · `infra/deploy.md` · QLAB v0.3 §3 (lab node, OD-QLAB-1) ·
+ATRV v0.9 §5 (host-agnostic) · Read API v0.8 §1 (collection outranks reads)
+
+---
+
+## 0. Coach intent (verbatim, do not drop)
+
+> *"We need to set up DudeOne (currently at https://flyonthewall.io) as the next production
+> server (https://labs.fattail.ai). And decommission MiniTwo, then promote DudeOne. That will
+> leave DudeTwo (currently at stage.flyonthewall.io) and MiniTwo for us to use in our quant
+> labs' machinery. These servers will support Strategy Lab, Option Lab, and IKI Lab."*
+
+> *"Strategy Lab will become the Option Bot service, and IKI Lab will become the Knowledge and
+> Intelligence product service. Option Lab is meant to be paired with Practice and Journey."*
+
+> *"DudeOne is serving the defunct MarketSwarm-Canonical a.k.a. https://flyonthewall.io. This
+> will be decommissioned, and DudeOne will be the next version of our main service, which
+> houses Courses, Practice, Journey, Toughness, and Options Lab. DudeTwo will focus on Strategy
+> Lab, IKI Lab, IKI Factory (customer-facing), and IKI LB and Quant Lab, which are
+> admin-facing products."*
+
+Success criteria, as this draft reads them: `labs.fattail.ai` served from DudeOne with no member
+able to tell the difference except that it is faster; MiniTwo out of the production path and
+available; the quant machinery on its own boxes so the collector's headroom stays the tap's;
+the product map written down so the next spec knows which box it lands on.
+
+---
+
+## 1. Hosts — was / is
+
+| Machine | Hardware | Was (DL-673) | **Is (this spec)** | Serves |
+|---|---|---|---|---|
+| **DudeOne** | M4 · 24 GB · 500 GB | analysis node; `flyonthewall.io` (MSC, defunct) | **Production — main service** `labs.fattail.ai` | Courses · Practice · Journey · Toughness · Options Lab · auth/me/providers · admin |
+| **DudeTwo** | M4 · 24 GB · 500 GB (identical peer, DL-674) | staging retired; `stage.flyonthewall.io` | **Lab node** — the QLAB §3 box, OD-QLAB-1 answered | Strategy Lab → **Option Bot service** · IKI Lab → **Knowledge & Intelligence service** · IKI Factory (member-facing) · IKI LB · Quant Lab (admin) |
+| **MiniTwo** | M2 Mac Mini | production, sole Labs host | **Rollback host for 7 days after cutover, then lab peer** (§6 OD-HOST-3) | derived-store builds · backfill · second Monte Carlo runner — or spare |
+| **MiniThree** | — | nginx, Cloudflare origin | unchanged — **upstream for `labs` changes from MiniTwo to DudeOne** | routing only |
+| **StudioOne** | M1 Max | collector and corpus | **unchanged, untouched by this program** | `live_capture`, Read API |
+| **StudioTwo** | — | dev; Generation Plane host (OD-GP3) | unchanged | dev only |
+
+**Staging stays retired** (DL-673). Dev is staging. Nothing in this spec reintroduces a staging host.
+
+**What does not move:** the archive; the collector; the Generation Plane; the MSC decommission is
+a *removal*, not a migration — nothing from MarketSwarm-Canonical is carried onto the new Labs
+host (invariant §2.1: standalone repo, zero shared code).
+
+---
+
+## 2. Services — the product map
+
+Coach's sentence, as a table. This is **seating**, not scope: each service keeps its own spec.
+
+| Service (member name) | Was | Box | Faces | Spec of record |
+|---|---|---|---|---|
+| **Main service** — Courses, Practice, Journey, Toughness, Options Lab | Labs P1 | DudeOne | members | Course Hosting v1.0 + each feature spec |
+| **Options Lab** | Options Lab | DudeOne | members — **paired with Practice and Journey** (§2.1) | AZ-ALGO, Heatmap/LIM, TM, OPF |
+| **Option Bot service** | Strategy Lab | DudeTwo | members | QLAB v0.3 (Lab Bot ≡ Marketplace object, DL-247) + ATRV |
+| **Knowledge & Intelligence service** | IKI Lab | DudeTwo | members | IKI Lab specs (GEX toolset, Chain Analytics Read) |
+| **IKI Factory** | IKI Factory | DudeTwo | members | `DRAFT-IKI-Factory-Pipeline-Spec-v0_3` |
+| **IKI LB** | — | DudeTwo | admin | **OD-HOST-5 — Coach expands the name** |
+| **Quant Lab** | Quant Lab | DudeTwo | admin | QLAB v0.3 |
+
+### 2.1 Option Lab paired with Practice and Journey
+
+Read as a product boundary, not a host fact: the Options Lab is the *instrument*, Practice is
+where a member uses it on a charter day, Journey is where the record of that use accumulates.
+The three share a box because they share a member session and a database. **India confirms at
+W0 whether this pairing changes any existing spec's boundary; this draft says it does not.**
+
+### 2.2 The two-box law
+
+Everything **member-facing on the main service** is on DudeOne. Everything that **computes at
+scale or lets an admin operate the system** is on DudeTwo. The Option Bot and K&I services are
+member-facing *and* on DudeTwo — they are served to members **through** the main service
+(QLAB §5.2 publish transport: production pulls, "published" means the main service serves it
+with the lab powered off). A member never holds a session on DudeTwo.
+
+**Consequence:** the `ft_session` cookie, SSO issuers, roles and plans live on DudeOne only.
+DudeTwo authenticates to DudeOne, not the other way round — which is the agent-identity gap
+INSTRUCTIONS §11.4 already names, and this spec does not close it; it makes the direction of
+trust explicit.
+
+---
+
+## 3. Cutover — the shape (Foxtrot writes the runbook)
+
+Phases. Each ends in a Delta gate. No phase touches StudioOne.
+
+| Phase | What | Exit |
+|---|---|---|
+| **H0** | Freeze: this spec stamped; DL-680 landed; runbook reviewed | W0-G |
+| **H1 — Decommission MSC on DudeOne** | Stop MSC services and `flyonthewall.io` vhost; **audit leftovers** (the same list `infra/deploy.md` §"MiniTwo provisioning" step 1 uses); no MSC code, venv, or DB remains on the box | `ps`, `launchctl list`, nginx config, `ls` of the removed paths — all attached |
+| **H2 — Provision DudeOne** | Python venv from `requirements.txt`; MySQL `labs` instance; Node build of `web/`; `.env` from `.env.example` **with every key present, values from MiniTwo's `.env` by hand — never committed**; launchd plists from `infra/launchd/*.example`; `--workers 1` assert; TZ America/New_York; Tailscale | API `/api/health` 200 on the LAN; `next start` serving built output; **no dev server** |
+| **H3 — Data move (rehearsal)** | `mysqldump --single-transaction` of `labs` from MiniTwo → restore on DudeOne; media/uploads rsync; run the characterization suite **against the restored DB** on DudeOne | row counts per table equal; suite result recorded (the classified nine may stay classified) |
+| **H4 — Cutover window** | Declared read-only window **outside market hours** (OD-HOST-1); final dump/restore + rsync delta; MiniThree upstream `labs` → DudeOne; Cloudflare untouched (A record still points at MiniThree); smoke: login via each SSO provider, a lesson plays, `/apply` posts, admin edits in place, Options Lab loads, Time Machine reads a day | curl transcript + browser walk from outside the LAN |
+| **H5 — Rollback readiness** | MiniTwo left **running and reachable** for 7 days; flipping the nginx upstream back is the rollback; **no writes reach MiniTwo after H4** (its API stopped, DB read-only) | rollback rehearsed once on the LAN before H4 closes |
+| **H6 — MiniTwo decommission** | After 7 clean days: MiniTwo API and launchd jobs removed; DB dumped to cold storage and dropped; box re-provisioned per OD-HOST-3 | Lima updates `infra/deploy.md`, `CLAUDE.md` pillar, `AGENTS.md`, `INSTRUCTIONS.md` §3 |
+| **H7 — DudeTwo lab node** | QLAB §3 stack: derived-store root, builder, Quant Lab runner, publish transport to DudeOne; `stage.flyonthewall.io` vhost removed | ATRV build of one day on DudeTwo, byte-identical to the MacBook build (`meta.json` hashes) |
+
+**Things that must not happen in any phase:** a dev server on DudeOne · a secret in a commit ·
+`--workers` > 1 · an MSC import or vendored file · a change to the archive or the collector ·
+two hosts accepting writes at once · Cloudflare DNS edits (MiniThree stays the origin; only its
+upstream changes) · a cutover during market hours.
+
+---
+
+## 4. What changes in the repo
+
+| File | Change | When |
+|---|---|---|
+| `Architecture/00-decision-log.md` | **DL-680** — this direction; reverses DL-673's DudeOne allocation | today (Lima) |
+| `CLAUDE.md` §hosts pillar | production = DudeOne; lab node = DudeTwo; MiniTwo per OD-HOST-3; staging retired (already true since DL-673, never rewritten) | H6 |
+| `infra/deploy.md` | Topology table; "DudeOne provisioning"; MSC decommission checklist; rollback | H2 (Foxtrot) |
+| `AGENTS.md` / `INSTRUCTIONS.md` §3 | hosts line | H6 (Lima) |
+| `Specs/…Quant-Lab-Topology…` | OD-QLAB-1 answered: lab node = DudeTwo; MiniTwo per OD-HOST-3 | v0.4 at H7 |
+| `infra/launchd/*.example` | reuse; new names only if a service is new | H2 |
+| product code | **none** — this is infra and documentation; a product change rides its own spec | — |
+
+---
+
+## 5. Invariants this spec touches
+
+- **Standalone repo (§2.1).** The MSC decommission on DudeOne is *deletion*. Nothing is copied
+  from it. If a Labs feature needed something MSC did, it is consumed over HTTP or not at all.
+- **Config-driven, fail loud (§2.2).** DudeOne's `.env` is complete or the API does not boot;
+  no key is defaulted "because MiniTwo had it".
+- **No dev server (§2.3).** DudeOne serves built output from day one.
+- **Session (§3).** `ft_session` domain `.fattail.ai` unchanged; the origin changes box, not
+  name. Mike confirms SSO issuer allowlists and provider webhooks need no change.
+- **Canonical host (SEO v1.0).** `https://labs.fattail.ai` remains the only canonical origin;
+  `NEXT_PUBLIC_SITE_URL` unchanged; Sierra confirms nothing in the sitemap moves.
+- **Collection outranks reads (Read API §1).** DudeTwo is the lab node so this stays true.
+
+---
+
+## 6. Open decisions
+
+| # | Question | Owner | Default if silent |
+|---|---|---|---|
+| **OD-HOST-1** | Cutover window — declared read-only window outside market hours (15–30 min), zero-downtime replication, or unconstrained | **Coach** | **Declared window, off-hours, weekend** |
+| **OD-HOST-2** | Timing — after era-2 collection has a few clean days (cutover the weekend of 9/12), or this week | **Coach** | **Spec and runbook this week; H1–H3 may proceed; H4 the weekend of 9/12** |
+| **OD-HOST-3** | MiniTwo after the 7-day rollback hold — lab peer (builds, backfill, second runner) or spare | **Coach · Foxtrot** | **Lab peer** — Coach's first sentence names it as quant machinery |
+| **OD-HOST-4** | Does `flyonthewall.io` DNS stay (parked/redirect to fattail.ai) or lapse | **Coach** | 301 to `https://fattail.ai` from MiniThree; certificate kept until expiry |
+| **OD-HOST-5** | **"IKI LB"** — expand the name and its spec of record | **Coach** | blocking for its row in §2 only |
+| **OD-HOST-6** | Option Bot / K&I served to members *through* DudeOne (publish transport) or directly from DudeTwo behind the same cookie | **India · Mike** | **Through DudeOne** (§2.2) — no member session on the lab node |
+
+---
+
+## 7. Acceptance
+
+| AT | Criterion |
+|---|---|
+| **AT-HOST-1** | `https://labs.fattail.ai` resolves through MiniThree to DudeOne; MiniTwo receives **zero** requests after H4 (nginx access log on MiniThree). |
+| **AT-HOST-2** | No MSC process, venv, database, or vhost remains on DudeOne after H1 — listed by command, not asserted. |
+| **AT-HOST-3** | Row counts of every `labs` table equal on MiniTwo and DudeOne at H4 close; the characterization suite on DudeOne's restored DB reports no failure outside the classified nine. |
+| **AT-HOST-4** | Each SSO provider logs a member in on the new host; `ft_session` is set on `.fattail.ai`; an admin edits a course in place; Time Machine reads a day. Browser walk from outside the LAN attached. |
+| **AT-HOST-5** | Rollback rehearsed: upstream flipped back to MiniTwo and forward again on the LAN before H4 closes, with the transcript. |
+| **AT-HOST-6** | DudeOne boots with `--workers 1` and refuses otherwise; no dev server process exists on DudeOne or DudeTwo (`ps` attached). |
+| **AT-HOST-7** | The derived store built on DudeTwo for one day carries the same `meta.json` field hashes as the MacBook build of the same day. |
+| **AT-HOST-8** | Docs parity: `CLAUDE.md`, `infra/deploy.md`, `AGENTS.md`, `INSTRUCTIONS.md` §3 describe the topology as it is on the day H6 closes. |
+
+---
+
+## 8. Changelog
+
+| Ver | Date | Notes |
+|---|---|---|
+| **v0.1** | 2026-09-06 | First draft from Coach's direction. DudeOne → production main service (Courses, Practice, Journey, Toughness, Options Lab); DudeTwo → lab node (Option Bot, K&I, IKI Factory, IKI LB, Quant Lab); MiniTwo → 7-day rollback then lab peer (OD-HOST-3); MSC on DudeOne decommissioned by deletion. Reverses DL-673's DudeOne-as-analysis-node; keeps staging retired and the collector untouched. Cutover in seven gated phases; Foxtrot writes the runbook. OD-HOST-1…6, AT-HOST-1…8. |

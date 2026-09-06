@@ -4,6 +4,40 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-06 — DL-680 Hosts reallocated · DudeOne becomes production · DudeTwo is the lab node · MiniTwo rolls back then joins the lab
+
+**Decision (Coach, 2026-09-06).** *"We need to set up DudeOne (currently at flyonthewall.io) as
+the next production server (labs.fattail.ai). And decommission MiniTwo, then promote DudeOne.
+That will leave DudeTwo and MiniTwo for us to use in our quant labs' machinery."* And: *"DudeOne
+is serving the defunct MarketSwarm-Canonical … This will be decommissioned, and DudeOne will be
+the next version of our main service, which houses Courses, Practice, Journey, Toughness, and
+Options Lab. DudeTwo will focus on Strategy Lab, IKI Lab, IKI Factory (customer-facing), and IKI
+LB and Quant Lab, which are admin-facing products."*
+
+**Reverses** the allocation in DL-673 / DL-674 (DudeOne as analysis node). **Keeps** DL-673's
+retirement of staging and its reasoning that analysis never lives on the collector — the lab node
+is now DudeTwo. StudioOne is untouched.
+
+**Product seating, as stated:** Strategy Lab becomes the **Option Bot service**; IKI Lab becomes
+the **Knowledge and Intelligence service**; Options Lab is **paired with Practice and Journey** on
+the main service. Seating, not scope — each keeps its spec.
+
+**Landed:** `Specs/FatTail-Labs-Hosts-and-Services-Topology-Spec-v0_1.md` (**DRAFT**, short name
+HOST) — hosts was/is, the product map, a seven-phase gated cutover (MSC decommissioned by
+deletion, DudeOne provisioned, data move rehearsed, off-hours window, MiniTwo held 7 days as
+rollback, then decommissioned and re-provisioned, DudeTwo stood up as the lab node), the
+invariants it touches, OD-HOST-1…6, AT-HOST-1…8. **Foxtrot writes the runbook; no infra action
+until Coach stamps.** Defaults if silent: off-hours weekend window; H4 the weekend of 9/12 after
+era-2 has clean days; MiniTwo becomes a lab peer after the hold; `flyonthewall.io` 301s to
+`fattail.ai`; Option Bot and K&I are served to members **through** DudeOne — no member session
+on the lab node. "IKI LB" awaits Coach's expansion (OD-HOST-5).
+
+**Pillar note (Lima):** `CLAUDE.md`, `AGENTS.md`, `INSTRUCTIONS.md` §3 and `infra/deploy.md`
+still describe MiniTwo-as-production and DudeTwo-as-staging. They are rewritten at H6, not
+before — the docs describe the system as it is, and today it is still MiniTwo.
+
+---
+
 ## 2026-09-06 — DL-679 Quant Lab fill-friction is BUILD · plan v1.1 · active alongside LIM
 
 **Decision (Coach, 2026-09-06).** *"execute the build plan"* then *"go all the way through unless there is a problem."* Recorded on `agents/go/QFRIC-W0.md` W0-0.
