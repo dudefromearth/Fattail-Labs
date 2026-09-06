@@ -2,7 +2,7 @@
 
 **Project:** Quant Lab Fill-Friction (QFRIC) · **Agent:** Echo · **Phase:** W0 · **Feeds gate:** W0-G
 **Read first:** `agents/bench/echo.md` · `agents/bench/doctrine.md` · `agents/bench/first-principles-doctrine.md`
-**Law:** `Specs/FatTail-Labs-Archive-Traversal-API-Spec-v0_10.md` §3.7.1 (DRAFT) · `docs/Quant-Lab-Fill-Friction-Full-Agent-Bench-Plan-v1.0.md` · `agents/go/QFRIC-W0.md`
+**Law:** `Specs/FatTail-Labs-Archive-Traversal-API-Spec-v0_10.md` §3.7.1 (DRAFT) · `docs/Quant-Lab-Fill-Friction-Full-Agent-Bench-Plan-v1.1.md` · `agents/go/QFRIC-W0.md`
 **Evidence to read, not redo:** `docs/evidence/quant-spread-probe-XSP-2026-09-04.txt` · `docs/evidence/quant-e2e-2026-09-06.md`
 **Invariants in force:** §2 sacred invariants (INSTRUCTIONS.md) · evidence over assertion · change control · **no product code in this phase**
 **Out of scope:** any file under `server/` or `web/` · the store · the archive · the mark series · fill history (never in the repo)

@@ -1,6 +1,6 @@
 # Board — Quant Lab Fill-Friction (QFRIC)
 
-**Plan:** `docs/Quant-Lab-Fill-Friction-Full-Agent-Bench-Plan-v1.0.md`
+**Plan:** `docs/Quant-Lab-Fill-Friction-Full-Agent-Bench-Plan-v1.1.md`
 **Token:** `agents/go/QFRIC-W0.md` — **not stamped**
 **Spec:** ATRV v0.10 §3.7.1 (DRAFT)
 **Orchestrator:** Juliet · **Authority:** Coach

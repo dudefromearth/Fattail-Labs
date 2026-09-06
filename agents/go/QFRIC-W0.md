@@ -2,12 +2,12 @@
 
 **ID:** `QFRIC-W0`
 **Program:** Quant Lab — Fill-Friction Model (ATRV v0.10 §3.7.1): complex order at a net limit, resting window, re-seat, null-bid law, six gridded controls, fitted probabilities
-**Plan:** [`docs/Quant-Lab-Fill-Friction-Full-Agent-Bench-Plan-v1.0.md`](../../docs/Quant-Lab-Fill-Friction-Full-Agent-Bench-Plan-v1.0.md) **v1.0**
+**Plan:** [`docs/Quant-Lab-Fill-Friction-Full-Agent-Bench-Plan-v1.1.md`](../../docs/Quant-Lab-Fill-Friction-Full-Agent-Bench-Plan-v1.1.md) **v1.1**
 **Spec:** ATRV **v0.10 DRAFT** — [`Specs/FatTail-Labs-Archive-Traversal-API-Spec-v0_10.md`](../../Specs/FatTail-Labs-Archive-Traversal-API-Spec-v0_10.md) — §3.7.1 **design only**
 **Board:** `agents/p-quant-friction/`
 **DL:** **DL-678** (§3.7.1 drafted, controls directed) · **DL-677** (slice built) · **DL-674** (Quant Lab seated) · DL-679 (this stamp — Lima drafts at W0-1)
 
-**Status:** **NOT STAMPED** — 2026-09-06. ATRV v0.10 §3.7.1 is **DRAFT**. Plan v1.0 **proposed**. **No product code.** Seeds for W0 and P0 exist; P1 seeds are written when W0-G passes.
+**Status:** **NOT STAMPED** — 2026-09-06. ATRV v0.10 §3.7.1 is **DRAFT**. Plan v1.1 **proposed**. **No product code.** Seeds for W0 and P0 exist; P1 seeds are written when W0-G passes.
 
 **DL-328:** Delta gates this program by **this file**. Chat is not a stamp. Coach's *"looks great"* (2026-09-06) authorised **drafting the plan**, not building.
 
@@ -17,9 +17,10 @@
 
 | Check | Value |
 |---|---|
-| Plan revision | **v1.0** |
+| Plan revision | **v1.1** |
 | Spec | ATRV v0.10 — file at land `9a9cf1f` |
 | Spec sha1 (whole file, at land) | `9e148f787d87b8eda6435f4b0ea3014814380a3f` |
+| Plan v1.0 review | `agents/p-quant-friction/evidence/QFRIC-plan-v1.0-review-grok.md` — **RETURN**, D1–D7 folded into plan v1.1 |
 | Spec sha1 (whole file, at stamp) | — (Lima, W0-1) |
 | Plan sha1 (at stamp) | — (Lima, W0-1) |
 | Evidence the design rests on | `docs/evidence/quant-spread-probe-XSP-2026-09-04.{txt,json}` (`73aef4d`) |
@@ -67,7 +68,7 @@
 ## W0-0 STAMP
 
 - [ ] ATRV v0.10 §3.7.1 **BUILD AUTHORITY** — Coach, date/initials: ________
-- [ ] Plan v1.0 **Accept** — Coach: ________
+- [ ] Plan v1.1 **Accept** — Coach: ________
 - [ ] Dispositions above ticked
 
 ## Reviews (W0-1…7)
