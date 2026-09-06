@@ -17,6 +17,20 @@ import {
 
 const MULT = 100; // XSP / SPX contract multiplier — dollars = price × MULT
 
+/** Session window in ET. The capture runs 04:00–20:00 ET; the contract lives 09:30–16:15. */
+const RTH_OPEN_MIN = 9 * 60 + 30, RTH_CLOSE_MIN = 16 * 60 + 15;
+function etMinutes(ms: number): number {
+  const p = new Intl.DateTimeFormat("en-US", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/New_York" }).formatToParts(new Date(ms));
+  const h = Number(p.find((x) => x.type === "hour")?.value ?? 0), mi = Number(p.find((x) => x.type === "minute")?.value ?? 0);
+  return h * 60 + mi;
+}
+function quantile(sorted: number[], p: number): number {
+  if (!sorted.length) return 0;
+  const k = (sorted.length - 1) * p, lo = Math.floor(k), hi = Math.min(lo + 1, sorted.length - 1);
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (k - lo);
+}
+
+
 export default function MonteCarloLab() {
   const [days, setDays] = useState<QuantDay[]>([]);
   const [sel, setSel] = useState<QuantDay | null>(null);
@@ -38,12 +52,17 @@ export default function MonteCarloLab() {
       .catch((e) => setErr(String(e.message || e)));
   }, []);
 
-  // day changed: load the time/spot axis, reset the study window
+  // day changed: load the time/spot axis, then default the window INSIDE the
+  // session — the capture starts at midnight ET, so a fraction of T lands at 2 AM
   useEffect(() => {
     if (!sel) return;
     setSim(null); setSweep(null); setMark(null); setAxis(null);
-    setTEntry(Math.floor(sel.T * 0.1)); setTExit(Math.floor(sel.T * 0.6));
-    fetchSpot(sel.day, sel.book).then(setAxis).catch((e) => setErr(String(e.message || e)));
+    fetchSpot(sel.day, sel.book).then((ax) => {
+      setAxis(ax);
+      const at = (mins: number) => { const i = ax.time_ms.findIndex((t) => etMinutes(t) >= mins); return i < 0 ? 0 : i; };
+      const e = at(10 * 60), x = at(15 * 60 + 45);
+      setTEntry(e); setTExit(x > e ? x : Math.min(e + 1, ax.T - 1));
+    }).catch((err) => setErr(String(err.message || err)));
   }, [sel]);
 
   const loadMark = useCallback(async () => {
@@ -149,19 +168,6 @@ function Slider({ label, t, max, onChange, times }: { label: string; t: number; 
       <input type="range" min={0} max={max} value={t} className="block w-full" onChange={(e) => onChange(Number(e.target.value))} />
     </label>
   );
-}
-
-/** Session window in ET. The capture runs 04:00–20:00 ET; the contract lives 09:30–16:15. */
-const RTH_OPEN_MIN = 9 * 60 + 30, RTH_CLOSE_MIN = 16 * 60 + 15;
-function etMinutes(ms: number): number {
-  const p = new Intl.DateTimeFormat("en-US", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/New_York" }).formatToParts(new Date(ms));
-  const h = Number(p.find((x) => x.type === "hour")?.value ?? 0), mi = Number(p.find((x) => x.type === "minute")?.value ?? 0);
-  return h * 60 + mi;
-}
-function quantile(sorted: number[], p: number): number {
-  if (!sorted.length) return 0;
-  const k = (sorted.length - 1) * p, lo = Math.floor(k), hi = Math.min(lo + 1, sorted.length - 1);
-  return sorted[lo] + (sorted[hi] - sorted[lo]) * (k - lo);
 }
 
 /** Realized mark through the day. Withheld instants are GAPS — never bridged.
