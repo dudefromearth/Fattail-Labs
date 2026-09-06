@@ -15,7 +15,10 @@ We try to convert Observers into Navigator annuals. And if they don't convert we
 Labs Runner and Analyzer as gifts, along with some token heatmaps to keep them close and market
 them IKI products."*
 
-**Recorded** in HOST v0.1 §2.1a as seating, not scope. Three consequences named there for the
+Then: *"the 0DTE Live show is our top-level funnel for all products. Particularly Observer trials."*
+
+**Recorded** in HOST v0.1 §2.1a as seating, not scope. The show is the mouth of the funnel; every
+service is downstream of a live broadcast at 14:00 ET on a trading day. Three consequences named there for the
 owners to pick up, none acted on here: (1) **1DTE on the show makes era-2 multi-expiration
 capture load-bearing** (SSR-MEXP) — the collector's Tuesday start is now show infrastructure;
 (2) the Option Bot service is a **paid** product living on the lab node — entitlement goes

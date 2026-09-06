@@ -113,11 +113,17 @@ W0 whether this pairing changes any existing spec's boundary; this draft says it
 
 | Service | Role in the funnel | Box | What that asks of the topology |
 |---|---|---|---|
-| **0DTE Live** (show, Mon–Fri 14:00–15:15 ET, ex-holidays) | Public. Demonstrates the **Strategy Life Cycle** on late-day 0DTE / **1DTE** structures | not a service on these boxes — a show | The strategies it develops are Strategy Lab's; the data it needs is the collector's. **1DTE means the era-2 multi-expiration capture (SSR-MEXP) is load-bearing for the show**, not optional |
+| **0DTE Live** (show, Mon–Fri 14:00–15:15 ET, ex-holidays) | **The top-level funnel for all products, particularly Observer trials** (Coach, same day). Public. Demonstrates the **Strategy Life Cycle** on late-day 0DTE / **1DTE** structures | not a service on these boxes — a show | The strategies it develops are Strategy Lab's; the data it needs is the collector's. **1DTE means the era-2 multi-expiration capture (SSR-MEXP) is load-bearing for the show**, not optional |
 | **Strategy Lab → Option Bot service** | **Paid**, competing for Option Alpha customers | DudeTwo, served through DudeOne | A member-facing paid product on the lab node — OD-HOST-6 (served through the Labs app, no session on DudeTwo) becomes a commerce question too: entitlement via `provider_plan_map`, like every other plan |
 | **IKI Factory** | Attracts and engages **Observers** | DudeTwo, served through DudeOne | Observer-tier gating — the P1 role ladder already has it |
 | **IKI Labs Runner + Analyzer**, token heatmaps | **Gifts** to Observers who do not convert, to keep them close and market IKI products | DudeOne (Options Lab surface) | A "gift" is an entitlement with no plan behind it — Mike/India name how it is granted without inventing a charge (§2 commerce invariant) |
 | Observer → **Navigator annual** | the conversion the funnel exists for | — | unchanged |
+
+Read top-down: **the show is the mouth of the funnel** — it feeds Observer trials, which IKI
+Factory engages, which convert to Navigator annuals or receive the gifts. Every service in this
+table is downstream of a live broadcast at 14:00 ET on a trading day, which is the strongest
+argument in this document for the collector's headroom (§1) and for the cutover never landing
+in market hours (§3).
 
 Nothing above changes scope of any spec; it says what each box is *for* so the cutover and
 the lab node are sized for the products that will actually sell. **Invariant 8 stands on the
