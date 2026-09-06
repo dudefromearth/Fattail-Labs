@@ -96,6 +96,18 @@ def quant_days(request: Request) -> Any:
             "greeks_quantum_decimals": s["greeks_quantum"]}
 
 
+@router.get("/api/me/quant/spot")
+def quant_spot(request: Request, day: str, book: str) -> Any:
+    """The day's time axis and spot — what a scrubber needs before any leg exists."""
+    require_session(request)
+    st = _store(day, book)
+    if st is None:
+        return _not_configured()
+    return {"api_version": API_VERSION, "day": st.day, "book": st.book, "T": st.T,
+            "time_ms": st.times(), "spot": [st.spot(t) for t in range(st.T)],
+            "strikes": sorted({c[0] for c in st.contracts()})}
+
+
 @router.get("/api/me/quant/series")
 def quant_series(request: Request, day: str, book: str,
                  contracts: str = Query(..., description="'628C,630P'"),
