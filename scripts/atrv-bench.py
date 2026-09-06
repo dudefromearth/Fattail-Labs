@@ -297,16 +297,27 @@ def run(root: Path, ndays: int, field: str) -> dict:
 
     # ---- the finding
     tot: dict[str, float] = {}
+    scored = 0
     for row in out["results"]:
+        # A day with no files contributes an all-zero split. Averaging it in
+        # DILUTES the dominance figure toward zero and can change which
+        # component appears to dominate -- a measurement defect, not a result.
+        if not row["full_scan"].get("files"):
+            continue
+        scored += 1
         for k, v in row["full_scan"]["split_pct"].items():
             tot[k] = tot.get(k, 0) + v
     if tot:
-        n = len(out["results"])
+        n = scored
         avg = {k: round(v / n, 1) for k, v in sorted(tot.items(), key=lambda kv: -kv[1])}
         out["dominance"] = avg
+        out["dominance_days_scored"] = scored
+        empty = len(out["results"]) - scored
         top = next(iter(avg))
         print("=" * 62)
-        print(f"DOMINANCE (full-scan, mean across days): {avg}")
+        print(f"DOMINANCE (full-scan, mean across {scored} day(s) WITH FILES"
+              + (f"; {empty} empty day(s) excluded)" if empty else ")")
+              + f": {avg}")
         print(f"\n  '{top}' dominates → per ATRV §13.1 the mitigation is:")
         print({
             "parse":   "  derived columnar layer built once/day; archive stays verbatim",
