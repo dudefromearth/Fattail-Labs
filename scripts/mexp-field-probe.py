@@ -21,9 +21,17 @@ Stdlib only.
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import sys
 from pathlib import Path
+
+
+def weekend(day_name: str) -> bool:
+    try:
+        return datetime.date.fromisoformat(day_name.split('=', 1)[1]).weekday() >= 5
+    except Exception:
+        return False
 
 # The fields the three specs claim are absent. Each maps to what it would
 # unblock if present.
@@ -136,7 +144,9 @@ def main() -> None:
         r = probe_day(d, a.sample)
         out["results"].append(r)
         if "skipped" in r:
-            print(f"{r['day']}: {r['skipped']}")
+            why = ("Saturday/Sunday — no session, empty is CORRECT"
+                   if weekend(r["day"]) else "!! WEEKDAY — check capture")
+            print(f"{r['day']}: {r['skipped']}  ({why})")
             continue
         print(f"{r['day']}  {r['snapshots']:,} snapshots · sampled {r['sampled']}"
               f" · {r['rows_inspected']:,} rows")

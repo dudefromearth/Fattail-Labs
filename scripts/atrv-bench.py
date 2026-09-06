@@ -19,10 +19,20 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import datetime
 import statistics
 import sys
 import time
 from pathlib import Path
+
+
+def weekend(day_name: str) -> bool:
+    """day=YYYY-MM-DD -> True on Sat/Sun. An empty weekend folder is CORRECT,
+    not a capture failure -- say so, so nobody raises a false alarm."""
+    try:
+        return datetime.date.fromisoformat(day_name.split('=', 1)[1]).weekday() >= 5
+    except Exception:
+        return False
 
 # --------------------------------------------------------------------------- util
 
@@ -271,6 +281,13 @@ def run(root: Path, ndays: int, field: str) -> dict:
             r = fn(d) if fn in (pass_index_only, pass_gaps) else fn(d, field)
             row[r["pass"]] = r
         out["results"].append(row)
+
+        if not row["full_scan"].get("files"):
+            why = ("Saturday/Sunday — no session, empty is CORRECT"
+                   if weekend(d.name) else
+                   "!! WEEKDAY WITH NO FILES — check capture")
+            print(f"{d.name}\n  no snapshots ({why})\n")
+            continue
 
         idx, scan = row["index_only"], row["full_scan"]
         one = row["one_contract"]
