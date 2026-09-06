@@ -1,0 +1,54 @@
+archive : /Volumes/FatTail2TB/fattail-market-data/ssr/live_capture  (read-only)
+day     : day=2026-09-04   3,000 snapshots
+codec   : zstd level 10
+cap     : 400 contracts held in memory
+
+field              scale   exact?   f32 damage
+----------------------------------------------
+ask                  100      YES        88.4%
+bid                  100      YES        92.7%
+delta           10000000000000000000      YES       100.0%
+gamma           100000000000000000000      YES       100.0%
+iv              100000000000000000      YES       100.0%
+last_updated           1      YES       100.0%
+mid                 1000      YES        87.0%
+open_interest          1      YES         0.0%
+theta           100000000000000000      YES       100.0%
+vega            10000000000000000000      YES       100.0%
+volume                 1      YES         0.0%
+
+==============================================================
+JSON as archived                        66.8MB   1.00x
+float32 columns (LOSSY)                  7.7MB    8.7x
+scaled int32 columns                     7.7MB    8.7x
++ delta + varint                         9.8MB    6.8x
++ compression                            2.6MB   26.1x
+==============================================================
+
+FLOAT32 VERDICT: 1,547,465 of 2,019,338 values (76.6%) do not survive float32 exactly.
+  Scaled integers make the question moot -- and are SMALLER,
+  because integer deltas compress and float bit patterns do not.
+
+PREDICTOR SWEEP — compressed bytes per field, lower is better
+field                  time     strike     planar     best
+----------------------------------------------------------
+ask                   1.1KB     926.0B      1.1KB   strike
+bid                  807.0B     745.0B     787.0B   strike
+delta               304.8KB    243.1KB    306.5KB   strike
+gamma               309.5KB    250.3KB    310.7KB   strike
+iv                  316.7KB    260.7KB    310.3KB   strike
+last_updated          2.1KB      1.9KB      2.1KB   strike
+mid                   1.3KB    1008.0B      1.2KB   strike
+open_interest         1.1KB      1.1KB      1.2KB   strike
+theta               323.2KB    266.5KB    323.0KB   strike
+vega                319.3KB    261.9KB    315.8KB   strike
+volume                1.0KB    1014.0B      1.2KB   strike
+----------------------------------------------------------
+ALL ONE PREDICTOR      1.5MB      1.3MB      1.5MB
+
+  best single predictor : 1.3MB
+  PER-FIELD choice      : 1.3MB   (1.00x better)
+  -> the winner differs BY FIELD, so the encoder stores one
+     predictor id per field. That is a byte of header, not a design.
+
+wrote docs/evidence/atrv-encode.json

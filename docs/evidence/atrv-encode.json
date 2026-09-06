@@ -1,0 +1,129 @@
+{
+  "predictor_sweep": [
+    {
+      "field": "ask",
+      "time": 1111,
+      "strike": 926,
+      "planar": 1130,
+      "best": "strike"
+    },
+    {
+      "field": "bid",
+      "time": 807,
+      "strike": 745,
+      "planar": 787,
+      "best": "strike"
+    },
+    {
+      "field": "delta",
+      "time": 312117,
+      "strike": 248917,
+      "planar": 313839,
+      "best": "strike"
+    },
+    {
+      "field": "gamma",
+      "time": 316948,
+      "strike": 256352,
+      "planar": 318157,
+      "best": "strike"
+    },
+    {
+      "field": "iv",
+      "time": 324334,
+      "strike": 266951,
+      "planar": 317717,
+      "best": "strike"
+    },
+    {
+      "field": "last_updated",
+      "time": 2120,
+      "strike": 1974,
+      "planar": 2184,
+      "best": "strike"
+    },
+    {
+      "field": "mid",
+      "time": 1363,
+      "strike": 1008,
+      "planar": 1196,
+      "best": "strike"
+    },
+    {
+      "field": "open_interest",
+      "time": 1153,
+      "strike": 1102,
+      "planar": 1236,
+      "best": "strike"
+    },
+    {
+      "field": "theta",
+      "time": 330995,
+      "strike": 272871,
+      "planar": 330718,
+      "best": "strike"
+    },
+    {
+      "field": "vega",
+      "time": 326961,
+      "strike": 268187,
+      "planar": 323404,
+      "best": "strike"
+    },
+    {
+      "field": "volume",
+      "time": 1057,
+      "strike": 1014,
+      "planar": 1194,
+      "best": "strike"
+    }
+  ],
+  "day": "day=2026-09-04",
+  "snapshots": 3000,
+  "codec": "zstd level 10",
+  "raw_bytes": 70027127,
+  "float32_bytes": 8077352,
+  "scaled_int_bytes": 8077352,
+  "delta_varint_bytes": 10223738,
+  "compressed_bytes": 2684213,
+  "broken_fields": [],
+  "float32_damaged": {
+    "ask": 182736,
+    "bid": 151379,
+    "delta": 166269,
+    "gamma": 166269,
+    "iv": 166269,
+    "last_updated": 202247,
+    "mid": 179758,
+    "open_interest": 0,
+    "theta": 166269,
+    "vega": 166269,
+    "volume": 0
+  },
+  "float32_total": {
+    "ask": 206714,
+    "bid": 163357,
+    "delta": 166269,
+    "gamma": 166269,
+    "iv": 166269,
+    "last_updated": 202247,
+    "mid": 206714,
+    "open_interest": 206714,
+    "theta": 166269,
+    "vega": 166269,
+    "volume": 202247
+  },
+  "scales": {
+    "mid": 1000,
+    "bid": 100,
+    "ask": 100,
+    "volume": 1,
+    "last_updated": 1,
+    "open_interest": 1,
+    "delta": 10000000000000000000,
+    "gamma": 100000000000000000000,
+    "theta": 100000000000000000,
+    "vega": 10000000000000000000,
+    "iv": 100000000000000000
+  }
+}

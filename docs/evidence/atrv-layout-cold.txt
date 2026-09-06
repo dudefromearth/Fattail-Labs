@@ -1,0 +1,48 @@
+archive : /Volumes/FatTail2TB/fattail-market-data/ssr/live_capture   (read-only)
+day     : day=2026-09-04   using 20,000 of 261,019 snapshots
+scratch : /private/tmp/atrv-layout
+codec   : zstd (python-zstandard, level 3)
+pack    : 30 snapshots/file
+
+building layouts …
+verifying byte-roundtrip …
+
+layout                    files    on disk      scan    vs A        rows
+------------------------------------------------------------------------
+A_baseline               20,000    450.4MB     8.41s   1.00x   1,390,928
+B_compressed             20,000    106.1MB     6.16s   1.36x   1,390,928
+C_packed                    667    450.5MB     3.71s   2.27x   1,390,928
+D_packed_compressed         667     29.8MB     3.96s   2.12x   1,390,928
+
+========================================================================
+FASTEST: C_packed  (2.27x baseline)
+
+  compression alone :  1.36x
+  packing alone     :  2.27x
+
+  -> PER-FILE overhead dominates. PACK. Compression is secondary
+     (storage, not speed). SSR-MEXP's file-count constraint is the
+     real one and is understated.
+
+  storage: A 450.4MB -> D 29.8MB
+========================================================================
+
+MARK-ONCE — pricing compute-as-you-collect
+  120 structures over 400 snapshots
+  0.04 ms per snapshot  =  0.002% of the 2 s capture budget
+  -> FREE — do it in stream
+
+ANATOMY — where a snapshot's bytes go
+  18.7KB per snapshot · 56 rows × 16 keys
+    key names repeated on every row  41.5%   (7.8KB)
+    values as decimal text           48.1%   (9.0KB)
+    braces, commas, whitespace       10.4%   (2.0KB)
+  same numbers as float32 columns : 2.4KB  = 7.9x smaller
+  -> that ratio is the DERIVED store's headroom, not a reason to
+     change the archive: verbatim (SSR-MEXP §3.1) is what keeps the
+     corpus answerable to questions nobody has asked yet, and
+     compression recovers the key repetition WITHOUT spending it.
+
+wrote docs/evidence/atrv-layout-cold.json
+
+cleaned /private/tmp/atrv-layout

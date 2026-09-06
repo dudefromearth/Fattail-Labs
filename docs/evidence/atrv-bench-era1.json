@@ -1,0 +1,330 @@
+{
+  "root": "/Volumes/FatTail2TB/fattail-market-data/ssr/live_capture",
+  "days": [
+    "day=2026-09-01",
+    "day=2026-09-02",
+    "day=2026-09-03",
+    "day=2026-09-04",
+    "day=2026-09-05"
+  ],
+  "field": "mid",
+  "results": [
+    {
+      "day": "day=2026-09-01",
+      "index_only": {
+        "pass": "index_only",
+        "files": 217793,
+        "bytes": 4565101067,
+        "ns": 30795923833,
+        "split_pct": {
+          "stat": 92.9,
+          "listdir": 7.1
+        }
+      },
+      "full_scan": {
+        "pass": "full_scan",
+        "files": 217793,
+        "bytes": 4565101067,
+        "rows_with_field": 15165811,
+        "parse_failures": 0,
+        "ns": 146973528909,
+        "split_pct": {
+          "read": 59.5,
+          "parse": 25.3,
+          "open": 12.7,
+          "extract": 2.5
+        }
+      },
+      "one_contract": {
+        "pass": "one_contract",
+        "strike": 397.0,
+        "files": 217793,
+        "bytes_touched": 4565101067,
+        "bytes_wanted": 258968,
+        "waste_ratio": 17628.1,
+        "points": 32371,
+        "ns": 143513173750
+      },
+      "gaps": {
+        "pass": "gaps",
+        "files": 217793,
+        "median_cadence_s": 0.0,
+        "span_h": 24.0,
+        "holes": [
+          {
+            "from_utc": "03:59:59",
+            "to_utc": "04:00:11",
+            "seconds": 12.2,
+            "minutes": 0.2
+          },
+          {
+            "from_utc": "11:30:17",
+            "to_utc": "11:30:47",
+            "seconds": 30.4,
+            "minutes": 0.5
+          },
+          {
+            "from_utc": "14:13:56",
+            "to_utc": "14:14:07",
+            "seconds": 11.8,
+            "minutes": 0.2
+          },
+          {
+            "from_utc": "15:37:27",
+            "to_utc": "15:37:53",
+            "seconds": 25.7,
+            "minutes": 0.4
+          },
+          {
+            "from_utc": "15:42:15",
+            "to_utc": "15:42:43",
+            "seconds": 28.0,
+            "minutes": 0.5
+          },
+          {
+            "from_utc": "15:44:03",
+            "to_utc": "15:44:29",
+            "seconds": 25.7,
+            "minutes": 0.4
+          }
+        ],
+        "hole_count": 6,
+        "lost_minutes": 2.2,
+        "coverage_pct": 99.85
+      }
+    },
+    {
+      "day": "day=2026-09-02",
+      "index_only": {
+        "pass": "index_only",
+        "files": 330224,
+        "bytes": 7789604960,
+        "ns": 63429267376,
+        "split_pct": {
+          "stat": 94.0,
+          "listdir": 6.0
+        }
+      },
+      "full_scan": {
+        "pass": "full_scan",
+        "files": 330224,
+        "bytes": 7789604960,
+        "rows_with_field": 23788062,
+        "parse_failures": 0,
+        "ns": 251440996790,
+        "split_pct": {
+          "read": 50.3,
+          "open": 24.3,
+          "parse": 23.2,
+          "extract": 2.2
+        }
+      },
+      "one_contract": {
+        "pass": "one_contract",
+        "strike": 320.0,
+        "files": 330224,
+        "bytes_touched": 7789604960,
+        "bytes_wanted": 572512,
+        "waste_ratio": 13606.0,
+        "points": 71564,
+        "ns": 240992557500
+      },
+      "gaps": {
+        "pass": "gaps",
+        "files": 330224,
+        "median_cadence_s": 0.0,
+        "span_h": 24.0,
+        "holes": [],
+        "hole_count": 0,
+        "lost_minutes": 0.0,
+        "coverage_pct": 100.0
+      }
+    },
+    {
+      "day": "day=2026-09-03",
+      "index_only": {
+        "pass": "index_only",
+        "files": 74609,
+        "bytes": 1583815719,
+        "ns": 2451031666,
+        "split_pct": {
+          "stat": 69.1,
+          "listdir": 30.9
+        }
+      },
+      "full_scan": {
+        "pass": "full_scan",
+        "files": 74609,
+        "bytes": 1583815719,
+        "rows_with_field": 4626668,
+        "parse_failures": 0,
+        "ns": 43051710245,
+        "split_pct": {
+          "read": 65.0,
+          "parse": 27.5,
+          "open": 5.1,
+          "extract": 2.4
+        }
+      },
+      "one_contract": {
+        "pass": "one_contract",
+        "strike": 7750.0,
+        "files": 74609,
+        "bytes_touched": 1583815719,
+        "bytes_wanted": 180392,
+        "waste_ratio": 8779.9,
+        "points": 22549,
+        "ns": 18495642292
+      },
+      "gaps": {
+        "pass": "gaps",
+        "files": 74609,
+        "median_cadence_s": 2.07,
+        "span_h": 24.0,
+        "holes": [
+          {
+            "from_utc": "07:02:51",
+            "to_utc": "07:03:19",
+            "seconds": 27.9,
+            "minutes": 0.5
+          },
+          {
+            "from_utc": "16:15:15",
+            "to_utc": "16:15:40",
+            "seconds": 25.3,
+            "minutes": 0.4
+          }
+        ],
+        "hole_count": 2,
+        "lost_minutes": 0.9,
+        "coverage_pct": 99.94
+      }
+    },
+    {
+      "day": "day=2026-09-04",
+      "index_only": {
+        "pass": "index_only",
+        "files": 261019,
+        "bytes": 6137767299,
+        "ns": 40818961417,
+        "split_pct": {
+          "stat": 93.8,
+          "listdir": 6.2
+        }
+      },
+      "full_scan": {
+        "pass": "full_scan",
+        "files": 261019,
+        "bytes": 6137767299,
+        "rows_with_field": 18096627,
+        "parse_failures": 0,
+        "ns": 179961957008,
+        "split_pct": {
+          "read": 46.7,
+          "parse": 26.2,
+          "open": 24.8,
+          "extract": 2.4
+        }
+      },
+      "one_contract": {
+        "pass": "one_contract",
+        "strike": 325.0,
+        "files": 261019,
+        "bytes_touched": 6137767299,
+        "bytes_wanted": 358744,
+        "waste_ratio": 17109.0,
+        "points": 44843,
+        "ns": 177151290167
+      },
+      "gaps": {
+        "pass": "gaps",
+        "files": 261019,
+        "median_cadence_s": 0.0,
+        "span_h": 20.0,
+        "holes": [
+          {
+            "from_utc": "13:02:34",
+            "to_utc": "13:02:59",
+            "seconds": 25.2,
+            "minutes": 0.4
+          },
+          {
+            "from_utc": "13:03:06",
+            "to_utc": "13:03:34",
+            "seconds": 27.7,
+            "minutes": 0.5
+          },
+          {
+            "from_utc": "13:06:36",
+            "to_utc": "13:06:49",
+            "seconds": 12.9,
+            "minutes": 0.2
+          },
+          {
+            "from_utc": "13:06:52",
+            "to_utc": "13:07:16",
+            "seconds": 24.0,
+            "minutes": 0.4
+          },
+          {
+            "from_utc": "13:36:50",
+            "to_utc": "13:37:17",
+            "seconds": 27.2,
+            "minutes": 0.5
+          },
+          {
+            "from_utc": "13:37:30",
+            "to_utc": "13:37:57",
+            "seconds": 26.8,
+            "minutes": 0.4
+          }
+        ],
+        "hole_count": 6,
+        "lost_minutes": 2.4,
+        "coverage_pct": 99.8
+      }
+    },
+    {
+      "day": "day=2026-09-05",
+      "index_only": {
+        "pass": "index_only",
+        "files": 0,
+        "bytes": 0,
+        "ns": 66125,
+        "split_pct": {
+          "listdir": 99.6,
+          "stat": 0.4
+        }
+      },
+      "full_scan": {
+        "pass": "full_scan",
+        "files": 0,
+        "bytes": 0,
+        "rows_with_field": 0,
+        "parse_failures": 0,
+        "ns": 0,
+        "split_pct": {}
+      },
+      "one_contract": {
+        "pass": "one_contract",
+        "skipped": "no files"
+      },
+      "gaps": {
+        "pass": "gaps",
+        "files": 0,
+        "skipped": "too few"
+      }
+    }
+  ],
+  "dominance": {
+    "read": 44.3,
+    "parse": 20.4,
+    "open": 13.4,
+    "extract": 1.9
+  },
+  "scan_ms": {
+    "median": 146973.5,
+    "min": 0.0,
+    "max": 251441.0
+  }
+}

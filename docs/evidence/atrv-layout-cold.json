@@ -1,0 +1,69 @@
+{
+  "day": "day=2026-09-04",
+  "snapshots": 20000,
+  "codec": "zstd (python-zstandard, level 3)",
+  "anatomy": {
+    "file_bytes": 19176,
+    "rows": 56,
+    "keys": 16,
+    "key_name_bytes": 7952,
+    "value_text_bytes": 9223,
+    "structural_bytes": 2001,
+    "numeric_fields": 609,
+    "float32_equivalent": 2436,
+    "key_pct": 41.46850229453484,
+    "value_pct": 48.09657905715478,
+    "struct_pct": 10.434918648310388,
+    "columnar_ratio": 7.87192118226601
+  },
+  "real_zstd": true,
+  "pack": 30,
+  "verify": {
+    "A_baseline": true,
+    "B_compressed": true,
+    "C_packed": true,
+    "D_packed_compressed": true
+  },
+  "results": {
+    "A_baseline": {
+      "scan_ns": 8405367667,
+      "read_bytes": 472320897,
+      "rows": 1390928,
+      "files": 20000,
+      "on_disk": 472320897,
+      "build_ns": 10461124709
+    },
+    "B_compressed": {
+      "scan_ns": 6161113000,
+      "read_bytes": 111259771,
+      "rows": 1390928,
+      "files": 20000,
+      "on_disk": 111259771,
+      "build_ns": 7605644791
+    },
+    "C_packed": {
+      "scan_ns": 3710681500,
+      "read_bytes": 472400897,
+      "rows": 1390928,
+      "files": 667,
+      "on_disk": 472400897,
+      "build_ns": 5230055875
+    },
+    "D_packed_compressed": {
+      "scan_ns": 3956523041,
+      "read_bytes": 31216826,
+      "rows": 1390928,
+      "files": 667,
+      "on_disk": 31216826,
+      "build_ns": 511036708
+    }
+  },
+  "mark_once": {
+    "structures": 120,
+    "snapshots_timed": 400,
+    "marks": 48000,
+    "ns_per_snapshot": 41308.9575,
+    "ms_per_snapshot": 0.0413089575,
+    "pct_of_2s_budget": 0.0020654478749999997
+  }
+}

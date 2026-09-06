@@ -1,0 +1,54 @@
+corpus : /Volumes/FatTail2TB/fattail-market-data/ssr/live_capture
+days   : 5  (day=2026-09-01 … day=2026-09-05)
+field  : mid
+
+note: run once cold (sudo purge), once warm.
+
+day=2026-09-01
+  index-only : 217,793 files   30795.9 ms   4.3GB
+  full scan  : 146973.5 ms   4.3GB   split {'read': 59.5, 'parse': 25.3, 'open': 12.7, 'extract': 2.5}
+  GAPS       : 6 hole(s), 2.2 min lost   coverage 99.85%   cadence 0.0s
+               03:59:59 → 04:00:11  (0.2 min)
+               11:30:17 → 11:30:47  (0.5 min)
+               14:13:56 → 14:14:07  (0.2 min)
+               15:37:27 → 15:37:53  (0.4 min)
+  1 contract : 143513.2 ms   touched 4.3GB to want 252.9KB  → 17,628.1x waste
+
+day=2026-09-02
+  index-only : 330,224 files   63429.3 ms   7.3GB
+  full scan  : 251441.0 ms   7.3GB   split {'read': 50.3, 'open': 24.3, 'parse': 23.2, 'extract': 2.2}
+  gaps       : none    coverage 100.0%   cadence 0.0s
+  1 contract : 240992.6 ms   touched 7.3GB to want 559.1KB  → 13,606.0x waste
+
+day=2026-09-03
+  index-only : 74,609 files    2451.0 ms   1.5GB
+  full scan  :  43051.7 ms   1.5GB   split {'read': 65.0, 'parse': 27.5, 'open': 5.1, 'extract': 2.4}
+  GAPS       : 2 hole(s), 0.9 min lost   coverage 99.94%   cadence 2.07s
+               07:02:51 → 07:03:19  (0.5 min)
+               16:15:15 → 16:15:40  (0.4 min)
+  1 contract :  18495.6 ms   touched 1.5GB to want 176.2KB  → 8,779.9x waste
+
+day=2026-09-04
+  index-only : 261,019 files   40819.0 ms   5.7GB
+  full scan  : 179962.0 ms   5.7GB   split {'read': 46.7, 'parse': 26.2, 'open': 24.8, 'extract': 2.4}
+  GAPS       : 6 hole(s), 2.4 min lost   coverage 99.8%   cadence 0.0s
+               13:02:34 → 13:02:59  (0.4 min)
+               13:03:06 → 13:03:34  (0.5 min)
+               13:06:36 → 13:06:49  (0.2 min)
+               13:06:52 → 13:07:16  (0.4 min)
+  1 contract : 177151.3 ms   touched 5.7GB to want 350.3KB  → 17,109.0x waste
+
+day=2026-09-05
+  index-only :      0 files       0.1 ms   0.0B
+  full scan  :      0.0 ms   0.0B   split {}
+
+==============================================================
+DOMINANCE (full-scan, mean across days): {'read': 44.3, 'parse': 20.4, 'open': 13.4, 'extract': 1.9}
+
+  'read' dominates → per ATRV §13.1 the mitigation is:
+  compression at rest
+==============================================================
+
+full-scan ms/day: median 146973.5  min 0.0  max 251441.0
+
+wrote docs/evidence/atrv-bench-era1.json

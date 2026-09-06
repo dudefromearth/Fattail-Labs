@@ -1,0 +1,93 @@
+{
+  "day": "day=2026-09-04",
+  "snapshots": 6000,
+  "codec": "zstd (python-zstandard, level 3)",
+  "anatomy": {
+    "file_bytes": 21896,
+    "rows": 62,
+    "keys": 16,
+    "key_name_bytes": 8804,
+    "value_text_bytes": 10984,
+    "structural_bytes": 2108,
+    "numeric_fields": 744,
+    "float32_equivalent": 2976,
+    "key_pct": 40.20825721592985,
+    "value_pct": 50.16441359152357,
+    "struct_pct": 9.627329192546584,
+    "columnar_ratio": 7.35752688172043
+  },
+  "real_zstd": true,
+  "pack": 30,
+  "verify": {
+    "A_baseline": true,
+    "B_compressed": true,
+    "C_packed": true,
+    "D_packed_compressed": true
+  },
+  "results": {
+    "A_baseline": {
+      "scan_ns": 1300386708,
+      "read_bytes": 144115531,
+      "rows": 409480,
+      "files": 6000,
+      "on_disk": 144115531,
+      "build_ns": 3158194334
+    },
+    "B_compressed": {
+      "scan_ns": 1412048583,
+      "read_bytes": 36120001,
+      "rows": 409480,
+      "files": 6000,
+      "on_disk": 36120001,
+      "build_ns": 1187286250
+    },
+    "C_packed": {
+      "scan_ns": 1136839542,
+      "read_bytes": 144139531,
+      "rows": 409480,
+      "files": 200,
+      "on_disk": 144139531,
+      "build_ns": 247854750
+    },
+    "D_packed_compressed": {
+      "scan_ns": 1162727625,
+      "read_bytes": 13988827,
+      "rows": 409480,
+      "files": 200,
+      "on_disk": 13988827,
+      "build_ns": 187858542
+    }
+  },
+  "mark_once": {
+    "structures": 138,
+    "snapshots_timed": 400,
+    "marks": 55200,
+    "ns_per_snapshot": 44687.395,
+    "ms_per_snapshot": 0.044687395,
+    "pct_of_2s_budget": 0.0022343697499999995
+  },
+  "transpose": {
+    "A": {
+      "transpose_ns": 3220085875,
+      "C": 51,
+      "T": 6000,
+      "rows": 409480,
+      "gather_ms": 1.54325
+    },
+    "C": {
+      "transpose_ns": 3020038458,
+      "C": 51,
+      "T": 6000,
+      "rows": 409480,
+      "gather_ms": 1.630917
+    },
+    "D": {
+      "transpose_ns": 3100760417,
+      "C": 51,
+      "T": 6000,
+      "rows": 409480,
+      "gather_ms": 1.613708
+    }
+  },
+  "symbol": "XSP"
+}

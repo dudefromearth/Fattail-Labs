@@ -1,0 +1,30 @@
+corpus : /Volumes/FatTail2TB/fattail-market-data/ssr/live_capture
+days   : 3  (day=2026-09-03 … day=2026-09-05)
+
+day=2026-09-03  74,609 snapshots · sampled 7 · 434 rows
+  row keys (16): ask, bid, delta, gamma, is_spot, iv, last_updated, mid, mid_source, open_interest, side, strike, theta, ticker, vega, volume
+  greeks  : ['delta', 'gamma', 'iv', 'theta', 'vega']
+  !! FOUND (specs say absent): ['expiration']
+
+day=2026-09-04  261,019 snapshots · sampled 7 · 436 rows
+  row keys (16): ask, bid, delta, gamma, is_spot, iv, last_updated, mid, mid_source, open_interest, side, strike, theta, ticker, vega, volume
+  greeks  : ['delta', 'gamma', 'iv', 'theta', 'vega']
+  !! FOUND (specs say absent): ['expiration']
+
+day=2026-09-05: no snapshots
+====================================================================
+VERDICT -- three specs assert these are absent from the archive:
+
+  bid_size       absent   (confirms SSR-MEXP §3.1 / ATRV §3.6)
+  ask_size       absent   (confirms SSR-MEXP §3.1 / ATRV §3.6)
+  sip_timestamp  absent   (confirms SSR-MEXP §3.1 / ATRV §3.6)
+  last_trade     absent   (confirms SSR-MEXP §3.1 / ATRV §3.6)
+  day            absent   (confirms SSR-MEXP §3.1 / ATRV §3.6)
+  expiration     PRESENT  ** spec is wrong **  → unblocks multi-expiration era-2 marker (SSR-MEXP 7/8)
+
+  1 field(s) contradict the specs. AMEND, do not build:
+    SSR-MEXP §1.10 / §3.1 · ATRV §3.6 + AT-ATRV-29 · AZ-ALGO E50
+    Era-1 may be able to answer after-tax §14 after all.
+====================================================================
+
+wrote docs/evidence/mexp-field-probe.json
