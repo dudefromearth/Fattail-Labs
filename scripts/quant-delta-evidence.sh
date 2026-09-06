@@ -2,7 +2,7 @@
 # Quant Lab — Delta evidence packet, MacBook side (DL-677, ATRV v0.9 §7).
 #
 # ▶ RUN ON: MacBook, from the repo root, with the dev API already running
-#   (scripts/dev-run-macos.sh) and .env sourced. Never on StudioOne.
+#   (scripts/dev-run-macos.sh) and the repo-root .env sourced (set -a; source .env; set +a). Never on StudioOne.
 #   If the suite fails at conftest import with an anyio DeprecationWarning, the
 #   venv is behind requirements.txt (anyio must be <4.10):
 #       cd server && .venv/bin/pip install -r requirements.txt
