@@ -1,0 +1,156 @@
+{
+  "predictor_sweep": [
+    {
+      "field": "ask",
+      "time": 6408,
+      "strike": 6451,
+      "planar": 6696,
+      "best": "time"
+    },
+    {
+      "field": "bid",
+      "time": 6548,
+      "strike": 6418,
+      "planar": 6809,
+      "best": "strike"
+    },
+    {
+      "field": "delta",
+      "time": 62033,
+      "strike": 27330,
+      "planar": 36049,
+      "best": "strike"
+    },
+    {
+      "field": "gamma",
+      "time": 21576,
+      "strike": 18422,
+      "planar": 23908,
+      "best": "strike"
+    },
+    {
+      "field": "iv",
+      "time": 159636,
+      "strike": 70918,
+      "planar": 86319,
+      "best": "strike"
+    },
+    {
+      "field": "last_updated",
+      "time": 8171,
+      "strike": 8498,
+      "planar": 8590,
+      "best": "time"
+    },
+    {
+      "field": "mid",
+      "time": 6693,
+      "strike": 6701,
+      "planar": 6845,
+      "best": "time"
+    },
+    {
+      "field": "open_interest",
+      "time": 6368,
+      "strike": 6437,
+      "planar": 6522,
+      "best": "time"
+    },
+    {
+      "field": "theta",
+      "time": 195377,
+      "strike": 104797,
+      "planar": 148904,
+      "best": "strike"
+    },
+    {
+      "field": "vega",
+      "time": 142144,
+      "strike": 92067,
+      "planar": 108333,
+      "best": "strike"
+    },
+    {
+      "field": "volume",
+      "time": 6400,
+      "strike": 6438,
+      "planar": 6822,
+      "best": "time"
+    }
+  ],
+  "day": "day=2026-09-04",
+  "snapshots": 3000,
+  "codec": "zstd level 10",
+  "raw_bytes": 71970732,
+  "float32_bytes": 8971248,
+  "scaled_int_bytes": 8971248,
+  "delta_varint_bytes": 7317749,
+  "compressed_bytes": 1043491,
+  "broken_fields": [],
+  "float32_damaged": {
+    "ask": 194784,
+    "bid": 194784,
+    "delta": 204252,
+    "gamma": 204424,
+    "iv": 204480,
+    "last_updated": 203094,
+    "mid": 195480,
+    "open_interest": 0,
+    "theta": 204480,
+    "vega": 204268,
+    "volume": 0
+  },
+  "float32_total": {
+    "ask": 204480,
+    "bid": 200784,
+    "delta": 204480,
+    "gamma": 204480,
+    "iv": 204480,
+    "last_updated": 203094,
+    "mid": 204480,
+    "open_interest": 204480,
+    "theta": 204480,
+    "vega": 204480,
+    "volume": 203094
+  },
+  "scales": {
+    "mid": 1000,
+    "bid": 100,
+    "ask": 100,
+    "volume": 1,
+    "last_updated": 1,
+    "open_interest": 1,
+    "delta": 1000000,
+    "gamma": 1000000,
+    "theta": 1000000,
+    "vega": 1000000,
+    "iv": 1000000
+  },
+  "inferred_decimals": {
+    "mid": 3,
+    "bid": 2,
+    "ask": 2,
+    "volume": 0,
+    "last_updated": 0,
+    "open_interest": 0,
+    "delta": 19,
+    "gamma": 30,
+    "theta": 17,
+    "vega": 22,
+    "iv": 20
+  },
+  "declared_decimals": {
+    "delta": 6,
+    "gamma": 6,
+    "theta": 6,
+    "vega": 6,
+    "iv": 6
+  },
+  "max_quantisation_error": {
+    "delta": 4.9999157703e-07,
+    "gamma": 4.9999820641e-07,
+    "iv": 4.9999459684e-07,
+    "theta": 4.999865727600001e-07,
+    "vega": 4.99999590844e-07
+  }
+}

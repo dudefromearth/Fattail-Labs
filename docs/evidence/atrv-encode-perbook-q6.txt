@@ -1,0 +1,63 @@
+archive : /Volumes/FatTail2TB/fattail-market-data/ssr/live_capture  (read-only)
+day     : day=2026-09-04   3,000 snapshots   book=XSP
+codec   : zstd level 10
+cap     : 400 contracts held in memory
+
+DECLARED QUANTA (rounded, NOT lossless — max error introduced is measured):
+  delta          inferred 1e-19  -> declared 1e-6
+  gamma          inferred 1e-30  -> declared 1e-6
+  iv             inferred 1e-20  -> declared 1e-6
+  theta          inferred 1e-17  -> declared 1e-6
+  vega           inferred 1e-22  -> declared 1e-6
+
+expirations captured: 0
+
+field              scale    exact?   f32 damage
+------------------------------------------------------------
+ask                  100       YES        95.3%
+bid                  100       YES        97.0%
+delta            1000000 QUANTISED        99.9%   max err 5.0e-07
+gamma            1000000 QUANTISED       100.0%   max err 5.0e-07
+iv               1000000 QUANTISED       100.0%   max err 5.0e-07
+last_updated           1       YES       100.0%
+mid                 1000       YES        95.6%
+open_interest          1       YES         0.0%
+theta            1000000 QUANTISED       100.0%   max err 5.0e-07
+vega             1000000 QUANTISED        99.9%   max err 5.0e-07
+volume                 1       YES         0.0%
+
+==============================================================
+JSON as archived                        68.6MB   1.00x
+float32 columns (LOSSY)                  8.6MB    8.0x
+scaled int32 columns                     8.6MB    8.0x
++ delta + varint                         7.0MB    9.8x
++ compression                         1019.0KB   69.0x
+==============================================================
+
+FLOAT32 VERDICT: 1,810,046 of 2,242,812 values (80.7%) do not survive float32 exactly.
+  Scaled integers make the question moot -- and are SMALLER,
+  because integer deltas compress and float bit patterns do not.
+
+PREDICTOR SWEEP — compressed bytes per field, lower is better
+field                  time     strike     planar     best
+----------------------------------------------------------
+ask                   6.3KB      6.3KB      6.5KB     time
+bid                   6.4KB      6.3KB      6.6KB   strike
+delta                60.6KB     26.7KB     35.2KB   strike
+gamma                21.1KB     18.0KB     23.3KB   strike
+iv                  155.9KB     69.3KB     84.3KB   strike
+last_updated          8.0KB      8.3KB      8.4KB     time
+mid                   6.5KB      6.5KB      6.7KB     time
+open_interest         6.2KB      6.3KB      6.4KB     time
+theta               190.8KB    102.3KB    145.4KB   strike
+vega                138.8KB     89.9KB    105.8KB   strike
+volume                6.2KB      6.3KB      6.7KB     time
+----------------------------------------------------------
+ALL ONE PREDICTOR    606.8KB    346.2KB    435.3KB
+
+  best single predictor : 346.2KB
+  PER-FIELD choice      : 345.7KB   (1.00x better)
+  -> the winner differs BY FIELD, so the encoder stores one
+     predictor id per field. That is a byte of header, not a design.
+
+wrote docs/evidence/atrv-encode-perbook-q6.json
