@@ -81,10 +81,13 @@ def human(n: float) -> str:
 
 # ---------------------------------------------------------------- discovery
 
-def snaps_for(day: Path) -> list[Path]:
+def snaps_for(day: Path, symbol: str | None = None) -> list[Path]:
     chain = day / "chain"
     if not chain.is_dir():
         return []
+    if symbol:
+        d = chain / symbol
+        return sorted(d.glob("snap-*.json")) if d.is_dir() else []
     out = sorted(chain.glob("snap-*.json"))
     for sym in sorted(p for p in chain.iterdir() if p.is_dir()):
         out.extend(sorted(sym.glob("snap-*.json")))
@@ -257,6 +260,101 @@ def mark_once(files: list[Path], k: int) -> dict:
             "pct_of_2s_budget": (el / n / 1e9) / 2.0 * 100}
 
 
+# ---------------------------------------------------------------- transpose
+
+TRANSPOSE_FIELDS = ("mid", "bid", "ask", "delta", "gamma", "theta", "vega", "iv",
+                    "volume", "open_interest", "bid_size", "ask_size")
+
+
+def _scale_of(field: str) -> int:
+    # quotes on a cent grid; greeks/iv at 1e-6 quantum; counts are integers.
+    # Per-field scales are OD-ATRV-5's business; these are the experiment's.
+    if field in ("mid", "bid", "ask"):
+        return 100
+    if field in ("volume", "open_interest", "bid_size", "ask_size"):
+        return 1
+    return 1_000_000
+
+
+def transpose_from(docs_iter, T_hint: int) -> tuple[dict, dict, int]:
+    """Closed-day transpose: snapshot-major docs -> [C][T] scaled-int columns.
+
+    C is NOT known up front -- the band ratchets and new strikes appear
+    mid-session. This is the closed-day answer to that: discover C as you go,
+    keep `present` honest, and never fill an absent cell.
+    """
+    import array
+    cid_index: dict[tuple, int] = {}
+    cols: dict[str, list] = {f: [] for f in TRANSPOSE_FIELDS}   # field -> [array per C]
+    present: list = []                                             # per C
+    T = 0
+    rows_seen = 0
+    for t, gen in enumerate(docs_iter):
+        T = t + 1
+        for r in gen.get("rows") or []:
+            if not isinstance(r, dict):
+                continue
+            rows_seen += 1
+            cid = (r.get("strike"), r.get("right"), r.get("expiration"))
+            c = cid_index.get(cid)
+            if c is None:
+                c = len(cid_index); cid_index[cid] = c
+                for f in TRANSPOSE_FIELDS:
+                    cols[f].append(array.array("i", bytes(4 * T_hint)))
+                present.append(array.array("B", bytes(T_hint)))
+            present[c][t] = 1
+            for f in TRANSPOSE_FIELDS:
+                v = r.get(f)
+                if v is None or isinstance(v, bool):
+                    continue
+                try:
+                    cols[f][c][t] = int(round(float(v) * _scale_of(f)))
+                except (TypeError, ValueError, OverflowError):
+                    pass
+    return cols, {"present": present, "cid_index": cid_index, "T": T}, rows_seen
+
+
+def gather_4leg(cols: dict, meta: dict) -> float:
+    """The thing the whole store exists for: 4 rows, contiguous in time, dotted."""
+    import array
+    idx = meta["cid_index"]; T = meta["T"]
+    strikes = sorted({k[0] for k in idx if k[0] is not None})
+    if len(strikes) < 5:
+        return float("nan")
+    m = len(strikes) // 2
+    legs = [(strikes[m-2], 1), (strikes[m], -2), (strikes[m+2], 1)]
+    rows = []
+    for k, q in legs:
+        for cid, c in idx.items():
+            if cid[0] == k:
+                rows.append((cols["mid"][c], q)); break
+    t0 = ns()
+    mark = array.array("i", bytes(4 * T))
+    for r, q in rows:
+        for t in range(T):
+            mark[t] += q * r[t]
+    return (ns() - t0) / 1e6
+
+
+def docs_from_flat(d: Path, pat: str, decomp=None):
+    for f in sorted(d.glob(pat)):
+        raw = f.read_bytes()
+        if decomp:
+            raw = decomp(raw)
+        doc = json.loads(raw)
+        yield doc.get("generation") or doc
+
+
+def docs_from_packed(d: Path, pat: str, decomp=None):
+    for f in sorted(d.glob(pat)):
+        blob = f.read_bytes()
+        if decomp:
+            blob = decomp(blob)
+        for rec in unpack(blob):
+            doc = json.loads(rec)
+            yield doc.get("generation") or doc
+
+
 # ---------------------------------------------------------------- anatomy
 
 def anatomy(files: list[Path]) -> dict:
@@ -313,6 +411,10 @@ def main() -> None:
     ap.add_argument("--limit", type=int, default=20000, help="snapshots to use")
     ap.add_argument("--pack", type=int, default=30, help="snapshots per packed file")
     ap.add_argument("--structures", type=int, default=500, help="mark-once structures")
+    ap.add_argument("--symbol", help="ONE book directory. Strongly recommended: without it "
+                    "the file order is book-major and the transposed time axis is scrambled")
+    ap.add_argument("--transpose", action="store_true",
+                    help="time the closed-day transpose pack->[C][T] AND JSON-storm->[C][T]")
     ap.add_argument("--keep", action="store_true", help="do not delete --work at the end")
     ap.add_argument("--json", help="write results here")
     a = ap.parse_args()
@@ -335,11 +437,15 @@ def main() -> None:
         sys.exit(f"!! {a.day} not found or empty. Available: "
                  f"{', '.join(d.name for d in days[-8:])}")
 
-    files = snaps_for(day)[:a.limit]
+    files = snaps_for(day, a.symbol)[:a.limit]
+    if not files:
+        sys.exit(f"!! no snapshots for {day.name}"
+                 + (f" symbol={a.symbol}" if a.symbol else ""))
     codec_name, comp, decomp, ext, real_zstd = pick_codec()
 
     print(f"archive : {root}   (read-only)")
-    print(f"day     : {day.name}   using {len(files):,} of {len(snaps_for(day)):,} snapshots")
+    print(f"day     : {day.name}   using {len(files):,} of {len(snaps_for(day, a.symbol)):,} snapshots"
+          + (f"   book={a.symbol}" if a.symbol else "   ALL BOOKS -- time axis scrambled"))
     print(f"scratch : {work}")
     print(f"codec   : {codec_name}")
     print(f"pack    : {a.pack} snapshots/file\n")
@@ -439,6 +545,49 @@ def main() -> None:
                        else "NOT free — needs its own process/budget")
             print(f"  -> {verdict}")
 
+        tr = {}
+        if a.transpose:
+            print("\nTRANSPOSE — closed-day build of [C][T], the number that decides")
+            print("            whether a nightly build is a problem at all\n")
+            print(f"{'source':<28}{'read+parse+transpose':>22}{'C':>7}{'T':>8}"
+                  f"{'4-leg gather':>14}")
+            print("-" * 79)
+            sources = [
+                ("A  JSON storm (loose files)",
+                 lambda: docs_from_flat(v["A_baseline"]["dir"], "*.json")),
+                ("C  packs",
+                 lambda: docs_from_packed(v["C_packed"]["dir"], "pack-*.bin")),
+                ("D  packs + compressed",
+                 lambda: docs_from_packed(v["D_packed_compressed"]["dir"],
+                                          f"pack-*.bin{ext}", decomp)),
+            ]
+            for label, src in sources:
+                key = label.split()[0]
+                if not ok.get({"A": "A_baseline", "C": "C_packed",
+                               "D": "D_packed_compressed"}[key]):
+                    continue
+                t0 = ns()
+                cols, meta, nrows = transpose_from(src(), len(files))
+                el = ns() - t0
+                g = gather_4leg(cols, meta)
+                tr[key] = {"transpose_ns": el, "C": len(meta["cid_index"]),
+                           "T": meta["T"], "rows": nrows, "gather_ms": g}
+                print(f"{label:<28}{el/1e9:>21.2f}s{len(meta['cid_index']):>7,}"
+                      f"{meta['T']:>8,}{g:>13.2f}ms")
+                del cols, meta
+            if "A" in tr and "C" in tr:
+                print(f"\n  packs vs JSON storm : {tr['A']['transpose_ns']/tr['C']['transpose_ns']:.2f}x")
+                per_day = tr["C"]["transpose_ns"] / 1e9 * (11700 / max(tr["C"]["T"], 1))
+                print(f"  projected full day  : ~{per_day:.0f} s from packs "
+                      f"({len(files):,} snaps measured, scaled to 11,700)")
+                if per_day < 60:
+                    print("  -> nightly transpose is CHEAP. Settled. Stop talking about it.")
+                elif per_day < 600:
+                    print("  -> minutes, not hours. Nightly is fine; not a reason to go live.")
+                else:
+                    print("  -> a real cost — and NOT a JSON-storm problem. New question.")
+            print()
+
         print("\nANATOMY — where a snapshot's bytes go")
         an = anatomy(files)
         if "skipped" in an:
@@ -462,7 +611,8 @@ def main() -> None:
         out = {"day": day.name, "snapshots": len(files), "codec": codec_name,
                "anatomy": an,
                "real_zstd": real_zstd, "pack": a.pack,
-               "verify": ok, "results": results, "mark_once": m}
+               "verify": ok, "results": results, "mark_once": m,
+               "transpose": tr, "symbol": a.symbol}
         if a.json:
             Path(a.json).write_text(json.dumps(out, indent=2, default=str) + "\n")
             print(f"\nwrote {a.json}")
