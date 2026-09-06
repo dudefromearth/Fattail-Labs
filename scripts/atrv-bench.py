@@ -285,7 +285,7 @@ def run(root: Path, ndays: int, field: str) -> dict:
         if not row["full_scan"].get("files"):
             why = ("Saturday/Sunday — no session, empty is CORRECT"
                    if weekend(d.name) else
-                   "!! WEEKDAY WITH NO FILES — check capture")
+                   "weekday with no files — a market HOLIDAY, or check capture")
             print(f"{d.name}\n  no snapshots ({why})\n")
             continue
 

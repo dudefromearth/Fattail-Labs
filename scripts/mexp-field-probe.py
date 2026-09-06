@@ -145,7 +145,7 @@ def main() -> None:
         out["results"].append(r)
         if "skipped" in r:
             why = ("Saturday/Sunday — no session, empty is CORRECT"
-                   if weekend(r["day"]) else "!! WEEKDAY — check capture")
+                   if weekend(r["day"]) else "weekday — a market HOLIDAY, or check capture")
             print(f"{r['day']}: {r['skipped']}  ({why})")
             continue
         print(f"{r['day']}  {r['snapshots']:,} snapshots · sampled {r['sampled']}"
