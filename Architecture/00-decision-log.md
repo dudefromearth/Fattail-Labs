@@ -18,6 +18,11 @@ LB and Quant Lab, which are admin-facing products."*
 retirement of staging and its reasoning that analysis never lives on the collector — the lab node
 is now DudeTwo. StudioOne is untouched.
 
+**Punctuation (Coach, same day):** *"https://FatTail.ai is the front door, a WooCommerce sales
+and membership site. 0-DTE.com is the legacy coaching service site. They both provide access to
+FatTail Labs, which houses all the other services I mentioned. FatTail is the main site."* Neither
+front door moves; "main service" in HOST v0.1 means the Labs app on DudeOne, not the site.
+
 **Product seating, as stated:** Strategy Lab becomes the **Option Bot service**; IKI Lab becomes
 the **Knowledge and Intelligence service**; Options Lab is **paired with Practice and Journey** on
 the main service. Seating, not scope — each keeps its spec.

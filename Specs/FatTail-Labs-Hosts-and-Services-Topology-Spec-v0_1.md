@@ -28,6 +28,10 @@ ATRV v0.9 §5 (host-agnostic) · Read API v0.8 §1 (collection outranks reads)
 > Lab, IKI Lab, IKI Factory (customer-facing), and IKI LB and Quant Lab, which are
 > admin-facing products."*
 
+> *"https://FatTail.ai is the front door, a WooCommerce sales and membership site. 0-DTE.com is
+> the legacy coaching service site. They both provide access to FatTail Labs, which houses all
+> the other services I mentioned. FatTail is the main site. Just to punctuate it."*
+
 Success criteria, as this draft reads them: `labs.fattail.ai` served from DudeOne with no member
 able to tell the difference except that it is faster; MiniTwo out of the production path and
 available; the quant machinery on its own boxes so the collector's headroom stays the tap's;
@@ -37,9 +41,21 @@ the product map written down so the next spec knows which box it lands on.
 
 ## 1. Hosts — was / is
 
+### 1.0 The front doors are not on these boxes
+
+| Site | Role | Relation to Labs | Hosted |
+|---|---|---|---|
+| **`fattail.ai`** | **The main site.** Front door: WooCommerce sales and membership | SSO issuer **and** commerce provider (`providers.py`, `provider_plan_map`); entitlements sync into Labs | WordPress hosting, **outside this topology, not moved** |
+| **`0-dte.com`** | Legacy coaching service site | SSO issuer; same email = same Labs identity | outside this topology, not moved |
+| **`labs.fattail.ai`** | **FatTail Labs — the app both doors open onto**; houses every service in §2 | — | **DudeOne** (this spec) |
+
+Wherever this document said "main service" it means **the Labs app**; the *main site* is
+`fattail.ai`. Nothing in this spec changes either front door, the SSO contract, or commerce —
+the Labs origin changes box, not name, and the providers pillar (`CLAUDE.md`) stands.
+
 | Machine | Hardware | Was (DL-673) | **Is (this spec)** | Serves |
 |---|---|---|---|---|
-| **DudeOne** | M4 · 24 GB · 500 GB | analysis node; `flyonthewall.io` (MSC, defunct) | **Production — main service** `labs.fattail.ai` | Courses · Practice · Journey · Toughness · Options Lab · auth/me/providers · admin |
+| **DudeOne** | M4 · 24 GB · 500 GB | analysis node; `flyonthewall.io` (MSC, defunct) | **Production — the Labs app** `labs.fattail.ai` | Courses · Practice · Journey · Toughness · Options Lab · auth/me/providers · admin |
 | **DudeTwo** | M4 · 24 GB · 500 GB (identical peer, DL-674) | staging retired; `stage.flyonthewall.io` | **Lab node** — the QLAB §3 box, OD-QLAB-1 answered | Strategy Lab → **Option Bot service** · IKI Lab → **Knowledge & Intelligence service** · IKI Factory (member-facing) · IKI LB · Quant Lab (admin) |
 | **MiniTwo** | M2 Mac Mini | production, sole Labs host | **Rollback host for 7 days after cutover, then lab peer** (§6 OD-HOST-3) | derived-store builds · backfill · second Monte Carlo runner — or spare |
 | **MiniThree** | — | nginx, Cloudflare origin | unchanged — **upstream for `labs` changes from MiniTwo to DudeOne** | routing only |
@@ -60,7 +76,7 @@ Coach's sentence, as a table. This is **seating**, not scope: each service keeps
 
 | Service (member name) | Was | Box | Faces | Spec of record |
 |---|---|---|---|---|
-| **Main service** — Courses, Practice, Journey, Toughness, Options Lab | Labs P1 | DudeOne | members | Course Hosting v1.0 + each feature spec |
+| **Labs app (P1 platform)** — Courses, Practice, Journey, Toughness, Options Lab | Labs P1 | DudeOne | members, arriving from `fattail.ai` or `0-dte.com` | Course Hosting v1.0 + each feature spec |
 | **Options Lab** | Options Lab | DudeOne | members — **paired with Practice and Journey** (§2.1) | AZ-ALGO, Heatmap/LIM, TM, OPF |
 | **Option Bot service** | Strategy Lab | DudeTwo | members | QLAB v0.3 (Lab Bot ≡ Marketplace object, DL-247) + ATRV |
 | **Knowledge & Intelligence service** | IKI Lab | DudeTwo | members | IKI Lab specs (GEX toolset, Chain Analytics Read) |
@@ -77,10 +93,10 @@ W0 whether this pairing changes any existing spec's boundary; this draft says it
 
 ### 2.2 The two-box law
 
-Everything **member-facing on the main service** is on DudeOne. Everything that **computes at
+Everything **member-facing in the Labs app** is on DudeOne. Everything that **computes at
 scale or lets an admin operate the system** is on DudeTwo. The Option Bot and K&I services are
-member-facing *and* on DudeTwo — they are served to members **through** the main service
-(QLAB §5.2 publish transport: production pulls, "published" means the main service serves it
+member-facing *and* on DudeTwo — they are served to members **through** the Labs app
+(QLAB §5.2 publish transport: production pulls, "published" means the Labs app serves it
 with the lab powered off). A member never holds a session on DudeTwo.
 
 **Consequence:** the `ft_session` cookie, SSO issuers, roles and plans live on DudeOne only.
@@ -173,4 +189,4 @@ upstream changes) · a cutover during market hours.
 
 | Ver | Date | Notes |
 |---|---|---|
-| **v0.1** | 2026-09-06 | First draft from Coach's direction. DudeOne → production main service (Courses, Practice, Journey, Toughness, Options Lab); DudeTwo → lab node (Option Bot, K&I, IKI Factory, IKI LB, Quant Lab); MiniTwo → 7-day rollback then lab peer (OD-HOST-3); MSC on DudeOne decommissioned by deletion. Reverses DL-673's DudeOne-as-analysis-node; keeps staging retired and the collector untouched. Cutover in seven gated phases; Foxtrot writes the runbook. OD-HOST-1…6, AT-HOST-1…8. |
+| **v0.1** | 2026-09-06 | First draft from Coach's direction. **Same day:** §1.0 added — `fattail.ai` is the main site (WooCommerce front door), `0-dte.com` the legacy coaching site, both open onto Labs; "main service" in this document means the Labs app, never the site. DudeOne → production main service (Courses, Practice, Journey, Toughness, Options Lab); DudeTwo → lab node (Option Bot, K&I, IKI Factory, IKI LB, Quant Lab); MiniTwo → 7-day rollback then lab peer (OD-HOST-3); MSC on DudeOne decommissioned by deletion. Reverses DL-673's DudeOne-as-analysis-node; keeps staging retired and the collector untouched. Cutover in seven gated phases; Foxtrot writes the runbook. OD-HOST-1…6, AT-HOST-1…8. |
