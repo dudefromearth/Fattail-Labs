@@ -66,7 +66,16 @@ sells afterwards is another plug-in for a Runner the member already has, which i
 mechanism of the email offers. Consequence for the topology: the **plug-in contract between
 Runner and an IKI product is the seam between the two boxes**, and the Runner's template
 mechanism (Heatmap templates, LIM) is already that contract. HOST §2.1a row for "IKI Labs
-Runner + Analyzer" reads **Options Lab Runner + Analyzer** from here. Three consequences named there for the
+Runner + Analyzer" reads **Options Lab Runner + Analyzer** from here.
+
+**Price point (Coach, same day):** *"IKI products are low cost ways of bringing them back and
+engaging and paying. Same for Strategy Lab."* Both are **re-engagement products for the
+observer-light list, priced low** — not a second high-ticket tier beside coaching. That is
+consistent with the Aug 31 restructure note (optional knowledge/intelligence products at roughly
+$5–10 a month) and it bounds the Option Bot pricing question: the Option Alpha bet is won on
+honesty and price, not on a premium. It also sets the engineering budget — a low-cost product
+served to a large free list must be **cheap to serve**: published grid cells and templates
+(DudeTwo → DudeOne), not per-member live compute, which is the answer OD-HOST-6 was waiting for. Three consequences named there for the
 owners to pick up, none acted on here: (1) **1DTE on the show makes era-2 multi-expiration
 capture load-bearing** (SSR-MEXP) — the collector's Tuesday start is now show infrastructure;
 (2) the Option Bot service is a **paid** product living on the lab node — entitlement goes
