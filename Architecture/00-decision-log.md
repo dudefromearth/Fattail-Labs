@@ -23,9 +23,15 @@ cheaper), and the exit as the **AZ-ALGO Guide's fold** with the **untrailed line
 exploration, never promotion. Book is **SPX**; ~15 days must be built on StudioOne first.
 
 **Two integrations before it can run, spec first:** `exit_kind = guide` (ATRV v0.12) and a signal
-layer above `simulate` (`quant/signals.py`). Neither touches the store or the builder. The other
-two of Coach's three are not yet stated by him; the draft suggests the failed-breakout fade and
-Saturday's placement-rule fly so the catalog gets three shapes on the same days.
+layer above `simulate` (`quant/signals.py`). Neither touches the store or the builder. **Second strategy (Coach, same day):** *"The other is a 1DTE Batman, where we simply enter the
+trade with a 10% rule for the entire trade. A call fly above and a put fly below, say 20 wide
+each, the combined debit cannot exceed $2 or 10% of 20."* Landed as
+`Specs/FatTail-Labs-Strategy-Registration-Batman-v0_1.md`. **The captured era-1 days hold one
+expiration per day (measured: `atrv-bench-2026-09-05.md` l.101; the XSP store lists only
+`2026-09-04`), so a 1DTE structure cannot be priced from them.** BAT-1D is registered for era-2
+(first 1DTE legs Tuesday 2026-09-08, SSR-MEXP); a **BAT-0D proxy** on era-1 is offered, labelled,
+never compared with the real thing (OD-BAT-1). Six-leg complex order; entry 15:30 ET day T
+default; exit the Guide, untrailed beside it. The third strategy is not yet stated.
 
 ---
 
