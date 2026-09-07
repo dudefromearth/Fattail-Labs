@@ -4,6 +4,34 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-07 — DL-684 DudeOne unreachable (FileVault) · DudeTwo becomes the hot spare and the next production host · roles swap
+
+**Event and decision (Coach, 2026-09-07, afternoon).** *"DudeOne got locked up with too many
+sockets open, so I decided to reboot. Unfortunately it had FileVault running which requires a human
+standing in front of the machine to log in, and I won't be able to do that for at least a week …
+So I have instead decided to provision DudeTwo as the hot spare to MiniTwo, and after we finish
+our dev project later this week, I will switch production from MiniTwo to DudeTwo. I have already
+gotten the repo there and database and SSO, and it seems fully functional."*
+
+**Roles swap, the shape does not.** HOST v0.2's topology stands with the two Dudes exchanged:
+**DudeTwo → production Labs** (`labs.fattail.ai`, hot spare now, cutover later this week with
+Conor present per DL-683); **DudeOne → compute and research lab (H7) when it is physically
+unlocked**, ~a week out; MiniTwo → staging after the hold. The runbook
+`docs/ops/DudeOne-Recommission-Runbook.md` applies to DudeTwo verbatim with the name changed —
+D1's MSC deletion now targets `stage.flyonthewall.io` on DudeTwo. Lima renames at H6.
+
+**"Seems fully functional" is a claim; the fingerprint is the evidence.** Before DudeTwo is
+called the spare: `infra/scripts/host-fingerprint.sh` on MiniTwo and on DudeTwo, diffed (D4).
+No cutover on a feeling — that is invariant 4, and the reason D4 exists.
+
+**A production rule learned the hard way, added to the runbook:** a production or spare box must
+survive an unattended reboot. **FileVault must be off (or documented with a remote-unlock path)
+on MiniTwo, DudeTwo, DudeOne and StudioOne**; `fdesetup status` joins the fingerprint and D2's
+checklist. The collector is the one that matters most — a StudioOne reboot that waits a week for a
+key is a week of no data.
+
+---
+
 ## 2026-09-07 — DL-683 Recommissioning comes first · MiniTwo becomes staging · DudeTwo is the compute and research lab
 
 **Decision (Coach, 2026-09-07).** *"Another goal that should precede the ones already stated is

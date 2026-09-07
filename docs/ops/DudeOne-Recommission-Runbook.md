@@ -1,5 +1,14 @@
 # DudeOne — Recommission as Labs production (identical to MiniTwo)
 
+> **2026-09-07 afternoon (DL-684): this runbook now applies to DudeTwo.** DudeOne is FileVault-locked
+> after a reboot and unreachable until Coach is home (~1 week). DudeTwo is the hot spare and the next
+> production host; DudeOne becomes the compute lab (H7) when unlocked. Read "DudeOne" below as
+> **DudeTwo** until Lima renames the file at H6. D1's MSC target on DudeTwo is `stage.flyonthewall.io`.
+>
+> **Rule added:** a production or spare box must survive an unattended reboot — **FileVault off** (or a
+> documented remote-unlock path) on MiniTwo, DudeTwo, DudeOne, StudioOne. `fdesetup status` is now in
+> the fingerprint; D2 checks it before the box is called a spare.
+
 **Spec:** HOST v0.2 (`Specs/FatTail-Labs-Hosts-and-Services-Topology-Spec-v0_2.md`) · **DL-683**
 **Goal (Coach, 2026-09-07):** *"get DudeOne recommissioned and identical to MiniTwo, and set to switch
 over later this afternoon or tomorrow … not until I have Conor online during the procedure."*

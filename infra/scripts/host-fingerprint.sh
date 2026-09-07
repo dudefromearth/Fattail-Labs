@@ -30,4 +30,5 @@ say ports     "$(lsof -nP -iTCP -sTCP:LISTEN 2>/dev/null | awk 'NR>1{print $9}' 
 say health    "$(curl -s -m 3 "http://127.0.0.1:${LABS_PORT:-4000}/api/health" | head -c 120 || echo 'no api')"
 say wiki      "$([ -n "${LABS_WIKI_ROOT:-}" ] && git -C "$LABS_WIKI_ROOT" rev-parse --short HEAD 2>/dev/null || echo 'n/a')"
 say tailscale "$(tailscale ip -4 2>/dev/null || echo absent)"
+say filevault "$(fdesetup status 2>/dev/null | head -1)  autologin=$(defaults read /Library/Preferences/com.apple.loginwindow autoLoginUser 2>/dev/null || echo none)"
 say disk      "$(df -h / | awk 'NR==2{print $4" free of "$2}')"
