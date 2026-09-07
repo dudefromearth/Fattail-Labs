@@ -28,6 +28,16 @@ goes first today, a holiday with no members and no market, while DudeOne's H1–
 and H4 (the member cutover) waits for the weekend of 9/12. Both boxes currently run MSC; both
 decommissions are by deletion. **No infra action until Coach stamps the token.**
 
+**Same day, order and timing disposed (Coach):** *"The first goal is to get DudeOne recommissioned
+and identical to MiniTwo, and set to switch over later this afternoon or tomorrow. I am not in a
+hurry to do the switch, not until I have Conor online during the procedure."* OD-HOST-7 → DudeOne
+first; OD-HOST-2 → the switch only with Conor present. Landed: `docs/ops/DudeOne-Recommission-Runbook.md`
+(D0 read-only probes on both boxes · D1 MSC deletion · D2 mirror provisioning · D3 rehearsed data
+move · D4 parity by fingerprint · D5 the switch with rollback rehearsed first) and
+`infra/scripts/host-fingerprint.sh`, which defines "identical": same commit, Python, installed
+packages, Node, lockfile, `.env` key set, migration state, row counts, launchd labels, ports, wiki
+checkout — diffed, with every difference either expected or explained.
+
 ---
 
 ## 2026-09-07 — DL-682 First strategies registered · ORB-15 and ORB-30 · the guide is the exit, era-1 is `idealised`
