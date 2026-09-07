@@ -8,6 +8,12 @@
 > **Rule added:** a production or spare box must survive an unattended reboot — **FileVault off** (or a
 > documented remote-unlock path) on MiniTwo, DudeTwo, DudeOne, StudioOne. `fdesetup status` is now in
 > the fingerprint; D2 checks it before the box is called a spare.
+>
+> **Users differ:** DudeTwo runs as **`dude`**; MiniTwo, StudioOne, StudioTwo (and DudeOne) run as
+> **`ernie`**. Anything copied from MiniTwo with `/Users/ernie/…` baked in must become `/Users/dude/…`
+> on DudeTwo: launchd plists (`WorkingDirectory`, `Program`, log paths), `LABS_WIKI_ROOT`,
+> `LABS_QUANT_STORE_ROOT`, and the wiki checkout location. The fingerprint uses `$HOME`, so those show
+> as **expected** value differences in D4 while the `.env` key set stays identical.
 
 **Spec:** HOST v0.2 (`Specs/FatTail-Labs-Hosts-and-Services-Topology-Spec-v0_2.md`) · **DL-683**
 **Goal (Coach, 2026-09-07):** *"get DudeOne recommissioned and identical to MiniTwo, and set to switch
