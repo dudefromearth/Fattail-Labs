@@ -4,6 +4,32 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-07 — DL-683 Recommissioning comes first · MiniTwo becomes staging · DudeTwo is the compute and research lab
+
+**Decision (Coach, 2026-09-07).** *"Another goal that should precede the ones already stated is
+to recommission DudeOne as the new production server for Labs. And to recommission DudeTwo as the
+new Strategy Lab and IKI Lab compute server. DudeTwo's job going forward will be to compute the
+data we collect and provide a research lab to search for strategies and studies that will feed
+Strategy Lab and IKI Lab customer-facing storefronts. MiniTwo will become a staging server [for]
+all production apps."*
+
+**Three things change.** (1) **Priority:** the two recommissions precede the Time Machine, store
+and Strategy Lab goals of the same morning — the builds and the research lab land on DudeTwo, not
+a laptop. (2) **Staging is reinstated on MiniTwo** — reverses DL-673's retirement; the release
+path becomes dev → MiniTwo (`labs-stage.fattail.ai`, built output only) → DudeOne. HOST H6 is
+rewritten from "decommission" to "convert to staging with a scrubbed DB" (OD-HOST-3 disposed;
+scrub rule to Mike). (3) **DudeTwo's charter in Coach's words:** compute the collected data;
+provide a research lab for strategies and studies; feed the customer-facing storefronts — which
+is the QLAB §3 lab node and the publish transport of §5.2, now with a box.
+
+**Landed:** `Specs/FatTail-Labs-Hosts-and-Services-Topology-Spec-v0_2.md` (DRAFT, supersedes
+v0.1). Opens **OD-HOST-7** — order of the two recommissions — with the default that DudeTwo (H7)
+goes first today, a holiday with no members and no market, while DudeOne's H1–H3 run in parallel
+and H4 (the member cutover) waits for the weekend of 9/12. Both boxes currently run MSC; both
+decommissions are by deletion. **No infra action until Coach stamps the token.**
+
+---
+
 ## 2026-09-07 — DL-682 First strategies registered · ORB-15 and ORB-30 · the guide is the exit, era-1 is `idealised`
 
 **Decision (Coach, 2026-09-07).** *"Let's start with at least three different strategies to run
