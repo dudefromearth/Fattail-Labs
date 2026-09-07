@@ -4,6 +4,31 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-07 — DL-682 First strategies registered · ORB-15 and ORB-30 · the guide is the exit, era-1 is `idealised`
+
+**Decision (Coach, 2026-09-07).** *"Let's start with at least three different strategies to run
+across the 13 or 14 days we have captured. Perhaps the easiest is an open range breakout. On the
+breakout signal, we will place an OTM 20-wide fly with a debit equal to or less than 10% of the fly
+width … choose the next OTM fly if there's a >25% discount relative to the first price we found."*
+Then: *"We will use both 15 and 30 as the range, the trigger we will use close outside the range
+with 15 min and touch with 30. We will institute all the common filters and invalidations. The
+targets will be our profit management algo."*
+
+**Landed:** `Specs/FatTail-Labs-Strategy-Registration-ORB-v0_1.md` — a **registration** (QLAB §4.5),
+not a product spec: two variants (ORB-15 close-outside on 1-minute bars; ORB-30 touch), six
+filters and three invalidations **each with a number** (a filter without one is a knob), Coach's
+placement rule made mechanical (nearest 20-wide body with debit ≤ $2.00; next-out if ≥ 25%
+cheaper), and the exit as the **AZ-ALGO Guide's fold** with the **untrailed line beside it**
+(AT-ATRV-26). Binding from AZ-ALGO §14.3: on era-1 the guide run is **`idealised`** — shape
+exploration, never promotion. Book is **SPX**; ~15 days must be built on StudioOne first.
+
+**Two integrations before it can run, spec first:** `exit_kind = guide` (ATRV v0.12) and a signal
+layer above `simulate` (`quant/signals.py`). Neither touches the store or the builder. The other
+two of Coach's three are not yet stated by him; the draft suggests the failed-breakout fade and
+Saturday's placement-rule fly so the catalog gets three shapes on the same days.
+
+---
+
 ## 2026-09-06 — DL-681 0DTE Live and the funnel — what each service is for
 
 **Stated (Coach, 2026-09-06).** *"The new public show, called 0DTE Live, runs Mon–Fri from 2 PM
