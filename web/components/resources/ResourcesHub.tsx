@@ -8,22 +8,39 @@
  * Admin: lexicon management in place (same store as /admin/tags).
  */
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import ResourceLibrary from "@/components/ResourceLibrary";
 import TagsAdminPanel from "@/components/admin/TagsAdminPanel";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 import { fetchMyTags, type Tag, type TagCategory } from "@/lib/tagsApi";
 
-type Tab = "library" | "tags";
+export type ResourcesHubTab = "library" | "tags";
+export type ResourcesNavId = ResourcesHubTab | "sessions";
+type Tab = ResourcesHubTab;
 type SortMode = "alpha" | "category" | "usage";
 
-/** Centered sub-app nav — same pattern as PracticeSuiteNav (Spec §9a). */
+function pillClass(on: boolean): string {
+  return [
+    "inline-flex min-h-[var(--hit-min)] items-center justify-center rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors sm:px-4",
+    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]",
+    on
+      ? "bg-[var(--color-surface)] text-[var(--color-label)] shadow-[var(--elevation-1)]"
+      : "text-[var(--color-label-secondary)] hover:text-[var(--color-label)]",
+  ].join(" ");
+}
+
+/** Centered sub-app nav — Practice pill chrome. Sessions is a Link (OD-S2 a). */
 export function ResourcesSubNav({
   active,
   onChange,
+  showSessions,
 }: {
-  active: Tab;
-  onChange: (t: Tab) => void;
+  active: ResourcesNavId;
+  /** Hub only: in-page Library/Tags tabs. Omit on the Sessions route (Links). */
+  onChange?: (t: Tab) => void;
+  /** OD-S3 (a): hidden when anonymous. */
+  showSessions: boolean;
 }) {
   return (
     <div className="flex justify-center">
@@ -31,36 +48,60 @@ export function ResourcesSubNav({
         className="inline-flex max-w-full flex-wrap items-center justify-center gap-0.5 rounded-full bg-[var(--color-fill)] p-1"
         aria-label="Resources suite"
         data-testid="resources-suite-nav"
-        role="tablist"
       >
-        {(
-          [
-            ["library", "Library"],
-            ["tags", "Tags"],
-          ] as const
-        ).map(([id, label]) => {
-          const on = active === id;
-          return (
+        {onChange ? (
+          <>
             <button
-              key={id}
               type="button"
               role="tab"
-              aria-selected={on}
-              aria-current={on ? "page" : undefined}
-              onClick={() => onChange(id)}
-              className={[
-                "inline-flex min-h-9 items-center justify-center rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors sm:px-4",
-                "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]",
-                on
-                  ? "bg-[var(--color-surface)] text-[var(--color-label)] shadow-[var(--elevation-1)]"
-                  : "text-[var(--color-label-secondary)] hover:text-[var(--color-label)]",
-              ].join(" ")}
-              data-testid={`resources-hub-tab-${id}`}
+              aria-selected={active === "library"}
+              aria-current={active === "library" ? "page" : undefined}
+              onClick={() => onChange("library")}
+              className={pillClass(active === "library")}
+              data-testid="resources-hub-tab-library"
             >
-              {label}
+              Library
             </button>
-          );
-        })}
+            <button
+              type="button"
+              role="tab"
+              aria-selected={active === "tags"}
+              aria-current={active === "tags" ? "page" : undefined}
+              onClick={() => onChange("tags")}
+              className={pillClass(active === "tags")}
+              data-testid="resources-hub-tab-tags"
+            >
+              Tags
+            </button>
+          </>
+        ) : (
+          <>
+            <Link
+              href="/resource"
+              className={pillClass(active === "library")}
+              data-testid="resources-hub-tab-library"
+            >
+              Library
+            </Link>
+            <Link
+              href="/resource?tab=tags"
+              className={pillClass(active === "tags")}
+              data-testid="resources-hub-tab-tags"
+            >
+              Tags
+            </Link>
+          </>
+        )}
+        {showSessions ? (
+          <Link
+            href="/resource/sessions"
+            aria-current={active === "sessions" ? "page" : undefined}
+            className={pillClass(active === "sessions")}
+            data-testid="resources-hub-tab-sessions"
+          >
+            Sessions
+          </Link>
+        ) : null}
       </nav>
     </div>
   );

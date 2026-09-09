@@ -1,0 +1,20 @@
+{
+  "at": "2026-09-09T21:55:59.631Z",
+  "views": {
+    "light-1440": "/Users/ernie/Fattail-Labs/agents/p-sessions/evidence/gsc5/light-1440.png",
+    "dark-1440": "/Users/ernie/Fattail-Labs/agents/p-sessions/evidence/gsc5/dark-1440.png",
+    "light-1024": "/Users/ernie/Fattail-Labs/agents/p-sessions/evidence/gsc5/light-1024.png",
+    "dark-1024": "/Users/ernie/Fattail-Labs/agents/p-sessions/evidence/gsc5/dark-1024.png",
+    "light-390": "/Users/ernie/Fattail-Labs/agents/p-sessions/evidence/gsc5/light-390.png",
+    "dark-390": "/Users/ernie/Fattail-Labs/agents/p-sessions/evidence/gsc5/dark-390.png"
+  },
+  "me": {
+    "afterLoad": 3,
+    "afterThreeDates": 3,
+    "extraOnDate": 0
+  },
+  "smooth": "auto",
+  "dateFocused": "sessions-date",
+  "fitFocused": "sessions-scale-fit",
+  "reduceShot": "/Users/ernie/Fattail-Labs/agents/p-sessions/evidence/gsc5/reduced-motion.png"
+}

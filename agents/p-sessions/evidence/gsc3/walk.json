@@ -1,0 +1,79 @@
+{
+  "machine": "Ernies-MacBook-Pro.local",
+  "base": "http://localhost:3000",
+  "at": "2026-09-09T19:54:16.260Z",
+  "anon": {
+    "url": "http://localhost:3000/resource/sessions",
+    "title": "Sessions — FatTail Labs",
+    "hasSignIn": true,
+    "signInText": "Sign in to use Sessions.",
+    "sessionsPillVisible": false,
+    "stubVisible": false,
+    "labsHeader": true,
+    "suiteNav": true,
+    "meOnLoad": 3,
+    "screenshot": "/Users/ernie/Fattail-Labs/agents/p-sessions/evidence/gsc3/anon-sessions.png",
+    "libraryClickOk": true,
+    "anonResourceScreenshot": "/Users/ernie/Fattail-Labs/agents/p-sessions/evidence/gsc3/anon-resource-library.png",
+    "tagsVisible": true,
+    "anonTagsScreenshot": "/Users/ernie/Fattail-Labs/agents/p-sessions/evidence/gsc3/anon-resource-tags.png",
+    "sessionsPillOnResource": false,
+    "meTotalAnon": 6
+  },
+  "member": {
+    "url": "http://localhost:3000/resource/sessions",
+    "title": "Sessions — FatTail Labs",
+    "labsHeader": true,
+    "stubText": "Session map lands in GSC4.",
+    "ariaCurrent": "page",
+    "backAria": "page",
+    "pillBox": {
+      "x": 667.328125,
+      "y": 108,
+      "width": 90.90625,
+      "height": 44
+    },
+    "hitHeightPx": 44,
+    "hitWidthPx": 90.90625,
+    "focusedTestId": "resources-hub-tab-sessions",
+    "focusOutline": {
+      "outline": "rgb(29, 29, 31) solid 2px",
+      "outlineWidth": "2px",
+      "outlineColor": "rgb(29, 29, 31)",
+      "boxShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.08) 0px 1px 3px 0px, rgba(0, 0, 0, 0.06) 0px 1px 2px 0px"
+    },
+    "meOnLoad": 3,
+    "extraMeAfterSettle": 0,
+    "meHitsOnLoad": [
+      {
+        "t": 1788983663172,
+        "method": "GET",
+        "url": "http://localhost:3000/api/auth/me",
+        "resource": "fetch"
+      },
+      {
+        "t": 1788983663173,
+        "method": "GET",
+        "url": "http://localhost:3000/api/auth/me",
+        "resource": "fetch"
+      },
+      {
+        "t": 1788983663173,
+        "method": "GET",
+        "url": "http://localhost:3000/api/auth/me",
+        "resource": "fetch"
+      }
+    ],
+    "meBeforeNav": 3,
+    "meTotal": 5,
+    "libraryOk": true,
+    "tagsOk": true,
+    "sessionsOnLibrary": true,
+    "screenshots": {
+      "memberSessionsShot": "/Users/ernie/Fattail-Labs/agents/p-sessions/evidence/gsc3/member-sessions.png",
+      "memberFocusShot": "/Users/ernie/Fattail-Labs/agents/p-sessions/evidence/gsc3/member-sessions-focus.png",
+      "memberLibraryShot": "/Users/ernie/Fattail-Labs/agents/p-sessions/evidence/gsc3/member-resource-library.png",
+      "memberTagsShot": "/Users/ernie/Fattail-Labs/agents/p-sessions/evidence/gsc3/member-resource-tags.png"
+    }
+  }
+}

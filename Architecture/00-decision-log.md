@@ -4,6 +4,104 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-09 — DL-687 Sessions Spec v0.3 · L2 unlocked · L3 amended · Fit = current day
+
+**Decision (Coach GSC7).** Spec
+`Specs/FatTail-Labs-Sessions (Global Session Clock).md`
+**v0.3**, whole-file sha1 `88a063109a95e94c0b2f06327ec7045a28de6c51`, is
+**BUILD AUTHORITY**. This hash **supersedes** DL-686 `6616b1753f21e334c21dc65336c405acafa5d958`.
+Filename unchanged (OD-S0 a). GSC6-2 India hashes this entry.
+
+**Reason:** the single-day axis blocked forward scroll, and forward scroll is the
+planning use.
+
+1. **L2 unlocked.** Axis is an ordered list of CME trading days. `WINDOW_DAYS` is a
+   parameter (default 7). `SPAN = n × 1380`. Weekends and full CME closures
+   (Christmas, Good Friday) are seams, not spans. Thanksgiving occupies (ES trades).
+2. **L3 amended.** `zoneOffset` at 12:00 UTC **per day** in the list. The Sunday-closed
+   property of the 2026–27 zone set is false across a 7-day window (London 2026-10-25,
+   Sydney 2026-10-03).
+3. **Fit redefined.** Fit the **current trading day**, not the window. Auto-center on
+   the now-line is required. Window is always scrollable.
+
+GSC4.3 trading-day-in-progress resolver is the window anchor (index 2). Lazy
+scroll-append is later — the list is appendable.
+
+**Does not:** reopen `marketCalendar`. Deploy. Mini Two / Dude Two.
+
+---
+
+## 2026-09-09 — DL-686 Sessions Spec v0.2 · §12 FatTail Intraday Segments · OD-S4 (c) · OD-S8 (a)
+
+**Decision (Coach).** Spec
+`Specs/FatTail-Labs-Sessions (Global Session Clock).md`
+**v0.2**, whole-file sha1 `6616b1753f21e334c21dc65336c405acafa5d958`, is
+**BUILD AUTHORITY**. This hash **supersedes** the GO entry hash
+`81984ba9f2394d52aa359cefcdb108451fdec9e3` (and the OD-S7-note hash
+`fab85adacefc4898ab377930154d5b8bfef8cd7c`). Filename unchanged (OD-S0 a).
+Token [`agents/go/GSC-W0.md`](../agents/go/GSC-W0.md). Board `agents/p-sessions/`.
+
+**GSC6-2 amended:** India checks the Spec hash against the **most recent BUILD
+AUTHORITY entry** (this one), not the GO entry. A hash that differs from the GO
+sha1 is not a FAIL when this entry is current.
+
+**§12** FatTail Intraday Segments appended. Three ET wall-clock segments over
+US cash: Morning 09:30–12:30, Afternoon 12:30–14:30, Closing 14:30–16:00.
+Boundaries do not scale. Early close **truncates** (Closing absent); full close
+/ weekend: segments empty. `sessionView` is SoR for `segments` and
+`currentSegment` (L11 extended). New pure module `web/lib/sessions/segments.ts`.
+Components do not compute 12:30 or truncation.
+
+This is a **FatTail teaching frame, not market structure.** §11 gains a
+framework disclosure. No opportunity / ranking copy (AT-GSC-56).
+
+**§12.7 ACCEPTED.** **OD-S8 (a)** keep nav label `Sessions` (L6).
+
+**OD-S4 (c) RECONSTRUCT.** Five-surface search empty (Trash, iCloud Mobile
+Documents, Containers, git deleted names, git objects, Desktop/Documents/Downloads
+HTML). Echo owns `agents/p-sessions/evidence/echo-visual-contract.md` — the
+visual reference from this stamp. GSC4-1 reviews against that document.
+
+**Execution:** GSC2.5 (pure) before GSC4 ribbon. `timeAxis.ts` / `exchanges.ts`
+stay closed. Staging Mini Two first. Never Dude One.
+
+**Does not:** reopen GSC2-G dates. Live quotes. Persist. Rename the nav.
+
+---
+
+## 2026-09-09 — DL-685 Sessions (Global Session Clock) ratified for build · GSC0-0 GO
+
+**Decision (Coach GSC0-0).** Spec
+`Specs/FatTail-Labs-Sessions (Global Session Clock).md`
+whole-file sha1 `81984ba9f2394d52aa359cefcdb108451fdec9e3` is **BUILD AUTHORITY**.
+Plan v1.2 `docs/Sessions-Global-Session-Clock-Full-Agent-Bench-Plan-v1.2.md` is the
+program of record; Juliet folds stamp §5 as **v1.3** without reopening ODs.
+Token [`agents/go/GSC-W0.md`](../agents/go/GSC-W0.md) **GO**. Board `agents/p-sessions/`.
+
+**Not shipped.** GSC1+ waits on GSC0-G. Program PASS is GSC6-G.
+
+**OD-S0 (a)** Keep Coach filename. No pointer file.  
+**OD-S1 (a)** Implement **`/resource/sessions`**. Spec `/resources/sessions` stays as Coach text. No redirect.  
+**OD-S2 (a)** Sessions = Link pill; Library/Tags stay tabs.  
+**OD-S3 (a)** Existing authenticated floor; pill hidden when anonymous; Observer via `access_role`. No new policy.  
+**OD-S4 PENDING** GSC4 entry only. GSC1/GSC2 do not wait. Resolve before GSC3-G.  
+**OD-S5 (a)** Guide + `server/help_reference/sessions.md` at GSC6.  
+**OD-S6** Foxtrot at GSC6 (DL-683/684). Staging first. Never Dude One.  
+**OD-S7 (a)** One sentence beside Spec §6.2 (12:00 UTC sample valid for this zone set; Sunday transitions). Coach text not deleted.  
+**JR1–JR12 Accept.** No overrides. L1–L11 **LOCKED** (L4 override-empty / unscheduled-only).
+
+**Stamp §5 corrections (folded v1.3):**  
+1. AT-GSC-33 class `tsx + pw` (process TZ ≠ browser TZ).  
+2. AT-GSC-45 class `static + pw` (“no new policy” is static).  
+3. `web/components/resources/ResourcesHub.tsx` **named on the GO allowlist** for GSC3 (DL-539).  
+4. N1 is a wiring test (operative gates only); historical `GSC2-axis-G` strings are records, **no-defect**.
+
+**OD-S7 beside-note** landed in the Spec after the stamp (Coach text retained). File sha1 is now `fab85adacefc4898ab377930154d5b8bfef8cd7c`. Calendar law unchanged.
+
+**Does not:** MiniTwo / DudeTwo this stamp. Options Lab / Runner / Market Bus / Quant / LIM.
+
+---
+
 ## 2026-09-07 — DL-684 DudeOne unreachable (FileVault) · DudeTwo becomes the hot spare and the next production host · roles swap
 
 **Event and decision (Coach, 2026-09-07, afternoon).** *"DudeOne got locked up with too many

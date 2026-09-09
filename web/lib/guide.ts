@@ -53,6 +53,7 @@ export const GUIDE_GROUPS: GuideGroup[] = [
     sections: [
       { id: "live-sessions", label: "Live sessions" },
       { id: "resources", label: "Resources" },
+      { id: "sessions", label: "Sessions" },
     ],
   },
   {

@@ -689,6 +689,16 @@ export default function GuidePage() {
               account; <em>Members</em> items need a membership (current or
               alumni). Filter by category, or by downloads vs. links.
             </p>
+            <H2 id="sessions">Sessions</H2>
+            <p>
+              <Link href="/resource/sessions" className={link}>
+                Sessions
+              </Link>{" "}
+              is a read-only clock under Resources: major venues on one New
+              York–anchored day. Morning, Afternoon, and Closing are a FatTail
+              teaching frame on US cash — not exchange hours, and not a ranking
+              of when to trade. Signed-in members, Observer included.
+            </p>
 
             <H2 id="membership">Membership &amp; the trial</H2>
             <ul>

@@ -20,6 +20,8 @@
 
 ### 2.1 Member — global Resources hub (`/resources`)
 
+**Sessions (Global Session Clock, Spec v0.2):** authenticated child at `/resource/sessions` (OD-S1 a). Not a `SiteHeader` item (JR6).
+
 ```
 [ Filters: category · type ]
 [ Search optional later ]

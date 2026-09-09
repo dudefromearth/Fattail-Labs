@@ -29,6 +29,7 @@ LearnDash. No shared code with MarketSwarm-Canonical (HTTP only).
 | **Deploy** | Members get **Deploy UX** except **real-broker (Tradier) real-money**. Admin dogfoods Tradier, then provision. **DL-251 / DL-252**. |
 | **Market Bus (shipped core)** | Live chains/symbols: **Massive → feeds → Redis → one WS/tab → shared client**. Options Lab at `/app/options-lab`. See Arch **28**. |
 | **Do not** | Open multi-member live Tradier before admin proof. Do not block Design/Curate on Deploy. **Do not** add per-widget Massive or extra market WebSockets. StudioTwo live UI is **this repo** at **http://studiotwo:3000** (API **:4000**) — see StudioTwo local stacks. |
+| **Sessions (Global Session Clock)** | Spec **v0.2** `FatTail-Labs-Sessions (Global Session Clock).md` **BUILD AUTHORITY** sha1 `6616b1753f21e334c21dc65336c405acafa5d958` (supersedes GO `81984ba9…`) · plan **v1.2** · board `agents/p-sessions/` · token `agents/go/GSC-W0.md` · isolated from LIM / Quant / Options Lab · GSC6-2 hashes this entry, not the GO sha1 |
 | **Shipped** | Courses, practice stack (trade log, journal, retros, reports), toughness, admin board/cast/HeyGen, shared marks / house designs path, **Market Bus + Options Lab** |
 | **Spec’d, not shipped** | Community Discord second window · Visualize AI · Bot Marketplace · live **header** marks UI |
 

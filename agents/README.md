@@ -43,6 +43,11 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
 
 ## Projects
 
+- `agents/p-sessions/` — **Sessions (Global Session Clock)** (Resources child; read-only 23-hour CME axis; rules-derived NYSE calendar; no live quotes).  
+  Spec: `Specs/FatTail-Labs-Sessions (Global Session Clock).md` (Coach Build Spec 2026-09-08 · **not BUILD AUTHORITY until GSC0-0**).  
+  **Full multi-agent plan:** `docs/Sessions-Global-Session-Clock-Full-Agent-Bench-Plan-v1.2.md` **v1.2** (GO-ready after N1 fold).  
+  Token: `agents/go/GSC-W0.md`. Board: `agents/p-sessions/ORCHESTRATOR.md`.  
+  **Next: Coach GSC0-0 against v1.2 · no GSC1+ code before GSC0-G.**
 - `agents/p-options-lab-tm-os/` — **Time Machine One Source** (StudioOne for every date including today).  
   Spec **v0.2.1 DRAFT — stamp candidate:** `Specs/FatTail-Labs-Options-Lab-Time-Machine-One-Source-Spec-v0_2_1.md`.  
   **Plan v1.2:** `docs/Options-Lab-Time-Machine-One-Source-Full-Agent-Bench-Plan-v1.2.md`.  

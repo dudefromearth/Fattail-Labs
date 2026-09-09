@@ -1,0 +1,31 @@
+{
+  "at": "2026-09-09T22:57:22.988Z",
+  "loadDays": "7",
+  "clock": "6:57 PM",
+  "now": 1,
+  "nowCentered": true,
+  "sep14days": "7",
+  "weekendSeam": 1,
+  "tgHatch": 1,
+  "earlyTrunc": "true",
+  "closing27": 0,
+  "shotTg": "/Users/ernie/Fattail-Labs/agents/p-sessions/evidence/gsc7/thanksgiving-week.png",
+  "xmasDay": 0,
+  "xmasSeam": 1,
+  "shotXmas": "/Users/ernie/Fattail-Labs/agents/p-sessions/evidence/gsc7/christmas-seam.png",
+  "shotLondon": "/Users/ernie/Fattail-Labs/agents/p-sessions/evidence/gsc7/london-dst.png",
+  "fit": {
+    "axisW": 5208,
+    "days": 7,
+    "clientWidth": 976,
+    "dayPx": 744,
+    "viewportMinusGutter": 744
+  },
+  "fitOneDay": true,
+  "scrollEnd": {
+    "maxScroll": 4473,
+    "atEnd": true
+  },
+  "shotFit": "/Users/ernie/Fattail-Labs/agents/p-sessions/evidence/gsc7/fit.png",
+  "shotLoad": "/Users/ernie/Fattail-Labs/agents/p-sessions/evidence/gsc7/load.png"
+}

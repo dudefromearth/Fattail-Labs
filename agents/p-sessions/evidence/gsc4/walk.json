@@ -1,0 +1,50 @@
+{
+  "at": "2026-09-09T21:53:49.321Z",
+  "dates": {
+    "2026-09-08": {
+      "banner": "open",
+      "ribbon": 1,
+      "hatchNyse": 0,
+      "now": 0,
+      "rth": 1,
+      "shot": "/Users/ernie/Fattail-Labs/agents/p-sessions/evidence/gsc4/2026-09-08.png"
+    },
+    "2026-11-27": {
+      "banner": "early",
+      "ribbon": 1,
+      "hatchNyse": 0,
+      "now": 0,
+      "rth": 1,
+      "shot": "/Users/ernie/Fattail-Labs/agents/p-sessions/evidence/gsc4/2026-11-27.png"
+    },
+    "2026-11-26": {
+      "banner": "closed",
+      "ribbon": 0,
+      "hatchNyse": 1,
+      "now": 0,
+      "rth": 0,
+      "shot": "/Users/ernie/Fattail-Labs/agents/p-sessions/evidence/gsc4/2026-11-26.png"
+    },
+    "2026-09-05": {
+      "banner": "weekend",
+      "ribbon": 0,
+      "hatchNyse": 1,
+      "now": 0,
+      "rth": 0,
+      "shot": "/Users/ernie/Fattail-Labs/agents/p-sessions/evidence/gsc4/2026-09-05.png"
+    },
+    "2026-10-12": {
+      "banner": "open",
+      "ribbon": 1,
+      "hatchNyse": 0,
+      "now": 0,
+      "rth": 1,
+      "shot": "/Users/ernie/Fattail-Labs/agents/p-sessions/evidence/gsc4/2026-10-12.png"
+    }
+  },
+  "fit": "/Users/ernie/Fattail-Labs/agents/p-sessions/evidence/gsc4/fit-2026-09-08.png",
+  "stickyGutter": true,
+  "stickyShot": "/Users/ernie/Fattail-Labs/agents/p-sessions/evidence/gsc4/sticky-gutter.png",
+  "title": "Sessions — FatTail Labs",
+  "disclosure": "Daylight saving is taken from each exchange's own time zone, so the four regional calendars resolve even in the weeks they disagree.Toronto is shown on the Canadian calendar and is not adjusted here. Canadian holidays (including Thanksgiving) are a known omission — the TSX bar can read open when Toronto is actually closed.Foreign closures (Lunar New Year, Golden Week, UK bank holidays, and others) are not on this page. They can hollow out the overnight session even when New York is open.The axis skips 5:00–6:00 PM ET: CME Globex maintenance.Morning, Afternoon, and Closing are a FatTail teaching frame on the US cash session. They are not exchange hours. Nothing at the venue changes at 12:30 or 2:30 PM."
+}
