@@ -157,6 +157,33 @@ function fmt(n: number | null | undefined, digits = 2): string {
   });
 }
 
+/** Gamma is often << 0.01 on index options — extra digits so it isn't "0". */
+function fmtGreek(
+  n: number | null | undefined,
+  { smallDigits = 4, digits = 3 } = {},
+): string {
+  if (n == null || Number.isNaN(Number(n))) return "—";
+  const v = Number(n);
+  const abs = Math.abs(v);
+  const d = abs !== 0 && abs < 0.01 ? smallDigits : digits;
+  return v.toLocaleString(undefined, {
+    maximumFractionDigits: d,
+    minimumFractionDigits: 0,
+  });
+}
+
+const ladderTd =
+  "whitespace-nowrap border-b border-[var(--color-separator)] px-3 py-2.5 text-right tabular-nums";
+const ladderTh =
+  "whitespace-nowrap px-3 py-2.5 text-right font-semibold tracking-wide";
+
+function fmtMidSource(src: LadderRow["mid_source"]): string {
+  if (src === "nbbo") return "NBBO";
+  if (src === "last_trade") return "Print";
+  if (src === "day_close") return "Close";
+  return "—";
+}
+
 function fmtStrike(n: number | null | undefined): string {
   if (n == null) return "—";
   const v = Number(n);
@@ -223,10 +250,7 @@ const StrikeRow = memo(function StrikeRow({
       data-spot={row.is_spot ? "1" : "0"}
     >
       <td
-        className={[
-          "sticky left-0 z-[1] border-b border-[var(--color-separator)] px-3 py-2.5 text-right tabular-nums",
-          rowBg,
-        ].join(" ")}
+        className={[ladderTd, "sticky left-0 z-[1]", rowBg].join(" ")}
         title={String(row.strike)}
       >
         <span className="inline-flex items-center justify-end gap-1.5">
@@ -241,25 +265,49 @@ const StrikeRow = memo(function StrikeRow({
           ) : null}
         </span>
       </td>
-      <td className="border-b border-[var(--color-separator)] px-3 py-2.5 text-right tabular-nums">
-        {fmt(row.mid)}
+      <td className={ladderTd}>{fmt(row.mid)}</td>
+      <td
+        className={ladderTd + " text-[var(--color-label-secondary)]"}
+        title={
+          row.mid_source === "nbbo"
+            ? "Mid from live NBBO"
+            : row.mid_source === "last_trade"
+              ? "Mid from last print (no live NBBO)"
+              : row.mid_source === "day_close"
+                ? "Mid from prior session close"
+                : undefined
+        }
+      >
+        {fmtMidSource(row.mid_source)}
       </td>
-      <td className="border-b border-[var(--color-separator)] px-3 py-2.5 text-right tabular-nums text-[var(--color-label-secondary)]">
+      <td className={ladderTd + " text-[var(--color-label-secondary)]"}>
         {fmt(row.bid)}
       </td>
-      <td className="border-b border-[var(--color-separator)] px-3 py-2.5 text-right tabular-nums text-[var(--color-label-secondary)]">
+      <td className={ladderTd + " text-[var(--color-label-secondary)]"}>
         {fmt(row.ask)}
       </td>
-      <td className="border-b border-[var(--color-separator)] px-3 py-2.5 text-right tabular-nums text-[var(--color-label-secondary)]">
+      <td className={ladderTd + " text-[var(--color-label-secondary)]"}>
+        {fmt(row.last)}
+      </td>
+      <td className={ladderTd + " text-[var(--color-label-secondary)]"}>
         {fmt(row.volume, 0)}
       </td>
-      <td className="border-b border-[var(--color-separator)] px-3 py-2.5 text-right tabular-nums text-[var(--color-label-secondary)]">
+      <td className={ladderTd + " text-[var(--color-label-secondary)]"}>
         {fmt(row.open_interest, 0)}
       </td>
-      <td className="border-b border-[var(--color-separator)] px-3 py-2.5 text-right tabular-nums">
-        {fmt(row.delta, 3)}
+      <td className={ladderTd} title="Delta">
+        {fmtGreek(row.delta)}
       </td>
-      <td className="border-b border-[var(--color-separator)] px-3 py-2.5 text-right tabular-nums">
+      <td className={ladderTd} title="Gamma">
+        {fmtGreek(row.gamma, { smallDigits: 5, digits: 4 })}
+      </td>
+      <td className={ladderTd} title="Theta">
+        {fmtGreek(row.theta)}
+      </td>
+      <td className={ladderTd} title="Vega">
+        {fmtGreek(row.vega)}
+      </td>
+      <td className={ladderTd}>
         {row.iv != null ? `${(Number(row.iv) * 100).toFixed(1)}%` : "—"}
       </td>
     </tr>
@@ -1386,7 +1434,9 @@ export default function HeatmapChainPanel() {
             ref={scrollRef}
             className={[
               "min-h-0 flex-1",
-              tpl.layout === "quadrant" ? "overflow-hidden" : "overflow-auto",
+              tpl.layout === "quadrant"
+                ? "overflow-hidden"
+                : "overflow-x-auto overflow-y-auto",
               tpl.layout === "matrix" ||
               tpl.layout === "profile" ||
               tpl.layout === "quadrant"
@@ -1859,7 +1909,10 @@ export default function HeatmapChainPanel() {
                 ) : null}
               </table>
             ) : (
-              <table className="w-full min-w-[32rem] border-collapse text-sm">
+              <table
+                className="w-max min-w-full border-collapse text-sm"
+                data-testid="heatmap-strike-ladder"
+              >
                 <thead
                   className="sticky top-0 z-[2] border-b border-[var(--color-separator)] bg-[var(--color-surface-secondary,var(--color-fill))] text-[var(--color-label-secondary)]"
                   style={{ fontSize: "var(--text-caption, 0.75rem)" }}
@@ -1867,50 +1920,55 @@ export default function HeatmapChainPanel() {
                   <tr>
                     <th
                       scope="col"
-                      className="sticky left-0 z-[3] bg-[var(--color-surface-secondary,var(--color-fill))] px-3 py-2.5 text-right font-semibold tracking-wide"
+                      className={
+                        ladderTh +
+                        " sticky left-0 z-[3] bg-[var(--color-surface-secondary,var(--color-fill))]"
+                      }
                     >
                       Strike
                     </th>
-                    <th
-                      scope="col"
-                      className="px-3 py-2.5 text-right font-semibold tracking-wide"
-                    >
+                    <th scope="col" className={ladderTh}>
                       Mid
                     </th>
                     <th
                       scope="col"
-                      className="px-3 py-2.5 text-right font-semibold tracking-wide"
+                      className={ladderTh}
+                      title="How mid was formed"
                     >
+                      Src
+                    </th>
+                    <th scope="col" className={ladderTh}>
                       Bid
                     </th>
-                    <th
-                      scope="col"
-                      className="px-3 py-2.5 text-right font-semibold tracking-wide"
-                    >
+                    <th scope="col" className={ladderTh}>
                       Ask
                     </th>
                     <th
                       scope="col"
-                      className="px-3 py-2.5 text-right font-semibold tracking-wide"
+                      className={ladderTh}
+                      title="Last trade"
                     >
+                      Last
+                    </th>
+                    <th scope="col" className={ladderTh}>
                       Vol
                     </th>
-                    <th
-                      scope="col"
-                      className="px-3 py-2.5 text-right font-semibold tracking-wide"
-                    >
+                    <th scope="col" className={ladderTh}>
                       OI
                     </th>
-                    <th
-                      scope="col"
-                      className="px-3 py-2.5 text-right font-semibold tracking-wide"
-                    >
+                    <th scope="col" className={ladderTh} title="Delta">
                       Δ
                     </th>
-                    <th
-                      scope="col"
-                      className="px-3 py-2.5 text-right font-semibold tracking-wide"
-                    >
+                    <th scope="col" className={ladderTh} title="Gamma">
+                      Γ
+                    </th>
+                    <th scope="col" className={ladderTh} title="Theta">
+                      Θ
+                    </th>
+                    <th scope="col" className={ladderTh} title="Vega">
+                      Vega
+                    </th>
+                    <th scope="col" className={ladderTh}>
                       IV
                     </th>
                   </tr>
@@ -1926,7 +1984,7 @@ export default function HeatmapChainPanel() {
                   {!ordered.length && (
                     <tr>
                       <td
-                        colSpan={8}
+                        colSpan={13}
                         className="px-4 py-24 text-center text-[var(--color-label-secondary)]"
                         style={{
                           fontSize: "var(--text-subheadline, 0.9375rem)",

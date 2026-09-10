@@ -14,14 +14,19 @@ from datetime import date, datetime, timezone
 from typing import Any
 
 
-# Display columns (right of strike) — 7 fields
+# Display columns (right of strike)
 LADDER_FIELDS = (
     "mid",
+    "mid_source",
     "bid",
     "ask",
+    "last",
     "volume",
     "open_interest",
     "delta",
+    "gamma",
+    "theta",
+    "vega",
     "iv",
 )
 
@@ -524,6 +529,7 @@ def build_ladder(
                     "mid": c.get("mid"),
                     "bid": c.get("bid"),
                     "ask": c.get("ask"),
+                    "last": c.get("last"),
                     "mid_source": c.get("mid_source"),
                     "volume": c.get("volume"),
                     "last_updated": c.get("last_updated"),
@@ -579,6 +585,8 @@ def _row_signature(row: dict[str, Any]) -> str:
         row.get("mid"),
         row.get("bid"),
         row.get("ask"),
+        row.get("last"),
+        row.get("mid_source"),
         row.get("volume"),
         row.get("open_interest"),
         row.get("delta"),

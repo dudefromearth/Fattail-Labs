@@ -515,6 +515,32 @@ def test_day_last_updated_copied_onto_generation_row():
     assert b["rows"][0]["last_updated"] is None
 
 
+def test_last_and_mid_source_on_generation_row():
+    from market_data.chain_ladder import LADDER_FIELDS
+
+    assert "last" in LADDER_FIELDS
+    assert "mid_source" in LADDER_FIELDS
+    raw = [_raw(5000, mid=12.0, side="call")]
+    raw[0]["last_trade"] = {"price": 11.75}
+    a = build_ladder(
+        raw,
+        underlier="I:SPX",
+        spot=5000.0,
+        expiration="2026-08-15",
+        side="call",
+        band=50.0,
+        vix=15.0,
+        dte=1,
+        dual_side=True,
+        strike_lo=4950.0,
+        strike_hi=5050.0,
+    )
+    row = a["rows"][0]
+    assert row["last"] == 11.75
+    assert row["mid_source"] == "nbbo"
+    assert row["mid"] == 12.0
+
+
 def test_modal_strike_step():
     from market_data.chain_ladder import modal_strike_step
 

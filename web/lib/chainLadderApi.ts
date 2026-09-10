@@ -12,6 +12,7 @@ export type LadderRow = {
   mid?: number | null;
   bid?: number | null;
   ask?: number | null;
+  last?: number | null;
   /** nbbo | last_trade | day_close — absent/null when no mid */
   mid_source?: LadderMidSource | string | null;
   volume?: number | null;
