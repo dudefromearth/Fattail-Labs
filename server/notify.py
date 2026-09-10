@@ -108,24 +108,32 @@ def _send_email(to_addr: str, subject: str, body: str) -> None:
     msg["To"] = to_addr
     msg.set_content(body)
 
+    # HELO/EHLO must be a valid FQDN. The box default (e.g. 'MiniTwo.local')
+    # is rejected/dropped by strict MTAs (Hostinger). Derive from From domain.
+    helo = (
+        os.environ.get("LABS_SMTP_HELO", "").strip()
+        or (smtp["from_addr"].split("@", 1)[1].strip() if "@" in smtp["from_addr"] else "")
+        or None
+    )
     context = ssl.create_default_context()
     if smtp["mode"] == "ssl":
         # Hostinger recommended: smtp.hostinger.com:465 SSL
         with smtplib.SMTP_SSL(
-            smtp["host"], smtp["port"], timeout=30, context=context
+            smtp["host"], smtp["port"], timeout=30, context=context,
+            local_hostname=helo,
         ) as server:
             if smtp["user"]:
                 server.login(smtp["user"], smtp["password"] or "")
             server.send_message(msg)
     elif smtp["mode"] == "starttls":
         # Hostinger alternate: port 587 STARTTLS
-        with smtplib.SMTP(smtp["host"], smtp["port"], timeout=30) as server:
+        with smtplib.SMTP(smtp["host"], smtp["port"], timeout=30, local_hostname=helo) as server:
             server.starttls(context=context)
             if smtp["user"]:
                 server.login(smtp["user"], smtp["password"] or "")
             server.send_message(msg)
     else:
-        with smtplib.SMTP(smtp["host"], smtp["port"], timeout=30) as server:
+        with smtplib.SMTP(smtp["host"], smtp["port"], timeout=30, local_hostname=helo) as server:
             if smtp["user"]:
                 server.login(smtp["user"], smtp["password"] or "")
             server.send_message(msg)
