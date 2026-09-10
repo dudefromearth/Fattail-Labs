@@ -144,7 +144,7 @@ export default function SessionMap({
 
   return (
     <div
-      className="mt-4 overflow-x-hidden"
+      className="surface-card mt-4 overflow-x-hidden py-2"
       data-testid="sessions-map"
       data-days={win.count}
       data-span={span}
