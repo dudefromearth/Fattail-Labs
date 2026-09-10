@@ -158,6 +158,14 @@ test("AT-CLICK-1 / AT-WH-1 / AT-AZ-WIRE-1 source", () => {
   assert(!az.includes("opf-model-select"), "OPF model is not member chrome");
   assert(!az.includes("OPF risk graph"), "no chatty upper-left title");
   assert(az.includes('data-testid="analyzer-autofit"'), "Auto-fit on viewport strip");
+  assert(
+    az.includes("const [rangeEnabled, setRangeEnabled] = useState(false)"),
+    "Probability off by default",
+  );
+  assert(
+    az.includes("const [gexEnabled, setGexEnabled] = useState(true)"),
+    "GEX on by default",
+  );
   assert(az.includes("function formatFixed2"), "Spot and VIX share hundredths format");
   assert(
     /return \(Math\.round\(n \* 100\) \/ 100\)\.toFixed\(2\)/.test(az),
@@ -173,6 +181,10 @@ test("AT-CLICK-1 / AT-WH-1 / AT-AZ-WIRE-1 source", () => {
   assert(az.includes("setSpotStr(formatFixed2(tmOpenSpot))"), "Spot fills from session open");
   assert(az.includes("autofitCenterPrice={tmOpenSpot}"), "Autofit X centers on session open");
   assert(host.includes("openCenteredXRange"), "TM Autofit recenters on open");
+  assert(
+    host.includes("emptyGexCenteredXRange"),
+    "empty canvas Autofit is spot-centered GEX span",
+  );
   assert(host.includes('lab: ALGO_HUD_FOURTH_LABEL') || host.includes('lab: "Guide"'), "Algo HUD Guide");
   assert(host.includes("guide_print"), "payload guide_print");
   assert(!host.includes('lab: "Stop"'), "Stop row gone (OD-ALGO-1)");

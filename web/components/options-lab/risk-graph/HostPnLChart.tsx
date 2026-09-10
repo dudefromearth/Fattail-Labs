@@ -17,6 +17,7 @@ import {
 import {
   strikeCenteredXRange,
   openCenteredXRange,
+  emptyGexCenteredXRange,
   fitPnlYRange,
 } from "@/lib/risk-graph/pricing/autofitView";
 import { clampAxisRange } from "@/lib/risk-graph/pnlChartViewPolicy";
@@ -368,21 +369,36 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
         autofitCenterPrice != null && autofitCenterPrice > 0
           ? autofitCenterPrice
           : null;
+      const gexStrikes = gexEnabled
+        ? gexPoints.map((p) => p.strike).filter((k) => k > 0)
+        : [];
+      const emptyBook = strikes.length === 0;
+      const spotCenter =
+        centerOn != null && centerOn > 0 ? centerOn : spotPrice;
       const win =
-        centerOn != null
-          ? openCenteredXRange({
-              strikes,
-              open: centerOn,
-              plotWidthPx: plotW,
-              ptsPerInch: autofitPtsPerInch,
+        emptyBook && gexEnabled && gexStrikes.length && spotCenter > 0
+          ? emptyGexCenteredXRange({
+              spot: spotCenter,
+              gexStrikes,
             })
-          : strikeCenteredXRange({
-              strikes,
-              plotWidthPx: plotW,
-              ptsPerInch: autofitPtsPerInch,
-            });
+          : centerOn != null
+            ? openCenteredXRange({
+                strikes,
+                open: centerOn,
+                plotWidthPx: plotW,
+                ptsPerInch: autofitPtsPerInch,
+              })
+            : strikeCenteredXRange({
+                strikes,
+                plotWidthPx: plotW,
+                ptsPerInch: autofitPtsPerInch,
+              });
       let { xMin, xMax } = win;
-      if (centerOn == null && spotPrice > 0) {
+      if (
+        !emptyBook &&
+        centerOn == null &&
+        spotPrice > 0
+      ) {
         const pad = Math.max(5, (xMax - xMin) * 0.02);
         if (spotPrice < xMin) xMin = spotPrice - pad;
         if (spotPrice > xMax) xMax = spotPrice + pad;
@@ -412,6 +428,8 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       autofitPtsPerInch,
       spotPrice,
       autofitCenterPrice,
+      gexEnabled,
+      gexPoints,
     ]);
 
     const autoFit = useCallback(() => {

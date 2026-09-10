@@ -5,6 +5,7 @@
 import {
   AUTOFIT_PAD_FRAC,
   AUTOFIT_MIN_HALF_PTS,
+  emptyGexCenteredXRange,
   openCenteredXRange,
   strikeCenteredXRange,
 } from "./autofitView";
@@ -87,4 +88,24 @@ assert(
   assert(far.xMax > 7705, "today's strikes stay in view");
 }
 
-console.log("  9 tests passed");
+{
+  const gex = emptyGexCenteredXRange({
+    spot: 6500,
+    gexStrikes: [6200, 6400, 6800],
+  });
+  assert(gex.center === 6500, "empty canvas Autofit centers on spot");
+  assert(gex.xMin === 6200, "far GEX strike on the left edge");
+  assert(gex.xMax === 6800, "far GEX strike on the right edge");
+}
+
+{
+  const gex = emptyGexCenteredXRange({
+    spot: 6500,
+    gexStrikes: [6400, 6450],
+  });
+  assert(gex.center === 6500, "spot stays center when GEX is one-sided");
+  assert(Math.abs(6500 - gex.xMin - (gex.xMax - 6500)) < 1e-9, "symmetric about spot");
+  assert(gex.xMin <= 6400 && gex.xMax >= 6500, "GEX strikes stay in view");
+}
+
+console.log("  11 tests passed");

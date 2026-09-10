@@ -136,6 +136,37 @@ export function strikeCenteredXRange(args: {
 }
 
 /**
+ * Empty Analyzer canvas (no shown positions): spot is the center, GEX
+ * strike extent fills the visible X width (farther GEX extreme on an edge).
+ */
+export function emptyGexCenteredXRange(args: {
+  spot: number;
+  gexStrikes: readonly number[];
+}): { xMin: number; xMax: number; center: number } {
+  const spot = args.spot;
+  const ks = [
+    ...new Set(
+      args.gexStrikes.filter((k) => Number.isFinite(k) && k > 0),
+    ),
+  ];
+  if (!(spot > 0) || !Number.isFinite(spot)) {
+    if (!ks.length) return { xMin: 5900, xMax: 6100, center: 6000 };
+    const lo = Math.min(...ks);
+    const hi = Math.max(...ks);
+    const center = (lo + hi) / 2;
+    return { xMin: lo, xMax: Math.max(hi, lo + 1), center };
+  }
+  if (!ks.length) {
+    const half = Math.max(AUTOFIT_MIN_HALF_PTS * 2, spot * 0.02);
+    return { xMin: spot - half, xMax: spot + half, center: spot };
+  }
+  const lo = Math.min(...ks);
+  const hi = Math.max(...ks);
+  const half = Math.max(spot - lo, hi - spot, AUTOFIT_MIN_HALF_PTS);
+  return { xMin: spot - half, xMax: spot + half, center: spot };
+}
+
+/**
  * Time Machine Autofit X: same density/strike span as Autofit, centered on
  * the session open (ATM-O1). Listed strikes stay in view so the tent is
  * not clipped when the open sits away from today's book.

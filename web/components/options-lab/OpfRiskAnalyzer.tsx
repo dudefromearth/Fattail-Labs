@@ -176,7 +176,7 @@ import {
 } from "@/lib/options-lab/probRange";
 
 const GEX_PREF_KEY = "ft_options_lab_analyzer_gex_v1";
-const RANGE_PREF_KEY = "ft_options_lab_analyzer_range_v1";
+const RANGE_PREF_KEY = "ft_options_lab_analyzer_range_v2";
 import { useSmoothNumber } from "@/lib/useSmoothValue";
 import {
   expiredGhostSeries,
@@ -275,7 +275,7 @@ export default function OpfRiskAnalyzer() {
   );
   const [gexOpacityPct, setGexOpacityPct] = useState(40);
   const [gexPrefReady, setGexPrefReady] = useState(false);
-  const [rangeEnabled, setRangeEnabled] = useState(true);
+  const [rangeEnabled, setRangeEnabled] = useState(false);
   const [rangeHorizon, setRangeHorizon] = useState("");
   const [rangePct1, setRangePct1] = useState(RANGE_MASS_1SIGMA);
   const [rangePct2, setRangePct2] = useState(RANGE_MASS_2SIGMA);
