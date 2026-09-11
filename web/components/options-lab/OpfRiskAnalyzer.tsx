@@ -51,6 +51,10 @@ import {
   type AnalyzerThresholdAlert,
 } from "@/lib/options-lab/analyzerBook";
 import {
+  createUndoStack,
+  type UndoKind,
+} from "@/lib/options-lab/undoStack";
+import {
   clockPostureFallback,
   planeIsPrinting,
   postureFromSessionStatus,
@@ -258,6 +262,56 @@ export default function OpfRiskAnalyzer() {
   const [positions, setPositions] = useState<AnalyzerPosition[]>(
     () => loadPositions(),
   );
+  const undoStackRef = useRef(createUndoStack(50));
+  const commitBook = useCallback(
+    (
+      kind: UndoKind,
+      recipe: (prev: AnalyzerPosition[]) => AnalyzerPosition[],
+      extra?: { createdId?: string },
+    ) => {
+      setPositions((prev) => {
+        const next = recipe(prev);
+        if (next === prev) return prev;
+        if (
+          next.length === prev.length &&
+          next.every((p, i) => p === prev[i])
+        ) {
+          return prev;
+        }
+        undoStackRef.current.push(kind, prev, extra);
+        return next;
+      });
+    },
+    [],
+  );
+  const undoLast = useCallback(() => {
+    const entry = undoStackRef.current.undo();
+    if (!entry) return;
+    setPositions(entry.book);
+  }, []);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      if (e.key.toLowerCase() !== "z") return;
+      if (e.shiftKey) return;
+      const t = e.target;
+      if (t instanceof HTMLElement) {
+        const tag = t.tagName;
+        if (
+          tag === "INPUT" ||
+          tag === "TEXTAREA" ||
+          tag === "SELECT" ||
+          t.isContentEditable
+        ) {
+          return;
+        }
+      }
+      e.preventDefault();
+      undoLast();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [undoLast]);
   const bookHydrated = true;
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const searchParams = useSearchParams();
@@ -362,11 +416,13 @@ export default function OpfRiskAnalyzer() {
       pos.rehearsal = true;
       pos.label = "Rehearsal";
       if (tm.tMs != null) pos.entryAt = tm.tMs;
-      setPositions((prev) => [pos, ...prev]);
+      commitBook("create-submit", (prev) => [pos, ...prev], {
+        createdId: pos.id,
+      });
     };
     window.addEventListener("tm-test-rehearsal-pos", onPos);
     return () => window.removeEventListener("tm-test-rehearsal-pos", onPos);
-  }, [symbol, tm.tMs]);
+  }, [symbol, tm.tMs, commitBook]);
 
   const chartRef = useRef<PnLChartHandle>(null);
   const positionsRef = useRef(positions);
@@ -663,7 +719,9 @@ export default function OpfRiskAnalyzer() {
       const pos = positionFromInput(input);
       pos.label = buildLabel(input.underlying, input.legs, input.expiration);
       pos.notation = buildNotation(input.legs);
-      setPositions((prev) => [pos, ...prev]);
+      commitBook("create-submit", (prev) => [pos, ...prev], {
+        createdId: pos.id,
+      });
       setFocusedId(pos.id);
       if (parsed.symbol) {
         const known = universe.some((u) => u.symbol === parsed.symbol);
@@ -678,7 +736,7 @@ export default function OpfRiskAnalyzer() {
       // One-shot: book is SoR after ingest; pending trade must not respawn cards.
       clearAnalyzerTrade();
     },
-    [universe, setSymbol],
+    [universe, setSymbol, commitBook],
   );
 
   useEffect(() => {
@@ -979,14 +1037,16 @@ export default function OpfRiskAnalyzer() {
       const pos = positionFromInput(input);
       pos.label = buildLabel(input.underlying, input.legs, input.expiration);
       pos.notation = buildNotation(input.legs);
-      setPositions((prev) => [pos, ...prev]);
+      commitBook("create-submit", (prev) => [pos, ...prev], {
+        createdId: pos.id,
+      });
     };
     window.addEventListener("tm-test-listed-pos", onListed);
     return () => {
       window.removeEventListener("tm-test-listed-pos", onListed);
       w.__tmListedReady = false;
     };
-  }, [chain, posture, opfSpot, sessionSpot, symbol]);
+  }, [chain, posture, opfSpot, sessionSpot, symbol, commitBook]);
 
   const displaySpotRaw =
     spotOverride ?? opfSpot ?? trade?.body ?? 0;
@@ -1591,7 +1651,7 @@ export default function OpfRiskAnalyzer() {
   const handleBuilderSave = useCallback(
     (input: PositionInput, label: string, notation: string) => {
       if (editId) {
-        setPositions((prev) =>
+        commitBook("dialog", (prev) =>
           prev.map((p) =>
             p.id === editId ? applyEditPatch(p, input, label, notation) : p,
           ),
@@ -1605,7 +1665,9 @@ export default function OpfRiskAnalyzer() {
           pos.rehearsal = true;
           if (tm.tMs != null) pos.entryAt = tm.tMs;
         }
-        setPositions((prev) => [pos, ...prev]);
+        commitBook("create-submit", (prev) => [pos, ...prev], {
+          createdId: pos.id,
+        });
         setFocusedId(pos.id);
       }
       setBookNotice(null);
@@ -1613,7 +1675,7 @@ export default function OpfRiskAnalyzer() {
       setEditId(null);
       risk.refresh();
     },
-    [editId, risk, tm.tmActive, tm.tMs],
+    [editId, risk, tm.tmActive, tm.tMs, commitBook],
   );
 
   const editInitial = useMemo(() => {
@@ -1635,7 +1697,7 @@ export default function OpfRiskAnalyzer() {
       }
     },
     onToggleVisibility: (id: string) =>
-      setPositions((prev) =>
+      commitBook("card", (prev) =>
         prev.map((p) =>
           p.id === id ? { ...p, visible: !p.visible } : p,
         ),
@@ -1645,7 +1707,7 @@ export default function OpfRiskAnalyzer() {
       setBuilderOpen(true);
     },
     onDelete: (id: string) => {
-      setPositions((prev) => prev.filter((p) => p.id !== id));
+      commitBook("delete", (prev) => prev.filter((p) => p.id !== id));
       if (focusedId === id) setFocusedId(null);
     },
     onCreate: () => {
@@ -1653,14 +1715,14 @@ export default function OpfRiskAnalyzer() {
       setBuilderOpen(true);
     },
     onSetEntryAt: (id: string, entryAt: number) => {
-      setPositions((prev) =>
+      commitBook("card", (prev) =>
         prev.map((p) =>
           p.id === id ? { ...p, entryAt, updatedAt: Date.now() } : p,
         ),
       );
     },
     onClosePosition: (id: string) => {
-      setPositions((prev) =>
+      commitBook("card", (prev) =>
         prev.map((p) => (p.id === id ? closePosition(p) : p)),
       );
     },
@@ -1694,7 +1756,7 @@ export default function OpfRiskAnalyzer() {
       );
     },
     onLockNatural: (id: string) => {
-      setPositions((prev) =>
+      commitBook("lock", (prev) =>
         prev.map((p) => {
           if (p.id !== id) return p;
           try {
@@ -1715,27 +1777,25 @@ export default function OpfRiskAnalyzer() {
       const mag = Math.abs(magnitude);
       if (!Number.isFinite(mag) || mag <= 0) return;
       const isCredit = pos.priceSide === "credit";
-      setPositions((prev) =>
+      commitBook("lock", (prev) =>
         prev.map((p) => (p.id === id ? lockLimit(p, mag, isCredit) : p)),
       );
       risk.refresh();
     },
     onUnlock: (id: string) => {
-      setPositions((prev) =>
+      commitBook("unlock", (prev) =>
         prev.map((p) => (p.id === id ? unlockCard(p) : p)),
       );
       risk.refresh();
     },
     onSetDirection: (id: string, direction: "buy" | "sell") => {
-      setPositions((prev) =>
+      commitBook("card", (prev) =>
         prev.map((p) => (p.id === id ? setCardDirection(p, direction) : p)),
       );
       risk.refresh();
     },
     onSetExpiration: (id: string, expiration: string) => {
-      // Atomic pointer rebind: definition changes once; package quote resolves
-      // once to a final state (no continuous re-search / flash).
-      setPositions((prev) =>
+      commitBook("card", (prev) =>
         prev.map((p) =>
           p.id === id
             ? setCardExpiration(p, expiration, chain.expirations)
@@ -1743,11 +1803,10 @@ export default function OpfRiskAnalyzer() {
         ),
       );
       chain.ensureExpiration(expiration);
-      // Curves refresh is separate; package marks settle via definition epoch
       risk.refresh();
     },
     onShiftStrikes: (id: string, direction: "up" | "down") => {
-      setPositions((prev) =>
+      commitBook("card", (prev) =>
         prev.map((p) =>
           p.id === id
             ? shiftCardStrikes(p, direction, (exp) =>
@@ -1815,7 +1874,7 @@ export default function OpfRiskAnalyzer() {
         exp: risk.expirationPoints,
         theo: risk.theoreticalPoints,
       };
-      setPositions((prev) =>
+      commitBook("overlay-commit", (prev) =>
         prev.map((p) =>
           p.id === info.positionId
             ? applyStrikeDragToPosition(
@@ -1841,7 +1900,7 @@ export default function OpfRiskAnalyzer() {
         }
       });
     },
-    [chain, risk],
+    [chain, risk, commitBook],
   );
 
   return (
