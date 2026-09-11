@@ -16,9 +16,11 @@ Response modes:
 from __future__ import annotations
 
 import math
+import re
 import threading
 import time
 from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -629,10 +631,23 @@ def _opf_session_for_ladder(
     )
 
 
-# Analyzer / OPF active option horizon (calendar DTE).
-# Historical default was effectively ~3 *listed dates* (API limit=3), which for
-# SPX daily is only ~0–2 DTE. Active plane now holds through this many DTE.
-OPF_ACTIVE_DTE_HORIZON = 10
+def _opf_active_dte_horizon() -> int:
+    """Importer — the catalogue key lives in web/lib/options-lab/dteHorizon.ts (PC-EXP-4)."""
+    path = (
+        Path(__file__).resolve().parents[2]
+        / "web"
+        / "lib"
+        / "options-lab"
+        / "dteHorizon.ts"
+    )
+    text = path.read_text(encoding="utf-8")
+    m = re.search(r"export const OPF_ACTIVE_DTE_HORIZON = (\d+)", text)
+    if not m:
+        raise RuntimeError(f"PC-EXP-4: OPF_ACTIVE_DTE_HORIZON missing in {path}")
+    return int(m.group(1))
+
+
+OPF_ACTIVE_DTE_HORIZON = _opf_active_dte_horizon()
 
 
 def _et_now_parts() -> tuple[date, int]:

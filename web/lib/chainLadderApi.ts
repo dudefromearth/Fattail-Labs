@@ -96,12 +96,8 @@ export type LadderExpirationContract = {
   label: string;
 };
 
-/**
- * OPF / Analyzer active option horizon in calendar DTE.
- * Server default matches; must stay in sync with
- * `OPF_ACTIVE_DTE_HORIZON` in server/routes/chain_ladder.py.
- */
-export const OPF_ACTIVE_DTE_HORIZON = 10;
+import { OPF_ACTIVE_DTE_HORIZON } from "./options-lab/dteHorizon";
+export { OPF_ACTIVE_DTE_HORIZON };
 
 export async function fetchLadderExpirations(
   symbol = "SPX",

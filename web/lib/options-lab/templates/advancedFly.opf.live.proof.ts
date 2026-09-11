@@ -63,7 +63,7 @@ async function main() {
   const base = process.env.LABS_ORIGIN || "http://localhost:3000";
 
   const expR = await fetch(
-    `${base}/api/me/market/chain-ladder/expirations?symbol=SPX&limit=10&max_dte=14`,
+    `${base}/api/me/market/chain-ladder/expirations?symbol=SPX&limit=10&max_dte=10`,
     { headers },
   );
   assert(expR.ok, `expirations HTTP ${expR.status}`);
