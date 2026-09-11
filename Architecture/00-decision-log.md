@@ -4,6 +4,34 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-11 — DL-692 Create / Edit Position Dialog Spec v0.6 BUILD AUTHORITY
+
+**Decision (Coach).** Spec
+`Specs/FatTail-Labs-Options-Lab-Create-Edit-Position-Dialog-Spec-v0_6.md`
+is **BUILD AUTHORITY** from this stamp, before DLG2. Token
+[`agents/go/DLG-W0.md`](../agents/go/DLG-W0.md) re-stamped at v0.6.
+sha1 `9b84c4e495b45ec5b99afe69e194c45d8a9f0b8b` (Delta, from disk).
+
+v0.5 reduced *"the full Apple HIG treatment"* to a spacing grid and a panel
+width. §5.2 is rewritten as **thirteen laws**: type ladder, spacing grid,
+control conformance, alignment axis, default-button order, Return exception,
+keyboard and focus ring, semantic colour, surfaces and separators, margins
+and panel width, feedback, motion, accessibility. **§5.3 Layout is
+untouched.** HIG governs how the surface reads and behaves; the layout
+governs what is on it.
+
+AT-DLG-16 (ruler + grep) and AT-DLG-17 (itemised Echo/Tango sign) are added.
+AT-DLG-7 now covers the focus ring and keyboard-only operation.
+
+v0.4 and v0.5 stay on disk as the baselines DLG0 (`93b08d8`) and DLG1
+(`8faf9cd`) were built against. **Those packets are not reopened.** India's
+W0-4 sign of the `surface` mechanism still stands. Frozen Position Control
+v1.2 is not edited.
+
+**Does not:** deploy. Reopen DLG0/DLG1. Change §5.3. Fork IKI. Authorise a modal.
+
+---
+
 ## 2026-09-11 — DL-691 Echo names `--color-code-surface` (DLG1)
 
 **Decision (Echo).** The named code-surface token of Dialog Spec v0.4

@@ -1,7 +1,7 @@
 # Charter — p-options-lab-create-edit-dialog
 
 **Program:** Options Lab Analyzer — Create / Edit Position Dialog
-**Spec:** v0.4 (`Specs/FatTail-Labs-Options-Lab-Create-Edit-Position-Dialog-Spec-v0_4.md`)
+**Spec:** v0.6 (`Specs/FatTail-Labs-Options-Lab-Create-Edit-Position-Dialog-Spec-v0_6.md`). v0.4/v0.5 remain baselines.
 **Plan:** v1.0 (`docs/Options-Lab-Create-Edit-Position-Dialog-Full-Agent-Bench-Plan-v1.0.md`)
 **Token:** `agents/go/DLG-W0.md`
 
@@ -14,4 +14,4 @@ One component, two appearances. Never two components. Never one look forced onto
 **Out:** other Labs dialogs · modal rewrite · IKI fork · second save path · Preview · entry time ·
 Submit · Done · pricing path · frozen Spec v1.2 edit · PC packet reopen.
 
-**Status:** GO 2026-09-11 (DL-690). India W0-4 **APPROVED**. DLG0-G **PASS** (`93b08d8`). DLG1-G **PASS**. Next: DLG2 chrome. Theme before chrome held.
+**Status:** GO 2026-09-11. Spec v0.6 BUILD AUTHORITY (DL-692). DLG0 `93b08d8` · DLG1 `8faf9cd` · DLG2-G **PASS**. Next: DLG3 symbol.
