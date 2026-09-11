@@ -158,4 +158,31 @@ test("AT-PC-52 budget limit keeps definition; no live mid", () => {
   );
 });
 
+test("PC8-E quote merge writes chain IV; missing leg stays —; structure unmoved", () => {
+  const a = fly([1, 2, 1]);
+  assert.equal(a.position.legs[0].volatility, undefined);
+  const ivs: Record<string, number> = {
+    "760:call": 0.1245,
+    "770:call": 0.1118,
+  };
+  const next = finishPackageQuote(
+    a,
+    { complete: true, package_debit_per_share: 0.67 },
+    {
+      getContract: (expiration, strike, type) => {
+        const iv = ivs[`${strike}:${type}`];
+        return iv != null ? { iv } : undefined;
+      },
+    },
+  );
+  assert.equal(next.position.legs[0].volatility, 0.1245);
+  assert.equal(next.position.legs[1].volatility, 0.1118);
+  assert.equal(next.position.legs[2].volatility, undefined);
+  assert.deepEqual(
+    next.position.legs.map((l) => l.strike),
+    a.position.legs.map((l) => l.strike),
+  );
+  assert.equal(next.lock.mode, a.lock.mode);
+});
+
 console.log(`structureSignal.test.ts ${n} ok`);

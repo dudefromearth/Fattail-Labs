@@ -14,7 +14,7 @@ This file is the only authority. Amendments become **PC8-F**, never an edit here
 | # | Item | Status | Evidence |
 |---|------|--------|----------|
 | 1 | Empty-book autofit regression | **LANDED** | `book-empty` / `book-to-empty`; awaiting Delta |
-| 2 | VOL / DELTA dead | **NOT STARTED** | no `leg.volatility` writer outside `PositionBuilder.tsx:667` |
+| 2 | VOL / DELTA dead | **LANDED** | quote-merge writes chain IV; awaiting Delta |
 | 3 | Stepper hover reflow | **DONE** | `c5ac840` — hover `h-`/`w-` removed |
 | 4 | POS tooltip | **NOT STARTED** | `AnalyzerPositionsList.tsx:1169` |
 | 5 | Fonts +30% | **NOT STARTED** | `td` = `text-[11px]`; 13 × `text-[10px]` |

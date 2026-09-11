@@ -12,8 +12,10 @@ import {
   QTY_QUICK_PICK,
   cardFieldExposure,
   catalogToTemplate,
+  fmtPackageDelta,
   groupPositionsBySymbol,
   moveSymbolInOrder,
+  packageDelta,
   patchCardLeg,
   rebuildCardFromTemplate,
   setCardRight,
@@ -349,6 +351,30 @@ test("price steps by the product tick (PC-HIG-10)", () => {
 test("catalogToTemplate never offers CUSTOM", () => {
   assert.equal(catalogToTemplate("CUSTOM"), null);
   assert.equal(catalogToTemplate("Butterfly"), "butterfly");
+});
+
+test("PC8-E VOL per leg and package DELTA; a miss does not null the rest", () => {
+  const a = fly();
+  assert.equal(packageDelta(a.position.legs, 770), null);
+  assert.equal(fmtPackageDelta(null), "—");
+  const priced = a.position.legs.map((l, i) =>
+    i === 2 ? l : { ...l, volatility: 0.12 },
+  );
+  const d = packageDelta(priced, 770, Date.parse("2026-09-11T14:00:00Z"));
+  assert.ok(d != null && Number.isFinite(d));
+  assert.notEqual(fmtPackageDelta(d), "—");
+  assert.equal(priced[2].volatility, undefined);
+  const quotes = readFileSync(
+    join(here, "./usePackageQuotes.ts"),
+    "utf8",
+  );
+  assert.match(quotes, /iv: row\.iv/);
+  assert.match(quotes, /getContract:/);
+  const finish = readFileSync(
+    join(here, "./packageQuoteFinish.ts"),
+    "utf8",
+  );
+  assert.match(finish, /applyLegVolatilityFromChain/);
 });
 
 console.log(`tosCard.test.ts ${n} ok`);

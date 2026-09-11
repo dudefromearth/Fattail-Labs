@@ -196,6 +196,7 @@ export function usePackageQuotes(opts: {
         mid: row.mid ?? null,
         bid: row.bid ?? null,
         ask: row.ask ?? null,
+        iv: row.iv ?? null,
       };
     },
     [],
@@ -350,6 +351,8 @@ export function usePackageQuotes(opts: {
               finishPackageQuote(working, {}, {
                 interestOk: false,
                 expectedStructureKey: startedKey,
+                getContract: (expiration, strike, type) =>
+                  getContractFromLadders(trade.symbol, expiration, strike, type),
               }),
             );
             return;
@@ -369,6 +372,8 @@ export function usePackageQuotes(opts: {
               sessionHeld: held,
               interestOk,
               expectedStructureKey: startedKey,
+              getContract: (expiration, strike, type) =>
+                getContractFromLadders(trade.symbol, expiration, strike, type),
             },
           ),
         );
@@ -392,6 +397,8 @@ export function usePackageQuotes(opts: {
             sessionHeld: held,
             interestOk,
             expectedStructureKey: startedKey,
+            getContract: (expiration, strike, type) =>
+              getContractFromLadders(trade.symbol, expiration, strike, type),
           }),
         );
       } catch (e) {
@@ -407,6 +414,8 @@ export function usePackageQuotes(opts: {
               sessionHeld: held,
               interestOk,
               expectedStructureKey: startedKey,
+              getContract: (expiration, strike, type) =>
+                getContractFromLadders(trade.symbol, expiration, strike, type),
             },
           ),
         );
