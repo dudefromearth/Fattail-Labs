@@ -16,6 +16,7 @@ import {
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
+  type ReactNode,
 } from "react";
 import {
   CardMenuField,
@@ -23,6 +24,7 @@ import {
   TosQtyControl,
   TosStepper,
 } from "@/components/options-lab/TosControls";
+import SegmentedControl from "@/components/ui/SegmentedControl";
 import {
   calendarDteOf,
   type CardLockState,
@@ -283,12 +285,30 @@ function defaultDiagonalWidth(symbol: string): number {
 
 /** Dialog field appearance — application tokens, not card tokens (DLG-THEME-4). */
 const sectionLabel =
-  "px-1 pb-1 font-normal uppercase tracking-wide text-[length:var(--text-caption)] text-[var(--color-label-secondary)]";
+  "pb-2 font-medium uppercase tracking-wide text-[length:var(--text-caption)] text-[var(--color-label-secondary)]";
 const dlgField =
   "min-h-[var(--hit-min)] w-full appearance-none cursor-pointer rounded-[var(--radius-sm)] " +
-  "border-0 bg-[var(--color-fill)] px-1.5 text-[length:var(--text-body)] text-[var(--color-label)] outline-none";
-const footerBar =
-  "flex flex-col items-stretch gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)]";
+  "border-0 bg-[var(--color-fill)] px-2 text-[length:var(--text-body)] tabular-nums text-[var(--color-label)] " +
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]";
+const formRow =
+  "grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-x-3";
+const formLabel =
+  "text-[length:var(--text-subheadline)] text-[var(--color-label-secondary)]";
+
+function FormRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className={formRow}>
+      <div className={formLabel}>{label}</div>
+      <div>{children}</div>
+    </div>
+  );
+}
 
 export type PositionBuilderProps = {
   open: boolean;
@@ -324,7 +344,7 @@ export type PositionBuilderProps = {
 };
 
 /** Wide enough for full Legs table (Qty · Strike · Type · Exp · Mid · ± · IV). */
-const PANEL_W = 770;
+const PANEL_W = 820;
 const PANEL_DEFAULT_OFFSET = { x: 48, y: 72 };
 
 export default function PositionBuilder({
@@ -1235,15 +1255,6 @@ export default function PositionBuilder({
       ? "Limit"
       : "Close · held";
 
-  const previewLabel = useMemo(
-    () => buildLabel(position.underlying, position.legs, position.expiration),
-    [position],
-  );
-  const previewNotation = useMemo(
-    () => buildNotation(position.legs),
-    [position.legs],
-  );
-
   const tosScript = useMemo(() => {
     if (!position.legs.length) return "";
     const pkgs = Math.max(1, position.contracts || 1);
@@ -1351,6 +1362,36 @@ export default function PositionBuilder({
       wingWidth || DEFAULT_CREATE_WING_WIDTH,
       optionSide,
       dir,
+      position.expiration || frontDefault,
+      backExpiration,
+    );
+  };
+
+  const rebuildShape = (
+    center: number,
+    width: number,
+    side: OptionRight,
+    front: string,
+    back?: string,
+  ) => {
+    regenerate(
+      template,
+      center,
+      width,
+      side,
+      direction,
+      front,
+      back,
+    );
+  };
+
+  const handleRight = (side: OptionRight) => {
+    if (side === optionSide) return;
+    setOptionSide(side);
+    rebuildShape(
+      centerStrike || atmCenter || spotPrice,
+      wingWidth || DEFAULT_CREATE_WING_WIDTH,
+      side,
       position.expiration || frontDefault,
       backExpiration,
     );
@@ -1557,6 +1598,20 @@ export default function PositionBuilder({
     onSave,
   ]);
 
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Enter") return;
+      const t = e.target;
+      if (!(t instanceof HTMLElement)) return;
+      if (t.closest("[data-value-field]")) return;
+      e.preventDefault();
+      handleSave();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, handleSave]);
+
   const timeSpreadBackChoices = useMemo(() => {
     const after = chain.expirations.filter((e) => e > position.expiration);
     if (after.length > 0) return after;
@@ -1619,21 +1674,26 @@ export default function PositionBuilder({
       return a.leg.strike - b.leg.strike;
     });
 
+  const spotShown = userSpot > 0 ? userSpot : spotPrice;
+  const frontExp = (position.expiration || frontDefault || "").slice(0, 10);
+
   return (
     <div
       className={
-        "builder-steppers fixed z-50 flex max-h-[min(92vh,860px)] w-[min(720px,calc(100vw-1.5rem))] " +
+        "builder-steppers fixed z-50 flex max-h-[min(92vh,860px)] w-[min(820px,calc(100vw-1.5rem))] " +
         "flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-separator)] " +
         "bg-[var(--color-surface)] text-[var(--color-label)] shadow-[var(--elevation-3)]"
       }
-      style={{ left: panelPos.x, top: panelPos.y }}
+      style={{ left: panelPos.x, top: panelPos.y, width: PANEL_W }}
       role="dialog"
       aria-modal="false"
       aria-label={mode === "edit" ? "Edit Position" : "Create Position"}
       data-testid="position-builder"
+      data-panel-width="820"
+      data-content-inset="20"
     >
       <div
-        className="relative flex cursor-grab items-center justify-center border-b border-[var(--color-separator)] px-[var(--space-3)] py-[var(--space-2)] active:cursor-grabbing"
+        className="relative cursor-grab border-b border-[var(--color-separator)] px-5 pt-5 pb-3 active:cursor-grabbing"
         onPointerDown={onPanelPointerDown}
         onPointerMove={onPanelPointerMove}
         onPointerUp={onPanelPointerUp}
@@ -1641,24 +1701,37 @@ export default function PositionBuilder({
         data-testid="position-builder-drag-handle"
         title="Drag to move"
       >
-        <h3 className="truncate text-[length:var(--text-title-3)] font-normal text-[var(--color-label)]">
+        <h3 className="text-[length:var(--text-title-3)] font-semibold text-[var(--color-label)]">
           {mode === "edit" ? "Edit Position" : "Create Position"}
         </h3>
-        {mode === "edit" ? (
-          <button
-            type="button"
-            className="absolute right-2 text-[length:var(--text-body)] text-[var(--color-label-secondary)] hover:text-[var(--color-label)]"
-            data-testid="position-builder-close"
-            onClick={onCancel}
+        <div className="mt-2 flex items-center gap-3">
+          <CardMenuField surface="dialog" fit="min">
+            <select
+              className={dlgField + " !w-auto min-w-[6rem]"}
+              value={position.underlying || symbol}
+              aria-label="Symbol"
+              data-testid="builder-symbol"
+              onChange={() => {
+                /* session symbol is host-owned — DLG3 */
+              }}
+            >
+              <option value={position.underlying || symbol}>
+                {position.underlying || symbol}
+              </option>
+            </select>
+          </CardMenuField>
+          <span
+            className="tabular-nums text-[length:var(--text-body)] text-[var(--color-label-secondary)]"
+            aria-label="Spot"
           >
-            Close
-          </button>
-        ) : null}
+            {spotShown > 0 ? spotShown.toFixed(2) : "—"}
+          </span>
+        </div>
       </div>
 
       {planeState.kind !== "ready" ? (
         <div
-          className="border-b border-[var(--color-separator)] px-[var(--space-3)] py-1.5 text-[var(--color-label-secondary)]"
+          className="border-b border-[var(--color-separator)] px-5 py-2 text-[var(--color-label-secondary)]"
           role="status"
           data-testid="builder-structure-notice"
           data-plane-kind={planeState.kind}
@@ -1672,28 +1745,10 @@ export default function PositionBuilder({
         </div>
       ) : null}
 
-      <div className="flex-1 space-y-3 overflow-y-auto px-3 py-3">
-        <section className="grid grid-cols-2 gap-3">
-          <div>
-            <h4 className={sectionLabel}>Symbol</h4>
-            <CardMenuField surface="dialog">
-              <select
-                className={dlgField}
-                value={position.underlying || symbol}
-                aria-label="Symbol"
-                data-testid="builder-symbol"
-                onChange={() => {
-                  /* session symbol is host-owned */
-                }}
-              >
-                <option value={position.underlying || symbol}>
-                  {position.underlying || symbol}
-                </option>
-              </select>
-            </CardMenuField>
-          </div>
-          <div>
-            <h4 className={sectionLabel}>Strategy</h4>
+      <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
+        <section className="space-y-3" aria-label="Structure">
+          <h4 className={sectionLabel}>Structure</h4>
+          <FormRow label="Strategy">
             <CardMenuField surface="dialog">
               <select
                 className={dlgField}
@@ -1720,73 +1775,163 @@ export default function PositionBuilder({
                 })}
               </select>
             </CardMenuField>
+          </FormRow>
+          <div className="flex items-center gap-3">
+            <svg
+              viewBox="0 0 60 24"
+              width={72}
+              height={28}
+              className="shrink-0"
+              style={
+                direction === "sell" ? { transform: "scaleY(-1)" } : undefined
+              }
+              aria-hidden
+            >
+              <path
+                d={STRATEGY_DIAGRAMS[template]}
+                fill="none"
+                stroke="var(--color-label)"
+                strokeWidth="2.25"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <div className="inline-flex min-w-[12rem]">
+              <SegmentedControl
+                ariaLabel="Buy or Sell"
+                value={direction}
+                onChange={handleDirection}
+                options={[
+                  { id: "buy", label: "Buy" },
+                  { id: "sell", label: "Sell" },
+                ]}
+              />
+            </div>
+            <span className="text-[length:var(--text-body)] text-[var(--color-label)]">
+              {derivedName}
+            </span>
           </div>
+          {TEMPLATE_HAS_SIDE[template] ? (
+            <FormRow label="Right">
+              <div className="inline-flex min-w-[12rem]">
+                <SegmentedControl
+                  ariaLabel="Call or Put"
+                  value={optionSide}
+                  onChange={handleRight}
+                  options={[
+                    { id: "call", label: "Call" },
+                    { id: "put", label: "Put" },
+                  ]}
+                />
+              </div>
+            </FormRow>
+          ) : null}
         </section>
 
-        <section className="flex items-center gap-3">
-          <svg
-            viewBox="0 0 60 24"
-            width={72}
-            height={28}
-            className="shrink-0 opacity-90"
-            style={
-              direction === "sell" ? { transform: "scaleY(-1)" } : undefined
-            }
-            aria-hidden
-          >
-            <path
-              d={STRATEGY_DIAGRAMS[template]}
-              fill="none"
-              stroke={
-                direction === "buy"
-                  ? "var(--color-success)"
-                  : "var(--color-destructive)"
-              }
-              strokeWidth="2.25"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <div className="inline-flex rounded-full bg-[var(--color-fill)] p-0.5">
-            <button
-              type="button"
-              className="rounded-full px-3 py-0.5 text-[length:var(--text-body)]"
-              style={
-                direction === "buy"
-                  ? {
-                      background: "var(--color-success)",
-                      color: "var(--color-surface)",
-                    }
-                  : { color: "var(--color-label-secondary)" }
-              }
-              onClick={() => handleDirection("buy")}
-            >
-              Buy
-            </button>
-            <button
-              type="button"
-              className="rounded-full px-3 py-0.5 text-[length:var(--text-body)]"
-              style={
-                direction === "sell"
-                  ? {
-                      background: "var(--color-destructive)",
-                      color: "var(--color-surface)",
-                    }
-                  : { color: "var(--color-label-secondary)" }
-              }
-              onClick={() => handleDirection("sell")}
-            >
-              Sell
-            </button>
-          </div>
-          <span className="text-[length:var(--text-body)] text-[var(--color-label)]">
-            {derivedName}
-          </span>
-        </section>
-
-        <section>
-          <h4 className={sectionLabel}>Legs</h4>
-          <table className="w-full table-fixed text-left text-[length:var(--text-body)]">
+        <section className="space-y-3 border-t border-[var(--color-separator)] pt-5" aria-label="Shape">
+          <h4 className={sectionLabel}>Shape</h4>
+          <FormRow label="Centre">
+            <CardMenuField surface="dialog">
+              <select
+                className={dlgField}
+                aria-label="Centre"
+                data-testid="builder-center"
+                data-value-field="1"
+                value={
+                  frontStrikes.some((s) => s === (centerStrike || atmCenter))
+                    ? String(centerStrike || atmCenter)
+                    : ""
+                }
+                onChange={(e) => {
+                  const s = parseFloat(e.target.value);
+                  if (!Number.isFinite(s)) return;
+                  centerPinnedRef.current = true;
+                  setCenterStrike(s);
+                  rebuildShape(
+                    s,
+                    wingWidth || DEFAULT_CREATE_WING_WIDTH,
+                    optionSide,
+                    frontExp || frontDefault,
+                    backExpiration,
+                  );
+                }}
+              >
+                {frontStrikes.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </CardMenuField>
+          </FormRow>
+          <FormRow label="Width">
+            <CardMenuField surface="dialog">
+              <select
+                className={dlgField}
+                aria-label="Width"
+                data-testid="builder-width"
+                data-value-field="1"
+                value={wingChoices.includes(wingWidth) ? String(wingWidth) : ""}
+                onChange={(e) => {
+                  const w = parseFloat(e.target.value);
+                  if (!Number.isFinite(w)) return;
+                  setWingWidth(w);
+                  rebuildShape(
+                    centerStrike || atmCenter || spotPrice,
+                    w,
+                    optionSide,
+                    frontExp || frontDefault,
+                    backExpiration,
+                  );
+                }}
+              >
+                {wingChoices.map((w) => (
+                  <option key={w} value={w}>
+                    {w}
+                  </option>
+                ))}
+              </select>
+            </CardMenuField>
+          </FormRow>
+          <FormRow label="Expiration">
+            <CardMenuField surface="dialog">
+              <select
+                className={dlgField}
+                aria-label="Expiration"
+                data-testid="builder-expiration"
+                value={boundSelectValue(frontExp, chain.expirations).value}
+                data-invalid={
+                  boundSelectValue(frontExp, chain.expirations).invalid
+                    ? "1"
+                    : "0"
+                }
+                onChange={(e) => {
+                  const nextExp = e.target.value;
+                  if (!nextExp) return;
+                  chain.ensureExpiration(nextExp);
+                  userPickedExp.current = true;
+                  setPosition((p) => ({ ...p, expiration: nextExp }));
+                  rebuildShape(
+                    centerStrike || atmCenter || spotPrice,
+                    wingWidth || DEFAULT_CREATE_WING_WIDTH,
+                    optionSide,
+                    nextExp,
+                    backExpiration,
+                  );
+                }}
+              >
+                {boundSelectValue(frontExp, chain.expirations).invalid ? (
+                  <option value="">{frontExp || "—"}</option>
+                ) : null}
+                {chain.expirations.map((e) => (
+                  <option key={e} value={e}>
+                    {e.slice(5)}
+                  </option>
+                ))}
+              </select>
+            </CardMenuField>
+          </FormRow>
+          <table className="w-full table-fixed text-left text-[length:var(--text-body)] tabular-nums">
             <thead>
               <tr className="uppercase tracking-wide text-[length:var(--text-caption)] text-[var(--color-label-tertiary)]">
                 <th className="w-12 py-1 font-normal" />
@@ -1794,8 +1939,6 @@ export default function PositionBuilder({
                 <th className="py-1 font-normal">Strike</th>
                 <th className="py-1 font-normal">Type</th>
                 <th className="py-1 font-normal">Expiration</th>
-                <th className="py-1 text-right font-normal">Debit</th>
-                <th className="py-1 text-right font-normal">Pos</th>
                 <th className="w-6 py-1 font-normal" />
               </tr>
             </thead>
@@ -1803,18 +1946,18 @@ export default function PositionBuilder({
               {orderedLegs.map(({ leg, origIdx: i }, row) => {
                 const exp = (leg.expiration || position.expiration).slice(0, 10);
                 const legStrikes = chain.getStrikes(exp);
-                const isTop = row === 0;
                 const signed = signedActualQty(leg);
                 return (
                   <tr key={`${i}-${leg.strike}-${leg.type}`}>
-                    <td className="py-0.5 pr-1 text-[var(--color-label-tertiary)]">
+                    <td className="py-1 pr-1 text-[var(--color-label-tertiary)]">
                       Leg {row + 1}:
                     </td>
-                    <td className="py-0.5">
-                      <div className="flex items-center justify-end gap-0.5">
+                    <td className="py-1">
+                      <div className="flex items-center justify-end gap-1">
                         <span
-                          className="w-6 text-right font-mono"
+                          className="w-6 text-right font-mono tabular-nums"
                           data-testid={`builder-leg-qty-${i}`}
+                          data-value-field="1"
                         >
                           {signed}
                         </span>
@@ -1834,8 +1977,8 @@ export default function PositionBuilder({
                         />
                       </div>
                     </td>
-                    <td className="py-0.5">
-                      <div className="flex items-center justify-end gap-0.5">
+                    <td className="py-1">
+                      <div className="flex items-center justify-end gap-1">
                         {legStrikes.length ? (
                           <CardMenuField surface="dialog" fit="min">
                             <select
@@ -1845,6 +1988,7 @@ export default function PositionBuilder({
                               }
                               value={String(leg.strike)}
                               data-testid={`builder-leg-strike-${i}`}
+                              data-value-field="1"
                               aria-label="Strike"
                               onChange={(e) => {
                                 const s = parseFloat(e.target.value);
@@ -1884,12 +2028,13 @@ export default function PositionBuilder({
                         />
                       </div>
                     </td>
-                    <td className="py-0.5">
+                    <td className="py-1">
                       <CardMenuField surface="dialog" fit="min">
                         <button
                           type="button"
-                          className={dlgField + " !w-auto px-1"}
+                          className={dlgField + " !w-auto px-2"}
                           data-testid={`builder-leg-type-${i}`}
+                          aria-label="Leg type"
                           onClick={() =>
                             updateLeg(i, {
                               type: leg.type === "call" ? "put" : "call",
@@ -1900,7 +2045,7 @@ export default function PositionBuilder({
                         </button>
                       </CardMenuField>
                     </td>
-                    <td className="py-0.5" onClick={(e) => e.stopPropagation()}>
+                    <td className="py-1" onClick={(e) => e.stopPropagation()}>
                       {hasExps ? (
                         <CardMenuField surface="dialog">
                           <select
@@ -1935,59 +2080,7 @@ export default function PositionBuilder({
                         </span>
                       )}
                     </td>
-                    <td className="py-0.5 text-right font-mono">
-                      {isTop ? (
-                        <div className="flex items-center justify-end gap-0.5">
-                          <span data-testid="builder-live-package-price">
-                            {debitShown != null && Number.isFinite(debitShown)
-                              ? debitShown.toFixed(2)
-                              : "—"}
-                          </span>
-                          <TosStepper surface="dialog"
-                            testId="builder-debit-step"
-                            ariaLabel="Package debit"
-                            disabled={debitShown == null}
-                            onUp={() => stepDebit("up")}
-                            onDown={() => stepDebit("down")}
-                          />
-                          <TosPadlock surface="dialog"
-                            locked={!!overrideActive}
-                            testId="builder-padlock"
-                            onToggle={() => {
-                              if (mode === "edit") {
-                                if (overrideActive) onUnlock?.();
-                                else onLockNatural?.();
-                                return;
-                              }
-                              if (overrideActive) {
-                                setPosition((p) => ({
-                                  ...p,
-                                  net_debit_override: null,
-                                }));
-                              }
-                            }}
-                          />
-                        </div>
-                      ) : (
-                        ""
-                      )}
-                    </td>
-                    <td className="py-0.5 text-right font-mono">
-                      {isTop ? (
-                        <div className="flex items-center justify-end gap-0">
-                          <span data-testid="builder-pos">{pkgPos}</span>
-                          <TosQtyControl surface="dialog"
-                            testId="builder-pos-step"
-                            onUp={() => scalePos(pkgPos + 1)}
-                            onDown={() => scalePos(Math.max(1, pkgPos - 1))}
-                            onPick={(n) => scalePos(n)}
-                          />
-                        </div>
-                      ) : (
-                        ""
-                      )}
-                    </td>
-                    <td className="py-0.5">
+                    <td className="py-1">
                       <button
                         type="button"
                         className="px-1 text-[var(--color-label-tertiary)] hover:text-[var(--color-label)]"
@@ -2003,157 +2096,137 @@ export default function PositionBuilder({
               })}
             </tbody>
           </table>
-          <div className="mt-1.5 flex items-start justify-between gap-3">
-            <button
-              type="button"
-              className="text-[length:var(--text-body)] text-[var(--color-tint)] hover:text-[var(--color-tint-emphasis)]"
-              onClick={addLeg}
-            >
-              + Add Leg
-            </button>
-            <div className="text-right">
-              <div className={sectionLabel}>Entry time</div>
-              <div className="flex items-center justify-end gap-1">
-                <span className="font-mono text-[length:var(--text-body)] text-[var(--color-label)]">
-                  {`${String(entryWall.month).padStart(2, "0")}/${String(entryWall.day).padStart(2, "0")}/${entryWall.year}`}
-                </span>
-                <CardMenuField surface="dialog" fit="min">
-                  <select
-                    className={dlgField + " !w-auto"}
-                    aria-label="Entry hour"
-                    data-testid="builder-entry-at"
-                    value={entryHour12}
-                    onChange={(e) => {
-                      const h12 = parseInt(e.target.value, 10);
-                      let h24 = h12 % 12;
-                      if (entryAmpm === "PM") h24 += 12;
-                      commitEntry(h24, entryWall.minute);
-                    }}
-                  >
-                    {Array.from({ length: 12 }, (_, n) => n + 1).map((h) => (
-                      <option key={h} value={h}>
-                        {h}
-                      </option>
-                    ))}
-                  </select>
-                </CardMenuField>
-                <span className="text-[var(--color-label-tertiary)]">:</span>
-                <CardMenuField surface="dialog" fit="min">
-                  <select
-                    className={dlgField + " !w-auto"}
-                    aria-label="Entry minute"
-                    value={entryWall.minute}
-                    onChange={(e) => {
-                      const minute = parseInt(e.target.value, 10);
-                      commitEntry(entryWall.hour, minute);
-                    }}
-                  >
-                    {Array.from({ length: 60 }, (_, n) => n).map((m) => (
-                      <option key={m} value={m}>
-                        {String(m).padStart(2, "0")}
-                      </option>
-                    ))}
-                  </select>
-                </CardMenuField>
-                <CardMenuField surface="dialog" fit="min">
-                  <select
-                    className={dlgField + " !w-auto"}
-                    aria-label="Entry AM or PM"
-                    value={entryAmpm}
-                    onChange={(e) => {
-                      const next = e.target.value;
-                      let h24 = entryHour12 % 12;
-                      if (next === "PM") h24 += 12;
-                      commitEntry(h24, entryWall.minute);
-                    }}
-                  >
-                    <option value="AM">AM</option>
-                    <option value="PM">PM</option>
-                  </select>
-                </CardMenuField>
-              </div>
-            </div>
-          </div>
+          <button
+            type="button"
+            className="min-h-[var(--hit-min)] text-[length:var(--text-body)] text-[var(--color-tint)] hover:text-[var(--color-tint-emphasis)]"
+            onClick={addLeg}
+            aria-label="Add leg"
+          >
+            + Add Leg
+          </button>
         </section>
 
-        <section className="grid grid-cols-[1fr_auto] items-start gap-3">
-          <div>
-            <h4 className={sectionLabel}>ToS script</h4>
-            <button
-              type="button"
-              className={
-                "block w-full rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-2)] " +
-                "text-left font-mono text-[length:var(--text-footnote)] leading-relaxed"
-              }
-              style={{
-                background: "var(--color-code-surface)",
-                color: "var(--color-success)",
-              }}
-              data-code-surface="1"
-              data-testid="builder-tos-script"
-              onClick={() => {
-                if (!tosScript) return;
-                rememberTosScript(tosScript);
-                void navigator.clipboard.writeText(tosScript).then(() => {
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 1200);
-                });
-              }}
-            >
-              {tosScript || "—"}
-              <span className="mt-1 block text-[length:var(--text-caption)] text-[var(--color-label-secondary)]">
-                {copied ? "copied" : "click to copy"}
-              </span>
-            </button>
-            <div className="mt-2 text-[length:var(--text-body)] text-[var(--color-label-secondary)]">
-              <div>
-                Preview: {previewLabel}
-                {debitShown != null
-                  ? ` $${debitShown.toFixed(2)} ${eco.side ?? ""}`
-                  : ""}
-              </div>
-              <div className="font-mono">{previewNotation}</div>
-            </div>
-          </div>
-          <div className={footerBar}>
-            <button
-              type="button"
-              className="min-h-[var(--hit-min)] rounded-[var(--radius-sm)] bg-[var(--color-tint)] px-4 py-1.5 text-[length:var(--text-body)] text-[var(--color-on-tint)]"
-              data-testid="builder-analyze"
-            >
-              Analyze
-            </button>
-            {mode === "create" ? (
-              <>
-                <button
-                  type="button"
-                  className="min-h-[var(--hit-min)] rounded-[var(--radius-sm)] bg-[var(--color-warning)] px-4 py-1.5 text-[length:var(--text-body)] text-[var(--color-surface)]"
-                  data-testid="position-builder-submit"
-                  onClick={handleSave}
-                >
-                  Submit
-                </button>
-                <button
-                  type="button"
-                  className="min-h-[var(--hit-min)] text-[length:var(--text-body)] text-[var(--color-label-secondary)] hover:text-[var(--color-label)]"
-                  data-testid="position-builder-cancel"
-                  onClick={onCancel}
-                >
-                  Cancel
-                </button>
-              </>
-            ) : (
-              <button
-                type="button"
-                className="min-h-[var(--hit-min)] text-[length:var(--text-body)] text-[var(--color-label-secondary)] hover:text-[var(--color-label)]"
-                data-testid="position-builder-close-footer"
-                onClick={onCancel}
+        <section className="space-y-3 border-t border-[var(--color-separator)] pt-5" aria-label="Position">
+          <h4 className={sectionLabel}>Position</h4>
+          <FormRow label="Basis">
+            <div className="flex items-center gap-2">
+              <span
+                className="tabular-nums text-[length:var(--text-body)]"
+                data-testid="builder-live-package-price"
+                data-value-field="1"
               >
-                Close
-              </button>
-            )}
-          </div>
+                {debitShown != null && Number.isFinite(debitShown)
+                  ? debitShown.toFixed(2)
+                  : "—"}
+              </span>
+              <TosStepper surface="dialog"
+                testId="builder-debit-step"
+                ariaLabel="Package debit"
+                disabled={debitShown == null}
+                onUp={() => stepDebit("up")}
+                onDown={() => stepDebit("down")}
+              />
+              <TosPadlock surface="dialog"
+                locked={!!overrideActive}
+                testId="builder-padlock"
+                onToggle={() => {
+                  if (mode === "edit") {
+                    if (overrideActive) onUnlock?.();
+                    else onLockNatural?.();
+                    return;
+                  }
+                  if (overrideActive) {
+                    setPosition((p) => ({
+                      ...p,
+                      net_debit_override: null,
+                    }));
+                  }
+                }}
+              />
+            </div>
+          </FormRow>
+          <FormRow label="Packages">
+            <div className="flex items-center gap-2">
+              <span
+                className="tabular-nums text-[length:var(--text-body)]"
+                data-testid="builder-pos"
+                data-value-field="1"
+              >
+                {pkgPos}
+              </span>
+              <TosQtyControl surface="dialog"
+                testId="builder-pos-step"
+                onUp={() => scalePos(pkgPos + 1)}
+                onDown={() => scalePos(Math.max(1, pkgPos - 1))}
+                onPick={(n) => scalePos(n)}
+              />
+            </div>
+          </FormRow>
         </section>
+
+        <section className="space-y-3 border-t border-[var(--color-separator)] pt-5" aria-label="ToS script">
+          <h4 className={sectionLabel}>ToS script</h4>
+          <pre
+            className={
+              "overflow-x-auto rounded-[var(--radius-sm)] px-2 py-2 " +
+              "text-left font-mono text-[length:var(--text-footnote)] leading-relaxed"
+            }
+            style={{
+              margin: 0,
+              background: "var(--color-code-surface)",
+              color: "var(--color-success)",
+            }}
+            data-code-surface="1"
+            data-testid="builder-tos-script"
+          >
+            {tosScript || "—"}
+          </pre>
+          <button
+            type="button"
+            className="min-h-[var(--hit-min)] text-[length:var(--text-body)] text-[var(--color-tint)] hover:text-[var(--color-tint-emphasis)]"
+            aria-label="Copy ToS script"
+            onClick={() => {
+              if (!tosScript) return;
+              rememberTosScript(tosScript);
+              void navigator.clipboard.writeText(tosScript).then(() => {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1200);
+              });
+            }}
+          >
+            {copied ? "Copied" : "Copy"}
+          </button>
+        </section>
+      </div>
+
+      <div className="flex items-center justify-end gap-3 border-t border-[var(--color-separator)] px-5 py-5">
+        <button
+          type="button"
+          className="min-h-[var(--hit-min)] px-4 text-[length:var(--text-body)] text-[var(--color-label-secondary)] hover:text-[var(--color-label)]"
+          data-testid="position-builder-cancel"
+          onClick={onCancel}
+        >
+          Cancel
+        </button>
+        {mode === "create" ? (
+          <button
+            type="button"
+            className="min-h-[var(--hit-min)] rounded-[var(--radius-sm)] bg-[var(--color-tint)] px-4 text-[length:var(--text-body)] font-medium text-[var(--color-on-tint)]"
+            data-testid="builder-analyze"
+            onClick={handleSave}
+          >
+            Analyze
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="min-h-[var(--hit-min)] rounded-[var(--radius-sm)] bg-[var(--color-tint)] px-4 text-[length:var(--text-body)] font-medium text-[var(--color-on-tint)]"
+            data-testid="builder-update"
+            onClick={handleSave}
+          >
+            Update
+          </button>
+        )}
       </div>
     </div>
   );

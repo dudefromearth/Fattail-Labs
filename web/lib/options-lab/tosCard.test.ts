@@ -395,7 +395,7 @@ test("PC8-D ✕ deletes and Close closes; no entry-time on the card", () => {
     join(here, "../../components/options-lab/PositionBuilder.tsx"),
     "utf8",
   );
-  assert.match(builder, /builder-entry-at/);
+  assert.doesNotMatch(builder, /builder-entry-at/);
 });
 
 test("D-PC-7 Edit dialog displayed price reads CardLockState, not override", () => {
@@ -443,10 +443,10 @@ test("PC8-G dialog shares TosControls; no forked stepper/padlock/triangle", () =
   assert.doesNotMatch(builder, /type="date"/);
   assert.match(builder, /builder-leg-qty-step-/);
   assert.match(builder, /Math\.abs\(leg\.quantity\) \+ 1/);
-  assert.match(builder, /builder-entry-at/);
-  assert.match(builder, /click to copy/);
+  assert.doesNotMatch(builder, /builder-entry-at/);
+  assert.match(builder, /Copy ToS script/);
   assert.match(builder, /builder-pos-step/);
-  assert.match(builder, /isTop \?/);
+  assert.match(builder, /builder-live-package-price/);
 });
 
 test("PC8-E VOL per leg and package DELTA; a miss does not null the rest", () => {

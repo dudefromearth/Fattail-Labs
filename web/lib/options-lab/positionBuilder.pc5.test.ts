@@ -45,12 +45,14 @@ test("AT-PC-04 Opening Edit writes zero fields — no snap, no reprice, no write
   assert.match(builder, /if \(mode === "edit"\) return;/);
 });
 
-test("AT-PC-23 Edit Close / Esc; no Submit", () => {
-  assert.match(builder, /data-testid="position-builder-close"/);
+test("AT-PC-23 Escape dismisses; Create Analyze+Cancel; Edit Update+Cancel", () => {
   assert.match(builder, /e\.key !== "Escape"/);
   assert.doesNotMatch(builder, /position-builder-analyze/);
-  assert.doesNotMatch(builder, />Update</);
-  assert.match(builder, /data-testid="position-builder-submit"/);
+  assert.doesNotMatch(builder, /position-builder-submit/);
+  assert.doesNotMatch(builder, /position-builder-close/);
+  assert.match(builder, /data-testid="builder-analyze"/);
+  assert.match(builder, /data-testid="builder-update"/);
+  assert.match(builder, /data-testid="position-builder-cancel"/);
 });
 
 test("AT-PC-21 Create Cancel does not insert; Submit does", () => {
@@ -76,8 +78,11 @@ test("AT-PC-32 dialog picker rebuilds legs", () => {
   assert.match(builder, /regenerate\(/);
 });
 
-test("§5.1 removals: Preview, Analyze, defaults, retry, spot override", () => {
-  assert.doesNotMatch(builder, /sectionLabel\}>Preview</);
+test("§5.1 / AT-DLG-11 removals: Preview, entry time, Submit, Done", () => {
+  assert.doesNotMatch(builder, /Preview:/);
+  assert.doesNotMatch(builder, /builder-entry-at/);
+  assert.doesNotMatch(builder, /position-builder-submit/);
+  assert.doesNotMatch(builder, /position-builder-close/);
   assert.doesNotMatch(builder, /builder-defaults-menu/);
   assert.doesNotMatch(builder, /builder-retry-opf/);
   assert.doesNotMatch(builder, /data-testid="builder-spot"/);
