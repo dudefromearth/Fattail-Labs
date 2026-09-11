@@ -48,7 +48,7 @@ import {
 } from "@/lib/blotterTheme";
 import {
   TosPadlock,
-  TosQtyQuickPick,
+  TosQtyControl,
   TosStepper,
 } from "@/components/options-lab/TosControls";
 import {
@@ -284,6 +284,12 @@ const CARD_EXTRA_Y = 0;
 const chromeBtn =
   "rounded px-1 py-0 text-[10px] font-normal text-white/80 hover:bg-black/40";
 const actionBtn = chromeBtn;
+/** Native <select> ignores h-* unless appearance is reset; floor = row (18px). */
+const cardSelect =
+  "h-[18px] max-h-[18px] appearance-none cursor-pointer rounded-sm bg-black/25 " +
+  "py-0 pl-1 pr-3 outline-none leading-[18px] bg-no-repeat bg-[length:7px_7px] " +
+  "bg-[right_3px_center] " +
+  "[background-image:url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'><polygon points='1,2.2 7,2.2 4,6.2' fill='white' fill-opacity='0.7'/></svg>\")]";
 
 export type AnalyzerPositionsListProps = {
   positions: AnalyzerPosition[];
@@ -1086,11 +1092,7 @@ function PosBlock({
             >
               {isTop ? (
                 <select
-                  className={
-                    "h-4 w-full max-w-full cursor-pointer rounded bg-black/20 py-0 pl-1 pr-0.5 " +
-                    "outline-none " +
-                    textMain
-                  }
+                  className={cardSelect + " w-full max-w-full " + textMain}
                   value={currentTemplate ?? ""}
                   aria-label="Spread"
                   data-testid={`analyzer-pos-spread-${pos.id}`}
@@ -1120,10 +1122,7 @@ function PosBlock({
             >
               {isTop ? (
                 <select
-                  className={
-                    "h-4 w-full max-w-full cursor-pointer rounded bg-black/20 py-0 pl-1 pr-0.5 outline-none " +
-                    textMain
-                  }
+                  className={cardSelect + " w-full max-w-full " + textMain}
                   value={pkgDir === "SELL" ? "sell" : "buy"}
                   aria-label="Structure side BUY or SELL"
                   data-testid={`analyzer-pos-direction-${pos.id}`}
@@ -1147,11 +1146,12 @@ function PosBlock({
               title={isTop ? `POS ${pkgQty}` : undefined}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-end gap-0.5">
+              <div className="flex items-center justify-end gap-0">
                 {isTop ? (
                   <input
                     className={
-                      "w-10 rounded bg-black/20 py-0.5 text-right font-mono outline-none " +
+                      "h-[18px] w-5 bg-transparent py-0 pr-0.5 text-right font-mono " +
+                      "leading-[18px] outline-none " +
                       textMain
                     }
                     inputMode="numeric"
@@ -1168,18 +1168,12 @@ function PosBlock({
                   <span>{signedQ}</span>
                 )}
                 {isTop ? (
-                  <>
-                    <TosStepper
-                      testId={`analyzer-pos-qty-step-${pos.id}`}
-                      ariaLabel="POS"
-                      onUp={() => onScalePos(pos.id, pkgQty + 1)}
-                      onDown={() => onScalePos(pos.id, Math.max(1, pkgQty - 1))}
-                    />
-                    <TosQtyQuickPick
-                      testId={`analyzer-pos-qty-pick-${pos.id}`}
-                      onPick={(n) => onScalePos(pos.id, n)}
-                    />
-                  </>
+                  <TosQtyControl
+                    testId={`analyzer-pos-qty-step-${pos.id}`}
+                    onUp={() => onScalePos(pos.id, pkgQty + 1)}
+                    onDown={() => onScalePos(pos.id, Math.max(1, pkgQty - 1))}
+                    onPick={(n) => onScalePos(pos.id, n)}
+                  />
                 ) : null}
               </div>
             </td>
@@ -1205,10 +1199,7 @@ function PosBlock({
               {(isTop && exposure.expiration === "row1") ||
               exposure.expiration === "per-leg" ? (
                 <select
-                  className={
-                    "h-4 w-full max-w-full cursor-pointer rounded bg-black/20 py-0 pl-1 pr-0.5 outline-none " +
-                    textMain
-                  }
+                  className={cardSelect + " w-full max-w-full " + textMain}
                   value={boundSelectValue(exp, expChoices).value}
                   data-invalid={
                     boundSelectValue(exp, expChoices).invalid ? "1" : "0"
@@ -1248,7 +1239,7 @@ function PosBlock({
                 <span className={textMuted}>
                   {fmtExp(exp)}
                   {isTop ? (
-                    <span className="ml-1 text-[14px] text-white/50">
+                    <span className="ml-1 text-[10px] text-white/50">
                       {expired ? "EXPIRED" : `${dte}d`}
                     </span>
                   ) : null}
@@ -1266,7 +1257,8 @@ function PosBlock({
                 {listedForLeg.length ? (
                   <select
                     className={
-                      "max-w-[6.5rem] cursor-pointer rounded bg-black/20 py-0.5 text-right font-mono outline-none " +
+                      cardSelect +
+                      " max-w-[6.5rem] text-right font-mono " +
                       textMain
                     }
                     value={

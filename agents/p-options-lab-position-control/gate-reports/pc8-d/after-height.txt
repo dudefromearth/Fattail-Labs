@@ -1,1 +1,4 @@
-162
+card_h=60
+card_w=902
+rest_h=18 rest_w=34 seg0_h=8.5 seg1_h=8.5 caret_h=18 caret_w=18
+grown_h=44 grown_w=44 hit-min=2.75rem hitPx=44 grown_seg0_h=21.5 grown_seg1_h=21.5

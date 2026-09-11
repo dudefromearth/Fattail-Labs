@@ -166,11 +166,23 @@ test("AT-PC-67 / AT-PC-68 stepper grows on hover/focus; exclusive z-index", () =
     join(here, "../../components/options-lab/TosControls.tsx"),
     "utf8",
   );
-  assert.match(src, /min-h-\[var\(--hit-min\)\]/);
+  assert.doesNotMatch(src, /\.split\s*\(/);
+  assert.doesNotMatch(src, /\bGROWN\b/);
+  assert.match(src, /group-hover\/step:min-h-\[var\(--hit-min\)\]/);
+  assert.match(src, /group-focus-within\/step:min-h-\[var\(--hit-min\)\]/);
   assert.match(src, /hover:z-20/);
   assert.match(src, /focus-within:z-20/);
   assert.match(src, /tos-stepper/);
+  assert.match(src, /data-resting-h="18"/);
   assert.doesNotMatch(src, /▲|▼/);
+  for (const line of src.split("\n")) {
+    if (!line.includes("min-h-[var(--hit-min)]")) continue;
+    assert.match(
+      line,
+      /group-hover\/step:|group-focus-within\/step:/,
+      `--hit-min must be grown-only: ${line.trim()}`,
+    );
+  }
 });
 
 test("AT-PC-69 QTY quick-pick is POS and leaves lock standing", () => {
@@ -188,8 +200,15 @@ test("AT-PC-69 QTY quick-pick is POS and leaves lock standing", () => {
     join(here, "../../components/options-lab/AnalyzerPositionsList.tsx"),
     "utf8",
   );
-  assert.match(list, /TosQtyQuickPick/);
+  assert.match(list, /TosQtyControl/);
+  assert.doesNotMatch(list, /TosQtyQuickPick/);
   assert.match(list, /onScalePos/);
+  const src = readFileSync(
+    join(here, "../../components/options-lab/TosControls.tsx"),
+    "utf8",
+  );
+  assert.match(src, /export function TosQtyControl/);
+  assert.doesNotMatch(src, /TosQtyQuickPick/);
 });
 
 test("AT-PC-70 no chevron-style nudge remains on the card", () => {
