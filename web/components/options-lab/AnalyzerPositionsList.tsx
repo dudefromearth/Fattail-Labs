@@ -13,7 +13,6 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type ReactNode,
 } from "react";
 import ReplayBadge from "@/components/options-lab/ReplayBadge";
 import { formatReplayClock } from "@/lib/options-lab/algoDayReplay";
@@ -48,9 +47,14 @@ import {
   type BlotterBlockKind,
 } from "@/lib/blotterTheme";
 import {
+  CardMenuField,
+  FIELD_FILL,
+  OL_CHROME as CHROME,
+  OL_DATA as DATA,
   TosPadlock,
   TosQtyControl,
   TosStepper,
+  cardSelect,
 } from "@/components/options-lab/TosControls";
 import {
   CARD_COLUMNS,
@@ -264,8 +268,6 @@ function legsInDisplayOrder(
 }
 
 /** Card scale is --ol-card-data / --ol-card-chrome (tokens). Column headers keep ToS uppercase. */
-const DATA = "text-[length:var(--ol-card-data)]";
-const CHROME = "text-[length:var(--ol-card-chrome)]";
 const th =
   `px-1 py-0.5 text-left ${CHROME} font-normal uppercase tracking-wide text-white/55 whitespace-nowrap`;
 const td = `px-1 ${DATA} font-normal tabular-nums whitespace-nowrap`;
@@ -299,41 +301,6 @@ const CARD_EXTRA_Y = 0;
 const chromeBtn =
   `rounded px-1 py-0 ${CHROME} font-normal text-white/80 hover:bg-black/40`;
 const actionBtn = chromeBtn;
-/** Lighter than the row; no border. Distinguishes editable from read-only. */
-const FIELD_FILL = "bg-white/12";
-/** Native <select> ignores h-* unless appearance is reset; floor = row (18px). */
-const cardSelect =
-  `h-[18px] max-h-[18px] w-full appearance-none cursor-pointer border-0 ${FIELD_FILL} ` +
-  `py-0 pl-1 pr-1.5 outline-none leading-[18px] ${DATA}`;
-
-/** Corner-nested menu marker (ToS). Not a hit target. */
-function CardMenuField({
-  children,
-  fit = "full",
-}: {
-  children: ReactNode;
-  fit?: "full" | "min";
-}) {
-  return (
-    <span
-      className={
-        "relative inline-flex h-[18px] max-h-[18px] min-w-0 items-stretch overflow-hidden rounded-sm " +
-        (fit === "min" ? "w-auto" : "w-full")
-      }
-    >
-      {children}
-      <span
-        className="pointer-events-none absolute bottom-0 right-0 block h-[6px] w-[6px]"
-        aria-hidden
-        data-menu-triangle="1"
-      >
-        <svg width="6" height="6" viewBox="0 0 6 6" aria-hidden>
-          <polygon points="6,6 0,6 6,0" fill="#ffffff" />
-        </svg>
-      </span>
-    </span>
-  );
-}
 
 export type AnalyzerPositionsListProps = {
   positions: AnalyzerPosition[];

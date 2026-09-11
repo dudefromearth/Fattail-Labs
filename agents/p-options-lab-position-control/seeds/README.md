@@ -14,5 +14,6 @@ Juliet materializes one seed per packet. Each seed names an **exact file list**.
 | `PC7.md` | PC7-G PASS · `a939c0f` |
 | `PC8.md` | PC8-G PASS · `f1d536a` |
 | `PC8-E.md` | PC8-E-G PASS · seven items · Echo/Tango `--hit-min` |
+| `PC8-G.md` | PC8-G-G PASS · dialog PC-VOCAB-1 |
 | `PC9a.md` | PC9a-G PASS · `c434634` |
 | `PC9b.md` | PC9b-G PASS · `0f5d921` · mapper only · snapshot deferred |

@@ -6,7 +6,7 @@
  * Finding 0: never apply --hit-min at rest; no .split constructions.
  */
 
-import { useId, useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { QTY_QUICK_PICK } from "@/lib/options-lab/tosCard";
 
 /** Resting unit height = data row. Grown uses --hit-min. */
@@ -321,5 +321,44 @@ export function TosPadlock({
     >
       <TosPadlockGlyph locked={locked} />
     </button>
+  );
+}
+
+/** Card / dialog type scale (PC-VOCAB-1). */
+export const OL_DATA = "text-[length:var(--ol-card-data)]";
+export const OL_CHROME = "text-[length:var(--ol-card-chrome)]";
+/** Lighter than the row; no border. Distinguishes editable from read-only. */
+export const FIELD_FILL = "bg-white/12";
+/** Native <select> ignores h-* unless appearance is reset; floor = row (18px). */
+export const cardSelect =
+  `h-[18px] max-h-[18px] min-h-0 w-full appearance-none cursor-pointer border-0 ${FIELD_FILL} ` +
+  `py-0 pl-1 pr-1.5 outline-none leading-[18px] ${OL_DATA} text-white`;
+
+/** Corner-nested menu marker (ToS). Not a hit target. One component for card and dialog. */
+export function CardMenuField({
+  children,
+  fit = "full",
+}: {
+  children: ReactNode;
+  fit?: "full" | "min";
+}) {
+  return (
+    <span
+      className={
+        "relative inline-flex h-[18px] max-h-[18px] min-w-0 items-stretch overflow-visible rounded-sm " +
+        (fit === "min" ? "w-auto" : "w-full")
+      }
+    >
+      {children}
+      <span
+        className="pointer-events-none absolute bottom-0 right-0 block h-[6px] w-[6px]"
+        aria-hidden
+        data-menu-triangle="1"
+      >
+        <svg width="6" height="6" viewBox="0 0 6 6" aria-hidden>
+          <polygon points="6,6 0,6 6,0" fill="#ffffff" />
+        </svg>
+      </span>
+    </span>
   );
 }

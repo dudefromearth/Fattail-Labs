@@ -17,13 +17,22 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import StrikeSelect from "@/components/options-lab/StrikeSelect";
-import Button from "@/components/ui/Button";
-import { TosPadlock } from "@/components/options-lab/TosControls";
-import type { CardLockState } from "@/lib/options-lab/analyzerBook";
+import {
+  CardMenuField,
+  FIELD_FILL,
+  OL_CHROME,
+  OL_DATA,
+  TosPadlock,
+  TosQtyControl,
+  TosStepper,
+  cardSelect,
+} from "@/components/options-lab/TosControls";
+import {
+  calendarDteOf,
+  type CardLockState,
+} from "@/lib/options-lab/analyzerBook";
 import {
   applyEtHm,
-  etHmValue,
   resolveEntryAt,
 } from "@/lib/options-lab/positionSession";
 import {
@@ -40,14 +49,14 @@ import {
 } from "@/lib/options-lab/listedStructure";
 import {
   boundSelectValue,
-  ladderKind,
   offeredTemplates,
-  proposeExpirationRoll,
 } from "@/lib/options-lab/chainControls";
 import {
-  formatPackageSide,
   packageEconomics,
 } from "@/lib/options-lab/packageEconomics";
+import { posAndRatio, scaleLegPos, signedActualQty } from "@/lib/options-lab/positionQty";
+import { stepCardPrice } from "@/lib/options-lab/tosCard";
+import { nyWall } from "@/lib/options-lab/timeOrthoSession";
 import { useOptionsLab } from "@/lib/optionsLabContext";
 import { rememberTosScript } from "@/lib/tradeLogTos";
 import type {
@@ -276,29 +285,14 @@ function defaultDiagonalWidth(symbol: string): number {
   return 5;
 }
 
-/** HIG form control — inset field on grouped surface */
-const field =
-  "w-full min-h-11 rounded-[var(--radius-md)] border-0 bg-transparent " +
-  "px-3 py-2.5 text-[22.5px] text-[var(--color-label)] outline-none " +
-  "focus-visible:bg-[var(--color-fill)]/60";
-const fieldInset =
-  "w-full min-h-11 rounded-[var(--radius-md)] border border-[var(--color-separator)] " +
-  "bg-[var(--color-surface)] px-3 py-2 text-[22.5px] text-[var(--color-label)] " +
-  "outline-none focus-visible:outline focus-visible:outline-2 " +
-  "focus-visible:outline-offset-1 focus-visible:outline-[var(--color-tint)]";
+/** Card tokens on a dark dialog (PC-VOCAB-1 · PC8-G). */
 const sectionLabel =
-  "px-1 pb-1.5 text-[19.5px] font-semibold tracking-tight text-[var(--color-label-secondary)]";
-const rowLabel =
-  "shrink-0 w-[10rem] text-[22.5px] text-[var(--color-label)]";
-const group =
-  "overflow-hidden rounded-[var(--radius-xl)] border border-[var(--color-separator)] " +
-  "bg-[var(--color-surface)] shadow-[var(--elevation-1)]";
-const groupRow =
-  "flex items-center gap-3 border-b border-[var(--color-separator)] last:border-b-0 " +
-  "bg-[var(--color-surface)] px-3 min-h-12";
+  `px-1 pb-1 ${OL_CHROME} font-normal uppercase tracking-wide text-white/55`;
+const dlgField =
+  `h-[18px] max-h-[18px] ${FIELD_FILL} rounded-sm border-0 px-1.5 outline-none ` +
+  `${OL_DATA} text-white leading-[18px]`;
 const footerBar =
-  "flex flex-wrap items-center justify-between gap-2 border-t border-[var(--color-separator)] " +
-  "bg-[var(--color-surface-secondary)]/80 px-4 py-3 backdrop-blur-md";
+  "flex flex-col items-stretch gap-1.5 px-3 py-2";
 
 export type PositionBuilderProps = {
   open: boolean;
@@ -409,6 +403,7 @@ export default function PositionBuilder({
   const [wingWidth, setWingWidth] = useState(DEFAULT_CREATE_WING_WIDTH);
   const [backExpiration, setBackExpiration] = useState("");
   const [copied, setCopied] = useState(false);
+  const [createEntryAt, setCreateEntryAt] = useState<number | null>(null);
   /** Defaults menu (lower-left footer) — Lab + up to 3 user presets */
   const [defaultsMenuOpen, setDefaultsMenuOpen] = useState(false);
   const [defaultsFlash, setDefaultsFlash] = useState<string | null>(null);
@@ -1573,29 +1568,76 @@ export default function PositionBuilder({
     return [position.expiration || frontDefault || etYmd()];
   }, [chain.expirations, position.expiration, frontDefault]);
 
+  const pkgPos = Math.max(1, posAndRatio(position.legs).pos);
+  const debitShown =
+    mode === "edit" && lockActive && lockedMagnitude != null
+      ? lockedMagnitude
+      : overrideActive && position.net_debit_override != null
+        ? Math.abs(position.net_debit_override)
+        : eco.absMid;
+  const dte = calendarDteOf(position.expiration);
+  const entryMs = resolveEntryAt({
+    entryAt: entryAt ?? createEntryAt,
+    createdAt: Date.now(),
+  });
+  const entryWall = nyWall(entryMs);
+  const entryHour12 = entryWall.hour % 12 || 12;
+  const entryAmpm = entryWall.hour >= 12 ? "PM" : "AM";
+  const commitEntry = (hour24: number, minute: number) => {
+    const next = applyEtHm(
+      entryMs,
+      `${String(hour24).padStart(2, "0")}:${String(minute).padStart(2, "0")}`,
+    );
+    if (onSetEntryAt) onSetEntryAt(next);
+    else setCreateEntryAt(next);
+  };
+  const derivedName = `${direction === "buy" ? "Buy" : "Sell"} ${TEMPLATE_LABELS[template]}`;
+  const stepDebit = (dir: "up" | "down") => {
+    const mag = debitShown != null && debitShown > 0 ? debitShown : 0.05;
+    let next: number;
+    try {
+      next = stepCardPrice(position.underlying || symbol, mag, dir);
+    } catch {
+      return;
+    }
+    if (mode === "edit") onLockLimit?.(next);
+    else {
+      setPosition((p) => ({ ...p, net_debit_override: next }));
+    }
+  };
+  const scalePos = (n: number) => {
+    const next = Math.max(1, Math.round(n));
+    setPosition((p) => ({
+      ...p,
+      contracts: 1,
+      legs: scaleLegPos(p.legs, next),
+    }));
+  };
+
   if (!open) return null;
+
+  const orderedLegs = [...position.legs]
+    .map((leg, origIdx) => ({ leg, origIdx }))
+    .sort((a, b) => {
+      if (a.leg.type !== b.leg.type) return a.leg.type === "call" ? -1 : 1;
+      return a.leg.strike - b.leg.strike;
+    });
 
   return (
     <div
       className={
-        "builder-steppers fixed z-50 flex max-h-[min(92vh,860px)] w-[min(770px,calc(100vw-1.5rem))] " +
-        "flex-col overflow-hidden rounded-[var(--radius-xl)] " +
-        "border border-[var(--color-separator)] bg-[var(--color-surface-secondary)] " +
-        "shadow-[var(--elevation-3,0_25px_50px_-12px_rgba(0,0,0,0.45))]"
+        "builder-steppers fixed z-50 flex max-h-[min(92vh,860px)] w-[min(720px,calc(100vw-1.5rem))] " +
+        "flex-col overflow-hidden rounded-lg border border-white/15 bg-[#0a0a0e] text-white " +
+        "[color-scheme:dark] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.65)]"
       }
       style={{ left: panelPos.x, top: panelPos.y }}
       role="dialog"
       aria-modal="false"
-      aria-label={mode === "edit" ? "Edit position" : "Create position"}
+      aria-label={mode === "edit" ? "Edit Position" : "Create Position"}
       data-testid="position-builder"
     >
-      {/* Navigation bar */}
       <div
-        className={
-          "flex cursor-grab items-center justify-between gap-3 " +
-          "border-b border-[var(--color-separator)] bg-[var(--color-surface)]/90 " +
-          "px-4 py-3 backdrop-blur-md active:cursor-grabbing"
-        }
+        className="relative flex cursor-grab items-center justify-center border-b border-white/10 px-3 py-2 active:cursor-grabbing"
         onPointerDown={onPanelPointerDown}
         onPointerMove={onPanelPointerMove}
         onPointerUp={onPanelPointerUp}
@@ -1603,68 +1645,63 @@ export default function PositionBuilder({
         data-testid="position-builder-drag-handle"
         title="Drag to move"
       >
-        <div className="min-w-0 flex-1">
-          <h3 className="truncate text-[25.5px] font-semibold tracking-tight text-[var(--color-label)]">
-            {mode === "edit" ? "Edit Position" : "Create Position"}
-          </h3>
-          <p className="truncate text-[18px] text-[var(--color-label-tertiary)]">
-            {position.underlying || symbol}
-            {chain.spot != null ? ` · ${chain.spot.toFixed(2)}` : ""}
-            {chain.spotStrike != null ? ` · ATM ${chain.spotStrike}` : ""}
-          </p>
-        </div>
+        <h3 className={`truncate ${OL_DATA} font-normal text-white/80`}>
+          {mode === "edit" ? "Edit Position" : "Create Position"}
+        </h3>
         {mode === "edit" ? (
-          <Button
-            variant="plain"
-            className="!min-h-9 !px-2"
+          <button
+            type="button"
+            className={`absolute right-2 ${OL_CHROME} text-white/50 hover:text-white`}
             data-testid="position-builder-close"
             onClick={onCancel}
           >
             Close
-          </Button>
+          </button>
         ) : null}
       </div>
 
       {planeState.kind !== "ready" ? (
         <div
-          className={
-            "flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2.5 " +
-            (planeState.kind === "plane_unavailable"
-              ? "border-amber-500/30 bg-amber-500/10"
-              : planeState.kind === "off_market"
-                ? "border-[var(--color-separator)] bg-[var(--color-fill)]/80"
-                : planeState.kind === "unplaceable"
-                  ? "border-[var(--color-separator)] bg-[var(--color-fill)]"
-                  : "border-[var(--color-separator)] bg-[var(--color-fill)]/60")
-          }
+          className="border-b border-white/10 px-3 py-1.5 text-white/70"
           role="status"
           data-testid="builder-structure-notice"
           data-plane-kind={planeState.kind}
         >
-          <div className="min-w-0 flex-1">
-            <div className="text-[18px] font-semibold tracking-wide text-[var(--color-label)]">
-              {planeState.title}
-            </div>
-            <p className="mt-0.5 text-[18px] leading-snug text-[var(--color-label-secondary)]">
-              {structureNotice || planeState.detail}
-            </p>
-          </div>
-          {null}
+          <div className={`${OL_DATA} text-white/80`}>{planeState.title}</div>
+          <p className={`${OL_CHROME} text-white/55`}>
+            {structureNotice || planeState.detail}
+          </p>
         </div>
       ) : null}
 
-      {/* Grouped content */}
-      <div className="flex-1 space-y-5 overflow-y-auto px-4 py-4">
-        {/* —— Structure —— */}
-        <section>
-          <h4 className={sectionLabel}>Structure</h4>
-          <div className={group}>
-            <div className={groupRow}>
-              <span className={rowLabel}>Strategy</span>
+      <div className="flex-1 space-y-3 overflow-y-auto px-3 py-3">
+        <section className="grid grid-cols-2 gap-3">
+          <div>
+            <h4 className={sectionLabel}>Symbol</h4>
+            <CardMenuField>
               <select
-                className={field + " flex-1 text-right"}
+                className={cardSelect + " text-white"}
+                value={position.underlying || symbol}
+                aria-label="Symbol"
+                data-testid="builder-symbol"
+                onChange={() => {
+                  /* session symbol is host-owned */
+                }}
+              >
+                <option value={position.underlying || symbol}>
+                  {position.underlying || symbol}
+                </option>
+              </select>
+            </CardMenuField>
+          </div>
+          <div>
+            <h4 className={sectionLabel}>Strategy</h4>
+            <CardMenuField>
+              <select
+                className={cardSelect + " text-white"}
                 value={template}
                 data-testid="builder-template"
+                aria-label="Strategy"
                 onChange={(e) => handleTemplate(e.target.value as TemplateType)}
               >
                 {STRATEGY_GROUPS.map((g) => {
@@ -1684,617 +1721,181 @@ export default function PositionBuilder({
                   );
                 })}
               </select>
-            </div>
-            <div className={groupRow + " justify-between py-2"}>
-              <span className={rowLabel}>Side</span>
-              <div className="inline-flex rounded-full bg-[var(--color-fill)] p-0.5">
-                <button
-                  type="button"
-                  className={
-                    "min-h-9 rounded-full px-4 text-[19.5px] font-semibold transition-colors " +
-                    (direction === "buy"
-                      ? "bg-emerald-600 text-white shadow-sm"
-                      : "text-[var(--color-label-secondary)]")
-                  }
-                  onClick={() => handleDirection("buy")}
-                >
-                  Buy
-                </button>
-                <button
-                  type="button"
-                  className={
-                    "min-h-9 rounded-full px-4 text-[19.5px] font-semibold transition-colors " +
-                    (direction === "sell"
-                      ? "bg-red-600 text-white shadow-sm"
-                      : "text-[var(--color-label-secondary)]")
-                  }
-                  onClick={() => handleDirection("sell")}
-                >
-                  Sell
-                </button>
-              </div>
-            </div>
-            {TEMPLATE_HAS_SIDE[template] ? (
-              <div className={groupRow}>
-                <span className={rowLabel}>Right</span>
-                <select
-                  className={field + " flex-1 text-right"}
-                  value={optionSide}
-                  onChange={(e) => {
-                    const s = e.target.value as OptionRight;
-                    setOptionSide(s);
-                    regenerate(
-                      template,
-                      centerStrike || atmCenter,
-                      wingWidth,
-                      s,
-                      direction,
-                      position.expiration,
-                      backExpiration,
-                    );
-                  }}
-                >
-                  <option value="call">Call</option>
-                  <option value="put">Put</option>
-                </select>
-              </div>
-            ) : null}
-            <div className={groupRow + " justify-between py-3"}>
-              <div className="min-w-0">
-                <div className="text-[22.5px] font-medium text-[var(--color-label)]">
-                  {direction === "buy" ? "Long" : "Short"}{" "}
-                  {TEMPLATE_LABELS[template]}
-                </div>
-                <div className="text-[18px] text-[var(--color-label-tertiary)]">
-                  OPF-held chain only
-                </div>
-              </div>
-              <svg
-                viewBox="0 0 60 24"
-                width={72}
-                height={28}
-                className="shrink-0 opacity-90"
-                style={
-                  // Sell = invert long debit silhouette → short/credit payoff.
-                  direction === "sell"
-                    ? { transform: "scaleY(-1)" }
-                    : undefined
-                }
-                aria-hidden
-              >
-                <path
-                  d={STRATEGY_DIAGRAMS[template]}
-                  fill="none"
-                  stroke={direction === "buy" ? "#22c55e" : "#ef4444"}
-                  strokeWidth="2.25"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </div>
+            </CardMenuField>
           </div>
         </section>
 
-        {/* —— Shape —— */}
-        <section>
-          <h4 className={sectionLabel}>Shape</h4>
-          <div className={group}>
-            <div className={groupRow}>
-              <span className={rowLabel}>Center</span>
-              <div className="min-w-0 flex-1">
-                <StrikeSelect
-                  listed={frontStrikes}
-                  value={
-                    centerStrike > 0
-                      ? centerStrike
-                      : inferStructureCenter(position.legs) ||
-                        (nearestCenter > 0 ? nearestCenter : 0)
-                  }
-                  center={
-                    centerStrike > 0
-                      ? centerStrike
-                      : nearestCenter > 0
-                        ? nearestCenter
-                        : effectiveSpot
-                  }
-                  /*
-                   * Full OPF list in the menu (scroll for strikes beyond ±5).
-                   * Selection defaults to nearest-to-spot; radius covers all
-                   * listed so nothing is clipped.
-                   */
-                  radiusN={Math.max(5, frontStrikes.length || 5)}
-                  emptyLabel={
-                    !planePrinting
-                      ? "Off market — last print"
-                      : chain.loading
-                        ? "Loading OPF strikes…"
-                        : chain.error
-                          ? "OPF unavailable"
-                          : "Loading OPF strikes…"
-                  }
-                  className="!min-h-11 !border-0 bg-transparent text-right font-mono text-[22.5px]"
-                  testId="builder-center-strike"
-                  onChange={(c) => {
-                    centerPinnedRef.current = true;
-                    setCenterStrike(c);
-                    regenerate(
-                      template,
-                      c,
-                      wingWidth || DEFAULT_CREATE_WING_WIDTH,
-                      optionSide,
-                      direction,
-                      position.expiration,
-                      backExpiration,
-                    );
-                  }}
-                />
-              </div>
-            </div>
-            {nearestCenter > 0 && frontStrikes.length > 0 ? (
-              <div className="border-b border-[var(--color-separator)] px-3 py-1.5 last:border-b-0">
-                <p className="text-right text-[16.5px] text-[var(--color-label-tertiary)]">
-                  Nearest to spot {effectiveSpot > 0 ? effectiveSpot.toFixed(2) : "—"}{" "}
-                  → {nearestCenter}
-                  {frontStrikes.length
-                    ? ` · ${frontStrikes.length} OPF strikes`
-                    : ""}
-                </p>
-              </div>
-            ) : null}
-            <div className={groupRow}>
-              <span className={rowLabel}>Width</span>
-              <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
-                {wingChoices.length > 0 ? (
-                  <select
-                    className={
-                      field + " max-w-[8rem] text-right font-mono tabular-nums"
-                    }
-                    data-testid="builder-width"
-                    data-listed-count={wingChoices.length}
-                    value={String(
-                      wingChoices.includes(wingWidth)
-                        ? wingWidth
-                        : wingChoices.find((c) => c >= wingWidth) ??
-                            wingChoices[0],
-                    )}
-                    onChange={(e) => {
-                      const w = normalizeStrike(parseFloat(e.target.value));
-                      // Refuse non-listed widths even if the option list is stale
-                      if (!wingChoices.includes(w)) return;
-                      setWingWidth(w);
-                      regenerate(
-                        template,
-                        centerStrike || atmCenter || nearestCenter,
-                        w,
-                        optionSide,
-                        direction,
-                        position.expiration,
-                        backExpiration,
-                      );
-                    }}
-                  >
-                    {wingChoices.map((w) => (
-                      <option key={String(w)} value={String(w)}>
-                        {w} pts
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <span
-                    className={
-                      field +
-                      " max-w-[8rem] text-right text-[var(--color-label-tertiary)]"
-                    }
-                    data-testid="builder-width"
-                    data-listed-count={0}
-                    role="status"
-                    title="Waiting for OPF listed strikes to derive lawful widths"
-                  >
-                    …
-                  </span>
-                )}
-              </div>
-            </div>
-            {wingChoices.length > 0 ? (
-              <div className="border-b border-[var(--color-separator)] px-3 py-1.5 last:border-b-0">
-                <p className="text-right text-[16.5px] text-[var(--color-label-tertiary)]">
-                  OPF listed wings only
-                  {listedStepNearLabel(frontStrikes, centerStrike || nearestCenter)}
-                </p>
-              </div>
-            ) : null}
-            <div className={groupRow}>
-              <span className={rowLabel}>Expiration</span>
-              {hasExps ? (
-                <div className="flex min-w-0 flex-1 flex-col items-end gap-1">
-                  <select
-                    className={field + " w-full text-right"}
-                    value={
-                      boundSelectValue(
-                        position.expiration,
-                        chain.expirations,
-                      ).value
-                    }
-                    data-invalid={
-                      boundSelectValue(
-                        position.expiration,
-                        chain.expirations,
-                      ).invalid
-                        ? "1"
-                        : "0"
-                    }
-                    onChange={(e) => {
-                      const exp = e.target.value;
-                      if (!exp) return;
-                      userPickedExp.current = true;
-                      let back = backExpiration;
-                      if (isTimeSpread) {
-                        const exps = chain.expirations;
-                        const idx = exps.indexOf(exp);
-                        back =
-                          idx >= 0 && idx + 1 < exps.length
-                            ? exps[idx + 1]
-                            : nextListedBack(exp, exps) || exp;
-                        setBackExpiration(back);
-                      }
-                      regenerate(
-                        template,
-                        centerStrike || atmCenter || spotPrice,
-                        wingWidth || DEFAULT_CREATE_WING_WIDTH,
-                        optionSide,
-                        direction,
-                        exp,
-                        back,
-                      );
-                    }}
-                  >
-                    {boundSelectValue(
-                      position.expiration,
-                      chain.expirations,
-                    ).invalid ? (
-                      <option value="">
-                        {position.expiration || "—"}
-                      </option>
-                    ) : null}
-                    {chain.expirations.map((e) => (
-                      <option key={e} value={e}>
-                        {e}
-                      </option>
-                    ))}
-                  </select>
-                  {boundSelectValue(position.expiration, chain.expirations)
-                    .invalid &&
-                  proposeExpirationRoll(
-                    position.expiration,
-                    chain.expirations,
-                  ) ? (
-                    <button
-                      type="button"
-                      className="text-[16.5px] font-semibold uppercase text-amber-200"
-                      data-testid="builder-propose-roll"
-                      onClick={() => {
-                        const next = proposeExpirationRoll(
-                          position.expiration,
-                          chain.expirations,
-                        );
-                        if (!next) return;
-                        userPickedExp.current = true;
-                        regenerate(
-                          template,
-                          centerStrike || atmCenter || spotPrice,
-                          wingWidth || DEFAULT_CREATE_WING_WIDTH,
-                          optionSide,
-                          direction,
-                          next,
-                          backExpiration,
-                        );
-                      }}
-                    >
-                      Roll to{" "}
-                      {proposeExpirationRoll(
-                        position.expiration,
-                        chain.expirations,
-                      )}
-                    </button>
-                  ) : null}
-                </div>
-              ) : (
-                <span
-                  className="flex-1 text-right text-[18px] text-[var(--color-label-tertiary)]"
-                  data-testid="builder-exp-loading"
-                >
-                  {ladderKind([]) === "empty" ? "loading" : "—"}
-                </span>
-              )}
-            </div>
-            {isTimeSpread ? (
-              <div className={groupRow}>
-                <span className={rowLabel}>Back exp</span>
-                <select
-                  className={field + " flex-1 text-right"}
-                  value={
-                    boundSelectValue(backExpiration, timeSpreadBackChoices)
-                      .value
-                  }
-                  onChange={(e) => {
-                    const b = e.target.value;
-                    if (!b) return;
-                    setBackExpiration(b);
-                    setPosition((prev) => ({
-                      ...prev,
-                      legs: prev.legs.map((leg) =>
-                        leg.side === "long" ? { ...leg, expiration: b } : leg,
-                      ),
-                      net_debit_override: null,
-                    }));
-                  }}
-                >
-                  {boundSelectValue(backExpiration, timeSpreadBackChoices)
-                    .invalid ? (
-                    <option value="">{backExpiration || "—"}</option>
-                  ) : null}
-                  {timeSpreadBackChoices.map((e) => (
-                    <option key={e} value={e}>
-                      {e}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : null}
-          </div>
-        </section>
-
-        {/* —— Package hero —— */}
-        <section>
-          <h4 className={sectionLabel}>Position</h4>
-          <div
-            className={
-              group +
-              " flex flex-col items-center gap-1 px-4 py-5 text-center"
+        <section className="flex items-center gap-3">
+          <svg
+            viewBox="0 0 60 24"
+            width={72}
+            height={28}
+            className="shrink-0 opacity-90"
+            style={
+              direction === "sell" ? { transform: "scaleY(-1)" } : undefined
             }
-            data-testid="builder-package-economics"
+            aria-hidden
           >
-            <div className="flex items-center gap-2">
-              <span className="text-[18px] font-medium text-[var(--color-label-tertiary)]">
-                {planeState.kind === "plane_unavailable"
-                  ? "Position"
-                  : planeState.kind === "updating"
-                    ? "Position"
-                    : marketLive
-                      ? "Natural mid"
-                      : "Closing mid"}
-              </span>
-              <span
-                className={
-                  "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[16.5px] font-semibold " +
-                  (planeState.kind === "plane_unavailable"
-                    ? "bg-amber-500/15 text-amber-800 dark:text-amber-200"
-                    : planeState.kind === "updating"
-                      ? "bg-[var(--color-fill)] text-[var(--color-label-secondary)]"
-                      : overrideActive
-                        ? "bg-amber-500/15 text-amber-300"
-                        : marketLive
-                          ? "bg-emerald-500/15 text-emerald-300"
-                          : "bg-[var(--color-fill)] text-[var(--color-label-secondary)]")
-                }
-                data-testid="builder-price-lock-state"
-                data-locked={overrideActive ? "1" : "0"}
-                data-plane-kind={planeState.kind}
-              >
-                {planeState.kind === "ready" || overrideActive ? (
-                  <TosPadlock
-                    locked={!!overrideActive}
-                    testId="builder-padlock"
-                    onToggle={() => {
-                      if (mode === "edit") {
-                        if (overrideActive) onUnlock?.();
-                        else onLockNatural?.();
-                        return;
-                      }
-                      if (overrideActive) {
-                        setPosition((p) => ({
-                          ...p,
-                          net_debit_override: null,
-                        }));
-                      }
-                    }}
-                  />
-                ) : null}
-                {planeState.kind === "plane_unavailable"
-                  ? planeState.title
-                  : planeState.kind === "updating"
-                    ? planeState.title
-                    : planeState.kind === "unplaceable"
-                      ? planeState.title
-                      : preOpenPackage
-                        ? "Theo · until open"
-                        : packageSessionLabel}
-              </span>
-            </div>
-            <div
+            <path
+              d={STRATEGY_DIAGRAMS[template]}
+              fill="none"
+              stroke={direction === "buy" ? "#22c55e" : "#ef4444"}
+              strokeWidth="2.25"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <div className="inline-flex rounded-full bg-white/10 p-0.5">
+            <button
+              type="button"
               className={
-                "font-mono text-[51px] font-semibold tabular-nums tracking-tight " +
-                (planeState.kind !== "ready" &&
-                !(overrideActive && position.net_debit_override != null)
-                  ? "text-[var(--color-label-tertiary)]"
-                  : eco.side === "CREDIT"
-                    ? "text-emerald-500"
-                    : eco.side === "DEBIT"
-                      ? "text-rose-500"
-                      : "text-[var(--color-label-tertiary)]")
+                `rounded-full px-3 py-0.5 ${OL_DATA} ` +
+                (direction === "buy"
+                  ? "bg-emerald-600 text-white"
+                  : "text-white/55")
               }
-              data-testid="builder-live-package-price"
+              onClick={() => handleDirection("buy")}
             >
-              {mode === "edit" && lockActive && lockedMagnitude != null
-                ? lockedMagnitude.toFixed(2)
-                : mode !== "edit" &&
-                    overrideActive &&
-                    position.net_debit_override != null
-                  ? Math.abs(position.net_debit_override).toFixed(2)
-                  : planeState.kind === "ready" && eco.absMid != null
-                    ? eco.absMid.toFixed(2)
-                    : planeState.kind === "updating"
-                      ? "…"
-                      : planeState.kind === "plane_unavailable"
-                        ? "—"
-                        : eco.absMid != null
-                          ? eco.absMid.toFixed(2)
-                          : "…"}
-            </div>
-            <div className="text-[19.5px] font-medium text-[var(--color-label-secondary)]">
-              {planeState.kind === "ready" || eco.side
-                ? overrideActive && position.net_debit_override != null
-                  ? "LIMIT"
-                  : eco.side ?? "—"
-                : planeState.title}
-              {eco.packages > 1 &&
-              planeState.kind === "ready" &&
-              eco.absMid != null ? (
-                <span data-testid="builder-package-total">
-                  {` · Qty ${eco.packages} · Total ${(
-                    (overrideActive && position.net_debit_override != null
-                      ? Math.abs(position.net_debit_override)
-                      : eco.absMid) * eco.packages
-                  ).toFixed(2)}`}
-                </span>
-              ) : null}
-              {packageSpread != null &&
-              !overrideActive &&
-              planeState.kind === "ready" ? (
-                <span
-                  className="ml-2 font-mono text-[18px] tabular-nums text-[var(--color-label-tertiary)]"
-                  data-testid="builder-package-spread"
-                >
-                  spread {packageSpread.toFixed(2)}
-                </span>
-              ) : null}
-            </div>
-            <p className="max-w-[18rem] text-[18px] leading-snug text-[var(--color-label-tertiary)]">
-              {planeState.kind !== "ready"
-                ? planeState.detail
-                : packageDisclaimer
-                  ? packageDisclaimer
-                  : overrideActive
-                    ? "Limit override active — clear limit for natural position"
-                    : marketLive
-                      ? "Live position from dual-side OPF mids"
-                      : "Closing position mid and spread from last OPF marks"}
-            </p>
+              Buy
+            </button>
+            <button
+              type="button"
+              className={
+                `rounded-full px-3 py-0.5 ${OL_DATA} ` +
+                (direction === "sell" ? "bg-red-600 text-white" : "text-white/55")
+              }
+              onClick={() => handleDirection("sell")}
+            >
+              Sell
+            </button>
           </div>
+          <span className={`${OL_DATA} text-white/80`}>{derivedName}</span>
         </section>
 
-        {packageDisclaimer && planeState.kind === "ready" ? (
-          <div
-            className="rounded-[var(--radius-md)] border border-amber-500/25 bg-amber-500/10 px-3 py-2.5 text-[18px] leading-snug text-[var(--color-label)]"
-            role="note"
-            data-testid="builder-preopen-disclaimer"
-          >
-            <span className="font-semibold">Disclaimer · pre-open marks. </span>
-            {packageDisclaimer}
-          </div>
-        ) : null}
-
-        {/* —— Legs —— */}
         <section>
-          <div className="mb-1.5 flex items-end justify-between px-1">
-            <h4 className="text-[19.5px] font-semibold tracking-tight text-[var(--color-label-secondary)]">
-              Legs
-            </h4>
-            <Button
-              variant="plain"
-              className="!min-h-8 !px-2 !text-[19.5px]"
-              onClick={addLeg}
-            >
-              + Add Leg
-            </Button>
-          </div>
-          <div className={group + " overflow-x-auto"}>
-            <table className="w-full min-w-0 table-fixed text-left text-[19.5px]">
-              <thead>
-                <tr className="border-b border-[var(--color-separator)] text-[16.5px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
-                  <th className="px-3 py-2 font-semibold">Qty</th>
-                  <th className="px-2 py-2 font-semibold">Strike</th>
-                  <th className="px-2 py-2 font-semibold">Type</th>
-                  <th className="px-2 py-2 font-semibold">Exp</th>
-                  <th className="px-2 py-2 text-right font-semibold">Mid</th>
-                  <th className="px-2 py-2 text-right font-semibold">±</th>
-                  <th className="px-2 py-2 text-right font-semibold">IV</th>
-                  <th className="w-8 px-2 py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {[...position.legs]
-                  .map((leg, origIdx) => ({ leg, origIdx }))
-                  .sort((a, b) => {
-                    // ToS: calls above puts, then ascending strike
-                    if (a.leg.type !== b.leg.type)
-                      return a.leg.type === "call" ? -1 : 1;
-                    return a.leg.strike - b.leg.strike;
-                  })
-                  .map(({ leg, origIdx: i }) => {
-                  const exp = (leg.expiration || position.expiration).slice(
-                    0,
-                    10,
-                  );
-                  const legStrikes = chain.getStrikes(exp);
-                  const contrib = eco.legs[i]?.contribMid;
-                  return (
-                    <tr
-                      key={i}
-                      className="border-b border-[var(--color-separator)] last:border-b-0"
-                    >
-                      <td className="px-2 py-1.5">
-                        <input
-                          className={
-                            fieldInset + " w-16 !min-h-9 !px-2 text-center"
-                          }
-                          type="number"
-                          value={
-                            leg.side === "long" ? leg.quantity : -leg.quantity
-                          }
-                          onChange={(e) => {
-                            const v = parseInt(e.target.value, 10) || 1;
+          <h4 className={sectionLabel}>Legs</h4>
+          <table className={`w-full table-fixed text-left ${OL_DATA}`}>
+            <thead>
+              <tr className={`${OL_CHROME} uppercase tracking-wide text-white/45`}>
+                <th className="w-12 py-1 font-normal" />
+                <th className="py-1 font-normal">Qty</th>
+                <th className="py-1 font-normal">Strike</th>
+                <th className="py-1 font-normal">Type</th>
+                <th className="py-1 font-normal">Expiration</th>
+                <th className="py-1 text-right font-normal">Debit</th>
+                <th className="py-1 text-right font-normal">Pos</th>
+                <th className="w-6 py-1 font-normal" />
+              </tr>
+            </thead>
+            <tbody>
+              {orderedLegs.map(({ leg, origIdx: i }, row) => {
+                const exp = (leg.expiration || position.expiration).slice(0, 10);
+                const legStrikes = chain.getStrikes(exp);
+                const isTop = row === 0;
+                const signed = signedActualQty(leg);
+                return (
+                  <tr key={`${i}-${leg.strike}-${leg.type}`}>
+                    <td className="py-0.5 pr-1 text-white/45">
+                      Leg {row + 1}:
+                    </td>
+                    <td className="py-0.5">
+                      <div className="flex items-center justify-end gap-0.5">
+                        <span
+                          className="w-6 text-right font-mono"
+                          data-testid={`builder-leg-qty-${i}`}
+                        >
+                          {signed}
+                        </span>
+                        <TosStepper
+                          testId={`builder-leg-qty-step-${i}`}
+                          ariaLabel="Leg quantity"
+                          onUp={() =>
                             updateLeg(i, {
-                              quantity: Math.max(1, Math.abs(v)),
-                              side: v >= 0 ? "long" : "short",
-                            });
+                              quantity: Math.abs(leg.quantity) + 1,
+                            })
+                          }
+                          onDown={() =>
+                            updateLeg(i, {
+                              quantity: Math.max(1, Math.abs(leg.quantity) - 1),
+                            })
+                          }
+                        />
+                      </div>
+                    </td>
+                    <td className="py-0.5">
+                      <div className="flex items-center justify-end gap-0.5">
+                        {legStrikes.length ? (
+                          <CardMenuField fit="min">
+                            <select
+                              className={
+                                cardSelect +
+                                " !w-auto max-w-[6.5rem] text-right font-mono text-white"
+                              }
+                              value={String(leg.strike)}
+                              data-testid={`builder-leg-strike-${i}`}
+                              aria-label="Strike"
+                              onChange={(e) => {
+                                const s = parseFloat(e.target.value);
+                                if (!Number.isFinite(s)) return;
+                                updateLeg(i, { strike: s });
+                              }}
+                            >
+                              {legStrikes.some((s) => s === leg.strike) ? null : (
+                                <option value={leg.strike}>{leg.strike}</option>
+                              )}
+                              {legStrikes.map((s) => (
+                                <option key={s} value={s}>
+                                  {s}
+                                </option>
+                              ))}
+                            </select>
+                          </CardMenuField>
+                        ) : (
+                          <span className="font-mono">{leg.strike}</span>
+                        )}
+                        <TosStepper
+                          testId={`builder-leg-strike-step-${i}`}
+                          ariaLabel="Strike"
+                          disabled={!legStrikes.length}
+                          onUp={() => {
+                            const next = legStrikes
+                              .filter((s) => s > leg.strike)
+                              .sort((a, b) => a - b)[0];
+                            if (next != null) updateLeg(i, { strike: next });
+                          }}
+                          onDown={() => {
+                            const next = legStrikes
+                              .filter((s) => s < leg.strike)
+                              .sort((a, b) => b - a)[0];
+                            if (next != null) updateLeg(i, { strike: next });
                           }}
                         />
-                      </td>
-                      <td className="px-1 py-1.5">
-                        <StrikeSelect
-                          listed={legStrikes}
-                          value={leg.strike}
-                          center={atmCenter || spotPrice}
-                          radiusN={80}
-                          className="min-w-[6.75rem] !min-h-9"
-                          testId={`builder-leg-strike-${i}`}
-                          onChange={(s) => updateLeg(i, { strike: s })}
-                        />
-                      </td>
-                      <td className="px-1 py-1.5">
+                      </div>
+                    </td>
+                    <td className="py-0.5">
+                      <CardMenuField fit="min">
                         <button
                           type="button"
                           className={
-                            "min-h-9 rounded-full bg-[var(--color-fill)] px-2.5 " +
-                            "text-[18px] font-semibold text-[var(--color-label)]"
+                            `h-[18px] rounded-sm ${FIELD_FILL} px-1 py-0 text-white`
                           }
+                          data-testid={`builder-leg-type-${i}`}
                           onClick={() =>
                             updateLeg(i, {
                               type: leg.type === "call" ? "put" : "call",
                             })
                           }
                         >
-                          {leg.type === "call" ? "C" : "P"}
+                          {leg.type === "call" ? "Call" : "Put"}
                         </button>
-                      </td>
-                      <td className="px-1 py-1.5" onClick={(e) => e.stopPropagation()}>
-                        {hasExps ? (
+                      </CardMenuField>
+                    </td>
+                    <td className="py-0.5" onClick={(e) => e.stopPropagation()}>
+                      {hasExps ? (
+                        <CardMenuField>
                           <select
-                            className={fieldInset + " min-w-[6.75rem] !min-h-9 !py-1"}
-                            value={
-                              boundSelectValue(exp, chain.expirations).value
-                            }
+                            className={cardSelect + " text-white"}
+                            value={boundSelectValue(exp, chain.expirations).value}
                             data-invalid={
                               boundSelectValue(exp, chain.expirations).invalid
                                 ? "1"
@@ -2308,9 +1909,8 @@ export default function PositionBuilder({
                               updateLeg(i, { expiration: nextExp });
                             }}
                           >
-                            {boundSelectValue(exp, chain.expirations)
-                              .invalid ? (
-                              <option value="">{exp.slice(5) || "—"}</option>
+                            {boundSelectValue(exp, chain.expirations).invalid ? (
+                              <option value="">{exp || "—"}</option>
                             ) : null}
                             {chain.expirations.map((e) => (
                               <option key={e} value={e}>
@@ -2318,156 +1918,161 @@ export default function PositionBuilder({
                               </option>
                             ))}
                           </select>
-                        ) : (
-                          <span className="font-mono text-[18px] text-[var(--color-label-tertiary)]">
-                            {exp.slice(5)}
+                        </CardMenuField>
+                      ) : (
+                        <span className="font-mono text-white/55">{exp.slice(5)}</span>
+                      )}
+                    </td>
+                    <td className="py-0.5 text-right font-mono">
+                      {isTop ? (
+                        <div className="flex items-center justify-end gap-0.5">
+                          <span data-testid="builder-live-package-price">
+                            {debitShown != null && Number.isFinite(debitShown)
+                              ? debitShown.toFixed(2)
+                              : "—"}
                           </span>
-                        )}
-                      </td>
-                      <td className="px-2 py-1.5 text-right font-mono tabular-nums text-emerald-500">
-                        {leg.entry_price > 0
-                          ? leg.entry_price.toFixed(2)
-                          : "—"}
-                      </td>
-                      <td
-                        className={
-                          "px-2 py-1.5 text-right font-mono tabular-nums " +
-                          (contrib == null
-                            ? "text-[var(--color-label-tertiary)]"
-                            : contrib >= 0
-                              ? "text-emerald-500"
-                              : "text-rose-500")
-                        }
+                          <TosStepper
+                            testId="builder-debit-step"
+                            ariaLabel="Package debit"
+                            disabled={debitShown == null}
+                            onUp={() => stepDebit("up")}
+                            onDown={() => stepDebit("down")}
+                          />
+                          <TosPadlock
+                            locked={!!overrideActive}
+                            testId="builder-padlock"
+                            onToggle={() => {
+                              if (mode === "edit") {
+                                if (overrideActive) onUnlock?.();
+                                else onLockNatural?.();
+                                return;
+                              }
+                              if (overrideActive) {
+                                setPosition((p) => ({
+                                  ...p,
+                                  net_debit_override: null,
+                                }));
+                              }
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        ""
+                      )}
+                    </td>
+                    <td className="py-0.5 text-right font-mono">
+                      {isTop ? (
+                        <div className="flex items-center justify-end gap-0">
+                          <span data-testid="builder-pos">{pkgPos}</span>
+                          <TosQtyControl
+                            testId="builder-pos-step"
+                            onUp={() => scalePos(pkgPos + 1)}
+                            onDown={() => scalePos(Math.max(1, pkgPos - 1))}
+                            onPick={(n) => scalePos(n)}
+                          />
+                        </div>
+                      ) : (
+                        ""
+                      )}
+                    </td>
+                    <td className="py-0.5">
+                      <button
+                        type="button"
+                        className="px-1 text-white/35 hover:text-white"
+                        disabled={position.legs.length <= 1}
+                        onClick={() => removeLeg(i)}
+                        aria-label="Remove leg"
                       >
-                        {contrib == null
-                          ? "—"
-                          : `${contrib >= 0 ? "+" : ""}${contrib.toFixed(2)}`}
-                      </td>
-                      <td className="px-2 py-1.5 text-right font-mono text-[var(--color-label-tertiary)]">
-                        {leg.volatility != null
-                          ? (leg.volatility * 100).toFixed(0) + "%"
-                          : "—"}
-                      </td>
-                      <td className="px-1 py-1.5">
-                        <button
-                          type="button"
-                          className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--color-destructive)] hover:bg-[var(--color-fill)] disabled:opacity-30"
-                          disabled={position.legs.length <= 1}
-                          onClick={() => removeLeg(i)}
-                          aria-label="Remove leg"
-                        >
-                          ×
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        {/* —— Basis —— */}
-        <section>
-          <h4 className={sectionLabel}>Basis</h4>
-          <div className={group}>
-            <div className={groupRow}>
-              <span className={rowLabel}>Limit</span>
-              <input
-                className={field + " flex-1 text-right"}
-                type="number"
-                step="0.01"
-                value={
-                  mode === "edit" && lockActive && lockedMagnitude != null
-                    ? lockedMagnitude
-                    : position.net_debit_override != null
-                      ? position.net_debit_override
-                      : ""
-                }
-                placeholder={
-                  eco.complete && displayCost > 0
-                    ? `Live ${displayCost.toFixed(2)}`
-                    : "Optional"
-                }
-                onChange={(e) => {
-                  const raw = e.target.value.trim();
-                  if (mode === "edit") {
-                    if (raw === "") {
-                      onUnlock?.();
-                      return;
-                    }
-                    const v = parseFloat(raw);
-                    if (Number.isFinite(v) && v > 0) onLockLimit?.(v);
-                    return;
-                  }
-                  if (raw === "") {
-                    setPosition((p) => ({ ...p, net_debit_override: null }));
-                    return;
-                  }
-                  const v = parseFloat(raw);
-                  setPosition((p) => ({
-                    ...p,
-                    net_debit_override: Number.isFinite(v) ? v : null,
-                  }));
-                }}
-              />
-            </div>
-            {mode === "edit" && onSetEntryAt ? (
-              <div className={groupRow}>
-                <span className={rowLabel}>In</span>
-                <input
-                  className={field + " flex-1 text-right"}
-                  type="time"
-                  data-testid="builder-entry-at"
-                  value={etHmValue(
-                    resolveEntryAt({
-                      entryAt,
-                      createdAt: Date.now(),
-                    }),
-                  )}
-                  onChange={(e) =>
-                    onSetEntryAt(
-                      applyEtHm(
-                        resolveEntryAt({
-                          entryAt,
-                          createdAt: Date.now(),
-                        }),
-                        e.target.value,
-                      ),
-                    )
-                  }
-                />
-              </div>
-            ) : null}
-            <div className={groupRow}>
-              <span className={rowLabel}>Positions</span>
-              <input
-                className={field + " max-w-[5rem] text-right"}
-                type="number"
-                min={1}
-                value={position.contracts}
-                onChange={(e) =>
-                  setPosition((p) => ({
-                    ...p,
-                    contracts: Math.max(1, parseInt(e.target.value, 10) || 1),
-                  }))
-                }
-              />
-            </div>
-          </div>
-          <p className="mt-1.5 px-1 text-[18px] text-[var(--color-label-tertiary)]">
-            Debit/credit is per position. Total = Qty × debit. Leave limit
-            empty for unlocked live position from OPF.
-          </p>
-        </section>
-
-        {/* —— ToS script —— */}
-        <section>
-          <h4 className={sectionLabel}>ToS script</h4>
-          <div className={group + " space-y-3 p-4"}>
+                        ×
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <div className="mt-1.5 flex items-start justify-between gap-3">
             <button
               type="button"
-              className="block w-full rounded-[var(--radius-md)] bg-black px-3 py-2.5 text-left font-mono text-[16.5px] leading-relaxed text-emerald-400 ring-1 ring-emerald-900/40"
+              className={`${OL_DATA} text-white/70 hover:text-white`}
+              onClick={addLeg}
+            >
+              + Add Leg
+            </button>
+            <div className="text-right">
+              <div className={sectionLabel}>Entry time</div>
+              <div className="flex items-center justify-end gap-1">
+                <span className={`${OL_DATA} font-mono text-white/80`}>
+                  {`${String(entryWall.month).padStart(2, "0")}/${String(entryWall.day).padStart(2, "0")}/${entryWall.year}`}
+                </span>
+                <CardMenuField fit="min">
+                  <select
+                    className={cardSelect + " !w-auto text-white"}
+                    aria-label="Entry hour"
+                    data-testid="builder-entry-at"
+                    value={entryHour12}
+                    onChange={(e) => {
+                      const h12 = parseInt(e.target.value, 10);
+                      let h24 = h12 % 12;
+                      if (entryAmpm === "PM") h24 += 12;
+                      commitEntry(h24, entryWall.minute);
+                    }}
+                  >
+                    {Array.from({ length: 12 }, (_, n) => n + 1).map((h) => (
+                      <option key={h} value={h}>
+                        {h}
+                      </option>
+                    ))}
+                  </select>
+                </CardMenuField>
+                <span className="text-white/45">:</span>
+                <CardMenuField fit="min">
+                  <select
+                    className={cardSelect + " !w-auto text-white"}
+                    aria-label="Entry minute"
+                    value={entryWall.minute}
+                    onChange={(e) => {
+                      const minute = parseInt(e.target.value, 10);
+                      commitEntry(entryWall.hour, minute);
+                    }}
+                  >
+                    {Array.from({ length: 60 }, (_, n) => n).map((m) => (
+                      <option key={m} value={m}>
+                        {String(m).padStart(2, "0")}
+                      </option>
+                    ))}
+                  </select>
+                </CardMenuField>
+                <CardMenuField fit="min">
+                  <select
+                    className={cardSelect + " !w-auto text-white"}
+                    aria-label="Entry AM or PM"
+                    value={entryAmpm}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      let h24 = entryHour12 % 12;
+                      if (next === "PM") h24 += 12;
+                      commitEntry(h24, entryWall.minute);
+                    }}
+                  >
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                  </select>
+                </CardMenuField>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="grid grid-cols-[1fr_auto] items-start gap-3">
+          <div>
+            <h4 className={sectionLabel}>ToS script</h4>
+            <button
+              type="button"
+              className={
+                "block w-full rounded-sm border border-emerald-800/80 bg-black px-2 py-2 " +
+                "text-left font-mono text-[12px] leading-relaxed text-emerald-400"
+              }
               data-testid="builder-tos-script"
               onClick={() => {
                 if (!tosScript) return;
@@ -2478,44 +2083,60 @@ export default function PositionBuilder({
                 });
               }}
             >
-              <span className="mb-1 block text-[15px] font-semibold uppercase tracking-wide text-emerald-600/80">
-                ToS · {copied ? "Copied" : "Tap to copy"}
-              </span>
               {tosScript || "—"}
+              <span className="mt-1 block text-[11px] text-emerald-600/80">
+                {copied ? "copied" : "click to copy"}
+              </span>
             </button>
+            <div className={`mt-2 ${OL_DATA} text-emerald-400`}>
+              <div>
+                Preview: {previewLabel}
+                {debitShown != null
+                  ? ` $${debitShown.toFixed(2)} ${eco.side ?? ""}`
+                  : ""}
+              </div>
+              <div className="font-mono text-emerald-300/90">{previewNotation}</div>
+            </div>
           </div>
-        </section>
-      </div>
-
-      <div className={footerBar}>
-        <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
-          {mode === "create" ? (
-            <>
-              <Button
-                variant="secondary"
-                data-testid="position-builder-cancel"
+          <div className={footerBar}>
+            <button
+              type="button"
+              className={`rounded-sm bg-blue-600 px-4 py-1.5 ${OL_DATA} text-white`}
+              data-testid="builder-analyze"
+            >
+              Analyze
+            </button>
+            {mode === "create" ? (
+              <>
+                <button
+                  type="button"
+                  className={`rounded-sm bg-orange-600 px-4 py-1.5 ${OL_DATA} text-white`}
+                  data-testid="position-builder-submit"
+                  onClick={handleSave}
+                >
+                  Submit
+                </button>
+                <button
+                  type="button"
+                  className={`${OL_DATA} text-white/60 hover:text-white`}
+                  data-testid="position-builder-cancel"
+                  onClick={onCancel}
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className={`${OL_DATA} text-white/60 hover:text-white`}
+                data-testid="position-builder-close-footer"
                 onClick={onCancel}
               >
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                data-testid="position-builder-submit"
-                onClick={handleSave}
-              >
-                Submit
-              </Button>
-            </>
-          ) : (
-            <Button
-              variant="secondary"
-              data-testid="position-builder-close-footer"
-              onClick={onCancel}
-            >
-              Close
-            </Button>
-          )}
-        </div>
+                Close
+              </button>
+            )}
+          </div>
+        </section>
       </div>
     </div>
   );

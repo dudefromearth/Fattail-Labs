@@ -275,15 +275,16 @@ test("PC8-E.7 menu triangle is corner-nested; QTY caret is untouched", () => {
     join(here, "../../components/options-lab/AnalyzerPositionsList.tsx"),
     "utf8",
   );
-  assert.match(list, /data-menu-triangle="1"/);
-  assert.match(list, /points="6,6 0,6 6,0"/);
-  assert.match(list, /pointer-events-none absolute bottom-0 right-0/);
-  assert.doesNotMatch(list, /bg-\[right_3px_center\]/);
   assert.match(list, /CardMenuField/);
+  assert.doesNotMatch(list, /bg-\[right_3px_center\]/);
   const src = readFileSync(
     join(here, "../../components/options-lab/TosControls.tsx"),
     "utf8",
   );
+  assert.match(src, /data-menu-triangle="1"/);
+  assert.match(src, /points="6,6 0,6 6,0"/);
+  assert.match(src, /pointer-events-none absolute bottom-0 right-0/);
+  assert.match(src, /export function CardMenuField/);
   assert.match(src, /function CaretDown/);
   assert.match(src, /TosQtyControl/);
 });
@@ -423,6 +424,29 @@ test("price steps by the product tick (PC-HIG-10)", () => {
 test("catalogToTemplate never offers CUSTOM", () => {
   assert.equal(catalogToTemplate("CUSTOM"), null);
   assert.equal(catalogToTemplate("Butterfly"), "butterfly");
+});
+
+test("PC8-G dialog shares TosControls; no forked stepper/padlock/triangle", () => {
+  const builder = readFileSync(
+    join(here, "../../components/options-lab/PositionBuilder.tsx"),
+    "utf8",
+  );
+  assert.match(builder, /TosStepper/);
+  assert.match(builder, /TosQtyControl/);
+  assert.match(builder, /TosPadlock/);
+  assert.match(builder, /CardMenuField/);
+  assert.doesNotMatch(builder, /function TosStepper/);
+  assert.doesNotMatch(builder, /function CardMenuField/);
+  assert.doesNotMatch(builder, /data-menu-triangle/);
+  assert.doesNotMatch(builder, /type="number"/);
+  assert.doesNotMatch(builder, /type="time"/);
+  assert.doesNotMatch(builder, /type="date"/);
+  assert.match(builder, /builder-leg-qty-step-/);
+  assert.match(builder, /Math\.abs\(leg\.quantity\) \+ 1/);
+  assert.match(builder, /builder-entry-at/);
+  assert.match(builder, /click to copy/);
+  assert.match(builder, /builder-pos-step/);
+  assert.match(builder, /isTop \?/);
 });
 
 test("PC8-E VOL per leg and package DELTA; a miss does not null the rest", () => {
