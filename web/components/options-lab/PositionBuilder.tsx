@@ -19,13 +19,9 @@ import {
 } from "react";
 import {
   CardMenuField,
-  FIELD_FILL,
-  OL_CHROME,
-  OL_DATA,
   TosPadlock,
   TosQtyControl,
   TosStepper,
-  cardSelect,
 } from "@/components/options-lab/TosControls";
 import {
   calendarDteOf,
@@ -285,14 +281,14 @@ function defaultDiagonalWidth(symbol: string): number {
   return 5;
 }
 
-/** Card tokens on a dark dialog (PC-VOCAB-1 · PC8-G). */
+/** Dialog field appearance — application tokens, not card tokens (DLG-THEME-4). */
 const sectionLabel =
-  `px-1 pb-1 ${OL_CHROME} font-normal uppercase tracking-wide text-white/55`;
+  "px-1 pb-1 font-normal uppercase tracking-wide text-[length:var(--text-caption)] text-[var(--color-label-secondary)]";
 const dlgField =
-  `h-[18px] max-h-[18px] ${FIELD_FILL} rounded-sm border-0 px-1.5 outline-none ` +
-  `${OL_DATA} text-white leading-[18px]`;
+  "min-h-[var(--hit-min)] w-full appearance-none cursor-pointer rounded-[var(--radius-sm)] " +
+  "border-0 bg-[var(--color-fill)] px-1.5 text-[length:var(--text-body)] text-[var(--color-label)] outline-none";
 const footerBar =
-  "flex flex-col items-stretch gap-1.5 px-3 py-2";
+  "flex flex-col items-stretch gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)]";
 
 export type PositionBuilderProps = {
   open: boolean;
@@ -1627,8 +1623,8 @@ export default function PositionBuilder({
     <div
       className={
         "builder-steppers fixed z-50 flex max-h-[min(92vh,860px)] w-[min(720px,calc(100vw-1.5rem))] " +
-        "flex-col overflow-hidden rounded-lg border border-white/15 bg-[#0a0a0e] text-white " +
-        "[color-scheme:dark] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.65)]"
+        "flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-separator)] " +
+        "bg-[var(--color-surface)] text-[var(--color-label)] shadow-[var(--elevation-3)]"
       }
       style={{ left: panelPos.x, top: panelPos.y }}
       role="dialog"
@@ -1637,7 +1633,7 @@ export default function PositionBuilder({
       data-testid="position-builder"
     >
       <div
-        className="relative flex cursor-grab items-center justify-center border-b border-white/10 px-3 py-2 active:cursor-grabbing"
+        className="relative flex cursor-grab items-center justify-center border-b border-[var(--color-separator)] px-[var(--space-3)] py-[var(--space-2)] active:cursor-grabbing"
         onPointerDown={onPanelPointerDown}
         onPointerMove={onPanelPointerMove}
         onPointerUp={onPanelPointerUp}
@@ -1645,13 +1641,13 @@ export default function PositionBuilder({
         data-testid="position-builder-drag-handle"
         title="Drag to move"
       >
-        <h3 className={`truncate ${OL_DATA} font-normal text-white/80`}>
+        <h3 className="truncate text-[length:var(--text-title-3)] font-normal text-[var(--color-label)]">
           {mode === "edit" ? "Edit Position" : "Create Position"}
         </h3>
         {mode === "edit" ? (
           <button
             type="button"
-            className={`absolute right-2 ${OL_CHROME} text-white/50 hover:text-white`}
+            className="absolute right-2 text-[length:var(--text-body)] text-[var(--color-label-secondary)] hover:text-[var(--color-label)]"
             data-testid="position-builder-close"
             onClick={onCancel}
           >
@@ -1662,13 +1658,15 @@ export default function PositionBuilder({
 
       {planeState.kind !== "ready" ? (
         <div
-          className="border-b border-white/10 px-3 py-1.5 text-white/70"
+          className="border-b border-[var(--color-separator)] px-[var(--space-3)] py-1.5 text-[var(--color-label-secondary)]"
           role="status"
           data-testid="builder-structure-notice"
           data-plane-kind={planeState.kind}
         >
-          <div className={`${OL_DATA} text-white/80`}>{planeState.title}</div>
-          <p className={`${OL_CHROME} text-white/55`}>
+          <div className="text-[length:var(--text-body)] text-[var(--color-label)]">
+            {planeState.title}
+          </div>
+          <p className="text-[length:var(--text-caption)] text-[var(--color-label-secondary)]">
             {structureNotice || planeState.detail}
           </p>
         </div>
@@ -1680,7 +1678,7 @@ export default function PositionBuilder({
             <h4 className={sectionLabel}>Symbol</h4>
             <CardMenuField surface="dialog">
               <select
-                className={cardSelect + " text-white"}
+                className={dlgField}
                 value={position.underlying || symbol}
                 aria-label="Symbol"
                 data-testid="builder-symbol"
@@ -1698,7 +1696,7 @@ export default function PositionBuilder({
             <h4 className={sectionLabel}>Strategy</h4>
             <CardMenuField surface="dialog">
               <select
-                className={cardSelect + " text-white"}
+                className={dlgField}
                 value={template}
                 data-testid="builder-template"
                 aria-label="Strategy"
@@ -1739,20 +1737,27 @@ export default function PositionBuilder({
             <path
               d={STRATEGY_DIAGRAMS[template]}
               fill="none"
-              stroke={direction === "buy" ? "#22c55e" : "#ef4444"}
+              stroke={
+                direction === "buy"
+                  ? "var(--color-success)"
+                  : "var(--color-destructive)"
+              }
               strokeWidth="2.25"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
           </svg>
-          <div className="inline-flex rounded-full bg-white/10 p-0.5">
+          <div className="inline-flex rounded-full bg-[var(--color-fill)] p-0.5">
             <button
               type="button"
-              className={
-                `rounded-full px-3 py-0.5 ${OL_DATA} ` +
-                (direction === "buy"
-                  ? "bg-emerald-600 text-white"
-                  : "text-white/55")
+              className="rounded-full px-3 py-0.5 text-[length:var(--text-body)]"
+              style={
+                direction === "buy"
+                  ? {
+                      background: "var(--color-success)",
+                      color: "var(--color-surface)",
+                    }
+                  : { color: "var(--color-label-secondary)" }
               }
               onClick={() => handleDirection("buy")}
             >
@@ -1760,23 +1765,30 @@ export default function PositionBuilder({
             </button>
             <button
               type="button"
-              className={
-                `rounded-full px-3 py-0.5 ${OL_DATA} ` +
-                (direction === "sell" ? "bg-red-600 text-white" : "text-white/55")
+              className="rounded-full px-3 py-0.5 text-[length:var(--text-body)]"
+              style={
+                direction === "sell"
+                  ? {
+                      background: "var(--color-destructive)",
+                      color: "var(--color-surface)",
+                    }
+                  : { color: "var(--color-label-secondary)" }
               }
               onClick={() => handleDirection("sell")}
             >
               Sell
             </button>
           </div>
-          <span className={`${OL_DATA} text-white/80`}>{derivedName}</span>
+          <span className="text-[length:var(--text-body)] text-[var(--color-label)]">
+            {derivedName}
+          </span>
         </section>
 
         <section>
           <h4 className={sectionLabel}>Legs</h4>
-          <table className={`w-full table-fixed text-left ${OL_DATA}`}>
+          <table className="w-full table-fixed text-left text-[length:var(--text-body)]">
             <thead>
-              <tr className={`${OL_CHROME} uppercase tracking-wide text-white/45`}>
+              <tr className="uppercase tracking-wide text-[length:var(--text-caption)] text-[var(--color-label-tertiary)]">
                 <th className="w-12 py-1 font-normal" />
                 <th className="py-1 font-normal">Qty</th>
                 <th className="py-1 font-normal">Strike</th>
@@ -1795,7 +1807,7 @@ export default function PositionBuilder({
                 const signed = signedActualQty(leg);
                 return (
                   <tr key={`${i}-${leg.strike}-${leg.type}`}>
-                    <td className="py-0.5 pr-1 text-white/45">
+                    <td className="py-0.5 pr-1 text-[var(--color-label-tertiary)]">
                       Leg {row + 1}:
                     </td>
                     <td className="py-0.5">
@@ -1828,8 +1840,8 @@ export default function PositionBuilder({
                           <CardMenuField surface="dialog" fit="min">
                             <select
                               className={
-                                cardSelect +
-                                " !w-auto max-w-[6.5rem] text-right font-mono text-white"
+                                dlgField +
+                                " !w-auto max-w-[6.5rem] text-right font-mono"
                               }
                               value={String(leg.strike)}
                               data-testid={`builder-leg-strike-${i}`}
@@ -1876,9 +1888,7 @@ export default function PositionBuilder({
                       <CardMenuField surface="dialog" fit="min">
                         <button
                           type="button"
-                          className={
-                            `h-[18px] rounded-sm ${FIELD_FILL} px-1 py-0 text-white`
-                          }
+                          className={dlgField + " !w-auto px-1"}
                           data-testid={`builder-leg-type-${i}`}
                           onClick={() =>
                             updateLeg(i, {
@@ -1894,7 +1904,7 @@ export default function PositionBuilder({
                       {hasExps ? (
                         <CardMenuField surface="dialog">
                           <select
-                            className={cardSelect + " text-white"}
+                            className={dlgField}
                             value={boundSelectValue(exp, chain.expirations).value}
                             data-invalid={
                               boundSelectValue(exp, chain.expirations).invalid
@@ -1920,7 +1930,9 @@ export default function PositionBuilder({
                           </select>
                         </CardMenuField>
                       ) : (
-                        <span className="font-mono text-white/55">{exp.slice(5)}</span>
+                        <span className="font-mono text-[var(--color-label-secondary)]">
+                          {exp.slice(5)}
+                        </span>
                       )}
                     </td>
                     <td className="py-0.5 text-right font-mono">
@@ -1978,7 +1990,7 @@ export default function PositionBuilder({
                     <td className="py-0.5">
                       <button
                         type="button"
-                        className="px-1 text-white/35 hover:text-white"
+                        className="px-1 text-[var(--color-label-tertiary)] hover:text-[var(--color-label)]"
                         disabled={position.legs.length <= 1}
                         onClick={() => removeLeg(i)}
                         aria-label="Remove leg"
@@ -1994,7 +2006,7 @@ export default function PositionBuilder({
           <div className="mt-1.5 flex items-start justify-between gap-3">
             <button
               type="button"
-              className={`${OL_DATA} text-white/70 hover:text-white`}
+              className="text-[length:var(--text-body)] text-[var(--color-tint)] hover:text-[var(--color-tint-emphasis)]"
               onClick={addLeg}
             >
               + Add Leg
@@ -2002,12 +2014,12 @@ export default function PositionBuilder({
             <div className="text-right">
               <div className={sectionLabel}>Entry time</div>
               <div className="flex items-center justify-end gap-1">
-                <span className={`${OL_DATA} font-mono text-white/80`}>
+                <span className="font-mono text-[length:var(--text-body)] text-[var(--color-label)]">
                   {`${String(entryWall.month).padStart(2, "0")}/${String(entryWall.day).padStart(2, "0")}/${entryWall.year}`}
                 </span>
                 <CardMenuField surface="dialog" fit="min">
                   <select
-                    className={cardSelect + " !w-auto text-white"}
+                    className={dlgField + " !w-auto"}
                     aria-label="Entry hour"
                     data-testid="builder-entry-at"
                     value={entryHour12}
@@ -2025,10 +2037,10 @@ export default function PositionBuilder({
                     ))}
                   </select>
                 </CardMenuField>
-                <span className="text-white/45">:</span>
+                <span className="text-[var(--color-label-tertiary)]">:</span>
                 <CardMenuField surface="dialog" fit="min">
                   <select
-                    className={cardSelect + " !w-auto text-white"}
+                    className={dlgField + " !w-auto"}
                     aria-label="Entry minute"
                     value={entryWall.minute}
                     onChange={(e) => {
@@ -2045,7 +2057,7 @@ export default function PositionBuilder({
                 </CardMenuField>
                 <CardMenuField surface="dialog" fit="min">
                   <select
-                    className={cardSelect + " !w-auto text-white"}
+                    className={dlgField + " !w-auto"}
                     aria-label="Entry AM or PM"
                     value={entryAmpm}
                     onChange={(e) => {
@@ -2070,9 +2082,14 @@ export default function PositionBuilder({
             <button
               type="button"
               className={
-                "block w-full rounded-sm border border-emerald-800/80 bg-black px-2 py-2 " +
-                "text-left font-mono text-[12px] leading-relaxed text-emerald-400"
+                "block w-full rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-2)] " +
+                "text-left font-mono text-[length:var(--text-footnote)] leading-relaxed"
               }
+              style={{
+                background: "var(--color-code-surface)",
+                color: "var(--color-success)",
+              }}
+              data-code-surface="1"
               data-testid="builder-tos-script"
               onClick={() => {
                 if (!tosScript) return;
@@ -2084,24 +2101,24 @@ export default function PositionBuilder({
               }}
             >
               {tosScript || "—"}
-              <span className="mt-1 block text-[11px] text-emerald-600/80">
+              <span className="mt-1 block text-[length:var(--text-caption)] text-[var(--color-label-secondary)]">
                 {copied ? "copied" : "click to copy"}
               </span>
             </button>
-            <div className={`mt-2 ${OL_DATA} text-emerald-400`}>
+            <div className="mt-2 text-[length:var(--text-body)] text-[var(--color-label-secondary)]">
               <div>
                 Preview: {previewLabel}
                 {debitShown != null
                   ? ` $${debitShown.toFixed(2)} ${eco.side ?? ""}`
                   : ""}
               </div>
-              <div className="font-mono text-emerald-300/90">{previewNotation}</div>
+              <div className="font-mono">{previewNotation}</div>
             </div>
           </div>
           <div className={footerBar}>
             <button
               type="button"
-              className={`rounded-sm bg-blue-600 px-4 py-1.5 ${OL_DATA} text-white`}
+              className="min-h-[var(--hit-min)] rounded-[var(--radius-sm)] bg-[var(--color-tint)] px-4 py-1.5 text-[length:var(--text-body)] text-[var(--color-on-tint)]"
               data-testid="builder-analyze"
             >
               Analyze
@@ -2110,7 +2127,7 @@ export default function PositionBuilder({
               <>
                 <button
                   type="button"
-                  className={`rounded-sm bg-orange-600 px-4 py-1.5 ${OL_DATA} text-white`}
+                  className="min-h-[var(--hit-min)] rounded-[var(--radius-sm)] bg-[var(--color-warning)] px-4 py-1.5 text-[length:var(--text-body)] text-[var(--color-surface)]"
                   data-testid="position-builder-submit"
                   onClick={handleSave}
                 >
@@ -2118,7 +2135,7 @@ export default function PositionBuilder({
                 </button>
                 <button
                   type="button"
-                  className={`${OL_DATA} text-white/60 hover:text-white`}
+                  className="min-h-[var(--hit-min)] text-[length:var(--text-body)] text-[var(--color-label-secondary)] hover:text-[var(--color-label)]"
                   data-testid="position-builder-cancel"
                   onClick={onCancel}
                 >
@@ -2128,7 +2145,7 @@ export default function PositionBuilder({
             ) : (
               <button
                 type="button"
-                className={`${OL_DATA} text-white/60 hover:text-white`}
+                className="min-h-[var(--hit-min)] text-[length:var(--text-body)] text-[var(--color-label-secondary)] hover:text-[var(--color-label)]"
                 data-testid="position-builder-close-footer"
                 onClick={onCancel}
               >

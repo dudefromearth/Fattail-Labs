@@ -4,6 +4,25 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-11 — DL-691 Echo names `--color-code-surface` (DLG1)
+
+**Decision (Echo).** The named code-surface token of Dialog Spec v0.4
+DLG-THEME-4 is **`--color-code-surface`**. Value `#1c1c1e`. Defined once on
+`:root` in `web/styles/tokens.css`. **Not overridden** by `data-theme="light"`
+or `data-theme="dark"` — it stays dark in both themes.
+
+The ToS script block in the Create / Edit Position dialog renders from this
+token. The exception is the token, never a hex in `PositionBuilder.tsx`.
+Script text uses existing `--color-success`. Charlie does not invent a
+parallel token set.
+
+Board: `agents/p-options-lab-create-edit-dialog/`. Echo note:
+`agents/p-options-lab-create-edit-dialog/reviews/DLG1-echo.md`.
+
+**Does not:** restyle the card. Change script **content**. Deploy.
+
+---
+
 ## 2026-09-11 — DL-690 Create / Edit Position Dialog Spec v0.4 BUILD AUTHORITY · DLG-W0 GO
 
 **Decision (Coach GO).** Spec

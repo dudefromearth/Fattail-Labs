@@ -34,6 +34,13 @@
   --color-overlay: rgba(0, 0, 0, 0.4);
   --color-on-tint: #ffffff;
 
+  /*
+   * Named code-surface token (Dialog Spec v0.4 DLG-THEME-4 · Echo DLG1).
+   * Stays dark in both themes — never overridden below. The exception is
+   * this token, never a hex in the dialog component.
+   */
+  --color-code-surface: #1c1c1e;
+
   /* —— Type —— */
   --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
     system-ui, "Helvetica Neue", Helvetica, Arial, sans-serif;

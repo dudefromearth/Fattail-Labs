@@ -115,11 +115,25 @@ test("AT-DLG-15 behaviour still one implementation (step / lock callbacks unchan
   assert.match(controls, /onPick\(n\)/);
 });
 
-test("DLG0 card appearance unchanged — grow-on-hover still PC-HIG-8", () => {
+test("AT-DLG-15 card appearance — grow-on-hover still PC-HIG-8", () => {
   assert.match(controls, /group-hover\/step:min-h-\[var\(--hit-min\)\]/);
   assert.match(controls, /group-focus-within\/step:min-h-\[var\(--hit-min\)\]/);
   assert.match(controls, /data-resting-h="18"/);
   assert.match(list, /surface="card"/);
+});
+
+test("AT-DLG-15 dialog appearance — hit-min at rest, no grow-on-hover", () => {
+  assert.match(controls, /minHeight: "var\(--hit-min\)"/);
+  const stepper = exportBlock("TosStepper");
+  assert.match(stepper, /const card = surface === "card"/);
+  assert.match(stepper, /growBox/);
+  assert.match(stepper, /style=\{card \? undefined : dialogHit\}/);
+  const dlgInner = stepper.slice(stepper.lastIndexOf(") : ("));
+  assert.doesNotMatch(dlgInner, /growBox/);
+  assert.doesNotMatch(dlgInner, /group-hover\/step/);
+  const menu = exportBlock("CardMenuField");
+  assert.match(menu, /\{card \? \(/);
+  assert.match(menu, /data-menu-triangle="1"/);
 });
 
 console.log(`${n} ok`);

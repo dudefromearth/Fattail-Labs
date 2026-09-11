@@ -14,4 +14,4 @@ One component, two appearances. Never two components. Never one look forced onto
 **Out:** other Labs dialogs · modal rewrite · IKI fork · second save path · Preview · entry time ·
 Submit · Done · pricing path · frozen Spec v1.2 edit · PC packet reopen.
 
-**Status:** GO 2026-09-11 (DL-690). India W0-4 **APPROVED**. DLG0-G **PASS**. Next: DLG1 (Echo names the code-surface token). Theme before chrome.
+**Status:** GO 2026-09-11 (DL-690). India W0-4 **APPROVED**. DLG0-G **PASS** (`93b08d8`). DLG1-G **PASS**. Next: DLG2 chrome. Theme before chrome held.

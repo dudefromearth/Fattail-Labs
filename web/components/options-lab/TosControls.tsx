@@ -3,15 +3,15 @@
 /**
  * Shared card/dialog controls (DLG-VOCAB-1 · 2 · 3 · PC-VOCAB-4 · PC-HIG-5…10).
  * Required `surface` stamps `data-surface`. Appearance is selected from it;
- * behaviour is identical. Card rest (PC-HIG-8 grow-on-hover) is unchanged here;
- * dialog look is DLG1.
- * Finding 0: never apply --hit-min at rest; no .split constructions.
+ * behaviour is identical.
+ * Card: PC-HIG-8 grow-on-hover, 18px rest. Dialog: --hit-min at rest, no grow.
+ * Finding 0: never apply --hit-min at rest on the card; no .split constructions.
  */
-
-export type TosSurface = "card" | "dialog";
 
 import { useId, useState, type ReactNode } from "react";
 import { QTY_QUICK_PICK } from "@/lib/options-lab/tosCard";
+
+export type TosSurface = "card" | "dialog";
 
 /** Resting unit height = data row. Grown uses --hit-min. */
 const REST_H = "h-[18px]";
@@ -55,6 +55,12 @@ const seg =
   "flex min-h-0 flex-1 w-full items-center justify-center leading-none disabled:opacity-30";
 /** Dedicated 1px rule — a border on one segment made rest lopsided. */
 const H_RULE = "h-px w-full shrink-0 bg-white/40";
+const H_RULE_DLG = "h-px w-full shrink-0 bg-[var(--color-separator)]";
+
+const dialogHit = {
+  minHeight: "var(--hit-min)",
+  minWidth: "var(--hit-min)",
+} as const;
 
 export function TosStepper({
   surface,
@@ -71,52 +77,78 @@ export function TosStepper({
   testId?: string;
   ariaLabel?: string;
 }) {
+  const card = surface === "card";
+  const rule = card ? H_RULE : H_RULE_DLG;
+  const buttons = (
+    <>
+      <button
+        type="button"
+        disabled={disabled}
+        className={seg}
+        aria-label={ariaLabel ? `${ariaLabel} up` : "Increment"}
+        data-testid={testId ? `${testId}-up` : undefined}
+        onClick={(e) => {
+          e.stopPropagation();
+          onUp();
+        }}
+      >
+        <PlusBar />
+      </button>
+      <div className={rule} aria-hidden />
+      <button
+        type="button"
+        disabled={disabled}
+        className={seg}
+        aria-label={ariaLabel ? `${ariaLabel} down` : "Decrement"}
+        data-testid={testId ? `${testId}-down` : undefined}
+        onClick={(e) => {
+          e.stopPropagation();
+          onDown();
+        }}
+      >
+        <MinusBar />
+      </button>
+    </>
+  );
   return (
     <div
-      className={`group/step relative z-0 inline-flex ${REST_H} ${REST_W} hover:z-20 focus-within:z-20`}
+      className={
+        card
+          ? `group/step relative z-0 inline-flex ${REST_H} ${REST_W} hover:z-20 focus-within:z-20`
+          : "relative z-0 inline-flex"
+      }
+      style={card ? undefined : dialogHit}
       data-surface={surface}
       data-tos-stepper-slot="1"
     >
-      <div
-        className={
-          "tos-stepper absolute left-1/2 top-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden " +
-          `rounded-sm ${REST_H} ${REST_W} ${FILL} ` +
-          growBox
-        }
-        data-testid={testId}
-        data-tos-stepper="1"
-        data-resting-h="18"
-        data-grown-hit="var(--hit-min)"
-        aria-label={ariaLabel}
-      >
-        <button
-          type="button"
-          disabled={disabled}
-          className={seg}
-          aria-label={ariaLabel ? `${ariaLabel} up` : "Increment"}
-          data-testid={testId ? `${testId}-up` : undefined}
-          onClick={(e) => {
-            e.stopPropagation();
-            onUp();
-          }}
+      {card ? (
+        <div
+          className={
+            "tos-stepper absolute left-1/2 top-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden " +
+            `rounded-sm ${REST_H} ${REST_W} ${FILL} ` +
+            growBox
+          }
+          data-testid={testId}
+          data-tos-stepper="1"
+          data-resting-h="18"
+          data-grown-hit="var(--hit-min)"
+          aria-label={ariaLabel}
         >
-          <PlusBar />
-        </button>
-        <div className={H_RULE} aria-hidden />
-        <button
-          type="button"
-          disabled={disabled}
-          className={seg}
-          aria-label={ariaLabel ? `${ariaLabel} down` : "Decrement"}
-          data-testid={testId ? `${testId}-down` : undefined}
-          onClick={(e) => {
-            e.stopPropagation();
-            onDown();
-          }}
+          {buttons}
+        </div>
+      ) : (
+        <div
+          className={
+            "tos-stepper inline-flex h-full w-full flex-col overflow-hidden " +
+            "rounded-[var(--radius-sm)] bg-[var(--color-fill)] text-[var(--color-label)]"
+          }
+          data-testid={testId}
+          data-tos-stepper="1"
+          aria-label={ariaLabel}
         >
-          <MinusBar />
-        </button>
-      </div>
+          {buttons}
+        </div>
+      )}
     </div>
   );
 }
@@ -139,82 +171,158 @@ export function TosQtyControl({
 }) {
   const id = useId();
   const [open, setOpen] = useState(false);
+  const card = surface === "card";
+  const rule = card ? H_RULE : H_RULE_DLG;
   return (
     <div
-      className={`tos-qty group/step relative z-0 inline-flex ${REST_H} w-[34px] hover:z-20 focus-within:z-20`}
+      className={
+        card
+          ? `tos-qty group/step relative z-0 inline-flex ${REST_H} w-[34px] hover:z-20 focus-within:z-20`
+          : "tos-qty relative z-0 inline-flex"
+      }
+      style={
+        card
+          ? undefined
+          : { minHeight: "var(--hit-min)", minWidth: "calc(var(--hit-min) + 1.25rem)" }
+      }
       data-surface={surface}
       data-testid={testId}
       data-tos-qty="1"
     >
-      <div
-        className={
-          "absolute left-1/2 top-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 items-stretch overflow-hidden " +
-          `rounded-sm ${REST_H} ${FILL} ` +
-          growBox
-        }
-        data-resting-h="18"
-        data-grown-hit="var(--hit-min)"
-      >
-        <div className={`flex ${REST_W} flex-col self-stretch`}>
+      {card ? (
+        <div
+          className={
+            "absolute left-1/2 top-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 items-stretch overflow-hidden " +
+            `rounded-sm ${REST_H} ${FILL} ` +
+            growBox
+          }
+          data-resting-h="18"
+          data-grown-hit="var(--hit-min)"
+        >
+          <div className={`flex ${REST_W} flex-col self-stretch`}>
+            <button
+              type="button"
+              disabled={disabled}
+              className={seg}
+              aria-label="POS up"
+              data-testid={testId ? `${testId}-up` : undefined}
+              onClick={(e) => {
+                e.stopPropagation();
+                onUp();
+              }}
+            >
+              <PlusBar />
+            </button>
+            <div className={rule} aria-hidden />
+            <button
+              type="button"
+              disabled={disabled}
+              className={seg}
+              aria-label="POS down"
+              data-testid={testId ? `${testId}-down` : undefined}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDown();
+              }}
+            >
+              <MinusBar />
+            </button>
+          </div>
           <button
             type="button"
-            disabled={disabled}
-            className={seg}
-            aria-label="POS up"
-            data-testid={testId ? `${testId}-up` : undefined}
+            className={
+              `flex ${CARET_W} shrink-0 items-center justify-center self-stretch ` +
+              `${DIV} border-l`
+            }
+            aria-haspopup="listbox"
+            aria-expanded={open}
+            aria-controls={id}
+            aria-label="QTY quick-pick"
+            data-testid={testId ? `${testId}-caret` : undefined}
             onClick={(e) => {
               e.stopPropagation();
-              onUp();
+              setOpen((v) => !v);
             }}
           >
-            <PlusBar />
-          </button>
-          <div className={H_RULE} aria-hidden />
-          <button
-            type="button"
-            disabled={disabled}
-            className={seg}
-            aria-label="POS down"
-            data-testid={testId ? `${testId}-down` : undefined}
-            onClick={(e) => {
-              e.stopPropagation();
-              onDown();
-            }}
-          >
-            <MinusBar />
+            <CaretDown />
           </button>
         </div>
-        <button
-          type="button"
+      ) : (
+        <div
           className={
-            `flex ${CARET_W} shrink-0 items-center justify-center self-stretch ` +
-            `${DIV} border-l`
+            "inline-flex h-full w-full items-stretch overflow-hidden " +
+            "rounded-[var(--radius-sm)] bg-[var(--color-fill)] text-[var(--color-label)]"
           }
-          aria-haspopup="listbox"
-          aria-expanded={open}
-          aria-controls={id}
-          aria-label="QTY quick-pick"
-          data-testid={testId ? `${testId}-caret` : undefined}
-          onClick={(e) => {
-            e.stopPropagation();
-            setOpen((v) => !v);
-          }}
         >
-          <CaretDown />
-        </button>
-      </div>
+          <div className="flex min-w-[var(--hit-min)] flex-col self-stretch">
+            <button
+              type="button"
+              disabled={disabled}
+              className={seg}
+              aria-label="POS up"
+              data-testid={testId ? `${testId}-up` : undefined}
+              onClick={(e) => {
+                e.stopPropagation();
+                onUp();
+              }}
+            >
+              <PlusBar />
+            </button>
+            <div className={rule} aria-hidden />
+            <button
+              type="button"
+              disabled={disabled}
+              className={seg}
+              aria-label="POS down"
+              data-testid={testId ? `${testId}-down` : undefined}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDown();
+              }}
+            >
+              <MinusBar />
+            </button>
+          </div>
+          <button
+            type="button"
+            className={
+              "flex min-w-[1.25rem] shrink-0 items-center justify-center self-stretch " +
+              "border-l border-[var(--color-separator)]"
+            }
+            aria-haspopup="listbox"
+            aria-expanded={open}
+            aria-controls={id}
+            aria-label="QTY quick-pick"
+            data-testid={testId ? `${testId}-caret` : undefined}
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen((v) => !v);
+            }}
+          >
+            <CaretDown />
+          </button>
+        </div>
+      )}
       {open ? (
         <ul
           id={id}
           role="listbox"
-          className="absolute right-0 top-full z-30 mt-0.5 min-w-[3.5rem] rounded bg-[#1a1a22] py-1 shadow-lg ring-1 ring-white/20"
+          className={
+            card
+              ? "absolute right-0 top-full z-30 mt-0.5 min-w-[3.5rem] rounded bg-[#1a1a22] py-1 shadow-lg ring-1 ring-white/20"
+              : "absolute right-0 top-full z-30 mt-0.5 min-w-[3.5rem] rounded-[var(--radius-sm)] bg-[var(--color-surface)] py-1 text-[var(--color-label)] shadow-[var(--elevation-2)] ring-1 ring-[var(--color-separator)]"
+          }
           data-testid={testId ? `${testId}-menu` : undefined}
         >
           {QTY_QUICK_PICK.map((n) => (
             <li key={n} role="option">
               <button
                 type="button"
-                className="w-full px-2 py-1 text-right font-mono text-[length:var(--ol-card-data)] text-white hover:bg-white/10"
+                className={
+                  card
+                    ? "w-full px-2 py-1 text-right font-mono text-[length:var(--ol-card-data)] text-white hover:bg-white/10"
+                    : "w-full px-2 py-1 text-right font-mono text-[length:var(--text-body)] text-[var(--color-label)] hover:bg-[var(--color-fill)]"
+                }
                 data-testid={testId ? `${testId}-${n}` : undefined}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -244,7 +352,13 @@ const PADLOCK_H = 18;
 const PADLOCK_STROKE = 2.15;
 const PADLOCK_BODY = { x: 4.6, y: 9.05, w: 11.6, h: 8.1, rx: 1.7 };
 
-function TosPadlockGlyph({ locked }: { locked: boolean }) {
+function TosPadlockGlyph({
+  locked,
+  paint,
+}: {
+  locked: boolean;
+  paint: string;
+}) {
   const b = PADLOCK_BODY;
   return (
     <svg
@@ -265,7 +379,7 @@ function TosPadlockGlyph({ locked }: { locked: boolean }) {
           width={b.w}
           height={b.h}
           rx={b.rx}
-          fill={PADLOCK_PAINT}
+          fill={paint}
         />
       ) : (
         <rect
@@ -275,7 +389,7 @@ function TosPadlockGlyph({ locked }: { locked: boolean }) {
           height={b.h}
           rx={b.rx}
           fill="none"
-          stroke={PADLOCK_PAINT}
+          stroke={paint}
           strokeWidth={PADLOCK_STROKE}
         />
       )}
@@ -283,7 +397,7 @@ function TosPadlockGlyph({ locked }: { locked: boolean }) {
         <path
           d="M 7.15 9.15 A 3.15 3.15 0 0 0 13.45 9.15"
           fill="none"
-          stroke={PADLOCK_PAINT}
+          stroke={paint}
           strokeWidth={PADLOCK_STROKE}
           strokeLinecap="round"
         />
@@ -291,7 +405,7 @@ function TosPadlockGlyph({ locked }: { locked: boolean }) {
         <path
           d="M 7.15 9.15 V 5.65 A 5 5 0 0 0 16.2 6.5"
           fill="none"
-          stroke={PADLOCK_PAINT}
+          stroke={paint}
           strokeWidth={PADLOCK_STROKE}
           strokeLinecap="round"
         />
@@ -313,13 +427,18 @@ export function TosPadlock({
   testId?: string;
   className?: string;
 }) {
+  const card = surface === "card";
   return (
     <button
       type="button"
       className={
-        "inline-flex h-[18px] w-[22px] shrink-0 items-center justify-center leading-none " +
-        (className ? ` ${className}` : "")
+        card
+          ? "inline-flex h-[18px] w-[22px] shrink-0 items-center justify-center leading-none " +
+            (className ? ` ${className}` : "")
+          : "inline-flex shrink-0 items-center justify-center leading-none text-[var(--color-label)]" +
+            (className ? ` ${className}` : "")
       }
+      style={card ? undefined : dialogHit}
       title={locked ? "Unlock package basis" : "Lock at natural mid"}
       aria-label={locked ? "Unlock" : "Lock natural"}
       data-surface={surface}
@@ -332,7 +451,10 @@ export function TosPadlock({
         onToggle();
       }}
     >
-      <TosPadlockGlyph locked={locked} />
+      <TosPadlockGlyph
+        locked={locked}
+        paint={card ? PADLOCK_PAINT : "currentColor"}
+      />
     </button>
   );
 }
@@ -357,24 +479,31 @@ export function CardMenuField({
   children: ReactNode;
   fit?: "full" | "min";
 }) {
+  const card = surface === "card";
   return (
     <span
       className={
-        "relative inline-flex h-[18px] max-h-[18px] min-w-0 items-stretch overflow-visible rounded-sm " +
-        (fit === "min" ? "w-auto" : "w-full")
+        card
+          ? "relative inline-flex h-[18px] max-h-[18px] min-w-0 items-stretch overflow-visible rounded-sm " +
+            (fit === "min" ? "w-auto" : "w-full")
+          : "relative inline-flex min-w-0 items-stretch overflow-visible rounded-[var(--radius-sm)] " +
+            (fit === "min" ? "w-auto" : "w-full")
       }
+      style={card ? undefined : { minHeight: "var(--hit-min)" }}
       data-surface={surface}
     >
       {children}
-      <span
-        className="pointer-events-none absolute bottom-0 right-0 block h-[6px] w-[6px]"
-        aria-hidden
-        data-menu-triangle="1"
-      >
-        <svg width="6" height="6" viewBox="0 0 6 6" aria-hidden>
-          <polygon points="6,6 0,6 6,0" fill="#ffffff" />
-        </svg>
-      </span>
+      {card ? (
+        <span
+          className="pointer-events-none absolute bottom-0 right-0 block h-[6px] w-[6px]"
+          aria-hidden
+          data-menu-triangle="1"
+        >
+          <svg width="6" height="6" viewBox="0 0 6 6" aria-hidden>
+            <polygon points="6,6 0,6 6,0" fill="#ffffff" />
+          </svg>
+        </span>
+      ) : null}
     </span>
   );
 }
