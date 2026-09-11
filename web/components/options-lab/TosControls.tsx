@@ -66,10 +66,13 @@ export function TosStepper({
   ariaLabel?: string;
 }) {
   return (
-    <div className="group/step relative z-0 inline-flex hover:z-20 focus-within:z-20">
+    <div
+      className={`group/step relative z-0 inline-flex ${REST_H} ${REST_W} hover:z-20 focus-within:z-20`}
+      data-tos-stepper-slot="1"
+    >
       <div
         className={
-          "tos-stepper inline-flex flex-col overflow-hidden " +
+          "tos-stepper absolute left-1/2 top-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden " +
           `rounded-sm ${REST_H} ${REST_W} ${FILL} ` +
           growBox
         }
@@ -129,13 +132,14 @@ export function TosQtyControl({
   const [open, setOpen] = useState(false);
   return (
     <div
-      className="tos-qty group/step relative z-0 inline-flex hover:z-20 focus-within:z-20"
+      className={`tos-qty group/step relative z-0 inline-flex ${REST_H} w-[34px] hover:z-20 focus-within:z-20`}
       data-testid={testId}
       data-tos-qty="1"
     >
       <div
         className={
-          `inline-flex items-stretch overflow-hidden rounded-sm ${REST_H} ${FILL} ` +
+          "absolute left-1/2 top-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 items-stretch overflow-hidden " +
+          `rounded-sm ${REST_H} ${FILL} ` +
           growBox
         }
         data-resting-h="18"
@@ -200,7 +204,7 @@ export function TosQtyControl({
             <li key={n} role="option">
               <button
                 type="button"
-                className="w-full px-2 py-1 text-right font-mono text-[11px] text-white hover:bg-white/10"
+                className="w-full px-2 py-1 text-right font-mono text-[length:var(--ol-card-data)] text-white hover:bg-white/10"
                 data-testid={testId ? `${testId}-${n}` : undefined}
                 onClick={(e) => {
                   e.stopPropagation();

@@ -63,6 +63,10 @@
 
   --hit-min: 2.75rem; /* 44px */
 
+  /* Analyzer position card (PC8-E). Data / chrome — not a 1.5× literal family. */
+  --ol-card-data: 14px;
+  --ol-card-chrome: 13px;
+
   /* —— Chrome / global nav (Apple density; single source of truth) —— */
   --header-height: 3.5rem; /* 56px — mobile */
   --header-height-lg: 4rem; /* 64px — sm+ */

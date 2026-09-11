@@ -13,6 +13,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type ReactNode,
 } from "react";
 import ReplayBadge from "@/components/options-lab/ReplayBadge";
 import { formatReplayClock } from "@/lib/options-lab/algoDayReplay";
@@ -183,7 +184,7 @@ function PackagePriceField({
       <button
         type="button"
         className={
-          "font-mono text-[11px] font-normal tabular-nums " + textMain
+          `font-mono ${DATA} font-normal tabular-nums ` + textMain
         }
         data-testid={`analyzer-pos-price-edit-${id}`}
         title={locked ? "Edit locked basis" : "Lock and edit basis"}
@@ -206,7 +207,9 @@ function PackagePriceField({
       data-testid={`analyzer-pos-price-edit-${id}`}
       className={
         "w-[4.5rem] rounded bg-black/25 px-1 py-0 text-right font-mono " +
-        "text-[11px] font-normal tabular-nums outline-none ring-1 ring-white/40 " +
+        `${DATA} font-normal tabular-nums outline-none ring-1 ring-white/40 ` +
+        FIELD_FILL +
+        " " +
         textMain
       }
       value={draft}
@@ -260,10 +263,12 @@ function legsInDisplayOrder(
     });
 }
 
-/** House scale: chrome 10px, data 11px. Column headers keep ToS uppercase. */
+/** Card scale is --ol-card-data / --ol-card-chrome (tokens). Column headers keep ToS uppercase. */
+const DATA = "text-[length:var(--ol-card-data)]";
+const CHROME = "text-[length:var(--ol-card-chrome)]";
 const th =
-  "px-1 py-0.5 text-left text-[10px] font-normal uppercase tracking-wide text-white/55 whitespace-nowrap";
-const td = "px-1 text-[11px] font-normal tabular-nums whitespace-nowrap";
+  `px-1 py-0.5 text-left ${CHROME} font-normal uppercase tracking-wide text-white/55 whitespace-nowrap`;
+const td = `px-1 ${DATA} font-normal tabular-nums whitespace-nowrap`;
 /** Chrome gutter + ten PC-VOCAB-7 columns + lock chrome + delete at the right edge. */
 const COLS = [
   "13%",
@@ -292,14 +297,43 @@ const LOCK_RULE: CSSProperties = {
 const TD_PAD_Y = 1;
 const CARD_EXTRA_Y = 0;
 const chromeBtn =
-  "rounded px-1 py-0 text-[10px] font-normal text-white/80 hover:bg-black/40";
+  `rounded px-1 py-0 ${CHROME} font-normal text-white/80 hover:bg-black/40`;
 const actionBtn = chromeBtn;
+/** Lighter than the row; no border. Distinguishes editable from read-only. */
+const FIELD_FILL = "bg-white/12";
 /** Native <select> ignores h-* unless appearance is reset; floor = row (18px). */
 const cardSelect =
-  "h-[18px] max-h-[18px] appearance-none cursor-pointer rounded-sm bg-black/25 " +
-  "py-0 pl-1 pr-3 outline-none leading-[18px] bg-no-repeat bg-[length:7px_7px] " +
-  "bg-[right_3px_center] " +
-  "[background-image:url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'><polygon points='1,2.2 7,2.2 4,6.2' fill='white' fill-opacity='0.7'/></svg>\")]";
+  `h-[18px] max-h-[18px] w-full appearance-none cursor-pointer border-0 ${FIELD_FILL} ` +
+  `py-0 pl-1 pr-1.5 outline-none leading-[18px] ${DATA}`;
+
+/** Corner-nested menu marker (ToS). Not a hit target. */
+function CardMenuField({
+  children,
+  fit = "full",
+}: {
+  children: ReactNode;
+  fit?: "full" | "min";
+}) {
+  return (
+    <span
+      className={
+        "relative inline-flex h-[18px] max-h-[18px] min-w-0 items-stretch overflow-hidden rounded-sm " +
+        (fit === "min" ? "w-auto" : "w-full")
+      }
+    >
+      {children}
+      <span
+        className="pointer-events-none absolute bottom-0 right-0 block h-[6px] w-[6px]"
+        aria-hidden
+        data-menu-triangle="1"
+      >
+        <svg width="6" height="6" viewBox="0 0 6 6" aria-hidden>
+          <polygon points="6,6 0,6 6,0" fill="#ffffff" />
+        </svg>
+      </span>
+    </span>
+  );
+}
 
 export type AnalyzerPositionsListProps = {
   positions: AnalyzerPosition[];
@@ -448,7 +482,7 @@ export default function AnalyzerPositionsList({
       ) : (
         <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto rounded border border-[var(--color-separator)] bg-[#0a0a0e]">
           <table
-            className="w-full min-w-[720px] table-fixed border-separate border-spacing-0 text-left text-[11px] leading-tight"
+            className={`w-full min-w-[720px] table-fixed border-separate border-spacing-0 text-left ${DATA} leading-tight`}
             data-testid="analyzer-positions-table"
           >
             <colgroup>
@@ -552,7 +586,7 @@ export default function AnalyzerPositionsList({
                       <span className="ml-auto inline-flex gap-0.5">
                         <button
                           type="button"
-                          className="px-1 text-[12px] text-white/50 hover:text-white"
+                          className={`px-1 ${CHROME} text-white/50 hover:text-white`}
                           aria-label={`Move ${group.symbol} up`}
                           data-testid={`analyzer-symbol-group-reorder-up-${group.symbol}`}
                           disabled={gi === 0}
@@ -565,7 +599,7 @@ export default function AnalyzerPositionsList({
                         </button>
                         <button
                           type="button"
-                          className="px-1 text-[12px] text-white/50 hover:text-white"
+                          className={`px-1 ${CHROME} text-white/50 hover:text-white`}
                           aria-label={`Move ${group.symbol} down`}
                           data-testid={`analyzer-symbol-group-reorder-down-${group.symbol}`}
                           disabled={gi === groups.length - 1}
@@ -968,7 +1002,7 @@ function PosBlock({
           >
             <button
               type="button"
-              className="px-0.5 text-[10px] font-normal leading-none text-white/35 hover:text-white/80"
+              className={`px-0.5 ${CHROME} font-normal leading-none text-white/35 hover:text-white/80`}
               data-testid={`analyzer-pos-delete-${pos.id}`}
               aria-label={`Delete ${pos.label} from the list`}
               onClick={() => onAskDelete()}
@@ -1075,7 +1109,7 @@ function PosBlock({
                   ) : null}
                   {pos.closedAt != null ? (
                     <span
-                      className="px-0.5 text-[10px] font-normal text-white/70"
+                      className={`px-0.5 ${CHROME} font-normal text-white/70`}
                       data-testid={`analyzer-pos-closed-${pos.id}`}
                     >
                       Closed {formatEtHm(pos.closedAt)}
@@ -1092,7 +1126,7 @@ function PosBlock({
                   )}
                   {pos.rehearsal ? (
                     <span
-                      className="px-0.5 text-[10px] font-normal text-white/55"
+                      className={`px-0.5 ${CHROME} font-normal text-white/55`}
                       data-testid={`analyzer-pos-rehearsal-${pos.id}`}
                     >
                       <ReplayBadge className="!inline-flex !min-h-4 !min-w-4 !h-4 !w-4" />
@@ -1114,8 +1148,9 @@ function PosBlock({
               onClick={(e) => e.stopPropagation()}
             >
               {isTop ? (
+                <CardMenuField>
                 <select
-                  className={cardSelect + " w-full max-w-full " + textMain}
+                  className={cardSelect + " " + textMain}
                   value={currentTemplate ?? ""}
                   aria-label="Spread"
                   data-testid={`analyzer-pos-spread-${pos.id}`}
@@ -1134,6 +1169,7 @@ function PosBlock({
                     </option>
                   ))}
                 </select>
+                </CardMenuField>
               ) : (
                 ""
               )}
@@ -1144,12 +1180,12 @@ function PosBlock({
               onClick={(e) => e.stopPropagation()}
             >
               {isTop ? (
+                <CardMenuField>
                 <select
-                  className={cardSelect + " w-full max-w-full " + textMain}
+                  className={cardSelect + " " + textMain}
                   value={pkgDir === "SELL" ? "sell" : "buy"}
                   aria-label="Structure side BUY or SELL"
                   data-testid={`analyzer-pos-direction-${pos.id}`}
-                  title="Flip structure BUY ↔ SELL (debit ↔ credit)"
                   onChange={(e) => {
                     const v = e.target.value === "sell" ? "sell" : "buy";
                     onSetDirection(pos.id, v);
@@ -1158,6 +1194,7 @@ function PosBlock({
                   <option value="buy">BUY</option>
                   <option value="sell">SELL</option>
                 </select>
+                </CardMenuField>
               ) : (
                 <span className={textMain}>{legSide}</span>
               )}
@@ -1166,14 +1203,13 @@ function PosBlock({
               className={td + ` text-right font-mono ${textMain}`}
               style={edge}
               data-testid={isTop ? `analyzer-pos-qty-${pos.id}` : undefined}
-              title={isTop ? `POS ${pkgQty}` : undefined}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-end gap-0">
                 {isTop ? (
                   <input
                     className={
-                      "h-[18px] w-5 bg-transparent py-0 pr-0.5 text-right font-mono " +
+                      `h-[18px] w-5 rounded-sm ${FIELD_FILL} py-0 pr-0.5 text-right font-mono ` +
                       "leading-[18px] outline-none " +
                       textMain
                     }
@@ -1207,7 +1243,7 @@ function PosBlock({
               {und}
               {isTop && offSymbol ? (
                 <span
-                  className="ml-1 rounded bg-black/25 px-1 text-[10px] text-white"
+                  className={`ml-1 rounded bg-black/25 px-1 ${CHROME} text-white`}
                   data-testid="analyzer-pos-off-symbol"
                 >
                   off
@@ -1221,8 +1257,9 @@ function PosBlock({
             >
               {(isTop && exposure.expiration === "row1") ||
               exposure.expiration === "per-leg" ? (
+                <CardMenuField>
                 <select
-                  className={cardSelect + " w-full max-w-full " + textMain}
+                  className={cardSelect + " " + textMain}
                   value={boundSelectValue(exp, expChoices).value}
                   data-invalid={
                     boundSelectValue(exp, expChoices).invalid ? "1" : "0"
@@ -1237,7 +1274,6 @@ function PosBlock({
                       ? `analyzer-pos-expiration-${pos.id}`
                       : `analyzer-pos-leg-exp-${pos.id}-${i}`
                   }
-                  title="Roll to listed expiration"
                   onChange={(e) => {
                     if (!e.target.value) return;
                     if (exposure.expiration === "per-leg") {
@@ -1258,11 +1294,12 @@ function PosBlock({
                     </option>
                   ))}
                 </select>
+                </CardMenuField>
               ) : (
                 <span className={textMuted}>
                   {fmtExp(exp)}
                   {isTop ? (
-                    <span className="ml-1 text-[10px] text-white/50">
+                    <span className={`ml-1 ${CHROME} text-white/50`}>
                       {expired ? "EXPIRED" : `${dte}d`}
                     </span>
                   ) : null}
@@ -1278,10 +1315,11 @@ function PosBlock({
             >
               <div className="flex items-center justify-end gap-0.5">
                 {listedForLeg.length ? (
+                  <CardMenuField fit="min">
                   <select
                     className={
                       cardSelect +
-                      " max-w-[6.5rem] text-right font-mono " +
+                      " !w-auto max-w-[6.5rem] text-right font-mono " +
                       textMain
                     }
                     value={
@@ -1306,6 +1344,7 @@ function PosBlock({
                       </option>
                     ))}
                   </select>
+                  </CardMenuField>
                 ) : (
                   <span>{fmtStrike(leg.strike)}</span>
                 )}
@@ -1346,10 +1385,11 @@ function PosBlock({
                   {leg.type === "call" ? "CALL" : "PUT"}
                 </span>
               ) : (
+                <CardMenuField fit="min">
                 <button
                   type="button"
                   className={
-                    "rounded bg-black/20 px-1 py-0 " + textMain
+                    `h-[18px] rounded-sm ${FIELD_FILL} px-1 py-0 ` + textMain
                   }
                   data-testid={
                     isTop
@@ -1368,6 +1408,7 @@ function PosBlock({
                 >
                   {leg.type === "call" ? "CALL" : "PUT"}
                 </button>
+                </CardMenuField>
               )}
             </td>
             <td
@@ -1395,13 +1436,7 @@ function PosBlock({
                       : "0"
                   : undefined
               }
-              title={
-                isTop
-                  ? display.detail
-                  : leg.entry_price > 0
-                    ? "Leg mid"
-                    : undefined
-              }
+
             >
               {isTop ? (
                 display.kind === "price" ? (
@@ -1453,12 +1488,12 @@ function PosBlock({
                         className="flex items-center gap-1"
                         data-testid={`analyzer-pos-check-price-${pos.id}`}
                       >
-                        <span className="text-[10px] font-normal uppercase text-amber-200">
+                        <span className={`${CHROME} font-normal uppercase text-amber-200`}>
                           CHECK PRICE
                         </span>
                         <button
                           type="button"
-                          className="rounded bg-black/25 px-1 py-0 text-[10px] font-normal text-white hover:bg-black/40"
+                          className={`rounded bg-black/25 px-1 py-0 ${CHROME} font-normal text-white hover:bg-black/40`}
                           data-testid={`analyzer-pos-keep-${pos.id}`}
                           onClick={() => onKeepCheckPrice?.(pos.id)}
                         >
@@ -1473,7 +1508,7 @@ function PosBlock({
                     {priceLabel}
                     <span
                       className={
-                        "ml-1 text-[10px] font-normal uppercase text-amber-200"
+                        `ml-1 ${CHROME} font-normal uppercase text-amber-200`
                       }
                     >
                       EXPIRED
@@ -1482,7 +1517,7 @@ function PosBlock({
                 ) : (
                   <span
                     className={
-                      "text-[10px] font-normal uppercase " +
+                      `${CHROME} font-normal uppercase ` +
                       (display.kind === "updating"
                         ? textMuted
                         : "text-amber-200")
@@ -1495,7 +1530,7 @@ function PosBlock({
                 )
               ) : i === 1 ? (
                 <span
-                  className={`text-[11px] font-normal uppercase ${textMain}`}
+                  className={`${DATA} font-normal uppercase ${textMain}`}
                   data-testid={`analyzer-pos-pkg-side-${pos.id}`}
                 >
                   {pkgSide}
@@ -1512,9 +1547,8 @@ function PosBlock({
                   if (nt) {
                     return (
                       <span
-                        className="text-[10px] font-normal uppercase text-amber-200"
+                        className={`${CHROME} font-normal uppercase text-amber-200`}
                         data-testid={`analyzer-pos-leg-not-traded-${pos.id}-${i}`}
-                        title={`${leg.strike} ${leg.type} — not traded`}
                       >
                         NOT TRADED
                       </span>
@@ -1561,7 +1595,7 @@ function PosBlock({
               >
                 <button
                   type="button"
-                  className="px-0.5 text-[10px] font-normal leading-none text-white/35 hover:text-white/80"
+                  className={`px-0.5 ${CHROME} font-normal leading-none text-white/35 hover:text-white/80`}
                   data-testid={`analyzer-pos-delete-${pos.id}`}
                   aria-label={`Delete ${pos.label} from the list`}
                   onClick={() => onAskDelete()}

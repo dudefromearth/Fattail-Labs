@@ -216,6 +216,63 @@ test("AT-PC-67 / AT-PC-68 stepper grows on hover/focus; exclusive z-index", () =
   }
 });
 
+test("PC8-E.3 grown stepper is out of flow; resting slot is the layout box", () => {
+  const src = readFileSync(
+    join(here, "../../components/options-lab/TosControls.tsx"),
+    "utf8",
+  );
+  assert.match(src, /data-tos-stepper-slot/);
+  assert.match(src, /absolute left-1\/2 top-1\/2/);
+  assert.match(src, /-translate-x-1\/2 -translate-y-1\/2/);
+  assert.match(src, /inline-flex \$\{REST_H\} \$\{REST_W\}/);
+});
+
+test("PC8-E.4 no POS tooltip; title only on real buttons", () => {
+  const list = readFileSync(
+    join(here, "../../components/options-lab/AnalyzerPositionsList.tsx"),
+    "utf8",
+  );
+  assert.doesNotMatch(list, /title=\{isTop \? `POS \$\{pkgQty\}`/);
+  assert.doesNotMatch(list, /title="Roll to listed expiration"/);
+  assert.doesNotMatch(list, /title="Flip structure/);
+  assert.match(list, /Log is closed while Time Machine is active/);
+  assert.match(list, /aria-label="POS"/);
+});
+
+test("PC8-E.5 card scale is a token: data 14px chrome 13px", () => {
+  const tokens = readFileSync(
+    join(here, "../../styles/tokens.css"),
+    "utf8",
+  );
+  assert.match(tokens, /--ol-card-data:\s*14px/);
+  assert.match(tokens, /--ol-card-chrome:\s*13px/);
+  const list = readFileSync(
+    join(here, "../../components/options-lab/AnalyzerPositionsList.tsx"),
+    "utf8",
+  );
+  assert.match(list, /--ol-card-data/);
+  assert.match(list, /--ol-card-chrome/);
+  assert.doesNotMatch(list, /const td = "px-1 text-\[11px\]/);
+});
+
+test("PC8-E.7 menu triangle is corner-nested; QTY caret is untouched", () => {
+  const list = readFileSync(
+    join(here, "../../components/options-lab/AnalyzerPositionsList.tsx"),
+    "utf8",
+  );
+  assert.match(list, /data-menu-triangle="1"/);
+  assert.match(list, /points="6,6 0,6 6,0"/);
+  assert.match(list, /pointer-events-none absolute bottom-0 right-0/);
+  assert.doesNotMatch(list, /bg-\[right_3px_center\]/);
+  assert.match(list, /CardMenuField/);
+  const src = readFileSync(
+    join(here, "../../components/options-lab/TosControls.tsx"),
+    "utf8",
+  );
+  assert.match(src, /function CaretDown/);
+  assert.match(src, /TosQtyControl/);
+});
+
 test("AT-PC-69 QTY quick-pick is POS and leaves lock standing", () => {
   assert.deepEqual([...QTY_QUICK_PICK], [1, 2, 5, 10, 20]);
   const a = lockLimit(fly(), 1.2, false);
@@ -305,7 +362,7 @@ test("AT-PC-49 STRATEGY cell is perceptible; column headers keep ToS uppercase",
     "utf8",
   );
   assert.match(list, /analyzer-pos-spread-/);
-  assert.match(list, /text-\[10px\] font-normal uppercase tracking-wide/);
+  assert.match(list, /uppercase tracking-wide/);
 });
 
 test("PC8-D ✕ deletes and Close closes; no entry-time on the card", () => {

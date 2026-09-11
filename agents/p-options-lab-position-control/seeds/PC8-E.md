@@ -15,11 +15,11 @@ This file is the only authority. Amendments become **PC8-F**, never an edit here
 |---|------|--------|----------|
 | 1 | Empty-book autofit regression | **LANDED** | `book-empty` / `book-to-empty`; awaiting Delta |
 | 2 | VOL / DELTA dead | **LANDED** | quote-merge writes chain IV; awaiting Delta |
-| 3 | Stepper hover reflow | **DONE** | `c5ac840` — hover `h-`/`w-` removed |
-| 4 | POS tooltip | **NOT STARTED** | `AnalyzerPositionsList.tsx:1169` |
-| 5 | Fonts +30% | **NOT STARTED** | `td` = `text-[11px]`; 13 × `text-[10px]` |
+| 3 | Stepper hover reflow | **LANDED** | out-of-flow grow; `--hit-min` question to Echo/Tango |
+| 4 | POS tooltip | **LANDED** | `title={POS}` gone; Log TM title kept |
+| 5 | Fonts +30% | **LANDED** | `--ol-card-data: 14px` / `--ol-card-chrome: 13px` |
 | 6 | Padlock form | **DONE** | `51de4dd` |
-| 7 | Corner-nested menu triangle | **PARTIAL** | `cardSelect` uses `bg-[right_3px_center]`, down-pointing isoceles |
+| 7 | Corner-nested menu triangle | **LANDED** | corner-nested right triangle; lighter field fill |
 
 Update this table in the same commit as each fix. A row is DONE only when Delta says PASS.
 
