@@ -241,6 +241,7 @@ function TosPadlockGlyph({ locked }: { locked: boolean }) {
       width={PADLOCK_W}
       height={PADLOCK_H}
       viewBox={`0 0 ${PADLOCK_W} ${PADLOCK_H}`}
+      className="block"
       aria-hidden
       data-lock-state={locked ? "locked" : "unlocked"}
       data-lock-shackle={locked ? "over" : "side"}
@@ -304,7 +305,7 @@ export function TosPadlock({
     <button
       type="button"
       className={
-        "inline-flex h-[18px] w-[22px] shrink-0 items-center justify-center " +
+        "inline-flex h-[18px] w-[22px] shrink-0 items-center justify-center leading-none " +
         (className ? ` ${className}` : "")
       }
       title={locked ? "Unlock package basis" : "Lock at natural mid"}

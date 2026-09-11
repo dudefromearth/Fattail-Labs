@@ -163,6 +163,21 @@ test("AT-PC-66 padlock pair: shackle carries state, unlocked is outlined", () =>
   assert.match(src, /data-locked=\{locked \? "1" : "0"\}/);
 });
 
+test("PC8-F padlock SVG is block so the shackle stays inside the 18px row", () => {
+  const src = readFileSync(
+    join(here, "../../components/options-lab/TosControls.tsx"),
+    "utf8",
+  );
+  const glyph = src.slice(src.indexOf("function TosPadlockGlyph"));
+  const svgOpen = glyph.slice(0, glyph.indexOf("</svg>"));
+  assert.match(svgOpen, /className="block"/);
+  assert.match(src, /leading-none/);
+  assert.match(src, /viewBox=\{`0 0 \$\{PADLOCK_W\} \$\{PADLOCK_H\}`\}/);
+  assert.equal((src.match(/const PADLOCK_W = 22/) || []).length, 1);
+  assert.equal((src.match(/const PADLOCK_H = 18/) || []).length, 1);
+  assert.doesNotMatch(src, /viewBox="0 0 22 2[0-9]"/);
+});
+
 test("PC8-E padlock footprint identical both states; one colour white", () => {
   const src = readFileSync(
     join(here, "../../components/options-lab/TosControls.tsx"),

@@ -1,0 +1,19 @@
+PC8-F padlock layout (100% zoom, CSS px)
+
+UNLOCKED
+  svg    top=541.5 bottom=559.5 h=18 w=22
+  button top=541.5 bottom=559.5 h=18 w=22
+  row    top=540.5 bottom=564 h=23.5
+  thead  bottom=515
+  group  bottom=540.5
+  svg inside button=true  svg inside row=true
+  svg below thead=true  svg below group=true
+
+LOCKED
+  svg    top=607 bottom=625 h=18 w=22
+  button top=607 bottom=625 h=18 w=22
+  row    top=606 bottom=629.5 h=23.5
+  thead  bottom=515
+  group  bottom=540.5
+  svg inside button=true  svg inside row=true
+  svg below thead=true  svg below group=true
