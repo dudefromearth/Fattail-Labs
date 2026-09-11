@@ -175,12 +175,13 @@ async def answer_question(question_id: int, request: Request) -> dict:
                     cur, identity_id=int(q["identity_id"]), question_id=question_id,
                     subject=q["subject"], message_id=msg_id,
                 )
-                email_after = (q["email"], q["subject"])
+                email_after = (q["email"], q["subject"], text)
 
     # Email after commit so SMTP latency never holds the transaction.
     if email_after:
         help_domain.email_member_answered(
-            member_email=email_after[0], question_id=question_id, subject=email_after[1]
+            member_email=email_after[0], question_id=question_id, subject=email_after[1],
+            reply_body=email_after[2],
         )
     return {"ok": True}
 

@@ -204,6 +204,10 @@ async def create_question(request: Request) -> dict:
     # Notify the human team only when a human is actually needed.
     if not ai_on or not resolved:
         help_domain.notify_admins_new_question(qid, subject, email or f"member {iid}")
+        # Confirm receipt to the member — their ticket has reached the team.
+        help_domain.email_member_ticket_received(
+            member_email=email, question_id=qid, subject=subject
+        )
 
     return {"ok": True, "id": qid, "category": category,
             "status": ("ai_resolved" if resolved else "open"), "ai": ai_payload}
@@ -317,7 +321,7 @@ async def escalate_to_human(question_id: int, request: Request) -> dict:
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id, identity_id, subject FROM help_questions WHERE id = %s",
+                "SELECT id, identity_id, email, subject FROM help_questions WHERE id = %s",
                 (question_id,),
             )
             q = cur.fetchone()
@@ -340,6 +344,9 @@ async def escalate_to_human(question_id: int, request: Request) -> dict:
     )
     help_domain.notify_admins_new_question(
         question_id, f"(human requested) {q['subject']}", f"member {iid}"
+    )
+    help_domain.email_member_ticket_received(
+        member_email=q.get("email"), question_id=question_id, subject=q["subject"]
     )
     return {"ok": True}
 

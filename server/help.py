@@ -156,18 +156,66 @@ def notify_member_answered_inapp(
         log.warning("help member in-app notify failed (q=%s): %s", question_id, exc)
 
 
-def email_member_answered(*, member_email: str | None, question_id: int, subject: str) -> None:
-    """Send the 'answered' email AFTER commit. Best-effort — SMTP is optional."""
+def _help_ticket_link(question_id: int) -> str:
+    """Deep link to the member's ticket inside the app."""
+    import notify
+    origin = (notify._site_origin() or "").rstrip("/")
+    return f"{origin}/help?q={question_id}" if origin else f"/help?q={question_id}"
+
+
+def email_member_ticket_received(*, member_email: str | None, question_id: int, subject: str) -> None:
+    """Confirm to the member their ticket reached the human team. Best-effort — SMTP optional."""
     if not member_email:
         return
     try:
         import notify
-        origin = (notify._site_origin() or "").rstrip("/")
-        link = f"{origin}/help?q={question_id}" if origin else f"/help?q={question_id}"
+        link = _help_ticket_link(question_id)
+        body = (
+            "Hi,\n\n"
+            "Thanks for reaching out - your support ticket has been received and "
+            "passed to our team:\n\n"
+            f'    "{subject}"\n\n'
+            "We'll email you as soon as we reply. There's nothing else you need to do.\n\n"
+            "You can view this ticket any time inside FatTail Labs: open the app, "
+            'click the "?" Help button in the bottom corner, and select your ticket '
+            "- or go straight to it here:\n"
+            f"{link}\n\n"
+            "- The FatTail Labs Team\n"
+        )
         notify._send_email(
             member_email,
-            "Your FatTail Labs question was answered",
-            f'Your question "{subject}" has a reply from the team.\n\nOpen: {link}\n',
+            "We've received your FatTail Labs support ticket",
+            body,
+        )
+    except Exception as exc:  # noqa: BLE001 — SMTP optional / may fail
+        log.warning("help ticket-received email skipped/failed (q=%s): %s", question_id, exc)
+
+
+def email_member_answered(
+    *, member_email: str | None, question_id: int, subject: str, reply_body: str | None = None,
+) -> None:
+    """Send the 'ticket updated' email AFTER commit. Best-effort — SMTP is optional."""
+    if not member_email:
+        return
+    try:
+        import notify
+        link = _help_ticket_link(question_id)
+        reply = (reply_body or "").strip()
+        quoted = ("\n" + ("-" * 56) + "\n" + reply + "\n" + ("-" * 56) + "\n") if reply else ""
+        body = (
+            "Hi,\n\n"
+            f'Our team has replied to your support ticket "{subject}":\n'
+            + quoted
+            + "\nYour ticket has been updated. To read the full conversation or reply "
+            'back, open FatTail Labs, click the "?" Help button in the bottom corner, '
+            "and select this ticket - or go straight to it here:\n"
+            f"{link}\n\n"
+            "- The FatTail Labs Team\n"
+        )
+        notify._send_email(
+            member_email,
+            "Your FatTail Labs support ticket has been updated",
+            body,
         )
     except Exception as exc:  # noqa: BLE001 — SMTP optional / may fail
         log.warning("help member email skipped/failed (q=%s): %s", question_id, exc)
