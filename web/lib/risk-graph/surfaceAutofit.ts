@@ -28,15 +28,23 @@ export type AutofitProfileId = "default";
 
 export type AutofitTrigger =
   | "book-change"
+  | "structure"
   | "autofit-button"
   | "what-if"
   | "live-spot"
   | "playhead"
   | "camera-fit";
 
-/** AF-L5 / AF-L8 — only book change and the Autofit button recompute the S window. */
+/**
+ * AF-L5 (PC9a): structure-changed signal and the Autofit button.
+ * `book-change` remains as an alias of `structure`. Overlay / live / What-if / playhead never.
+ */
 export function autofitShouldRun(trigger: AutofitTrigger): boolean {
-  return trigger === "book-change" || trigger === "autofit-button";
+  return (
+    trigger === "book-change" ||
+    trigger === "structure" ||
+    trigger === "autofit-button"
+  );
 }
 
 /** Union of listed strikes across every shown structure. */

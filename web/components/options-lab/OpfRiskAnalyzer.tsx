@@ -187,6 +187,12 @@ import {
   autofitShouldRun2d,
   bookAppearedOnCanvas,
 } from "@/lib/risk-graph/pnlChartViewPolicy";
+import { structureKey } from "@/lib/options-lab/structureSignal";
+import {
+  geometryEscapesWindow,
+  shouldAutofit,
+  visibleStructureFingerprint,
+} from "@/lib/options-lab/autofitPolicy";
 import {
   bandFromMassPct,
   RANGE_MASS_1SIGMA,
@@ -1575,6 +1581,8 @@ export default function OpfRiskAnalyzer() {
     exp: unknown;
     theo: unknown;
   } | null>(null);
+  const pendingCreateFitRef = useRef(false);
+  const structureFpRef = useRef("");
   useLayoutEffect(() => {
     const appeared = bookAppearedOnCanvas(hadCurvesRef.current, hasCurves);
     hadCurvesRef.current = hasCurves;
@@ -1600,23 +1608,64 @@ export default function OpfRiskAnalyzer() {
     ) {
       return;
     }
-    if (
-      !autofitShouldRun2d("strike-drop", {
-        userAdjusted: true,
-        strikeDragging: false,
-      })
-    ) {
-      return;
-    }
     pendingStrikeFitRef.current = false;
     strikeFitStalePtsRef.current = null;
-    chartRef.current?.autoFit();
+    const view = chartRef.current?.getView?.();
+    const content = displayPositions
+      .filter((p) => p.visible)
+      .flatMap((p) => p.position.legs.map((l) => l.strike));
+    const escapes = view
+      ? geometryEscapesWindow(content, { min: view.xMin, max: view.xMax })
+      : true;
+    if (shouldAutofit("structure", escapes)) {
+      chartRef.current?.autoFit();
+    }
   }, [
     risk.expirationPoints,
     risk.theoreticalPoints,
     strikeDrag,
     hasCurves,
+    displayPositions,
   ]);
+
+  const structureFp = useMemo(
+    () =>
+      visibleStructureFingerprint(
+        displayPositions.map((p) => ({
+          id: p.id,
+          structureKey: structureKey(p),
+          visible: p.visible,
+        })),
+      ),
+    [displayPositions],
+  );
+
+  useLayoutEffect(() => {
+    if (strikeDrag != null) return;
+    const prev = structureFpRef.current;
+    const next = structureFp;
+    if (pendingCreateFitRef.current) {
+      pendingCreateFitRef.current = false;
+      structureFpRef.current = next;
+      if (shouldAutofit("create-submit", false)) {
+        chartRef.current?.autoFit();
+      }
+      return;
+    }
+    if (prev === next) return;
+    const kind = !prev && next ? "first-show" : "structure";
+    structureFpRef.current = next;
+    const view = chartRef.current?.getView?.();
+    const content = displayPositions
+      .filter((p) => p.visible)
+      .flatMap((p) => p.position.legs.map((l) => l.strike));
+    const escapes = view
+      ? geometryEscapesWindow(content, { min: view.xMin, max: view.xMax })
+      : true;
+    if (shouldAutofit(kind, escapes)) {
+      chartRef.current?.autoFit();
+    }
+  }, [structureFp, strikeDrag, displayPositions]);
 
   const alertLines = useMemo(
     () =>
@@ -1702,6 +1751,7 @@ export default function OpfRiskAnalyzer() {
           pos.rehearsal = true;
           if (tm.tMs != null) pos.entryAt = tm.tMs;
         }
+        pendingCreateFitRef.current = true;
         commitBook("create-submit", (prev) => [pos, ...prev], {
           createdId: pos.id,
           draft: {
@@ -1993,16 +2043,6 @@ export default function OpfRiskAnalyzer() {
       );
       setStrikeDrag(null);
       risk.refresh();
-      requestAnimationFrame(() => {
-        if (
-          autofitShouldRun2d("strike-drop", {
-            userAdjusted: true,
-            strikeDragging: false,
-          })
-        ) {
-          chartRef.current?.autoFit();
-        }
-      });
     },
     [chain, risk, commitBook],
   );

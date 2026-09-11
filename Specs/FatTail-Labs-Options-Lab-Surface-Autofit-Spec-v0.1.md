@@ -27,11 +27,13 @@ Coach sees index screenshots; then AF-n if needed.
 
 **Invoke:**
 
-1. Every time a position is **added to the viewport** (shown book changes).
+1. On the **structure-changed signal** (PC-REC-6) of the **committed book** — never the drag overlay (PC-FIT-1 · 2). Fit on Create-Submit and on first show; afterwards **only when geometry escapes the window** (PC-FIT-3). A deliberate zoom survives an edit that still fits.
 2. On command when the member clicks **Autofit**. Autofit **restores default pad (50%) and $0 plane (40%)**, then rescans the window and camera-Fits. **Fit** does not restore those defaults.
 
 **Do not invoke** on live spot drift, What-if dials, or playhead walk.
 The **Autofit** button covers those.
+
+*PC9a / 2026-09-11: AF-L5 amended in place. Position Control PC-FIT-1…3 is the trigger law. Analyzer 2D and Surface share it.*
 
 ---
 
@@ -218,7 +220,7 @@ Detection stays in one place. Default remains the fallback.
 | **AF-L2** | Outer content = furthest of BEs (T0 and expiry) and the **union** of shown listed Ks, plus spot **inside at fit time**. |
 | **AF-L3** | Default pad is equal on both sides of that span, in **points**. |
 | **AF-L4** | Box X maps the Autofit window — stretch/compress is that map. |
-| **AF-L5** | Run on viewport **book change** and on the Autofit **button** only. |
+| **AF-L5** | Run on the **structure-changed signal** (PC-REC-6 / PC-FIT-1) and on the Autofit **button**. Fit on first show and Create-Submit; afterwards only when geometry escapes the window (PC-FIT-3). Never on the drag overlay (PC-FIT-2). Live spot, What-if, and playhead do not Autofit (AF-L8). *Amended 2026-09-11, PC9a.* |
 | **AF-L6** | `evaluatePnlAtSpot` is the only P&L. No silent 0.20 / sticky smile. |
 | **AF-L7** | Special cases only via §5 amendment + Coach stamp. |
 | **AF-L8** | No auto-refit on live spot drift or What-if dials. Playhead does not change the window. |
@@ -236,6 +238,7 @@ Detection stays in one place. Default remains the fallback.
 | **AT-AF-5** | Autofit button exists (`surface-autofit`) and Fit does not change the window |
 | **AT-AF-6** | Two shown structures: window covers the **union** of their listed strikes |
 | **AT-AF-7** | Playhead / What-if / live-spot triggers do **not** Autofit (`autofitShouldRun`) |
+| **AT-AF-8** | A structure edit whose strikes still sit inside the current window does **not** Autofit (PC-FIT-3 / AT-PC-16) |
 
 ---
 

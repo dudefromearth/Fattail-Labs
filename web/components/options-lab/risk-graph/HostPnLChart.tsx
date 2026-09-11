@@ -438,7 +438,14 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       drawRef.current();
     }, [fit]);
 
-    useImperativeHandle(ref, () => ({ autoFit }), [autoFit]);
+    useImperativeHandle(
+      ref,
+      () => ({
+        autoFit,
+        getView: () => ({ ...viewRef.current }),
+      }),
+      [autoFit],
+    );
 
     const draw = useCallback(() => {
       try {

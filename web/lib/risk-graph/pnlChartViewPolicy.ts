@@ -27,12 +27,13 @@ export function autofitShouldRun2d(
   },
 ): boolean {
   if (opts.dragging || opts.strikeDragging) return false;
-  if (
-    trigger === "autofit-button" ||
-    trigger === "book-appear" ||
-    trigger === "strike-drop"
-  ) {
+  if (trigger === "autofit-button" || trigger === "book-appear") {
     return true;
+  }
+  // Overlay-commit is a structure change. PC-FIT-3 (fit-if-needed) is
+  // decided by shouldAutofit in the structure-signal subscriber — not here.
+  if (trigger === "strike-drop") {
+    return false;
   }
   if (opts.userAdjusted) return false;
   if (trigger === "first-paint") return true;

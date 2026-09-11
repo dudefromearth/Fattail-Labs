@@ -64,8 +64,8 @@ test("AT-2D-AF-10 strike-drag must not Autofit", () => {
     "still dragging",
   );
   assert(
-    autofitShouldRun2d("strike-drop", { userAdjusted: true }) === true,
-    "drop Autofits even after pan",
+    autofitShouldRun2d("strike-drop", { userAdjusted: true }) === false,
+    "drop is structure; PC-FIT-3 decides fit-if-needed, not always-fit",
   );
 });
 
@@ -133,7 +133,8 @@ test("AT-CLICK-1 / AT-WH-1 / AT-AZ-WIRE-1 source", () => {
   assert(!az.includes("SurfaceViewport"), "Analyzer is 2D only; Surface is suite page");
   assert(!az.includes("analyzer-viewport-surface"), "no in-viewport Surface tab");
   assert(az.includes("onStrikeCommit="), "listed strike handles wired");
-  assert(az.includes('"strike-drop"'), "leg / group drop Autofits");
+  assert(az.includes("shouldAutofit"), "PC-FIT-3 structure-signal Autofit");
+  assert(az.includes("pendingCreateFitRef"), "Create-Submit Autofit");
   assert(host.includes("bindStrikeHandles"), "yellow ticks bind on host");
   assert(host.includes("SPOT_LABEL_FG"), "spot chip on the strike scale");
   assert(host.includes("#facc15"), "spot scale text is yellow-400");
