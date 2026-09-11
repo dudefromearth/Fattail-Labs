@@ -120,6 +120,15 @@ def save_screenshot(b64: str | None) -> str | None:
         return None
 
 
+def _help_notify_emails() -> list[str]:
+    """Who gets the team EMAIL for a new/escalated ticket. In-app still goes to
+    ALL admins; only the email is scoped. Configurable via
+    LABS_HELP_NOTIFY_EMAILS (comma-separated); defaults to the support owner.
+    Set it empty to fall back to emailing every admin."""
+    raw = os.environ.get("LABS_HELP_NOTIFY_EMAILS", "conor@0-dte.com")
+    return [e.strip() for e in raw.split(",") if e.strip()]
+
+
 def notify_admins_new_question(question_id: int, subject: str, reporter: str) -> None:
     try:
         import notify
@@ -130,6 +139,7 @@ def notify_admins_new_question(question_id: int, subject: str, reporter: str) ->
             href=f"/admin/help?q={question_id}",
             resource_type="help_question",
             resource_id=str(question_id),
+            email_to=_help_notify_emails() or None,
         )
     except Exception as exc:  # noqa: BLE001
         log.warning("help admin notify failed (q=%s): %s", question_id, exc)

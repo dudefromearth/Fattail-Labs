@@ -148,8 +148,13 @@ def notify_admins(
     resource_type: str | None = None,
     resource_id: str | None = None,
     exclude_identity_id: int | None = None,
+    email_to: list[str] | None = None,
 ) -> list[int]:
     """Create in-app notifications for all admins and attempt email.
+
+    If ``email_to`` is given, the EMAIL is sent only to those addresses (once
+    each) instead of to every admin — the in-app notification still goes to all
+    admins. Used to route help-ticket emails to a single support inbox.
 
     Returns notification ids created.
     """
@@ -175,12 +180,17 @@ def notify_admins(
                 email_status = "pending"
                 email_error = None
                 try:
-                    _send_email(
-                        admin["email"],
-                        f"[FatTail Labs] {title}",
-                        f"{body}\n\nOpen: {abs_href}\n",
-                    )
-                    email_status = "sent"
+                    if email_to is None:
+                        _send_email(
+                            admin["email"],
+                            f"[FatTail Labs] {title}",
+                            f"{body}\n\nOpen: {abs_href}\n",
+                        )
+                        email_status = "sent"
+                    else:
+                        # Email is routed to an explicit list below; in-app only here.
+                        email_status = "skipped"
+                        email_error = "routed to notify list"
                 except NotifyError as exc:
                     if str(exc) == "smtp_not_configured":
                         email_status = "skipped"
@@ -212,6 +222,20 @@ def notify_admins(
                     ),
                 )
                 ids.append(int(cur.lastrowid))
+
+    # Explicit email routing (e.g. help tickets -> one support inbox) — after the
+    # txn so SMTP latency never holds it. In-app already delivered to all admins.
+    if email_to:
+        subj = f"[FatTail Labs] {title}"
+        text = f"{body}\n\nOpen: {abs_href}\n"
+        for addr in email_to:
+            addr = (addr or "").strip()
+            if not addr:
+                continue
+            try:
+                _send_email(addr, subj, text)
+            except Exception as exc:  # noqa: BLE001 — best-effort
+                log.warning("notify routed email failed (%s): %s", addr, exc)
     return ids
 
 
