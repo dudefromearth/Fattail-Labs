@@ -1,8 +1,8 @@
 # Position Control — PCZ close
 
-**Revision:** 5  
+**Revision:** 6  
 **Date:** 2026-09-11  
-**Supersedes:** revision 4 (PC8-D QTY unit)  
+**Supersedes:** revision 5 (PC8-E padlock)  
 **Machine:** Coach's MacBook (dev)  
 **Reader:** Coach — you were not required to sit with every packet. This is the program.
 
@@ -13,6 +13,7 @@
 | 3 | 2026-09-11 | PC8-D card density. ✕ vs Close and entry-time off the card flagged for Spec v1.3 (D-PC-9). |
 | 4 | 2026-09-11 | PC8-D superseding pass. QTY is one ToS unit; stepper resting symmetric; `--hit-min` grown-only. Three-leg card 290px → 60px. |
 | 5 | 2026-09-11 | PC8-E item 6. Dedicated ToS padlock, white both states, own column past the price stepper. |
+| 6 | 2026-09-11 | PC8-E seed. Seven items. Empty-book Autofit, VOL/DELTA writer, card chrome. Echo/Tango: `--hit-min`. |
 
 Nothing deploys. PC9b ran as **mapper only**. The snapshot column was not added.
 
@@ -119,6 +120,7 @@ Sign the padlock against `docs/reference/tos/tos-padlock-locked.png` and `tos-pa
 
 - Promotion snapshot (PC-LIFE-7) → Trade Log refactor / v1.3. See D-PC-8.
 - Card ✕ at the right edge (not stacked with Close); entry-time editor in the Edit dialog, not on the card. Spec v1.2 §5.2. **v1.3.** See D-PC-9.
+- Empty-book Autofit is a law (spot-centered, GEX in frame). Spec v1.2 has no book-empties kind. **v1.3.** See D-PC-10.
 - Per-leg live on the **card** — the card correctly shows no per-leg price (PC-VOCAB-6). Dialog MARK/IV remain live.
 
 ### Spec §9 rows closed

@@ -271,7 +271,7 @@ const th =
 const td = `px-1 ${DATA} font-normal tabular-nums whitespace-nowrap`;
 /** Chrome gutter + ten PC-VOCAB-7 columns + lock chrome + delete at the right edge. */
 const COLS = [
-  "13%",
+  "15%",
   "11%",
   "7%",
   "7%",
@@ -281,8 +281,8 @@ const COLS = [
   "6%",
   "9%",
   "3%",
-  "8%",
-  "8%",
+  "7%",
+  "7%",
   "3%",
 ] as const;
 /** ToS: padlock sits in its own column, separated by a vertical grid rule. */

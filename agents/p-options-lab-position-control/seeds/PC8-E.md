@@ -13,13 +13,13 @@ This file is the only authority. Amendments become **PC8-F**, never an edit here
 
 | # | Item | Status | Evidence |
 |---|------|--------|----------|
-| 1 | Empty-book autofit regression | **LANDED** | `book-empty` / `book-to-empty`; awaiting Delta |
-| 2 | VOL / DELTA dead | **LANDED** | quote-merge writes chain IV; awaiting Delta |
-| 3 | Stepper hover reflow | **LANDED** | out-of-flow grow; `--hit-min` question to Echo/Tango |
-| 4 | POS tooltip | **LANDED** | `title={POS}` gone; Log TM title kept |
-| 5 | Fonts +30% | **LANDED** | `--ol-card-data: 14px` / `--ol-card-chrome: 13px` |
-| 6 | Padlock form | **DONE** | `51de4dd` |
-| 7 | Corner-nested menu triangle | **LANDED** | corner-nested right triangle; lighter field fill |
+| 1 | Empty-book autofit regression | **DONE** | PC8-E-G PASS · `5821256` |
+| 2 | VOL / DELTA dead | **DONE** | PC8-E-G PASS · `0d5b2fa` |
+| 3 | Stepper hover reflow | **DONE** | PC8-E-G PASS · `03663e3` · Echo/Tango `--hit-min` |
+| 4 | POS tooltip | **DONE** | PC8-E-G PASS · `03663e3` |
+| 5 | Fonts +30% | **DONE** | PC8-E-G PASS · `03663e3` |
+| 6 | Padlock form | **DONE** | PC8-E-G PASS · `51de4dd` |
+| 7 | Corner-nested menu triangle | **DONE** | PC8-E-G PASS · `03663e3` |
 
 Update this table in the same commit as each fix. A row is DONE only when Delta says PASS.
 
