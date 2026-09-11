@@ -2428,7 +2428,7 @@ export default function PositionBuilder({
         <section>
           <h4 className={sectionLabel}>ToS script</h4>
           <div className={group + " space-y-3 p-4"}>
-            <button>
+            <button
               type="button"
               className="block w-full rounded-[var(--radius-md)] bg-black px-3 py-2.5 text-left font-mono text-[16.5px] leading-relaxed text-emerald-400 ring-1 ring-emerald-900/40"
               data-testid="builder-tos-script"
