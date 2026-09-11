@@ -35,11 +35,11 @@ import {
   resolveCardDisplayState,
 } from "@/lib/options-lab/cardDisplayState";
 import { legNotTradedLabel } from "@/lib/options-lab/optionBind";
-import type { LegInput } from "@/lib/options-lab/positionTypes";
+import type { LegInput, OptionRight, TemplateType } from "@/lib/options-lab/positionTypes";
 import { detectFamily } from "@/lib/options-lab/positionLabels";
+import { posAndRatio } from "@/lib/options-lab/positionQty";
 import {
   packageUnitScale,
-  positionQty,
 } from "@/lib/options-lab/packageEconomics";
 import {
   BLOTTER_CSS_VARS,
@@ -49,7 +49,24 @@ import {
   resolvePackageSide,
   type BlotterBlockKind,
 } from "@/lib/blotterTheme";
-import { IconLock, IconUnlock } from "@/components/ui/icons";
+import {
+  TosPadlock,
+  TosQtyQuickPick,
+  TosStepper,
+} from "@/components/options-lab/TosControls";
+import {
+  CARD_COLUMNS,
+  TEMPLATE_LABELS,
+  cardFieldExposure,
+  catalogToTemplate,
+  fmtPackageDelta,
+  groupPositionsBySymbol,
+  offeredCardTemplates,
+  packageDelta,
+  signedActualQty,
+  stepCardPrice,
+} from "@/lib/options-lab/tosCard";
+import type { CatalogName } from "@/lib/options-lab/structureClassifier";
 
 function dteOf(exp: string, clock?: Date): number {
   return clock ? dteFromClock(exp, clock) : calendarDteOf(exp);
@@ -227,20 +244,23 @@ function PackagePriceField({
  * ToS-style leg order on the position card: **calls above puts**, then
  * ascending strike within each right. Case-insensitive type compare.
  */
-function legsInDisplayOrder(legs: readonly LegInput[]): LegInput[] {
+function legsInDisplayOrder(
+  legs: readonly LegInput[],
+): { leg: LegInput; recordIndex: number }[] {
   const rightRank = (t: string) =>
     String(t).toLowerCase() === "call" ? 0 : 1;
-  return [...legs].sort((a, b) => {
-    const ra = rightRank(a.type);
-    const rb = rightRank(b.type);
-    if (ra !== rb) return ra - rb;
-    const ds = a.strike - b.strike;
-    if (Math.abs(ds) > 1e-9) return ds;
-    // short before long at same strike (iron fly body)
-    const sa = String(a.side).toLowerCase() === "short" ? 0 : 1;
-    const sb = String(b.side).toLowerCase() === "short" ? 0 : 1;
-    return sa - sb;
-  });
+  return legs
+    .map((leg, recordIndex) => ({ leg, recordIndex }))
+    .sort((a, b) => {
+      const ra = rightRank(a.leg.type);
+      const rb = rightRank(b.leg.type);
+      if (ra !== rb) return ra - rb;
+      const ds = a.leg.strike - b.leg.strike;
+      if (Math.abs(ds) > 1e-9) return ds;
+      const sa = String(a.leg.side).toLowerCase() === "short" ? 0 : 1;
+      const sb = String(b.leg.side).toLowerCase() === "short" ? 0 : 1;
+      return sa - sb;
+    });
 }
 
 // Body 20.25px unchanged — height cut is pad / extra Y / lock, not type.
@@ -248,22 +268,19 @@ const th =
   "px-1.5 py-1 text-left text-[16.5px] font-semibold uppercase tracking-wide text-white/55 whitespace-nowrap";
 /** Horizontal pad only — vertical pad is set per card so extra Y is shared across legs. */
 const td = "px-1.5 text-[20.25px] tabular-nums whitespace-nowrap";
+/** Chrome gutter + the ten PC-VOCAB-7 columns. */
 const COLS = [
-  "6%",
   "7%",
-  "8%",
-  "5%",
+  "12%",
   "7%",
-  "11%",
-  "3%",
   "7%",
-  "6%",
-  "8%",
+  "7%",
+  "10%",
   "8%",
   "6%",
-  "6%",
-  "5%",
-  "7%",
+  "10%",
+  "8%",
+  "8%",
 ] as const;
 const TD_PAD_Y = 4;
 const CARD_EXTRA_Y = 18;
@@ -294,11 +311,18 @@ export type AnalyzerPositionsListProps = {
   onSetDirection: (id: string, direction: "buy" | "sell") => void;
   /** ToS-style expiration roll from listed chain expirations. */
   onSetExpiration: (id: string, expiration: string) => void;
-  /**
-   * Nudge all strikes one listed step ↑/↓. Caller must unlock package
-   * (shiftCardStrikes always unlocks) so natural mid re-settles.
-   */
   onShiftStrikes: (id: string, direction: "up" | "down") => void;
+  onScalePos: (id: string, pos: number) => void;
+  onSetSpread: (id: string, template: TemplateType) => void;
+  onPatchLeg: (id: string, recordIndex: number, patch: Partial<LegInput>) => void;
+  onSetRight: (id: string, right: OptionRight) => void;
+  onSelectSymbolGroup: (symbol: string) => void;
+  onReorderSymbolGroup: (symbol: string, dir: "up" | "down") => void;
+  getListedStrikes: (expiration: string) => readonly number[];
+  spotPrice?: number;
+  symbolGroupOrder?: string[];
+  collapsedGroups?: ReadonlySet<string>;
+  onToggleGroupCollapsed?: (symbol: string) => void;
   /** Upcoming listed expirations (YYYY-MM-DD) for the suite / product. */
   expirations?: string[];
   /** TMI-96: dark until playhead reaches entry. Not hidden. */
@@ -307,8 +331,10 @@ export type AnalyzerPositionsListProps = {
 
 export default function AnalyzerPositionsList({
   positions,
+  focusedId,
   sessionHeld = false,
   sessionSymbol,
+  onFocus,
   onToggleVisibility,
   onEdit,
   onDelete,
@@ -323,10 +349,41 @@ export default function AnalyzerPositionsList({
   onSetDirection,
   onSetExpiration,
   onShiftStrikes,
+  onScalePos,
+  onSetSpread,
+  onPatchLeg,
+  onSetRight,
+  onSelectSymbolGroup,
+  onReorderSymbolGroup,
+  getListedStrikes,
+  spotPrice = 0,
+  symbolGroupOrder,
+  collapsedGroups,
+  onToggleGroupCollapsed,
   expirations = [],
   playheadMs = null,
 }: AnalyzerPositionsListProps) {
   const list = positions;
+  const [pendingDelete, setPendingDelete] = useState<{
+    id: string;
+    label: string;
+  } | null>(null);
+  const [localCollapsed, setLocalCollapsed] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const collapsed = collapsedGroups ?? localCollapsed;
+  const toggleCollapsed = (symbol: string) => {
+    if (onToggleGroupCollapsed) {
+      onToggleGroupCollapsed(symbol);
+      return;
+    }
+    setLocalCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(symbol)) next.delete(symbol);
+      else next.add(symbol);
+      return next;
+    });
+  };
   /**
    * Expiration select = OPF/chain listed pointers (from props.expirations).
    * Always includes the card's current pointer even if past (so EXPIRED still
@@ -384,54 +441,118 @@ export default function AnalyzerPositionsList({
             </colgroup>
             <thead className="sticky top-0 z-[1] bg-[#0a0a0e] shadow-[0_1px_0_rgba(255,255,255,0.12)]">
               <tr>
-                <th className={th} aria-label="Show on graph, edit, and delete from list">
-                  Show
+                <th className={th} aria-label="Show, edit, delete, log">
+                  <button
+                    type="button"
+                    onClick={onCreate}
+                    className="flex h-6 w-6 items-center justify-center rounded-full border border-white/20 text-sm font-bold text-[var(--color-tint)] hover:bg-white/10"
+                    aria-label="Create position"
+                    data-testid="analyzer-create-position"
+                  >
+                    +
+                  </button>
                 </th>
-                <th className={th}>Spread</th>
-                <th className={th}>Side</th>
-                <th className={th + " text-right"}>Qty</th>
-                <th className={th}>Symbol</th>
-                <th className={th}>Exp</th>
-                <th className={th + " text-center"} aria-label="Shift strikes">
-                  <span className="sr-only">Strikes</span>
-                </th>
-                <th className={th + " text-right"}>Strike</th>
-                <th className={th}>Type</th>
-                <th className={th + " text-right"}>Price</th>
-                <th className={th}>Pkg</th>
-                <th className={th}>Live</th>
-                <th className={th + " text-right"}>Vol</th>
-                <th className={th}>DTE</th>
-                <th className={th}>
-                  <span className="inline-flex items-center gap-2">
-                    Actions
-                    <span className="inline-flex items-center gap-1.5 text-[12px] font-medium normal-case tracking-normal text-white/40">
-                      <span
-                        className="inline-block h-2 w-2 rounded-sm"
-                        style={{ background: BLOTTER_HEX.openBg }}
-                      />
-                      Debit
-                      <span
-                        className="inline-block h-2 w-2 rounded-sm"
-                        style={{ background: BLOTTER_HEX.closeBg }}
-                      />
-                      Credit
-                    </span>
-                    <button
-                      type="button"
-                      onClick={onCreate}
-                      className="flex h-6 w-6 items-center justify-center rounded-full border border-white/20 text-sm font-bold text-[var(--color-tint)] hover:bg-white/10"
-                      aria-label="Create position"
-                      data-testid="analyzer-create-position"
-                    >
-                      +
-                    </button>
-                  </span>
-                </th>
+                {CARD_COLUMNS.map((col) => (
+                  <th
+                    key={col}
+                    className={
+                      th +
+                      (col === "QTY" ||
+                      col === "STRIKE" ||
+                      col === "PRICE" ||
+                      col === "VOL" ||
+                      col === "DELTA"
+                        ? " text-right"
+                        : "")
+                    }
+                  >
+                    {col}
+                  </th>
+                ))}
               </tr>
             </thead>
-            {/* One tbody per position — Trade Log block: solid fill, no inter-leg borders */}
-            {list.map((pos, posIdx) => {
+            {groupPositionsBySymbol(
+              list,
+              symbolGroupOrder && symbolGroupOrder.length
+                ? symbolGroupOrder
+                : [...new Set(list.map((p) => (p.position.underlying || "").toUpperCase()))],
+            ).flatMap((group, gi, groups) => {
+            const groupSelected =
+              !!sessionSymbol &&
+              group.symbol === sessionSymbol.toUpperCase();
+            const isCollapsed = collapsed.has(group.symbol);
+            const header = (
+              <tbody
+                key={`group-${group.symbol}`}
+                data-testid={`analyzer-symbol-group-${group.symbol}`}
+                data-group-selected={groupSelected ? "1" : "0"}
+              >
+                <tr className={groupSelected ? "bg-white/10" : "bg-white/[0.04]"}>
+                  <td colSpan={11} className="px-2 py-1">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="px-1 text-white/70 hover:text-white"
+                        aria-expanded={!isCollapsed}
+                        aria-label={
+                          isCollapsed
+                            ? `Expand ${group.symbol}`
+                            : `Collapse ${group.symbol}`
+                        }
+                        data-testid={`analyzer-symbol-group-toggle-${group.symbol}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleCollapsed(group.symbol);
+                        }}
+                      >
+                        {isCollapsed ? "▸" : "▾"}
+                      </button>
+                      <button
+                        type="button"
+                        className={
+                          "font-semibold tracking-wide text-white " +
+                          (groupSelected ? "text-white" : "text-white/85")
+                        }
+                        data-testid={`analyzer-symbol-group-select-${group.symbol}`}
+                        onClick={() => onSelectSymbolGroup(group.symbol)}
+                      >
+                        {group.symbol}
+                      </button>
+                      <span className="ml-auto inline-flex gap-0.5">
+                        <button
+                          type="button"
+                          className="px-1 text-[12px] text-white/50 hover:text-white"
+                          aria-label={`Move ${group.symbol} up`}
+                          data-testid={`analyzer-symbol-group-reorder-up-${group.symbol}`}
+                          disabled={gi === 0}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onReorderSymbolGroup(group.symbol, "up");
+                          }}
+                        >
+                          ▲
+                        </button>
+                        <button
+                          type="button"
+                          className="px-1 text-[12px] text-white/50 hover:text-white"
+                          aria-label={`Move ${group.symbol} down`}
+                          data-testid={`analyzer-symbol-group-reorder-down-${group.symbol}`}
+                          disabled={gi === groups.length - 1}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onReorderSymbolGroup(group.symbol, "down");
+                          }}
+                        >
+                          ▼
+                        </button>
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            );
+            if (isCollapsed) return [header];
+            const cards = group.positions.map((pos, posIdx) => {
               const hidden = !pos.visible;
               const tmDark = isTmPositionDark(pos, playheadMs);
               const locked = pos.lock.mode === "locked";
@@ -443,10 +564,10 @@ export default function AnalyzerPositionsList({
               // Debit/credit fill: explicit side → OPF sign → BUY/SELL fallback
               const side = resolvePackageSide(pos);
               const kind = blotterKindFromPackageSide(side);
-              const family = detectFamily(pos.position.legs).toUpperCase();
+              const family = detectFamily(pos.position.legs);
               const pkgDir =
                 pos.position.direction === "sell" ? "SELL" : "BUY";
-              const pkgQty = positionQty(pos.position);
+              const pkgQty = posAndRatio(pos.position.legs).pos;
               const unitScale = packageUnitScale(pos.position.legs);
               const front = pos.position.expiration;
               const dteClock =
@@ -511,8 +632,13 @@ export default function AnalyzerPositionsList({
                   ? "text-white/55"
                   : "text-[var(--color-label-tertiary)]";
 
-              const hasNext = posIdx < list.length - 1;
+              const hasNext = posIdx < group.positions.length - 1;
               const orderedLegs = legsInDisplayOrder(pos.position.legs);
+              const pkgDelta = packageDelta(
+                pos.position.legs,
+                spotPrice,
+                playheadMs ?? Date.now(),
+              );
 
               return (
                 <PosBlock
@@ -520,6 +646,7 @@ export default function AnalyzerPositionsList({
                   pos={pos}
                   orderedLegs={orderedLegs}
                   hidden={hidden}
+                  focused={focusedId === pos.id}
                   locked={locked}
                   und={und}
                   offSymbol={offSymbol}
@@ -544,9 +671,17 @@ export default function AnalyzerPositionsList({
                   textMuted={textMuted}
                   textDim={textDim}
                   hasNext={hasNext}
+                  pkgDelta={pkgDelta}
+                  expChoices={expChoices}
+                  tmDark={tmDark}
+                  dteClock={dteClock}
+                  getListedStrikes={getListedStrikes}
+                  onFocus={onFocus}
                   onToggleVisibility={onToggleVisibility}
                   onEdit={onEdit}
-                  onDelete={onDelete}
+                  onAskDelete={() =>
+                    setPendingDelete({ id: pos.id, label: pos.label })
+                  }
                   onSendToTradeLog={onSendToTradeLog}
                   onSetEntryAt={onSetEntryAt}
                   onClosePosition={onClosePosition}
@@ -557,15 +692,52 @@ export default function AnalyzerPositionsList({
                   onSetDirection={onSetDirection}
                   onSetExpiration={onSetExpiration}
                   onShiftStrikes={onShiftStrikes}
-                  expChoices={expChoices}
-                  tmDark={tmDark}
-                  dteClock={dteClock}
+                  onScalePos={onScalePos}
+                  onSetSpread={onSetSpread}
+                  onPatchLeg={onPatchLeg}
+                  onSetRight={onSetRight}
                 />
               );
+            });
+            return [header, ...cards];
             })}
           </table>
         </div>
       )}
+      {pendingDelete ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/55"
+          data-testid={`analyzer-pos-delete-confirm-${pendingDelete.id}`}
+        >
+          <div className="w-[min(24rem,calc(100vw-2rem))] rounded-lg bg-[#1a1a22] p-4 text-white shadow-xl ring-1 ring-white/15">
+            <p className="text-[18px] font-semibold">Delete this position?</p>
+            <p className="mt-2 text-[16px] text-white/75">
+              {pendingDelete.label} will be removed from the book. This cannot
+              be undone except with Undo.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                className={actionBtn}
+                onClick={() => setPendingDelete(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={actionBtn + " text-red-100"}
+                data-testid={`analyzer-pos-delete-confirm-go-${pendingDelete.id}`}
+                onClick={() => {
+                  onDelete(pendingDelete.id);
+                  setPendingDelete(null);
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -574,6 +746,7 @@ function PosBlock({
   pos,
   orderedLegs,
   hidden,
+  focused = false,
   tmDark = false,
   locked,
   und,
@@ -599,9 +772,11 @@ function PosBlock({
   textMuted,
   textDim,
   hasNext,
+  pkgDelta,
+  onFocus,
   onToggleVisibility,
   onEdit,
-  onDelete,
+  onAskDelete,
   onSendToTradeLog,
   onSetEntryAt,
   onClosePosition,
@@ -612,12 +787,18 @@ function PosBlock({
   onSetDirection,
   onSetExpiration,
   onShiftStrikes,
+  onScalePos,
+  onSetSpread,
+  onPatchLeg,
+  onSetRight,
+  getListedStrikes,
   expChoices,
   dteClock,
 }: {
   pos: AnalyzerPosition;
-  orderedLegs: LegInput[];
+  orderedLegs: { leg: LegInput; recordIndex: number }[];
   hidden: boolean;
+  focused?: boolean;
   tmDark?: boolean;
   dteClock?: Date;
   locked: boolean;
@@ -644,9 +825,12 @@ function PosBlock({
   textMuted: string;
   textDim: string;
   hasNext: boolean;
+  pkgDelta: number | null;
+  getListedStrikes: (expiration: string) => readonly number[];
+  onFocus: (id: string) => void;
   onToggleVisibility: (id: string) => void;
   onEdit: (id: string) => void;
-  onDelete: (id: string) => void;
+  onAskDelete: () => void;
   onSendToTradeLog?: (id: string) => void;
   onSetEntryAt: (id: string, entryAt: number) => void;
   onClosePosition: (id: string) => void;
@@ -657,6 +841,14 @@ function PosBlock({
   onSetDirection: (id: string, direction: "buy" | "sell") => void;
   onSetExpiration: (id: string, expiration: string) => void;
   onShiftStrikes: (id: string, direction: "up" | "down") => void;
+  onScalePos: (id: string, pos: number) => void;
+  onSetSpread: (id: string, template: TemplateType) => void;
+  onPatchLeg: (
+    id: string,
+    recordIndex: number,
+    patch: Partial<LegInput>,
+  ) => void;
+  onSetRight: (id: string, right: OptionRight) => void;
   expChoices: string[];
 }) {
   const nLegs = orderedLegs.length;
@@ -699,7 +891,7 @@ function PosBlock({
     return (
       <tbody
         data-testid={`analyzer-pos-card-${pos.id}`}
-        data-focused="0"
+        data-focused={focused ? "1" : "0"}
         data-visible={hidden ? "0" : "1"}
         data-tm-dark="1"
         data-blotter-kind={kind}
@@ -734,51 +926,25 @@ function PosBlock({
               />
               Show
             </label>
+            <button
+              type="button"
+              className={
+                actionBtn + " mt-2 min-h-8 w-full px-2 py-1 text-[16.5px] text-red-100"
+              }
+              data-testid={`analyzer-pos-delete-${pos.id}`}
+              aria-label={`Delete ${pos.label} from the list`}
+              onClick={() => onAskDelete()}
+            >
+              ✕
+            </button>
           </td>
           <td
-            colSpan={13}
+            colSpan={10}
             className={td + ` ${textMuted}`}
             style={pendingEdge}
             data-testid={`analyzer-pos-pending-${pos.id}`}
           >
             Not yet taken
-          </td>
-          <td
-            className={td + " align-top whitespace-normal"}
-            style={pendingEdge}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex flex-col items-stretch gap-2 py-0.5">
-              <label
-                className="flex items-center gap-1 text-[14px] uppercase tracking-wide text-white/70"
-                title="When this position was put on. Default is the cash open."
-              >
-                In
-                <input
-                  type="time"
-                  className="min-h-8 min-w-0 flex-1 rounded bg-black/25 px-1 py-0.5 text-[14.5px] text-white"
-                  data-testid={`analyzer-pos-entry-${pos.id}`}
-                  value={etHmValue(resolveEntryAt(pos))}
-                  onChange={(e) =>
-                    onSetEntryAt(
-                      pos.id,
-                      applyEtHm(resolveEntryAt(pos), e.target.value),
-                    )
-                  }
-                />
-              </label>
-              <button
-                type="button"
-                className={
-                  actionBtn + " min-h-8 w-full px-2 py-1 text-[16.5px] text-red-100"
-                }
-                data-testid={`analyzer-pos-delete-${pos.id}`}
-                aria-label={`Delete ${pos.label} from the list`}
-                onClick={() => onDelete(pos.id)}
-              >
-                Delete
-              </button>
-            </div>
           </td>
         </tr>
       </tbody>
@@ -788,7 +954,7 @@ function PosBlock({
   return (
     <tbody
       data-testid={`analyzer-pos-card-${pos.id}`}
-      data-focused="0"
+      data-focused={focused ? "1" : "0"}
       data-visible={hidden ? "0" : "1"}
       data-tm-dark={tmDark ? "1" : "0"}
       data-blotter-kind={kind}
@@ -808,16 +974,18 @@ function PosBlock({
           ? "grayscale(0.15) saturate(0.85) brightness(1.15)"
           : undefined,
       }}
+      onClick={() => onFocus(pos.id)}
     >
-      {orderedLegs.map((leg, i) => {
+      {orderedLegs.map(({ leg, recordIndex }, i) => {
         const isTop = i === 0;
         const isLast = i === nLegs - 1;
         const exp = (leg.expiration || front).slice(0, 10);
         const legSide = leg.side === "long" ? "BUY" : "SELL";
-        const actualQ = Math.round(Math.abs(leg.quantity));
-        const signedQ =
-          (leg.side === "long" ? "+" : "−") + String(actualQ);
+        const signedQ = signedActualQty(leg);
         const edge = cellBase(isLast);
+        const exposure = cardFieldExposure(family as CatalogName);
+        const listedForLeg = getListedStrikes(exp);
+        const currentTemplate = catalogToTemplate(family as CatalogName);
 
         return (
           <tr
@@ -889,10 +1057,55 @@ function PosBlock({
                     }
                     data-testid={`analyzer-pos-delete-${pos.id}`}
                     aria-label={`Delete ${pos.label} from the list`}
-                    onClick={() => onDelete(pos.id)}
+                    onClick={() => onAskDelete()}
                   >
-                    Delete
+                    ✕
                   </button>
+                  {onSendToTradeLog && !pos.rehearsal ? (
+                    <button
+                      type="button"
+                      className={actionBtn + " min-h-8 w-full px-2 py-1"}
+                      data-testid={`analyzer-pos-send-log-${pos.id}`}
+                      onClick={() => onSendToTradeLog(pos.id)}
+                    >
+                      Log
+                    </button>
+                  ) : null}
+                  <label
+                    className="flex items-center gap-1 text-[14px] uppercase tracking-wide text-white/70"
+                    title="When this position was put on. Default is the cash open."
+                  >
+                    In
+                    <input
+                      type="time"
+                      className="min-h-8 min-w-0 flex-1 rounded bg-black/25 px-1 py-0.5 text-[14.5px] text-white"
+                      data-testid={`analyzer-pos-entry-${pos.id}`}
+                      value={etHmValue(resolveEntryAt(pos))}
+                      onChange={(e) =>
+                        onSetEntryAt(
+                          pos.id,
+                          applyEtHm(resolveEntryAt(pos), e.target.value),
+                        )
+                      }
+                    />
+                  </label>
+                  {pos.closedAt != null ? (
+                    <span
+                      className="px-1 text-[14px] uppercase leading-snug tracking-wide text-white/80"
+                      data-testid={`analyzer-pos-closed-${pos.id}`}
+                    >
+                      Closed {formatEtHm(pos.closedAt)}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      className={actionBtn + " min-h-8 w-full px-2 py-1"}
+                      data-testid={`analyzer-pos-close-${pos.id}`}
+                      onClick={() => onClosePosition(pos.id)}
+                    >
+                      Close
+                    </button>
+                  )}
                 </div>
               </td>
             ) : null}
@@ -904,8 +1117,36 @@ function PosBlock({
                   : ` ${textDim}`)
               }
               style={edge}
+              onClick={(e) => e.stopPropagation()}
             >
-              {isTop ? family : ""}
+              {isTop ? (
+                <select
+                  className={
+                    "w-full max-w-full cursor-pointer rounded bg-black/20 py-0.5 pl-1 pr-0.5 " +
+                    "font-semibold uppercase tracking-wide outline-none " +
+                    textMain
+                  }
+                  value={currentTemplate ?? ""}
+                  aria-label="Spread"
+                  data-testid={`analyzer-pos-spread-${pos.id}`}
+                  onChange={(e) => {
+                    const v = e.target.value as TemplateType;
+                    if (!v) return;
+                    onSetSpread(pos.id, v);
+                  }}
+                >
+                  {currentTemplate ? null : (
+                    <option value="">{family}</option>
+                  )}
+                  {offeredCardTemplates(expChoices.length).map((t) => (
+                    <option key={t} value={t}>
+                      {TEMPLATE_LABELS[t]}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                ""
+              )}
             </td>
             <td
               className={td}
@@ -938,13 +1179,44 @@ function PosBlock({
               className={td + ` text-right font-mono ${textMain}`}
               style={edge}
               data-testid={isTop ? `analyzer-pos-qty-${pos.id}` : undefined}
-              title={
-                isTop
-                  ? `POS ${pkgQty}`
-                  : undefined
-              }
+              title={isTop ? `POS ${pkgQty}` : undefined}
+              onClick={(e) => e.stopPropagation()}
             >
-              {signedQ}
+              <div className="flex items-center justify-end gap-0.5">
+                {isTop ? (
+                  <input
+                    className={
+                      "w-10 rounded bg-black/20 py-0.5 text-right font-mono outline-none " +
+                      textMain
+                    }
+                    inputMode="numeric"
+                    aria-label="POS"
+                    data-testid={`analyzer-pos-qty-input-${pos.id}`}
+                    value={pkgQty}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      if (!Number.isFinite(v) || v < 1) return;
+                      onScalePos(pos.id, v);
+                    }}
+                  />
+                ) : (
+                  <span>{signedQ}</span>
+                )}
+                {isTop ? (
+                  <>
+                    <TosStepper
+                      testId={`analyzer-pos-qty-step-${pos.id}`}
+                      ariaLabel="POS"
+                      onUp={() => onScalePos(pos.id, pkgQty + 1)}
+                      onDown={() => onScalePos(pos.id, Math.max(1, pkgQty - 1))}
+                    />
+                    <TosQtyQuickPick
+                      testId={`analyzer-pos-qty-pick-${pos.id}`}
+                      onPick={(n) => onScalePos(pos.id, n)}
+                    />
+                  </>
+                ) : null}
+              </div>
             </td>
             <td
               className={td + ` font-semibold ${textMain}`}
@@ -965,7 +1237,8 @@ function PosBlock({
               style={edge}
               onClick={(e) => e.stopPropagation()}
             >
-              {isTop && expChoices.length > 0 ? (
+              {(isTop && exposure.expiration === "row1") ||
+              exposure.expiration === "per-leg" ? (
                 <select
                   className={
                     "w-full max-w-full cursor-pointer rounded bg-black/20 py-0.5 pl-1 pr-0.5 text-[20.25px] font-semibold outline-none " +
@@ -975,12 +1248,26 @@ function PosBlock({
                   data-invalid={
                     boundSelectValue(exp, expChoices).invalid ? "1" : "0"
                   }
-                  aria-label="Structure expiration"
-                  data-testid={`analyzer-pos-expiration-${pos.id}`}
-                  title="Roll structure to listed expiration"
+                  aria-label={
+                    exposure.expiration === "per-leg"
+                      ? "Leg expiration"
+                      : "Structure expiration"
+                  }
+                  data-testid={
+                    isTop
+                      ? `analyzer-pos-expiration-${pos.id}`
+                      : `analyzer-pos-leg-exp-${pos.id}-${i}`
+                  }
+                  title="Roll to listed expiration"
                   onChange={(e) => {
                     if (!e.target.value) return;
-                    onSetExpiration(pos.id, e.target.value);
+                    if (exposure.expiration === "per-leg") {
+                      onPatchLeg(pos.id, recordIndex, {
+                        expiration: e.target.value,
+                      });
+                    } else {
+                      onSetExpiration(pos.id, e.target.value);
+                    }
                   }}
                 >
                   {boundSelectValue(exp, expChoices).invalid ? (
@@ -993,71 +1280,115 @@ function PosBlock({
                   ))}
                 </select>
               ) : (
-                <span className={textMuted}>{fmtExp(exp)}</span>
+                <span className={textMuted}>
+                  {fmtExp(exp)}
+                  {isTop ? (
+                    <span className="ml-1 text-[14px] text-white/50">
+                      {expired ? "EXPIRED" : `${dte}d`}
+                    </span>
+                  ) : null}
+                </span>
               )}
             </td>
-            {/* Strike nudge: one cell spanning all legs, vertically centered */}
-            {isTop ? (
-              <td
-                className={td + " w-8 px-0.5 align-middle"}
-                rowSpan={nLegs}
-                style={{
-                  ...edge,
-                  verticalAlign: "middle",
-                  // Last-row bottom rule is owned by this spanning cell
-                  borderBottomWidth: hasNext ? 2 : 0,
-                  borderBottomStyle: hasNext ? "solid" : "none",
-                  borderBottomColor: hasNext
-                    ? BLOTTER_HEX.positionRule
-                    : "transparent",
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div
-                  className="flex h-full min-h-full flex-col items-center justify-center gap-0.5 py-0.5"
-                  data-testid={`analyzer-pos-strike-nudge-${pos.id}`}
-                >
-                  <button
-                    type="button"
-                    className={
-                      "inline-flex h-5 w-8 items-center justify-center rounded " +
-                      "bg-black/25 text-[15px] font-bold leading-none text-white " +
-                      "hover:bg-black/45 disabled:opacity-40"
-                    }
-                    title="Shift all strikes up one listed step (unlocks package)"
-                    aria-label="Shift strikes up"
-                    data-testid={`analyzer-pos-strike-up-${pos.id}`}
-                    onClick={() => onShiftStrikes(pos.id, "up")}
-                  >
-                    ▲
-                  </button>
-                  <button
-                    type="button"
-                    className={
-                      "inline-flex h-5 w-8 items-center justify-center rounded " +
-                      "bg-black/25 text-[15px] font-bold leading-none text-white " +
-                      "hover:bg-black/45 disabled:opacity-40"
-                    }
-                    title="Shift all strikes down one listed step (unlocks package)"
-                    aria-label="Shift strikes down"
-                    data-testid={`analyzer-pos-strike-down-${pos.id}`}
-                    onClick={() => onShiftStrikes(pos.id, "down")}
-                  >
-                    ▼
-                  </button>
-                </div>
-              </td>
-            ) : null}
             <td
               className={
                 td + ` text-right font-mono font-semibold ${textMain}`
               }
               style={edge}
+              onClick={(e) => e.stopPropagation()}
             >
-              {fmtStrike(leg.strike)}
+              <div className="flex items-center justify-end gap-0.5">
+                {listedForLeg.length ? (
+                  <select
+                    className={
+                      "max-w-[6.5rem] cursor-pointer rounded bg-black/20 py-0.5 text-right font-mono outline-none " +
+                      textMain
+                    }
+                    value={
+                      listedForLeg.some((s) => s === leg.strike)
+                        ? String(leg.strike)
+                        : ""
+                    }
+                    data-testid={`analyzer-pos-strike-${pos.id}-${i}`}
+                    aria-label="Strike"
+                    onChange={(e) => {
+                      const s = parseFloat(e.target.value);
+                      if (!Number.isFinite(s)) return;
+                      onPatchLeg(pos.id, recordIndex, { strike: s });
+                    }}
+                  >
+                    {listedForLeg.some((s) => s === leg.strike) ? null : (
+                      <option value="">{fmtStrike(leg.strike)}</option>
+                    )}
+                    {listedForLeg.map((s) => (
+                      <option key={s} value={s}>
+                        {fmtStrike(s)}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span>{fmtStrike(leg.strike)}</span>
+                )}
+                <TosStepper
+                  testId={`analyzer-pos-strike-step-${pos.id}-${i}`}
+                  ariaLabel="Strike"
+                  disabled={!listedForLeg.length}
+                  onUp={() => {
+                    const next = listedForLeg
+                      .filter((s) => s > leg.strike)
+                      .sort((a, b) => a - b)[0];
+                    if (next == null) {
+                      onShiftStrikes(pos.id, "up");
+                      return;
+                    }
+                    onPatchLeg(pos.id, recordIndex, { strike: next });
+                  }}
+                  onDown={() => {
+                    const next = listedForLeg
+                      .filter((s) => s < leg.strike)
+                      .sort((a, b) => b - a)[0];
+                    if (next == null) {
+                      onShiftStrikes(pos.id, "down");
+                      return;
+                    }
+                    onPatchLeg(pos.id, recordIndex, { strike: next });
+                  }}
+                />
+              </div>
             </td>
-            <td className={td + ` uppercase ${textMain}`} style={edge}>
-              {leg.type === "call" ? "CALL" : "PUT"}
+            <td
+              className={td + ` uppercase ${textMain}`}
+              style={edge}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {exposure.type === "inert" ? (
+                <span className={textDim}>
+                  {leg.type === "call" ? "CALL" : "PUT"}
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  className={
+                    "rounded bg-black/20 px-1.5 py-0.5 uppercase " + textMain
+                  }
+                  data-testid={
+                    isTop
+                      ? `analyzer-pos-type-${pos.id}`
+                      : `analyzer-pos-leg-type-${pos.id}-${i}`
+                  }
+                  onClick={() => {
+                    const next: OptionRight =
+                      leg.type === "call" ? "put" : "call";
+                    if (isTop && exposure.type === "row1") {
+                      onSetRight(pos.id, next);
+                    } else {
+                      onPatchLeg(pos.id, recordIndex, { type: next });
+                    }
+                  }}
+                >
+                  {leg.type === "call" ? "CALL" : "PUT"}
+                </button>
+              )}
             </td>
             <td
               className={
@@ -1095,19 +1426,55 @@ function PosBlock({
               {isTop ? (
                 display.kind === "price" ? (
                   <div className="flex flex-col items-end gap-0.5">
-                    <PackagePriceField
-                      id={pos.id}
-                      locked={locked}
-                      price={price}
-                      priceLabel={priceLabel}
-                      textMain={
-                        pos.lock.mode === "locked" && pos.lock.checkPrice
-                          ? "text-amber-200 line-through decoration-amber-200/80"
-                          : textMain
-                      }
-                      onCommit={(mag) => onLockLimit(pos.id, mag)}
-                      onLockForEdit={() => onLockNatural(pos.id)}
-                    />
+                    <div className="flex items-center justify-end gap-0.5">
+                      <PackagePriceField
+                        id={pos.id}
+                        locked={locked}
+                        price={price}
+                        priceLabel={priceLabel}
+                        textMain={
+                          pos.lock.mode === "locked" && pos.lock.checkPrice
+                            ? "text-amber-200 line-through decoration-amber-200/80"
+                            : textMain
+                        }
+                        onCommit={(mag) => onLockLimit(pos.id, mag)}
+                        onLockForEdit={() => onLockNatural(pos.id)}
+                      />
+                      <TosStepper
+                        testId={`analyzer-pos-price-step-${pos.id}`}
+                        ariaLabel="Price"
+                        disabled={price == null}
+                        onUp={() => {
+                          if (price == null) return;
+                          try {
+                            onLockLimit(
+                              pos.id,
+                              stepCardPrice(und, price, "up"),
+                            );
+                          } catch {
+                            /* unknown product — no step */
+                          }
+                        }}
+                        onDown={() => {
+                          if (price == null) return;
+                          try {
+                            onLockLimit(
+                              pos.id,
+                              stepCardPrice(und, price, "down"),
+                            );
+                          } catch {
+                            /* unknown product — no step */
+                          }
+                        }}
+                      />
+                      <TosPadlock
+                        locked={locked}
+                        testId={`analyzer-pos-lock-${pos.id}`}
+                        onToggle={() =>
+                          locked ? onUnlock(pos.id) : onLockNatural(pos.id)
+                        }
+                      />
+                    </div>
                     {pos.lock.mode === "locked" && pos.lock.checkPrice ? (
                       <div
                         className="flex items-center gap-1"
@@ -1153,9 +1520,14 @@ function PosBlock({
                     {display.packageLabel}
                   </span>
                 )
+              ) : i === 1 ? (
+                <span
+                  className={`text-[16.5px] font-semibold uppercase ${textMain}`}
+                  data-testid={`analyzer-pos-pkg-side-${pos.id}`}
+                >
+                  {pkgSide}
+                </span>
               ) : (() => {
-                  // Per-leg: ▲/▼ can land on a strike with no market
-                  // Match by strike/type/exp (display order ≠ definition index)
                   const legExp = (leg.expiration || front).slice(0, 10);
                   const br = pos.bind?.legs?.find(
                     (b) =>
@@ -1175,74 +1547,8 @@ function PosBlock({
                       </span>
                     );
                   }
-                  return leg.entry_price > 0
-                    ? leg.entry_price.toFixed(2)
-                    : "—";
+                  return "";
                 })()}
-            </td>
-            <td
-              className={td}
-              style={edge}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {isTop ? (
-                <div className="flex items-center gap-1">
-                  <span
-                    className={`text-[19px] font-semibold uppercase ${textMain}`}
-                    data-testid={`analyzer-pos-pkg-side-${pos.id}`}
-                  >
-                    {pkgSide}
-                  </span>
-                  {locked ? (
-                    <button
-                      type="button"
-                      className="inline-flex h-9 w-9 items-center justify-center overflow-visible rounded bg-black/20 hover:bg-black/35"
-                      title="Unlock package basis"
-                      aria-label="Unlock"
-                      data-testid={`analyzer-pos-lock-${pos.id}`}
-                      data-locked="1"
-                      onClick={() => onUnlock(pos.id)}
-                    >
-                      {/* light tone: white ToS glyph on green/red blotter */}
-                      <IconLock size={22} tone="light" />
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="inline-flex h-9 w-9 items-center justify-center overflow-visible rounded bg-black/15 opacity-90 hover:bg-black/30 hover:opacity-100"
-                      title="Lock at natural mid"
-                      aria-label="Lock natural"
-                      data-testid={`analyzer-pos-lock-${pos.id}`}
-                      data-locked="0"
-                      onClick={() => onLockNatural(pos.id)}
-                    >
-                      <IconUnlock size={22} tone="light" />
-                    </button>
-                  )}
-                </div>
-              ) : null}
-            </td>
-            <td
-              className={
-                td +
-                " text-[16.5px] font-semibold uppercase " +
-                (isTop
-                  ? livenessChip.toLowerCase() === "live"
-                    ? kind !== "neutral"
-                      ? "text-emerald-200"
-                      : "text-emerald-600"
-                    : livenessChip.toLowerCase() === "held" ||
-                        livenessChip.toLowerCase().startsWith("theo")
-                      ? "text-amber-200"
-                      : chip === "incomplete" || chip === "skewed"
-                        ? "text-amber-200"
-                        : textDim
-                  : textDim)
-              }
-              style={edge}
-              data-testid={isTop ? `analyzer-pos-live-${pos.id}` : undefined}
-            >
-              {isTop ? livenessChip : ""}
             </td>
             <td
               className={td + ` text-right ${textMuted}`}
@@ -1251,85 +1557,12 @@ function PosBlock({
               {fmtIv(leg.volatility)}
             </td>
             <td
-              className={
-                td +
-                (isTop && expired
-                  ? " font-bold uppercase tracking-wide text-amber-200"
-                  : ` ${textMuted}`)
-              }
+              className={td + ` text-right font-mono ${textMain}`}
               style={edge}
-              data-testid={isTop ? `analyzer-pos-dte-${pos.id}` : undefined}
+              data-testid={isTop ? `analyzer-pos-delta-${pos.id}` : undefined}
             >
-              {isTop && expired ? "EXPIRED" : `${dteOf(exp, dteClock)}d`}
+              {isTop ? fmtPackageDelta(pkgDelta) : "—"}
             </td>
-            {isTop ? (
-              <td
-                rowSpan={nLegs}
-                className={td + " align-top whitespace-normal"}
-                style={cellBase(true)}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex flex-col items-stretch gap-2 py-0.5">
-                  <label
-                    className="flex items-center gap-1 text-[14px] uppercase tracking-wide text-white/70"
-                    title="When this position was put on. Default is the cash open."
-                  >
-                    In
-                    <input
-                      type="time"
-                      className="min-h-8 min-w-0 flex-1 rounded bg-black/25 px-1 py-0.5 text-[14.5px] text-white"
-                      data-testid={`analyzer-pos-entry-${pos.id}`}
-                      value={etHmValue(resolveEntryAt(pos))}
-                      onChange={(e) =>
-                        onSetEntryAt(
-                          pos.id,
-                          applyEtHm(resolveEntryAt(pos), e.target.value),
-                        )
-                      }
-                    />
-                  </label>
-                  {pos.closedAt != null ? (
-                    <span
-                      className="px-1 text-[14px] uppercase leading-snug tracking-wide text-white/80"
-                      data-testid={`analyzer-pos-closed-${pos.id}`}
-                    >
-                      Closed {formatEtHm(pos.closedAt)}
-                      {pos.closedPnl != null
-                        ? ` ${pos.closedPnl >= 0 ? "+" : ""}${pos.closedPnl.toFixed(2)}`
-                        : ""}
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      className={actionBtn + " min-h-8 w-full px-2 py-1"}
-                      data-testid={`analyzer-pos-close-${pos.id}`}
-                      onClick={() => onClosePosition(pos.id)}
-                    >
-                      Close
-                    </button>
-                  )}
-                  {pos.tradeLogTradeId != null ? (
-                    <span
-                      className="px-1 text-[13px] uppercase tracking-wide text-white/50"
-                      title="Linked to Trade Log. A close there will close this position."
-                      data-testid={`analyzer-pos-tl-${pos.id}`}
-                    >
-                      TL #{pos.tradeLogTradeId}
-                    </span>
-                  ) : null}
-                  {onSendToTradeLog && !pos.rehearsal ? (
-                    <button
-                      type="button"
-                      className={actionBtn + " min-h-8 w-full px-2 py-1"}
-                      data-testid={`analyzer-pos-send-log-${pos.id}`}
-                      onClick={() => onSendToTradeLog(pos.id)}
-                    >
-                      To Trade Log
-                    </button>
-                  ) : null}
-                </div>
-              </td>
-            ) : null}
           </tr>
         );
       })}

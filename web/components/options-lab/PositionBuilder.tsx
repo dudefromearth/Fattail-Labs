@@ -19,7 +19,8 @@ import {
 } from "react";
 import StrikeSelect from "@/components/options-lab/StrikeSelect";
 import Button from "@/components/ui/Button";
-import { IconLock, IconUnlock } from "@/components/ui/icons";
+import { TosPadlock } from "@/components/options-lab/TosControls";
+import type { CardLockState } from "@/lib/options-lab/analyzerBook";
 import {
   listedStepNear,
   listedWingChoices,
@@ -316,6 +317,12 @@ export type PositionBuilderProps = {
     label: string,
     notation: string,
   ) => void;
+  /** Edit-mode lock. Displayed price reads this, not net_debit_override (D-PC-7). */
+  cardLock?: CardLockState;
+  definedDebit?: number | null;
+  onLockLimit?: (magnitude: number) => void;
+  onLockNatural?: () => void;
+  onUnlock?: () => void;
 };
 
 /** Wide enough for full Legs table (Qty · Strike · Type · Exp · Mid · ± · IV). */
@@ -334,6 +341,11 @@ export default function PositionBuilder({
   onSave,
   onCancel,
   onLivePatch,
+  cardLock,
+  definedDebit = null,
+  onLockLimit,
+  onLockNatural,
+  onUnlock,
 }: PositionBuilderProps) {
   const { profile } = useOptionsLab();
   const profileMinWing =
@@ -1205,7 +1217,15 @@ export default function PositionBuilder({
 
   const costLabel = eco.side ?? "—";
   const displayCost = eco.absMid ?? 0;
-  const overrideActive = position.net_debit_override != null;
+  const lockActive = mode === "edit" && cardLock?.mode === "locked";
+  const lockedMagnitude =
+    lockActive && cardLock && cardLock.mode === "locked"
+      ? Math.abs(cardLock.packageDebitPerShare)
+      : definedDebit != null && Number.isFinite(definedDebit)
+        ? Math.abs(definedDebit)
+        : null;
+  const overrideActive =
+    mode === "edit" ? lockActive : position.net_debit_override != null;
   const packageSessionLabel = marketLive
     ? overrideActive
       ? "Limit"
@@ -2052,11 +2072,23 @@ export default function PositionBuilder({
                 data-plane-kind={planeState.kind}
               >
                 {planeState.kind === "ready" || overrideActive ? (
-                  overrideActive ? (
-                    <IconLock size={12} tone="inherit" />
-                  ) : (
-                    <IconUnlock size={12} tone="inherit" />
-                  )
+                  <TosPadlock
+                    locked={!!overrideActive}
+                    testId="builder-padlock"
+                    onToggle={() => {
+                      if (mode === "edit") {
+                        if (overrideActive) onUnlock?.();
+                        else onLockNatural?.();
+                        return;
+                      }
+                      if (overrideActive) {
+                        setPosition((p) => ({
+                          ...p,
+                          net_debit_override: null,
+                        }));
+                      }
+                    }}
+                  />
                 ) : null}
                 {planeState.kind === "plane_unavailable"
                   ? planeState.title
@@ -2083,17 +2115,21 @@ export default function PositionBuilder({
               }
               data-testid="builder-live-package-price"
             >
-              {overrideActive && position.net_debit_override != null
-                ? Math.abs(position.net_debit_override).toFixed(2)
-                : planeState.kind === "ready" && eco.absMid != null
-                  ? eco.absMid.toFixed(2)
-                  : planeState.kind === "updating"
-                    ? "…"
-                    : planeState.kind === "plane_unavailable"
-                      ? "—"
-                      : eco.absMid != null
-                        ? eco.absMid.toFixed(2)
-                        : "…"}
+              {mode === "edit" && lockActive && lockedMagnitude != null
+                ? lockedMagnitude.toFixed(2)
+                : mode !== "edit" &&
+                    overrideActive &&
+                    position.net_debit_override != null
+                  ? Math.abs(position.net_debit_override).toFixed(2)
+                  : planeState.kind === "ready" && eco.absMid != null
+                    ? eco.absMid.toFixed(2)
+                    : planeState.kind === "updating"
+                      ? "…"
+                      : planeState.kind === "plane_unavailable"
+                        ? "—"
+                        : eco.absMid != null
+                          ? eco.absMid.toFixed(2)
+                          : "…"}
             </div>
             <div className="text-[19.5px] font-medium text-[var(--color-label-secondary)]">
               {planeState.kind === "ready" || eco.side
@@ -2159,7 +2195,7 @@ export default function PositionBuilder({
               className="!min-h-8 !px-2 !text-[19.5px]"
               onClick={addLeg}
             >
-              Add Leg
+              + Add Leg
             </Button>
           </div>
           <div className={group + " overflow-x-auto"}>
@@ -2332,9 +2368,11 @@ export default function PositionBuilder({
                 type="number"
                 step="0.01"
                 value={
-                  position.net_debit_override != null
-                    ? position.net_debit_override
-                    : ""
+                  mode === "edit" && lockActive && lockedMagnitude != null
+                    ? lockedMagnitude
+                    : position.net_debit_override != null
+                      ? position.net_debit_override
+                      : ""
                 }
                 placeholder={
                   eco.complete && displayCost > 0
@@ -2343,6 +2381,15 @@ export default function PositionBuilder({
                 }
                 onChange={(e) => {
                   const raw = e.target.value.trim();
+                  if (mode === "edit") {
+                    if (raw === "") {
+                      onUnlock?.();
+                      return;
+                    }
+                    const v = parseFloat(raw);
+                    if (Number.isFinite(v) && v > 0) onLockLimit?.(v);
+                    return;
+                  }
                   if (raw === "") {
                     setPosition((p) => ({ ...p, net_debit_override: null }));
                     return;

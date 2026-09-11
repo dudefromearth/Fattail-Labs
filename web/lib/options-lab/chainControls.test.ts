@@ -175,17 +175,14 @@ test("builder: no type=date; selects use boundSelectValue; no options[0] fallbac
   assert.match(list, /boundSelectValue/);
 });
 
-test("D-PC-7 Edit dialog price path: override, not CardLockState", () => {
+test("D-PC-7 Edit dialog price path reads CardLockState (PC8)", () => {
   const src = readFileSync(
     join(here, "../../components/options-lab/PositionBuilder.tsx"),
     "utf8",
   );
-  assert.match(src, /overrideActive = position\.net_debit_override != null/);
+  assert.match(src, /cardLock\?\.mode === "locked"/);
+  assert.match(src, /packageDebitPerShare/);
   assert.match(src, /builder-live-package-price/);
-  assert.match(
-    src,
-    /overrideActive && position\.net_debit_override != null\s*\n\s*\? Math\.abs\(position\.net_debit_override\)/,
-  );
 });
 
 console.log(`chainControls.test.ts ${n} ok`);

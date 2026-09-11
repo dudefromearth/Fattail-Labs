@@ -44,6 +44,7 @@ import {
   keepCheckPrice,
   saveAlerts,
   savePositions,
+  scaleCardPos,
   setCardDirection,
   setCardExpiration,
   shiftCardStrikes,
@@ -51,6 +52,18 @@ import {
   type AnalyzerPosition,
   type AnalyzerThresholdAlert,
 } from "@/lib/options-lab/analyzerBook";
+import {
+  moveSymbolInOrder,
+  patchCardLeg,
+  rebuildCardFromTemplate,
+  setCardRight,
+} from "@/lib/options-lab/tosCard";
+import type {
+  LegInput,
+  OptionRight,
+  PositionInput,
+  TemplateType,
+} from "@/lib/options-lab/positionTypes";
 import {
   createUndoStack,
   type UndoKind,
@@ -69,7 +82,7 @@ import {
 import { parseTosScript } from "@/lib/options-lab/tosParser";
 import { parsedTradeToPositionInput } from "@/lib/options-lab/positionToTrade";
 import { buildLabel, buildNotation } from "@/lib/options-lab/positionLabels";
-import type { PositionInput } from "@/lib/options-lab/positionTypes";
+
 import { useBuilderChain } from "@/lib/options-lab/useBuilderChain";
 import { useOpfRiskGraph } from "@/lib/options-lab/useOpfRiskGraph";
 import { useTmArchiveVix } from "@/lib/options-lab/tmArchiveMarks";
@@ -320,6 +333,7 @@ export default function OpfRiskAnalyzer() {
   }, [undoLast]);
   const bookHydrated = true;
   const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [symbolGroupOrder, setSymbolGroupOrder] = useState<string[]>([]);
   const searchParams = useSearchParams();
   const [builderOpen, setBuilderOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -770,6 +784,22 @@ export default function OpfRiskAnalyzer() {
     }
     return positions.find((p) => p.visible) ?? positions[0] ?? null;
   }, [positions, focusedId]);
+
+  useEffect(() => {
+    const syms = [
+      ...new Set(
+        positions.map((p) => (p.position.underlying || "").toUpperCase()).filter(Boolean),
+      ),
+    ];
+    setSymbolGroupOrder((prev) => {
+      const next = prev.filter((s) => syms.includes(s));
+      for (const s of syms) if (!next.includes(s)) next.push(s);
+      if (next.length === prev.length && next.every((s, i) => s === prev[i])) {
+        return prev;
+      }
+      return next;
+    });
+  }, [positions]);
 
   // Keep focusedId aligned when list changes
   useEffect(() => {
@@ -1835,6 +1865,62 @@ export default function OpfRiskAnalyzer() {
       );
       risk.refresh();
     },
+    onScalePos: (id: string, nextPos: number) => {
+      commitBook("card", (prev) =>
+        prev.map((p) => (p.id === id ? scaleCardPos(p, nextPos) : p)),
+      );
+    },
+    onSetSpread: (id: string, template: TemplateType) => {
+      commitBook("card", (prev) =>
+        prev.map((p) => {
+          if (p.id !== id) return p;
+          const front = (p.position.expiration || "").slice(0, 10);
+          return rebuildCardFromTemplate(
+            p,
+            template,
+            chain.getStrikes(front),
+            chain.expirations,
+          );
+        }),
+      );
+      risk.refresh();
+    },
+    onPatchLeg: (
+      id: string,
+      recordIndex: number,
+      patch: Partial<LegInput>,
+    ) => {
+      commitBook("card", (prev) =>
+        prev.map((p) =>
+          p.id === id ? patchCardLeg(p, recordIndex, patch) : p,
+        ),
+      );
+      risk.refresh();
+    },
+    onSetRight: (id: string, right: OptionRight) => {
+      commitBook("card", (prev) =>
+        prev.map((p) => (p.id === id ? setCardRight(p, right) : p)),
+      );
+      risk.refresh();
+    },
+    onSelectSymbolGroup: (sym: string) => {
+      setSymbol(sym);
+      setFocusedId((prev) => {
+        if (!prev) return prev;
+        const hit = positionsRef.current.find((p) => p.id === prev);
+        if (
+          hit &&
+          (hit.position.underlying || "").toUpperCase() !== sym.toUpperCase()
+        ) {
+          return null;
+        }
+        return prev;
+      });
+    },
+    onReorderSymbolGroup: (sym: string, dir: "up" | "down") => {
+      setSymbolGroupOrder((prev) => moveSymbolInOrder(prev, sym, dir));
+    },
+    getListedStrikes: (exp: string) => chain.getStrikes(exp),
   };
 
   const strikeHandles = useMemo(() => {
@@ -2555,6 +2641,20 @@ export default function OpfRiskAnalyzer() {
             {...positionsHandlers}
             positions={displayPositions}
             playheadMs={tmCursor?.t_ms ?? null}
+            focusedId={focusedId}
+            onFocus={(id) => {
+              setFocusedId(id);
+              const p = positionsRef.current.find((x) => x.id === id);
+              if (p?.position.underlying && p.position.underlying !== symbol) {
+                setSymbol(p.position.underlying);
+              }
+            }}
+            symbolGroupOrder={symbolGroupOrder}
+            spotPrice={
+              sessionSpot != null && sessionSpot > 0
+                ? sessionSpot
+                : displaySpot
+            }
           />
         </div>
       </div>
@@ -2675,6 +2775,40 @@ export default function OpfRiskAnalyzer() {
                 ? applyEditPatch(p, input, label, notation)
                 : p,
             ),
+          );
+        }}
+        cardLock={
+          editId
+            ? positions.find((p) => p.id === editId)?.lock
+            : undefined
+        }
+        definedDebit={
+          editId
+            ? definedDebitSigned(
+                positions.find((p) => p.id === editId) ??
+                  ({ lock: { mode: "unlocked" } } as AnalyzerPosition),
+              )
+            : null
+        }
+        onLockLimit={(mag) => {
+          if (!editId) return;
+          const pos = positionsRef.current.find((p) => p.id === editId);
+          if (!pos) return;
+          const isCredit = pos.priceSide === "credit";
+          commitBook("lock", (prev) =>
+            prev.map((p) => (p.id === editId ? lockLimit(p, mag, isCredit) : p)),
+          );
+        }}
+        onLockNatural={() => {
+          if (!editId) return;
+          commitBook("lock", (prev) =>
+            prev.map((p) => (p.id === editId ? lockNatural(p) : p)),
+          );
+        }}
+        onUnlock={() => {
+          if (!editId) return;
+          commitBook("unlock", (prev) =>
+            prev.map((p) => (p.id === editId ? unlockCard(p) : p)),
           );
         }}
       />

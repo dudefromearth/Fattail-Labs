@@ -139,6 +139,7 @@ export function IconLock(p: IconLockProps) {
       data-lock-tone={tone}
       data-lock-state="locked"
       data-lock-shackle="over"
+      data-lock-body="solid"
       {...rest}
     >
       <rect x="5" y="11" width="14" height="10.25" rx="2.25" />
@@ -169,26 +170,36 @@ export function IconUnlock(p: IconLockProps) {
       width={width}
       height={height}
       viewBox="0 0 32 24"
-      fill={paint}
+      fill="none"
       overflow="visible"
       className={className}
       aria-hidden
       data-lock-tone={tone}
       data-lock-state="unlocked"
       data-lock-shackle="side"
+      data-lock-body="outlined"
       {...rest}
     >
-      {/* Same body as lock, shifted right so the U has a full bay on the left */}
-      <rect x="16" y="11" width="14" height="10.25" rx="2.25" />
+      {/* Outlined body — thin stroke, no fill (PC-HIG-5 unlocked). */}
+      <rect
+        x="16.3"
+        y="11.3"
+        width="13.4"
+        height="9.65"
+        rx="2.1"
+        fill="none"
+        stroke={paint}
+        strokeWidth={1.35}
+      />
       {/*
-        Full U to the left of the body: right post in the left shoulder,
-        arch left, free post hanging beside the box.
+        Shackle raised and rotated clear of the body (PC-HIG-6).
+        Right post at the left shoulder, arch left, free post hanging beside.
       */}
       <path
         d="M17.2 11.2V5.1A4.4 4.4 0 0 0 8.4 5.1V16.8"
         fill="none"
         stroke={paint}
-        strokeWidth={2.6}
+        strokeWidth={1.5}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
