@@ -33,7 +33,11 @@ export type LegInput = {
 export type PositionInput = {
   underlying: string;
   expiration: string; // front / package default
-  contracts: number; // package multiplier
+  /**
+   * Legacy package multiplier. PC2 migrates `contracts × ratio` onto
+   * actual leg quantities and then stores 1. POS is derived (GCD).
+   */
+  contracts: number;
   legs: LegInput[];
   /** Per-share package debit/credit magnitude override (ToS limit) */
   net_debit_override?: number | null;

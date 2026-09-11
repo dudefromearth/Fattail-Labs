@@ -13,6 +13,8 @@ import {
   listedWingChoices,
 } from "@/lib/options-lab/listedStrikes";
 import type { LegInput, OptionRight } from "@/lib/options-lab/positionTypes";
+import { catalogName } from "@/lib/options-lab/structureClassifier";
+import { posAndRatio } from "@/lib/options-lab/positionQty";
 
 export type StructureTemplate =
   | "single"
@@ -488,4 +490,86 @@ export function preferListedWidth(
     choices[choices.length - 1] ??
     prefer
   );
+}
+
+const NAME_TO_TEMPLATE: Record<string, StructureTemplate> = {
+  Single: "single",
+  Vertical: "vertical",
+  Butterfly: "butterfly",
+  BWB: "bwb",
+  Condor: "condor",
+  Straddle: "straddle",
+  Strangle: "strangle",
+  "Iron Fly": "iron_fly",
+  "Iron Condor": "iron_condor",
+  Calendar: "calendar",
+  Diagonal: "diagonal",
+};
+
+export type StructureChrome = {
+  template: StructureTemplate;
+  center: number;
+  width: number;
+  optionSide: OptionRight;
+};
+
+/** Parametric chrome as a view over legs (PC-STRAT-9). */
+export function chromeFromLegs(
+  legs: readonly LegInput[],
+  listed: readonly number[],
+): StructureChrome | null {
+  const name = catalogName(legs);
+  const template = NAME_TO_TEMPLATE[name];
+  if (!template) return null;
+  const center = inferStructureCenter(legs);
+  const strikes = [...new Set(legs.map((l) => normalizeStrike(l.strike)))].sort(
+    (a, b) => a - b,
+  );
+  let width = 0;
+  if (strikes.length >= 2) {
+    const body = normalizeStrike(center);
+    const dist = strikes.map((s) => Math.abs(s - body)).filter((d) => d > 0);
+    width = dist.length ? Math.min(...dist) : 0;
+  }
+  const types = legs.map((l) => l.type);
+  const optionSide: OptionRight =
+    types.every((t) => t === "put") ? "put" : "call";
+  return { template, center, width, optionSide };
+}
+
+/**
+ * legs → chrome → legs. Same strikes, sides, types, and normalized ratio.
+ */
+export function roundTripListedLegs(
+  legs: readonly LegInput[],
+  listed: readonly number[],
+): LegInput[] | null {
+  const chrome = chromeFromLegs(legs, listed);
+  if (!chrome) return null;
+  const built = buildListedStructure({
+    template: chrome.template,
+    listed,
+    preferCenter: chrome.center,
+    preferWidth: chrome.width || 1,
+    optionSide: chrome.optionSide,
+  });
+  return built?.legs ?? null;
+}
+
+export function sameStructureLegs(
+  a: readonly LegInput[],
+  b: readonly LegInput[],
+): boolean {
+  if (a.length !== b.length) return false;
+  const ra = posAndRatio(a).ratio;
+  const rb = posAndRatio(b).ratio;
+  const key = (legs: readonly LegInput[], ratio: number[]) =>
+    legs
+      .map(
+        (l, i) =>
+          `${normalizeStrike(l.strike)}:${l.type}:${l.side}:${ratio[i]}:${String(l.expiration || "").slice(0, 10)}`,
+      )
+      .sort()
+      .join("|");
+  return key(a, ra) === key(b, rb);
 }

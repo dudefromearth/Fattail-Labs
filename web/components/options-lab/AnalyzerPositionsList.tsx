@@ -39,7 +39,6 @@ import { detectFamily } from "@/lib/options-lab/positionLabels";
 import {
   packageUnitScale,
   positionQty,
-  unitLegQuantity,
 } from "@/lib/options-lab/packageEconomics";
 import {
   BLOTTER_CSS_VARS,
@@ -804,12 +803,9 @@ function PosBlock({
         const isLast = i === nLegs - 1;
         const exp = (leg.expiration || front).slice(0, 10);
         const legSide = leg.side === "long" ? "BUY" : "SELL";
-        const unitQ = unitLegQuantity(leg.quantity, unitScale);
-        const signedQ = isTop
-          ? String(pkgQty)
-          : leg.side === "long"
-            ? `+${unitQ}`
-            : `−${unitQ}`;
+        const actualQ = Math.round(Math.abs(leg.quantity));
+        const signedQ =
+          (leg.side === "long" ? "+" : "−") + String(actualQ);
         const edge = cellBase(isLast);
 
         return (
@@ -933,7 +929,7 @@ function PosBlock({
               data-testid={isTop ? `analyzer-pos-qty-${pos.id}` : undefined}
               title={
                 isTop
-                  ? `${pkgQty} × ${leg.side === "long" ? "+" : "−"}${unitQ}`
+                  ? `POS ${pkgQty}`
                   : undefined
               }
             >

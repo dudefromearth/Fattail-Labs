@@ -17,6 +17,10 @@ import {
   uniqueListedStrikes,
 } from "@/lib/options-lab/listedStrikes";
 import { defaultSessionEntryAt } from "@/lib/options-lab/positionSession";
+import {
+  migrateLegContracts,
+  scaleLegPos,
+} from "@/lib/options-lab/positionQty";
 
 /** Product status — residual book is ANALYSIS-only (PB v0.3 §16.4). */
 export type AnalyzerTradeStatus = "ANALYSIS";
@@ -332,6 +336,10 @@ export type AnalyzerThresholdAlert = {
 };
 
 const POS_KEY = "ft_options_lab_analyzer_positions_v2";
+export const ANALYZER_POS_KEY = POS_KEY;
+/** Dated rollback copy. Not a second store. PCZ names it so Coach can delete it. */
+export const BOOK_BACKUP_DATE = "2026-09-11";
+export const BOOK_BACKUP_KEY = `${POS_KEY}__backup_${BOOK_BACKUP_DATE}`;
 const ALERT_KEY = "ft_options_lab_analyzer_alerts_v1";
 
 function uid(prefix: string): string {
@@ -393,9 +401,99 @@ function migratePos(raw: unknown): AnalyzerPosition | null {
   };
 }
 
+export type BookBackupResult = {
+  key: string;
+  count: number;
+  wrote: boolean;
+};
+
+function storageGet(store: Storage, key: string): string | null {
+  try {
+    return store.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function storageSet(store: Storage, key: string, value: string): void {
+  try {
+    store.setItem(key, value);
+  } catch {
+    /* quota / private mode */
+  }
+}
+
+/**
+ * Copy the live book to the dated backup key once. Never overwrites an
+ * existing backup. Rollback: `restoreAnalyzerBookFromBackup()`.
+ */
+export function backupAnalyzerBookOnce(
+  local: Storage | null = typeof localStorage !== "undefined" ? localStorage : null,
+): BookBackupResult {
+  const key = BOOK_BACKUP_KEY;
+  if (!local) return { key, count: 0, wrote: false };
+  const existing = storageGet(local, key);
+  if (existing != null) {
+    let count = 0;
+    try {
+      const arr = JSON.parse(existing) as unknown;
+      count = Array.isArray(arr) ? arr.length : 0;
+    } catch {
+      count = 0;
+    }
+    return { key, count, wrote: false };
+  }
+  const raw = storageGet(local, POS_KEY) || "";
+  if (!raw) return { key, count: 0, wrote: false };
+  storageSet(local, key, raw);
+  let count = 0;
+  try {
+    const arr = JSON.parse(raw) as unknown;
+    count = Array.isArray(arr) ? arr.length : 0;
+  } catch {
+    count = 0;
+  }
+  return { key, count, wrote: true };
+}
+
+/**
+ * One-step rollback: copy the dated backup onto the live key (local + session).
+ */
+export function restoreAnalyzerBookFromBackup(
+  local: Storage | null = typeof localStorage !== "undefined" ? localStorage : null,
+  sess: Storage | null = typeof sessionStorage !== "undefined"
+    ? sessionStorage
+    : null,
+): void {
+  if (!local) throw new Error("restoreAnalyzerBookFromBackup: no localStorage");
+  const raw = storageGet(local, BOOK_BACKUP_KEY);
+  if (raw == null) {
+    throw new Error(`no backup at ${BOOK_BACKUP_KEY}`);
+  }
+  storageSet(local, POS_KEY, raw);
+  if (sess) storageSet(sess, POS_KEY, raw);
+}
+
+function stripStoredTemplate(position: AnalyzerPosition["position"]): AnalyzerPosition["position"] {
+  const next = migrateLegContracts(position);
+  const { template: _drop, ...rest } = next as typeof next & {
+    template?: unknown;
+  };
+  return rest;
+}
+
+function migrateLoaded(p: AnalyzerPosition): AnalyzerPosition {
+  return {
+    ...p,
+    status: "ANALYSIS",
+    position: stripStoredTemplate(p.position),
+  };
+}
+
 export function loadPositions(): AnalyzerPosition[] {
   if (typeof window === "undefined") return [];
   try {
+    backupAnalyzerBookOnce();
     const sess =
       sessionStorage.getItem(POS_KEY) ||
       sessionStorage.getItem("ft_options_lab_analyzer_positions_v1");
@@ -410,7 +508,18 @@ export function loadPositions(): AnalyzerPosition[] {
     if (!s) return [];
     const arr = JSON.parse(s) as unknown[];
     if (!Array.isArray(arr)) return [];
-    return arr.map(migratePos).filter(Boolean) as AnalyzerPosition[];
+    const loaded = arr
+      .map(migratePos)
+      .filter(Boolean)
+      .map((p) => migrateLoaded(p as AnalyzerPosition));
+    try {
+      const json = JSON.stringify(loaded);
+      localStorage.setItem(POS_KEY, json);
+      sessionStorage.setItem(POS_KEY, json);
+    } catch {
+      /* quota */
+    }
+    return loaded;
   } catch {
     return [];
   }
@@ -524,6 +633,24 @@ export function applyEditPatch(
     visible: existing.visible,
     rehearsal: existing.rehearsal,
     bind: existing.bind ?? null,
+    updatedAt: Date.now(),
+  };
+}
+
+/**
+ * POS stepper (PC-QTY-6). Writes ratio × POS on every leg. Lock stands.
+ */
+export function scaleCardPos(
+  pos: AnalyzerPosition,
+  newPos: number,
+): AnalyzerPosition {
+  return {
+    ...pos,
+    position: {
+      ...pos.position,
+      contracts: 1,
+      legs: scaleLegPos(pos.position.legs, newPos),
+    },
     updatedAt: Date.now(),
   };
 }

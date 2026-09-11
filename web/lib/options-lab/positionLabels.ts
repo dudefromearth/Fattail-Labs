@@ -3,6 +3,7 @@
  */
 
 import type { LegInput } from "@/lib/options-lab/positionTypes";
+import { catalogName } from "@/lib/options-lab/structureClassifier";
 
 export function buildLabel(
   underlying: string,
@@ -55,45 +56,9 @@ function daysUntil(expiration: string): number {
   return Math.max(0, Math.round((b - a) / 86_400_000));
 }
 
-/** Spread family label for ToS-style book rows (e.g. Butterfly, Vertical). */
+/** Spread family label — computed from legs, never stored (PC-STRAT-7). */
 export function detectFamily(legs: LegInput[]): string {
-  if (legs.length === 1) return "Single";
-  if (legs.length === 2) {
-    const sameStrike = legs[0].strike === legs[1].strike;
-    const types = new Set(legs.map((l) => l.type));
-    const sides = new Set(legs.map((l) => l.side));
-    if (types.size === 2 && sameStrike) return "Straddle";
-    if (types.size === 2 && !sameStrike) return "Strangle";
-    if (types.size === 1 && sides.size === 2 && sameStrike) return "Calendar";
-    if (types.size === 1 && sides.size === 2 && !sameStrike) {
-      if (legs.some((l) => l.expiration)) return "Diagonal";
-    }
-    if (types.size === 1) return "Vertical";
-    return "Spread";
-  }
-  if (legs.length === 3) {
-    const types = new Set(legs.map((l) => l.type));
-    if (types.size === 1) {
-      const sorted = [...legs].sort((a, b) => a.strike - b.strike);
-      const gap1 = sorted[1].strike - sorted[0].strike;
-      const gap2 = sorted[2].strike - sorted[1].strike;
-      if (Math.abs(gap1 - gap2) < 0.01) return "Butterfly";
-      return "BWB";
-    }
-    return "Custom";
-  }
-  if (legs.length === 4) {
-    const types = new Set(legs.map((l) => l.type));
-    if (types.size === 2) {
-      const shorts = legs.filter((l) => l.side === "short");
-      if (shorts.length === 2 && shorts[0].strike === shorts[1].strike)
-        return "Iron Fly";
-      return "Iron Condor";
-    }
-    if (types.size === 1) return "Condor";
-    return "Custom";
-  }
-  return "Custom";
+  return catalogName(legs);
 }
 
 function detectDirection(legs: LegInput[]): string {
