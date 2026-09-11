@@ -3,6 +3,7 @@
  */
 
 import type { AnalyzerPosition } from "./analyzerBook";
+import type { PositionInput } from "./positionTypes";
 
 export type UndoKind =
   | "card"
@@ -21,6 +22,8 @@ export type UndoEntry = {
   kind: UndoKind;
   book: AnalyzerPosition[];
   createdId?: string;
+  /** Create-Submit payload so undo can reopen Create (AT-PC-50). */
+  draft?: PositionInput;
 };
 
 export const UNDO_LIMIT_DEFAULT = 50;
@@ -37,12 +40,18 @@ export function createUndoStack(limit = UNDO_LIMIT_DEFAULT) {
     push(
       kind: UndoKind,
       book: readonly AnalyzerPosition[],
-      extra?: { createdId?: string },
+      extra?: { createdId?: string; draft?: PositionInput },
     ): void {
       entries.push({
         kind,
         book: cloneBook(book),
         createdId: extra?.createdId,
+        draft: extra?.draft
+          ? {
+              ...extra.draft,
+              legs: extra.draft.legs.map((l) => ({ ...l })),
+            }
+          : undefined,
       });
       while (entries.length > limit) entries.shift();
     },

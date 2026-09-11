@@ -53,6 +53,7 @@ import {
 import {
   buildLabel,
   buildNotation,
+  detectFamily,
 } from "@/lib/options-lab/positionLabels";
 import { generateTosScript } from "@/lib/options-lab/tosGenerator";
 import {
@@ -303,6 +304,12 @@ export type PositionBuilderProps = {
   planePrinting?: boolean;
   onSave: (position: PositionInput, label: string, notation: string) => void;
   onCancel: () => void;
+  /** Edit live bind — every patch writes the book. Create must not call this. */
+  onLivePatch?: (
+    position: PositionInput,
+    label: string,
+    notation: string,
+  ) => void;
 };
 
 /** Wide enough for full Legs table (Qty · Strike · Type · Exp · Mid · ± · IV). */
@@ -320,6 +327,7 @@ export default function PositionBuilder({
   planePrinting = marketLive,
   onSave,
   onCancel,
+  onLivePatch,
 }: PositionBuilderProps) {
   const { profile } = useOptionsLab();
   const profileMinWing =
@@ -333,18 +341,33 @@ export default function PositionBuilder({
     pickDefaultFrontExpiration(chain.expirations, marketLive) ||
     etYmd();
 
-  const [position, setPosition] = useState<PositionInput>(() =>
-    initial
-      ? { ...initial, legs: initial.legs.map((l) => ({ ...l })) }
-      : {
-          underlying: symbol,
-          expiration: frontDefault,
-          contracts: 1,
-          legs: [],
-          direction: "buy",
-          net_debit_override: null,
-        },
-  );
+  const [draft, setDraft] = useState<PositionInput>(() => ({
+    underlying: symbol,
+    expiration: frontDefault,
+    contracts: 1,
+    legs: [],
+    direction: "buy",
+    net_debit_override: null,
+  }));
+  const position: PositionInput =
+    mode === "edit" && initial
+      ? initial
+      : draft;
+  const setPosition = (
+    update: PositionInput | ((prev: PositionInput) => PositionInput),
+  ) => {
+    if (mode === "edit" && initial) {
+      const next =
+        typeof update === "function" ? update(initial) : update;
+      onLivePatch?.(
+        next,
+        buildLabel(next.underlying, next.legs, next.expiration),
+        buildNotation(next.legs),
+      );
+      return;
+    }
+    setDraft(update);
+  };
 
   const [template, setTemplate] = useState<TemplateType>("butterfly");
   const [direction, setDirection] = useState<TradeDirection>("buy");
@@ -745,6 +768,17 @@ export default function PositionBuilder({
     });
   }, [open, mode]);
 
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      onCancel();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onCancel]);
+
   /**
    * Seed once per open — **only after OPF can support a real structure**.
    * Create must not mark seeded until legs land on the OPF grid (ATM center
@@ -754,36 +788,37 @@ export default function PositionBuilder({
     if (!open || didSeed.current) return;
 
     if (mode === "edit" && initial?.legs.length) {
-      const front = (initial.expiration || frontDefault).slice(0, 10);
-      chain.ensureExpiration(front);
-      const listed = chain.getStrikes(front);
-      let legs = initial.legs.map((l) => ({ ...l }));
-      if (listed.length) {
-        legs = legs.map((l) => {
-          const s = snapToListed(l.strike, listed);
-          return s != null ? { ...l, strike: s } : l;
-        });
-      }
-      const priced = priceLegs(legs, front);
-      setPosition({ ...initial, legs: priced.length ? priced : legs });
+      // Live bind: chrome only. Do not snap, reprice, or write the record.
       setDirection(initial.direction || "buy");
-      const body =
-        priced.find((l) => l.side === "short")?.strike ??
-        priced[0]?.strike ??
-        (atmCenter > 0 ? atmCenter : spotPrice > 0 ? spotPrice : 0);
+      const family = detectFamily(initial.legs);
+      const tmpl = (
+        Object.entries(TEMPLATE_LABELS) as [TemplateType, string][]
+      ).find(([, label]) => label === family)?.[0];
+      if (tmpl) setTemplate(tmpl);
+      const body = inferStructureCenter(initial.legs);
       if (body > 0) {
         setCenterStrike(body);
         centerPinnedRef.current = true;
       }
-      if (!listed.length) {
-        setStructureNotice(
-          "Loading OPF chain… center and position update when strikes arrive.",
-        );
-        // Keep retrying until ladder exists so Center dropdown is real
-        return;
-      }
       setStructureNotice(null);
       didSeed.current = true;
+      return;
+    }
+
+    if (mode === "create" && initial?.legs.length) {
+      setDraft({
+        ...initial,
+        legs: initial.legs.map((l) => ({ ...l })),
+        net_debit_override: null,
+      });
+      setDirection(initial.direction || "buy");
+      const family = detectFamily(initial.legs);
+      const tmpl = (
+        Object.entries(TEMPLATE_LABELS) as [TemplateType, string][]
+      ).find(([, label]) => label === family)?.[0];
+      if (tmpl) setTemplate(tmpl);
+      didSeed.current = true;
+      setStructureNotice(null);
       return;
     }
 
@@ -805,7 +840,14 @@ export default function PositionBuilder({
       return;
     }
 
-    const seed = resolveCreateSeed(symbol);
+    const seed = {
+      template: "butterfly" as TemplateType,
+      direction: "buy" as TradeDirection,
+      optionSide: "call" as OptionRight,
+      wingWidth: DEFAULT_CREATE_WING_WIDTH,
+      centerOffsetPts: 0,
+      contracts: 1,
+    };
     const preferSpot =
       (chain.spotStrike != null && chain.spotStrike > 0
         ? chain.spotStrike
@@ -981,7 +1023,10 @@ export default function PositionBuilder({
       return;
     }
 
-    // Soft reprice + snap any drift onto listed (edit seed race)
+    // Edit is live-bound: never snap or reprice on chain arrival (AT-PC-04).
+    if (mode === "edit") return;
+
+    // Soft reprice + snap any drift onto listed (create seed race)
     setPosition((prev) => {
       if (!prev.legs.length) return prev;
       const listed = chain.getStrikes(prev.expiration);
@@ -1534,9 +1579,16 @@ export default function PositionBuilder({
             {chain.spotStrike != null ? ` · ATM ${chain.spotStrike}` : ""}
           </p>
         </div>
-        <Button variant="plain" className="!min-h-9 !px-2" onClick={onCancel}>
-          Done
-        </Button>
+        {mode === "edit" ? (
+          <Button
+            variant="plain"
+            className="!min-h-9 !px-2"
+            data-testid="position-builder-close"
+            onClick={onCancel}
+          >
+            Close
+          </Button>
+        ) : null}
       </div>
 
       {planeState.kind !== "ready" ? (
@@ -1563,17 +1615,7 @@ export default function PositionBuilder({
               {structureNotice || planeState.detail}
             </p>
           </div>
-          {planeState.kind === "plane_unavailable" ||
-          (planeState.kind === "updating" && marketLive) ? (
-            <Button
-              variant="secondary"
-              className="!min-h-8 shrink-0 !px-3 !text-[18px]"
-              data-testid="builder-retry-opf"
-              onClick={() => retryOpfChain()}
-            >
-              Retry
-            </Button>
-          ) : null}
+          {null}
         </div>
       ) : null}
 
@@ -1696,51 +1738,6 @@ export default function PositionBuilder({
         <section>
           <h4 className={sectionLabel}>Shape</h4>
           <div className={group}>
-            <div className={groupRow}>
-              <span className={rowLabel}>Spot</span>
-              <input
-                className={field + " flex-1 text-right font-mono tabular-nums"}
-                type="number"
-                step="0.01"
-                inputMode="decimal"
-                data-testid="builder-spot"
-                value={
-                  effectiveSpot > 0
-                    ? Number.isInteger(effectiveSpot)
-                      ? String(effectiveSpot)
-                      : String(Math.round(effectiveSpot * 100) / 100)
-                    : ""
-                }
-                placeholder="OPF mark"
-                onChange={(e) => {
-                  const raw = e.target.value.trim();
-                  const v = parseFloat(raw);
-                  setUserSpotDirty(true);
-                  centerPinnedRef.current = false; // spot edit re-owns Center
-                  if (!Number.isFinite(v) || v <= 0) {
-                    setUserSpot(0);
-                    return;
-                  }
-                  setUserSpot(v);
-                  // Re-snap Center to nearest OPF listed strike at this spot
-                  if (frontStrikes.length) {
-                    const n = nearestListedToSpot(v, frontStrikes);
-                    if (n != null && n > 0) {
-                      setCenterStrike(n);
-                      regenerate(
-                        template,
-                        n,
-                        wingWidth || DEFAULT_CREATE_WING_WIDTH,
-                        optionSide,
-                        direction,
-                        position.expiration,
-                        backExpiration,
-                      );
-                    }
-                  }
-                }}
-              />
-            </div>
             <div className={groupRow}>
               <span className={rowLabel}>Center</span>
               <div className="min-w-0 flex-1">
@@ -2304,19 +2301,11 @@ export default function PositionBuilder({
           </p>
         </section>
 
-        {/* —— Preview —— */}
+        {/* —— ToS script —— */}
         <section>
-          <h4 className={sectionLabel}>Preview</h4>
+          <h4 className={sectionLabel}>ToS script</h4>
           <div className={group + " space-y-3 p-4"}>
-            <div>
-              <div className="text-[22.5px] font-semibold text-[var(--color-label)]">
-                {previewLabel}
-              </div>
-              <div className="mt-0.5 font-mono text-[18px] text-[var(--color-label-secondary)]">
-                {previewNotation || "—"}
-              </div>
-            </div>
-            <button
+            <button>
               type="button"
               className="block w-full rounded-[var(--radius-md)] bg-black px-3 py-2.5 text-left font-mono text-[16.5px] leading-relaxed text-emerald-400 ring-1 ring-emerald-900/40"
               data-testid="builder-tos-script"
@@ -2339,280 +2328,35 @@ export default function PositionBuilder({
       </div>
 
       <div className={footerBar}>
-        {/* Defaults — Lab active or one of up to 3 user presets */}
-        <div className="relative min-w-0">
+        <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
           {mode === "create" ? (
             <>
               <Button
-                variant="plain"
-                className="!min-h-9 !px-2.5 !text-[19.5px]"
-                data-testid="builder-defaults-menu"
-                aria-haspopup="menu"
-                aria-expanded={defaultsMenuOpen}
-                onClick={() => {
-                  setDefaultsStore(loadCreateDefaultsStore());
-                  setDefaultsMenuOpen((o) => !o);
-                }}
+                variant="secondary"
+                data-testid="position-builder-cancel"
+                onClick={onCancel}
               >
-                Defaults
-                <span className="ml-1 max-w-[7rem] truncate text-[16.5px] font-normal text-[var(--color-label-tertiary)]">
-                  {defaultsStore.activeId == null
-                    ? "· Lab"
-                    : `· ${
-                        defaultsStore.presets.find(
-                          (p) => p.id === defaultsStore.activeId,
-                        )?.name ?? "Custom"
-                      }`}
-                </span>
-                <span className="text-[15px] opacity-60" aria-hidden>
-                  ▾
-                </span>
+                Cancel
               </Button>
-              {defaultsMenuOpen ? (
-                <>
-                  <button
-                    type="button"
-                    className="fixed inset-0 z-[60] cursor-default bg-transparent"
-                    aria-label="Close defaults menu"
-                    onClick={() => setDefaultsMenuOpen(false)}
-                  />
-                  <div
-                    role="menu"
-                    className={
-                      "absolute bottom-full left-0 z-[61] mb-1 w-[min(20rem,calc(100vw-2rem))] overflow-hidden " +
-                      "rounded-[var(--radius-lg)] border border-[var(--color-separator)] " +
-                      "bg-[var(--color-surface)] py-1 shadow-[var(--elevation-2)]"
-                    }
-                    data-testid="builder-defaults-popover"
-                  >
-                    <p className="px-3 pb-1 pt-2 text-[16.5px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
-                      Active on Create
-                    </p>
-                    {/* Lab defaults */}
-                    <button
-                      type="button"
-                      role="menuitemradio"
-                      aria-checked={defaultsStore.activeId == null}
-                      className={
-                        "flex w-full items-start gap-2 px-3 py-2.5 text-left hover:bg-[var(--color-fill)] " +
-                        (defaultsStore.activeId == null
-                          ? "bg-[var(--color-tint-soft)]"
-                          : "")
-                      }
-                      data-testid="builder-default-lab"
-                      onClick={() => {
-                        const next = resetToLabDefaults();
-                        setDefaultsStore(next);
-                        setDefaultsFlash("Lab defaults active");
-                        setDefaultsMenuOpen(false);
-                        window.setTimeout(() => setDefaultsFlash(null), 2000);
-                        // Re-apply flagship Lab butterfly now
-                        const lab = labDefaultForStrategy("butterfly", symbol);
-                        handleTemplate(lab.template);
-                      }}
-                    >
-                      <span className="mt-0.5 w-4 shrink-0 text-[var(--color-tint)]">
-                        {defaultsStore.activeId == null ? "●" : "○"}
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block text-[21px] font-medium text-[var(--color-label)]">
-                          Options Lab defaults
-                        </span>
-                        <span className="block text-[16.5px] leading-snug text-[var(--color-label-tertiary)]">
-                          {labDefaultForStrategy("butterfly", symbol).blurb}
-                        </span>
-                      </span>
-                    </button>
-                    {/* Up to 3 user presets */}
-                    {defaultsStore.presets.map((p, i) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        role="menuitemradio"
-                        aria-checked={defaultsStore.activeId === p.id}
-                        className={
-                          "flex w-full items-start gap-2 px-3 py-2.5 text-left hover:bg-[var(--color-fill)] " +
-                          (defaultsStore.activeId === p.id
-                            ? "bg-[var(--color-tint-soft)]"
-                            : "")
-                        }
-                        data-testid={`builder-default-slot-${i}`}
-                        onClick={() => {
-                          const next = setActiveCreateDefault(p.id);
-                          setDefaultsStore(next);
-                          setDefaultsFlash(`Active: ${p.name}`);
-                          setDefaultsMenuOpen(false);
-                          window.setTimeout(() => setDefaultsFlash(null), 2000);
-                          // Apply this preset shape immediately
-                          setTemplate(p.template);
-                          setDirection(p.direction);
-                          setOptionSide(p.optionSide);
-                          setWingWidth(p.wingWidth);
-                          const front =
-                            position.expiration ||
-                            pickDefaultFrontExpiration(
-                              chain.expirations,
-                              marketLive,
-                            ) ||
-                            frontDefault;
-                          const listed = chain.getStrikes(front);
-                          const atm =
-                            atmCenter > 0
-                              ? atmCenter
-                              : snapToListed(
-                                  chain.spotStrike ?? chain.spot ?? spotPrice,
-                                  listed,
-                                ) ?? spotPrice;
-                          const c =
-                            snapToListed(atm + p.centerOffsetPts, listed) ??
-                            atm;
-                          setCenterStrike(c);
-                          let back: string | undefined;
-                          if (
-                            p.template === "calendar" ||
-                            p.template === "diagonal"
-                          ) {
-                            const exps = chain.expirations;
-                            const idx = exps.indexOf(front);
-                            back =
-                              idx >= 0 && idx + 1 < exps.length
-                                ? exps[idx + 1]
-                                : nextListedBack(front, exps) || undefined;
-                            if (back) setBackExpiration(back);
-                          }
-                          regenerate(
-                            p.template,
-                            c,
-                            p.wingWidth,
-                            p.optionSide,
-                            p.direction,
-                            front,
-                            back,
-                          );
-                        }}
-                      >
-                        <span className="mt-0.5 w-4 shrink-0 text-[var(--color-tint)]">
-                          {defaultsStore.activeId === p.id ? "●" : "○"}
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block text-[21px] font-medium text-[var(--color-label)]">
-                            {p.name}
-                          </span>
-                          <span className="block font-mono text-[16.5px] text-[var(--color-label-tertiary)]">
-                            {formatShapeSummary(p)}
-                          </span>
-                        </span>
-                      </button>
-                    ))}
-                    {defaultsStore.presets.length < MAX_USER_PRESETS ? (
-                      <p className="px-3 py-1.5 text-[16.5px] text-[var(--color-label-tertiary)]">
-                        {MAX_USER_PRESETS - defaultsStore.presets.length} slot
-                        {MAX_USER_PRESETS - defaultsStore.presets.length === 1
-                          ? ""
-                          : "s"}{" "}
-                        free — Save stores current shape
-                        {defaultsStore.activeId
-                          ? " (overwrites active)"
-                          : " (new slot)"}
-                        .
-                      </p>
-                    ) : (
-                      <p className="px-3 py-1.5 text-[16.5px] text-[var(--color-label-tertiary)]">
-                        3 presets full — Save overwrites the active slot (or
-                        oldest if Lab is active).
-                      </p>
-                    )}
-                    <div className="my-1 border-t border-[var(--color-separator)]" />
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className="flex w-full items-center px-3 py-2.5 text-left text-[21px] text-[var(--color-label)] hover:bg-[var(--color-fill)]"
-                      data-testid="builder-save-as-default"
-                      onClick={() => {
-                        const shape = shapeFromBuilderState({
-                          template,
-                          direction,
-                          optionSide,
-                          wingWidth:
-                            wingWidth > 0
-                              ? wingWidth
-                              : DEFAULT_CREATE_WING_WIDTH,
-                          centerStrike:
-                            centerStrike || atmCenter || spotPrice,
-                          atmCenter:
-                            atmCenter ||
-                            chain.spotStrike ||
-                            chain.spot ||
-                            centerStrike ||
-                            spotPrice,
-                          contracts: position.contracts,
-                        });
-                        const next = saveShapeAsUserPreset(
-                          shape,
-                          symbol,
-                          undefined,
-                        );
-                        setDefaultsStore(next);
-                        setDefaultsFlash("Saved · now active");
-                        setDefaultsMenuOpen(false);
-                        window.setTimeout(() => setDefaultsFlash(null), 2200);
-                      }}
-                    >
-                      Save as Default
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className="flex w-full items-center px-3 py-2.5 text-left text-[21px] text-[var(--color-label-secondary)] hover:bg-[var(--color-fill)]"
-                      data-testid="builder-reset-default"
-                      onClick={() => {
-                        const next = resetToLabDefaults();
-                        setDefaultsStore(next);
-                        setDefaultsFlash("Reset to Options Lab defaults");
-                        setDefaultsMenuOpen(false);
-                        window.setTimeout(() => setDefaultsFlash(null), 2200);
-                        handleTemplate("butterfly");
-                      }}
-                    >
-                      Reset to Lab defaults
-                    </button>
-                    <div className="border-t border-[var(--color-separator)] px-3 py-2 text-[16.5px] leading-snug text-[var(--color-label-tertiary)]">
-                      Wave 1 Lab recipes: Butterfly · Vertical · Condor ·
-                      Calendar (multi-exp). Strategy change while Lab is active
-                      applies that recipe on OPF.
-                    </div>
-                  </div>
-                </>
-              ) : null}
-              {defaultsFlash ? (
-                <span
-                  className="ml-2 text-[18px] text-[var(--color-tint)]"
-                  data-testid="builder-defaults-flash"
-                  role="status"
-                >
-                  {defaultsFlash}
-                </span>
-              ) : null}
+              <Button
+                variant="primary"
+                data-testid="position-builder-submit"
+                onClick={handleSave}
+              >
+                Submit
+              </Button>
             </>
           ) : (
-            <span className="text-[18px] text-[var(--color-label-tertiary)]">
-              Edit mode
-            </span>
+            <Button
+              variant="secondary"
+              data-testid="position-builder-close-footer"
+              onClick={onCancel}
+            >
+              Close
+            </Button>
           )}
         </div>
-
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <Button variant="secondary" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            data-testid="position-builder-analyze"
-            onClick={handleSave}
-          >
-            {mode === "edit" ? "Update" : "Analyze"}
-          </Button>
-        </div>
+      </div>
       </div>
     </div>
   );

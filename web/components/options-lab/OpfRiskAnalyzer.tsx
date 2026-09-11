@@ -267,7 +267,7 @@ export default function OpfRiskAnalyzer() {
     (
       kind: UndoKind,
       recipe: (prev: AnalyzerPosition[]) => AnalyzerPosition[],
-      extra?: { createdId?: string },
+      extra?: { createdId?: string; draft?: PositionInput },
     ) => {
       setPositions((prev) => {
         const next = recipe(prev);
@@ -288,6 +288,11 @@ export default function OpfRiskAnalyzer() {
     const entry = undoStackRef.current.undo();
     if (!entry) return;
     setPositions(entry.book);
+    if (entry.kind === "create-submit" && entry.draft) {
+      setEditId(null);
+      setCreateReopen(entry.draft);
+      setBuilderOpen(true);
+    }
   }, []);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -317,6 +322,7 @@ export default function OpfRiskAnalyzer() {
   const searchParams = useSearchParams();
   const [builderOpen, setBuilderOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const [createReopen, setCreateReopen] = useState<PositionInput | null>(null);
   const [alertBuilderOpen, setAlertBuilderOpen] = useState(false);
   const [alertBuilderSeed, setAlertBuilderSeed] =
     useState<AlertBuilderSeed | null>(null);
@@ -1667,12 +1673,17 @@ export default function OpfRiskAnalyzer() {
         }
         commitBook("create-submit", (prev) => [pos, ...prev], {
           createdId: pos.id,
+          draft: {
+            ...input,
+            legs: input.legs.map((l) => ({ ...l })),
+          },
         });
         setFocusedId(pos.id);
       }
       setBookNotice(null);
       setBuilderOpen(false);
       setEditId(null);
+      setCreateReopen(null);
       risk.refresh();
     },
     [editId, risk, tm.tmActive, tm.tMs, commitBook],
@@ -1712,6 +1723,7 @@ export default function OpfRiskAnalyzer() {
     },
     onCreate: () => {
       setEditId(null);
+      setCreateReopen(null);
       setBuilderOpen(true);
     },
     onSetEntryAt: (id: string, entryAt: number) => {
@@ -2640,14 +2652,25 @@ export default function OpfRiskAnalyzer() {
               : chain.spot || 5000
         }
         chain={chain}
-        initial={editInitial}
+        initial={editId ? editInitial : createReopen}
         marketLive={posture === "Live"}
         planePrinting={planePrinting}
         onCancel={() => {
           setBuilderOpen(false);
           setEditId(null);
+          setCreateReopen(null);
         }}
         onSave={handleBuilderSave}
+        onLivePatch={(input, label, notation) => {
+          if (!editId) return;
+          commitBook("dialog", (prev) =>
+            prev.map((p) =>
+              p.id === editId
+                ? applyEditPatch(p, input, label, notation)
+                : p,
+            ),
+          );
+        }}
       />
     </div>
   );
