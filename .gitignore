@@ -42,3 +42,6 @@ server/var/
 
 # Quant Lab hot store (built on the collector, copied here; never committed)
 .quant-store/
+
+# Agent scratch — not program record (contains stray Spec-v1_0_1.md)
+Claude outputs/
