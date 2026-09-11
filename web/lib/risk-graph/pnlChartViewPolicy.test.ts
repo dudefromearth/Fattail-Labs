@@ -101,6 +101,11 @@ test("empty canvas → positions appear Autofits even after pan", () => {
     "pan on empty GEX must not block Autofit when a book appears",
   );
   assert(shouldClearUserViewLock("empty-to-book") === true, "clear lock");
+  assert(shouldClearUserViewLock("book-to-empty") === true, "empty book clears lock");
+  assert(
+    autofitShouldRun2d("book-empty", { userAdjusted: true }) === true,
+    "member pan must not suppress empty-book Autofit",
+  );
 });
 
 test("AT-CLICK-1 / AT-WH-1 / AT-AZ-WIRE-1 source", () => {

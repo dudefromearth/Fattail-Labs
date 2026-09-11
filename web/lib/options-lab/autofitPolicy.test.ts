@@ -50,6 +50,33 @@ test("PC-FIT-3 Create-Submit and first show always fit; overlay never", () => {
   assert.equal(shouldAutofit("none", true), false);
 });
 
+test("PC8-E book-empty always fits; empty geometry cannot escape", () => {
+  assert.equal(geometryEscapesWindow([], { min: 5900, max: 6100 }), false);
+  assert.equal(shouldAutofit("book-empty", false), true);
+  assert.equal(shouldAutofit("book-empty", true), true);
+  const shown = visibleStructureFingerprint([
+    { id: "a", structureKey: "Butterfly", visible: true },
+  ]);
+  const gone = visibleStructureFingerprint([
+    { id: "a", structureKey: "Butterfly", visible: false },
+  ]);
+  assert.ok(shown.length > 0);
+  assert.equal(gone, "");
+  const az = readFileSync(
+    join(here, "../../components/options-lab/OpfRiskAnalyzer.tsx"),
+    "utf8",
+  );
+  assert.match(az, /book-empty/);
+  assert.match(az, /shouldClearUserViewLock\("book-to-empty"\)/);
+  assert.match(az, /!prev && next \? "first-show"/);
+  const host = readFileSync(
+    join(here, "../../components/options-lab/risk-graph/HostPnLChart.tsx"),
+    "utf8",
+  );
+  assert.match(host, /emptyGexCenteredXRange/);
+  assert.match(host, /emptyBook/);
+});
+
 test("PC-FIT-1 fingerprint follows structure, not POS or hide", () => {
   const a = positionFromInput({
     underlying: "XSP",

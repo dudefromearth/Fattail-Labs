@@ -9,7 +9,8 @@ export type AutofitKind =
   | "button"
   | "first-show"
   | "create-submit"
-  | "structure";
+  | "structure"
+  | "book-empty";
 
 export function shouldAutofit(
   kind: AutofitKind,
@@ -19,7 +20,8 @@ export function shouldAutofit(
   if (
     kind === "button" ||
     kind === "first-show" ||
-    kind === "create-submit"
+    kind === "create-submit" ||
+    kind === "book-empty"
   ) {
     return true;
   }

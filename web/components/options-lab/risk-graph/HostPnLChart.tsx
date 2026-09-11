@@ -376,7 +376,7 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       const spotCenter =
         centerOn != null && centerOn > 0 ? centerOn : spotPrice;
       const win =
-        emptyBook && gexEnabled && gexStrikes.length && spotCenter > 0
+        emptyBook
           ? emptyGexCenteredXRange({
               spot: spotCenter,
               gexStrikes,

@@ -189,6 +189,7 @@ import type { StrikeDragInfo } from "@/lib/risk-graph/strikeHandleBind";
 import {
   autofitShouldRun2d,
   bookAppearedOnCanvas,
+  shouldClearUserViewLock,
 } from "@/lib/risk-graph/pnlChartViewPolicy";
 import { structureKey } from "@/lib/options-lab/structureSignal";
 import {
@@ -1656,7 +1657,8 @@ export default function OpfRiskAnalyzer() {
       return;
     }
     if (prev === next) return;
-    const kind = !prev && next ? "first-show" : "structure";
+    const emptied = Boolean(prev) && !next;
+    const kind = !prev && next ? "first-show" : emptied ? "book-empty" : "structure";
     structureFpRef.current = next;
     const view = chartRef.current?.getView?.();
     const content = displayPositions
@@ -1665,7 +1667,10 @@ export default function OpfRiskAnalyzer() {
     const escapes = view
       ? geometryEscapesWindow(content, { min: view.xMin, max: view.xMax })
       : true;
-    if (shouldAutofit(kind, escapes)) {
+    if (
+      shouldAutofit(kind, escapes) &&
+      (kind !== "book-empty" || shouldClearUserViewLock("book-to-empty"))
+    ) {
       chartRef.current?.autoFit();
     }
   }, [structureFp, strikeDrag, displayPositions]);

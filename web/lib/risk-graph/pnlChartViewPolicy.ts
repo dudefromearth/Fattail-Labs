@@ -10,6 +10,7 @@ export type PnlAutofitTrigger =
   | "autofit-button"
   | "book-change"
   | "book-appear"
+  | "book-empty"
   | "live-spot"
   | "what-if"
   | "exp-be"
@@ -27,7 +28,11 @@ export function autofitShouldRun2d(
   },
 ): boolean {
   if (opts.dragging || opts.strikeDragging) return false;
-  if (trigger === "autofit-button" || trigger === "book-appear") {
+  if (
+    trigger === "autofit-button" ||
+    trigger === "book-appear" ||
+    trigger === "book-empty"
+  ) {
     return true;
   }
   // Overlay-commit is a structure change. PC-FIT-3 (fit-if-needed) is
@@ -51,12 +56,14 @@ export function shouldClearUserViewLock(
     | "structure"
     | "show-hide"
     | "live-tick"
-    | "empty-to-book",
+    | "empty-to-book"
+    | "book-to-empty",
 ): boolean {
   return (
     reason === "autofit-button" ||
     reason === "structure" ||
-    reason === "empty-to-book"
+    reason === "empty-to-book" ||
+    reason === "book-to-empty"
   );
 }
 

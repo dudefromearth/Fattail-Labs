@@ -152,3 +152,17 @@ location.reload();
 
 **Who decided:** Coach 2026-09-11 · Juliet PC8-D.
 
+---
+
+## D-PC-10 — Empty-book Autofit is a law (Spec v1.3)
+
+**What the plan or Spec said:** Autofit law lived as a user-guide audit row ("GEX backdrop (incl. empty book) — Yes"). Spec v1.2 Autofit kinds are first-show / Create-Submit / structure-if-escapes. No book-empties case.
+
+**What we did instead (PC8-E item 1):** `AutofitKind` / `PnlAutofitTrigger` gained `"book-empty"`. `shouldAutofit("book-empty", _)` is unconditionally true — geometry cannot escape when there is none. `shouldClearUserViewLock("book-to-empty")` is true so a member pan does not survive into the empty canvas. Fit target is `emptyGexCenteredXRange` (spot-centered, GEX / listed extent, `AUTOFIT_MIN_HALF_PTS`). GEX already painted on the empty book; it was off-frame.
+
+**Why:** Removing the last position left a stale window. Flag the empty-book fit as a law with an acceptance test for **v1.3**.
+
+**Reversible?** Yes — drop `"book-empty"` and the host branch.
+
+**Who decided:** Coach 2026-09-11 · Juliet PC8-E.
+
