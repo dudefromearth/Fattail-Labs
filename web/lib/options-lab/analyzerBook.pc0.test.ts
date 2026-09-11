@@ -203,10 +203,10 @@ test("characterization: applyPackageQuote incomplete currently nulls lastNatSign
   assert.equal(pos.liveState, "incomplete");
 });
 
-test("characterization: mapper currently always LMT", () => {
+test("characterization: unlocked mapper does not record a limit (PC9b)", () => {
   const pos = positionFromInput(fly());
   const draft = analyzerPositionToOpenTrade(pos);
-  assert.equal(draft.order_type, "LMT");
+  assert.equal(draft.order_type, "MKT");
 });
 
 test("characterization: shiftCardStrikes without listed ladder is a no-op", () => {

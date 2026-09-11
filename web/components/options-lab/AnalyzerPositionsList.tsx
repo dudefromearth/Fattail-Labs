@@ -299,6 +299,8 @@ export type AnalyzerPositionsListProps = {
   onCreate: () => void;
   /** Simulated open fill in Trade Log. */
   onSendToTradeLog?: (id: string) => void;
+  /** PC-TM-1: Log is disabled on every position while Time Machine is active. */
+  tmActive?: boolean;
   onSetEntryAt: (id: string, entryAt: number) => void;
   /** Close transaction — stamps the clock; not a pre-set time. */
   onClosePosition: (id: string) => void;
@@ -340,6 +342,7 @@ export default function AnalyzerPositionsList({
   onDelete,
   onCreate,
   onSendToTradeLog,
+  tmActive = false,
   onSetEntryAt,
   onClosePosition,
   onLockNatural,
@@ -683,6 +686,7 @@ export default function AnalyzerPositionsList({
                     setPendingDelete({ id: pos.id, label: pos.label })
                   }
                   onSendToTradeLog={onSendToTradeLog}
+                  tmActive={tmActive}
                   onSetEntryAt={onSetEntryAt}
                   onClosePosition={onClosePosition}
                   onLockNatural={onLockNatural}
@@ -778,6 +782,7 @@ function PosBlock({
   onEdit,
   onAskDelete,
   onSendToTradeLog,
+  tmActive = false,
   onSetEntryAt,
   onClosePosition,
   onLockNatural,
@@ -832,6 +837,7 @@ function PosBlock({
   onEdit: (id: string) => void;
   onAskDelete: () => void;
   onSendToTradeLog?: (id: string) => void;
+  tmActive?: boolean;
   onSetEntryAt: (id: string, entryAt: number) => void;
   onClosePosition: (id: string) => void;
   onLockNatural: (id: string) => void;
@@ -1066,6 +1072,12 @@ function PosBlock({
                       type="button"
                       className={actionBtn + " min-h-8 w-full px-2 py-1"}
                       data-testid={`analyzer-pos-send-log-${pos.id}`}
+                      disabled={tmActive}
+                      title={
+                        tmActive
+                          ? "Log is closed while Time Machine is active"
+                          : "Promote to Trade Log"
+                      }
                       onClick={() => onSendToTradeLog(pos.id)}
                     >
                       Log

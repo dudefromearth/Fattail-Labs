@@ -102,7 +102,10 @@ import {
   volOffsetPtsFromScenario,
 } from "@/lib/options-lab/whatIfVol";
 import { usePackageQuotes } from "@/lib/options-lab/usePackageQuotes";
-import { analyzerPositionToOpenTrade } from "@/lib/options-lab/analyzerToTradeLog";
+import {
+  analyzerPositionToOpenTrade,
+  canPromoteToTradeLog,
+} from "@/lib/options-lab/analyzerToTradeLog";
 import {
   linkTradeLogId,
   syncBookFromTradeLog,
@@ -1822,13 +1825,15 @@ export default function OpfRiskAnalyzer() {
     onSendToTradeLog: async (id: string) => {
       const pos = positionsRef.current.find((p) => p.id === id);
       if (!pos) return;
-      if (pos.rehearsal) {
+      if (!canPromoteToTradeLog(pos, tm.tmActive)) {
         setBookNotice(
-          "Rehearsal cards stay off Trade Log. They are practice, not a working order.",
+          tm.tmActive
+            ? "Log is closed while Time Machine is active."
+            : "Rehearsal cards stay off Trade Log. They are practice, not a working order.",
         );
         return;
       }
-      const draft = analyzerPositionToOpenTrade(pos);
+      const draft = analyzerPositionToOpenTrade(pos, new Date());
       const res = await createTrade(draft);
       if (!res.ok) {
         setBookNotice(
@@ -2681,6 +2686,7 @@ export default function OpfRiskAnalyzer() {
             {...positionsHandlers}
             positions={displayPositions}
             playheadMs={tmCursor?.t_ms ?? null}
+            tmActive={tm.tmActive}
             focusedId={focusedId}
             onFocus={(id) => {
               setFocusedId(id);
