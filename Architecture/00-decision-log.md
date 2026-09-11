@@ -4,6 +4,57 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-11 — DL-690 Create / Edit Position Dialog Spec v0.4 BUILD AUTHORITY · DLG-W0 GO
+
+**Decision (Coach GO).** Spec
+`Specs/FatTail-Labs-Options-Lab-Create-Edit-Position-Dialog-Spec-v0_4.md`
+is **BUILD AUTHORITY**. Plan
+`docs/Options-Lab-Create-Edit-Position-Dialog-Full-Agent-Bench-Plan-v1.0.md`
+is the program of record. Token [`agents/go/DLG-W0.md`](../agents/go/DLG-W0.md)
+**GO**. Board `agents/p-options-lab-create-edit-dialog/`.
+
+Delta confirms sha1 against disk from the token
+(`32c6c92d2c378ad897de32e45ba93d40c62b3643`, computed from disk at stamp).
+Coach identifies the Spec by version: header reads `Spec v0.4`;
+`DLG-VOCAB-3`, `AT-DLG-15`, and `Do not build Preview, Entry time, or Submit`
+are present.
+
+**Machine:** Coach's MacBook (dev). Nothing deploys. No backend. No migration.
+
+**Supersedes PC-VOCAB-1** (Position Control Spec v1.2 §4.3). Restated as
+DLG-VOCAB-1 (shared behaviour and semantics), DLG-VOCAB-2 (appearance is not
+shared), DLG-VOCAB-3 (required `surface` `"card"` | `"dialog"` stamping
+`data-surface`; one component, two appearances). Frozen v1.2 is **not edited**.
+Carry into Position Control **v1.3**.
+
+**Unchanged:** PC-VOCAB-2 (card ⊂ dialog for structure) · PC-VOCAB-8 (add/remove
+leg is the dialog exclusive).
+
+**Dialog verbs.** PC-REC-9's Create Submit / Edit Close is superseded **on this
+surface**: Create Analyze · Cancel; Edit Update · Cancel. Done is removed
+(Spec v0.4 §8.3 · DLG-HIG-4).
+
+**Entry time.** PC8-E "the dialog is its home" is superseded by Spec v0.4 §3.
+Entry time has no member-editable control on any surface; it resolves to the
+cash-open default and is stamped at Log.
+
+**DL-539 three-OK (verbatim):**
+
+1. Coach commissioned Position Control and closed it on this machine (DL-689 · `71a9ab5`).
+2. Coach declared the dialog instruction ("dark theme on the card's tokens") was the defect, and asked for a designed dialog Spec.
+3. Coach directed Spec v0.1–v0.4 through review and answered §8 as law.
+4. Coach stamped v0.4 **BUILD AUTHORITY** and directed this full agent bench plan. No packet, no seed-as-one-off, no fourth rebuild.
+
+The freeze is **not lifted** for other trees. Sequence: India signs `surface`
+before DLG0; theme (DLG1) before chrome (DLG2).
+
+Prior Spec v0.3 remains on disk as the baseline — not a stray.
+
+**Does not:** deploy. Mini Two / Dude Two. Write a migration. Reopen PC0–PC9b.
+Edit frozen Spec v1.2. Fork IKI. Authorise a modal.
+
+---
+
 ## 2026-09-11 — DL-689 Position Control close · PC9b mapper-only · snapshot deferred
 
 **Decision.** Program `p-options-lab-position-control` is **closed** on Coach's

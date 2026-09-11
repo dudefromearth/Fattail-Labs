@@ -1,10 +1,14 @@
 "use client";
 
 /**
- * Shared ToS card/dialog controls (PC-VOCAB-1 · 4 · PC-HIG-5…10).
- * Resting size is explicit and symmetric. --hit-min is grown-only (PC-HIG-8).
+ * Shared card/dialog controls (DLG-VOCAB-1 · 2 · 3 · PC-VOCAB-4 · PC-HIG-5…10).
+ * Required `surface` stamps `data-surface`. Appearance is selected from it;
+ * behaviour is identical. Card rest (PC-HIG-8 grow-on-hover) is unchanged here;
+ * dialog look is DLG1.
  * Finding 0: never apply --hit-min at rest; no .split constructions.
  */
+
+export type TosSurface = "card" | "dialog";
 
 import { useId, useState, type ReactNode } from "react";
 import { QTY_QUICK_PICK } from "@/lib/options-lab/tosCard";
@@ -53,12 +57,14 @@ const seg =
 const H_RULE = "h-px w-full shrink-0 bg-white/40";
 
 export function TosStepper({
+  surface,
   onUp,
   onDown,
   disabled,
   testId,
   ariaLabel,
 }: {
+  surface: TosSurface;
   onUp: () => void;
   onDown: () => void;
   disabled?: boolean;
@@ -68,6 +74,7 @@ export function TosStepper({
   return (
     <div
       className={`group/step relative z-0 inline-flex ${REST_H} ${REST_W} hover:z-20 focus-within:z-20`}
+      data-surface={surface}
       data-tos-stepper-slot="1"
     >
       <div
@@ -116,12 +123,14 @@ export function TosStepper({
 
 /** QTY: stepper + caret as one butted unit, equal height (ToS). */
 export function TosQtyControl({
+  surface,
   onUp,
   onDown,
   onPick,
   disabled,
   testId,
 }: {
+  surface: TosSurface;
   onUp: () => void;
   onDown: () => void;
   onPick: (n: number) => void;
@@ -133,6 +142,7 @@ export function TosQtyControl({
   return (
     <div
       className={`tos-qty group/step relative z-0 inline-flex ${REST_H} w-[34px] hover:z-20 focus-within:z-20`}
+      data-surface={surface}
       data-testid={testId}
       data-tos-qty="1"
     >
@@ -291,11 +301,13 @@ function TosPadlockGlyph({ locked }: { locked: boolean }) {
 }
 
 export function TosPadlock({
+  surface,
   locked,
   onToggle,
   testId,
   className = "",
 }: {
+  surface: TosSurface;
   locked: boolean;
   onToggle: () => void;
   testId?: string;
@@ -310,6 +322,7 @@ export function TosPadlock({
       }
       title={locked ? "Unlock package basis" : "Lock at natural mid"}
       aria-label={locked ? "Unlock" : "Lock natural"}
+      data-surface={surface}
       data-testid={testId}
       data-locked={locked ? "1" : "0"}
       data-padlock-form="tos"
@@ -336,9 +349,11 @@ export const cardSelect =
 
 /** Corner-nested menu marker (ToS). Not a hit target. One component for card and dialog. */
 export function CardMenuField({
+  surface,
   children,
   fit = "full",
 }: {
+  surface: TosSurface;
   children: ReactNode;
   fit?: "full" | "min";
 }) {
@@ -348,6 +363,7 @@ export function CardMenuField({
         "relative inline-flex h-[18px] max-h-[18px] min-w-0 items-stretch overflow-visible rounded-sm " +
         (fit === "min" ? "w-auto" : "w-full")
       }
+      data-surface={surface}
     >
       {children}
       <span

@@ -1115,7 +1115,7 @@ function PosBlock({
               onClick={(e) => e.stopPropagation()}
             >
               {isTop ? (
-                <CardMenuField>
+                <CardMenuField surface="card">
                 <select
                   className={cardSelect + " " + textMain}
                   value={currentTemplate ?? ""}
@@ -1147,7 +1147,7 @@ function PosBlock({
               onClick={(e) => e.stopPropagation()}
             >
               {isTop ? (
-                <CardMenuField>
+                <CardMenuField surface="card">
                 <select
                   className={cardSelect + " " + textMain}
                   value={pkgDir === "SELL" ? "sell" : "buy"}
@@ -1194,7 +1194,7 @@ function PosBlock({
                   <span>{signedQ}</span>
                 )}
                 {isTop ? (
-                  <TosQtyControl
+                  <TosQtyControl surface="card"
                     testId={`analyzer-pos-qty-step-${pos.id}`}
                     onUp={() => onScalePos(pos.id, pkgQty + 1)}
                     onDown={() => onScalePos(pos.id, Math.max(1, pkgQty - 1))}
@@ -1224,7 +1224,7 @@ function PosBlock({
             >
               {(isTop && exposure.expiration === "row1") ||
               exposure.expiration === "per-leg" ? (
-                <CardMenuField>
+                <CardMenuField surface="card">
                 <select
                   className={cardSelect + " " + textMain}
                   value={boundSelectValue(exp, expChoices).value}
@@ -1282,7 +1282,7 @@ function PosBlock({
             >
               <div className="flex items-center justify-end gap-0.5">
                 {listedForLeg.length ? (
-                  <CardMenuField fit="min">
+                  <CardMenuField surface="card" fit="min">
                   <select
                     className={
                       cardSelect +
@@ -1315,7 +1315,7 @@ function PosBlock({
                 ) : (
                   <span>{fmtStrike(leg.strike)}</span>
                 )}
-                <TosStepper
+                <TosStepper surface="card"
                   testId={`analyzer-pos-strike-step-${pos.id}-${i}`}
                   ariaLabel="Strike"
                   disabled={!listedForLeg.length}
@@ -1352,7 +1352,7 @@ function PosBlock({
                   {leg.type === "call" ? "CALL" : "PUT"}
                 </span>
               ) : (
-                <CardMenuField fit="min">
+                <CardMenuField surface="card" fit="min">
                 <button
                   type="button"
                   className={
@@ -1422,7 +1422,7 @@ function PosBlock({
                         onCommit={(mag) => onLockLimit(pos.id, mag)}
                         onLockForEdit={() => onLockNatural(pos.id)}
                       />
-                      <TosStepper
+                      <TosStepper surface="card"
                         testId={`analyzer-pos-price-step-${pos.id}`}
                         ariaLabel="Price"
                         disabled={price == null}
@@ -1531,7 +1531,7 @@ function PosBlock({
               onClick={(e) => e.stopPropagation()}
             >
               {isTop ? (
-                <TosPadlock
+                <TosPadlock surface="card"
                   locked={locked}
                   testId={`analyzer-pos-lock-${pos.id}`}
                   onToggle={() =>

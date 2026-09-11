@@ -1678,7 +1678,7 @@ export default function PositionBuilder({
         <section className="grid grid-cols-2 gap-3">
           <div>
             <h4 className={sectionLabel}>Symbol</h4>
-            <CardMenuField>
+            <CardMenuField surface="dialog">
               <select
                 className={cardSelect + " text-white"}
                 value={position.underlying || symbol}
@@ -1696,7 +1696,7 @@ export default function PositionBuilder({
           </div>
           <div>
             <h4 className={sectionLabel}>Strategy</h4>
-            <CardMenuField>
+            <CardMenuField surface="dialog">
               <select
                 className={cardSelect + " text-white"}
                 value={template}
@@ -1806,7 +1806,7 @@ export default function PositionBuilder({
                         >
                           {signed}
                         </span>
-                        <TosStepper
+                        <TosStepper surface="dialog"
                           testId={`builder-leg-qty-step-${i}`}
                           ariaLabel="Leg quantity"
                           onUp={() =>
@@ -1825,7 +1825,7 @@ export default function PositionBuilder({
                     <td className="py-0.5">
                       <div className="flex items-center justify-end gap-0.5">
                         {legStrikes.length ? (
-                          <CardMenuField fit="min">
+                          <CardMenuField surface="dialog" fit="min">
                             <select
                               className={
                                 cardSelect +
@@ -1853,7 +1853,7 @@ export default function PositionBuilder({
                         ) : (
                           <span className="font-mono">{leg.strike}</span>
                         )}
-                        <TosStepper
+                        <TosStepper surface="dialog"
                           testId={`builder-leg-strike-step-${i}`}
                           ariaLabel="Strike"
                           disabled={!legStrikes.length}
@@ -1873,7 +1873,7 @@ export default function PositionBuilder({
                       </div>
                     </td>
                     <td className="py-0.5">
-                      <CardMenuField fit="min">
+                      <CardMenuField surface="dialog" fit="min">
                         <button
                           type="button"
                           className={
@@ -1892,7 +1892,7 @@ export default function PositionBuilder({
                     </td>
                     <td className="py-0.5" onClick={(e) => e.stopPropagation()}>
                       {hasExps ? (
-                        <CardMenuField>
+                        <CardMenuField surface="dialog">
                           <select
                             className={cardSelect + " text-white"}
                             value={boundSelectValue(exp, chain.expirations).value}
@@ -1931,14 +1931,14 @@ export default function PositionBuilder({
                               ? debitShown.toFixed(2)
                               : "—"}
                           </span>
-                          <TosStepper
+                          <TosStepper surface="dialog"
                             testId="builder-debit-step"
                             ariaLabel="Package debit"
                             disabled={debitShown == null}
                             onUp={() => stepDebit("up")}
                             onDown={() => stepDebit("down")}
                           />
-                          <TosPadlock
+                          <TosPadlock surface="dialog"
                             locked={!!overrideActive}
                             testId="builder-padlock"
                             onToggle={() => {
@@ -1964,7 +1964,7 @@ export default function PositionBuilder({
                       {isTop ? (
                         <div className="flex items-center justify-end gap-0">
                           <span data-testid="builder-pos">{pkgPos}</span>
-                          <TosQtyControl
+                          <TosQtyControl surface="dialog"
                             testId="builder-pos-step"
                             onUp={() => scalePos(pkgPos + 1)}
                             onDown={() => scalePos(Math.max(1, pkgPos - 1))}
@@ -2005,7 +2005,7 @@ export default function PositionBuilder({
                 <span className={`${OL_DATA} font-mono text-white/80`}>
                   {`${String(entryWall.month).padStart(2, "0")}/${String(entryWall.day).padStart(2, "0")}/${entryWall.year}`}
                 </span>
-                <CardMenuField fit="min">
+                <CardMenuField surface="dialog" fit="min">
                   <select
                     className={cardSelect + " !w-auto text-white"}
                     aria-label="Entry hour"
@@ -2026,7 +2026,7 @@ export default function PositionBuilder({
                   </select>
                 </CardMenuField>
                 <span className="text-white/45">:</span>
-                <CardMenuField fit="min">
+                <CardMenuField surface="dialog" fit="min">
                   <select
                     className={cardSelect + " !w-auto text-white"}
                     aria-label="Entry minute"
@@ -2043,7 +2043,7 @@ export default function PositionBuilder({
                     ))}
                   </select>
                 </CardMenuField>
-                <CardMenuField fit="min">
+                <CardMenuField surface="dialog" fit="min">
                   <select
                     className={cardSelect + " !w-auto text-white"}
                     aria-label="Entry AM or PM"
