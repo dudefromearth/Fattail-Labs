@@ -1,8 +1,8 @@
 # Position Control — PCZ close
 
-**Revision:** 4  
+**Revision:** 5  
 **Date:** 2026-09-11  
-**Supersedes:** revision 3 (first PC8-D density pass)  
+**Supersedes:** revision 4 (PC8-D QTY unit)  
 **Machine:** Coach's MacBook (dev)  
 **Reader:** Coach — you were not required to sit with every packet. This is the program.
 
@@ -12,6 +12,7 @@
 | 2 | 2026-09-11 | PC9b ran mapper-only. Snapshot deferred to Trade Log refactor (D-PC-8). |
 | 3 | 2026-09-11 | PC8-D card density. ✕ vs Close and entry-time off the card flagged for Spec v1.3 (D-PC-9). |
 | 4 | 2026-09-11 | PC8-D superseding pass. QTY is one ToS unit; stepper resting symmetric; `--hit-min` grown-only. Three-leg card 290px → 60px. |
+| 5 | 2026-09-11 | PC8-E item 6. Dedicated ToS padlock, white both states, own column past the price stepper. |
 
 Nothing deploys. PC9b ran as **mapper only**. The snapshot column was not added.
 
@@ -111,6 +112,8 @@ location.reload();
 ### Echo remaining (PC8-G task, not a failed gate)
 
 Sign the QTY unit against `docs/reference/tos/tos-qty-stepper.png` at 100% zoom (`gate-reports/pc8-d/qty-rest.png`, `qty-unit-rest.png`). Resting stepper is 18px, halves 8.5/8.5, caret 18×18. Grown is 44×44 = `--hit-min`. Three-leg card is 60px (`pc8-d/after.png`). Exclusive z-index on hover/focus so adjacent grown steppers do not compete.
+
+Sign the padlock against `docs/reference/tos/tos-padlock-locked.png` and `tos-padlock-unlocked.png` (`gate-reports/pc8-e/card-locked.png`, `card-unlocked.png`). White both states. Solid body locked, outlined unlocked. Own column, vertical grid rule. Footprint 22×18 identical.
 
 ### Spec §9 rows deferred (named home)
 

@@ -94,7 +94,7 @@ test("AT-PC-61 card columns are exactly the ten of PC-VOCAB-7", () => {
     join(here, "../../components/options-lab/AnalyzerPositionsList.tsx"),
     "utf8",
   );
-  assert.match(list, /CARD_COLUMNS\.map/);
+  assert.match(list, /CARD_COLUMNS\.(?:flat)?Map/);
   assert.doesNotMatch(list, /Yield/);
   assert.doesNotMatch(list, /Vol Adj/);
   assert.doesNotMatch(list, /BP Effect/);
@@ -150,15 +150,44 @@ test("AT-PC-65 Calendar per-leg exp/strike re-derives the name", () => {
 });
 
 test("AT-PC-66 padlock pair: shackle carries state, unlocked is outlined", () => {
-  const icons = readFileSync(
-    join(here, "../../components/ui/icons.tsx"),
+  const src = readFileSync(
+    join(here, "../../components/options-lab/TosControls.tsx"),
     "utf8",
   );
-  assert.match(icons, /data-lock-shackle="over"/);
-  assert.match(icons, /data-lock-shackle="side"/);
-  assert.match(icons, /data-lock-body="solid"/);
-  assert.match(icons, /data-lock-body="outlined"/);
-  assert.match(icons, /fill="none"/);
+  assert.doesNotMatch(src, /IconLock|IconUnlock/);
+  assert.match(src, /data-lock-shackle=\{locked \? "over" : "side"\}/);
+  assert.match(src, /data-lock-body=\{locked \? "solid" : "outlined"\}/);
+  assert.match(src, /fill="none"/);
+  assert.match(src, /data-locked=\{locked \? "1" : "0"\}/);
+});
+
+test("PC8-E padlock footprint identical both states; one colour white", () => {
+  const src = readFileSync(
+    join(here, "../../components/options-lab/TosControls.tsx"),
+    "utf8",
+  );
+  const footprints = [...src.matchAll(/data-padlock-footprint="([^"]+)"/g)].map(
+    (m) => m[1],
+  );
+  assert.ok(footprints.length >= 2);
+  assert.ok(footprints.every((f) => f === footprints[0]));
+  assert.equal(footprints[0], "22x18");
+  const widths = [...src.matchAll(/const PADLOCK_W = (\d+)/g)].map((m) => m[1]);
+  const heights = [...src.matchAll(/const PADLOCK_H = (\d+)/g)].map((m) => m[1]);
+  assert.deepEqual(widths, ["22"]);
+  assert.deepEqual(heights, ["18"]);
+  assert.match(src, /PADLOCK_PAINT = "#ffffff"/);
+  assert.doesNotMatch(src, /#c8c8c8/i);
+  assert.doesNotMatch(src, /opacity-90/);
+  assert.doesNotMatch(src, /tone="light"/);
+  const list = readFileSync(
+    join(here, "../../components/options-lab/AnalyzerPositionsList.tsx"),
+    "utf8",
+  );
+  assert.match(list, /analyzer-col-lock/);
+  assert.match(list, /analyzer-pos-lock-cell-/);
+  assert.match(list, /LOCK_RULE/);
+  assert.match(list, /TosPadlock/);
 });
 
 test("AT-PC-67 / AT-PC-68 stepper grows on hover/focus; exclusive z-index", () => {

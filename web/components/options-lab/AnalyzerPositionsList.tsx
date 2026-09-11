@@ -264,7 +264,7 @@ function legsInDisplayOrder(
 const th =
   "px-1 py-0.5 text-left text-[10px] font-normal uppercase tracking-wide text-white/55 whitespace-nowrap";
 const td = "px-1 text-[11px] font-normal tabular-nums whitespace-nowrap";
-/** Chrome gutter + ten PC-VOCAB-7 columns + delete at the right edge. */
+/** Chrome gutter + ten PC-VOCAB-7 columns + lock chrome + delete at the right edge. */
 const COLS = [
   "13%",
   "11%",
@@ -274,11 +274,21 @@ const COLS = [
   "10%",
   "8%",
   "6%",
-  "10%",
+  "9%",
+  "3%",
   "8%",
   "8%",
   "3%",
 ] as const;
+/** ToS: padlock sits in its own column, separated by a vertical grid rule. */
+const LOCK_RULE: CSSProperties = {
+  borderLeftWidth: 1,
+  borderLeftStyle: "solid",
+  borderLeftColor: "rgba(255,255,255,0.22)",
+  borderRightWidth: 1,
+  borderRightStyle: "solid",
+  borderRightColor: "rgba(255,255,255,0.22)",
+};
 const TD_PAD_Y = 1;
 const CARD_EXTRA_Y = 0;
 const chromeBtn =
@@ -459,23 +469,36 @@ export default function AnalyzerPositionsList({
                     +
                   </button>
                 </th>
-                {CARD_COLUMNS.map((col) => (
-                  <th
-                    key={col}
-                    className={
-                      th +
-                      (col === "QTY" ||
-                      col === "STRIKE" ||
-                      col === "PRICE" ||
-                      col === "VOL" ||
-                      col === "DELTA"
-                        ? " text-right"
-                        : "")
-                    }
-                  >
-                    {col}
-                  </th>
-                ))}
+                {CARD_COLUMNS.flatMap((col) => {
+                  const heading = (
+                    <th
+                      key={col}
+                      className={
+                        th +
+                        (col === "QTY" ||
+                        col === "STRIKE" ||
+                        col === "PRICE" ||
+                        col === "VOL" ||
+                        col === "DELTA"
+                          ? " text-right"
+                          : "")
+                      }
+                    >
+                      {col}
+                    </th>
+                  );
+                  if (col !== "PRICE") return [heading];
+                  return [
+                    heading,
+                    <th
+                      key="padlock"
+                      className={th + " text-center"}
+                      aria-label="Lock"
+                      data-testid="analyzer-col-lock"
+                      style={LOCK_RULE}
+                    />,
+                  ];
+                })}
                 <th className={th + " text-right"} aria-label="Delete" />
               </tr>
             </thead>
@@ -496,7 +519,7 @@ export default function AnalyzerPositionsList({
                 data-group-selected={groupSelected ? "1" : "0"}
               >
                 <tr className={groupSelected ? "bg-white/10" : "bg-white/[0.04]"}>
-                  <td colSpan={11} className="px-2 py-1">
+                  <td colSpan={COLS.length} className="px-2 py-1">
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
@@ -931,7 +954,7 @@ function PosBlock({
             />
           </td>
           <td
-            colSpan={10}
+            colSpan={COLS.length - 2}
             className={td + ` ${textMuted}`}
             style={pendingEdge}
             data-testid={`analyzer-pos-pending-${pos.id}`}
@@ -1424,13 +1447,6 @@ function PosBlock({
                           }
                         }}
                       />
-                      <TosPadlock
-                        locked={locked}
-                        testId={`analyzer-pos-lock-${pos.id}`}
-                        onToggle={() =>
-                          locked ? onUnlock(pos.id) : onLockNatural(pos.id)
-                        }
-                      />
                     </div>
                     {pos.lock.mode === "locked" && pos.lock.checkPrice ? (
                       <div
@@ -1506,6 +1522,22 @@ function PosBlock({
                   }
                   return "";
                 })()}
+            </td>
+            <td
+              className={td + " text-center align-middle"}
+              style={{ ...edge, ...LOCK_RULE }}
+              data-testid={isTop ? `analyzer-pos-lock-cell-${pos.id}` : undefined}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {isTop ? (
+                <TosPadlock
+                  locked={locked}
+                  testId={`analyzer-pos-lock-${pos.id}`}
+                  onToggle={() =>
+                    locked ? onUnlock(pos.id) : onLockNatural(pos.id)
+                  }
+                />
+              ) : null}
             </td>
             <td
               className={td + ` text-right ${textMuted}`}

@@ -7,7 +7,6 @@
  */
 
 import { useId, useState } from "react";
-import { IconLock, IconUnlock } from "@/components/ui/icons";
 import { QTY_QUICK_PICK } from "@/lib/options-lab/tosCard";
 
 /** Resting unit height = data row. Grown uses --hit-min. */
@@ -219,6 +218,73 @@ export function TosQtyControl({
   );
 }
 
+/**
+ * Card padlock (PC-HIG-5 · AT-PC-66 · PC8-E).
+ * One colour — white — both states. State is fill + shackle, never tint/opacity.
+ * Locked: solid body, closed shackle. Unlocked: outlined body, shackle open
+ * and swung clear of the right shoulder. Identical 22×18 footprint.
+ */
+const PADLOCK_PAINT = "#ffffff";
+const PADLOCK_W = 22;
+const PADLOCK_H = 18;
+const PADLOCK_STROKE = 2.15;
+const PADLOCK_BODY = { x: 4.6, y: 9.05, w: 11.6, h: 8.1, rx: 1.7 };
+
+function TosPadlockGlyph({ locked }: { locked: boolean }) {
+  const b = PADLOCK_BODY;
+  return (
+    <svg
+      width={PADLOCK_W}
+      height={PADLOCK_H}
+      viewBox={`0 0 ${PADLOCK_W} ${PADLOCK_H}`}
+      aria-hidden
+      data-lock-state={locked ? "locked" : "unlocked"}
+      data-lock-shackle={locked ? "over" : "side"}
+      data-lock-body={locked ? "solid" : "outlined"}
+      data-padlock-footprint="22x18"
+    >
+      {locked ? (
+        <rect
+          x={b.x}
+          y={b.y}
+          width={b.w}
+          height={b.h}
+          rx={b.rx}
+          fill={PADLOCK_PAINT}
+        />
+      ) : (
+        <rect
+          x={b.x}
+          y={b.y}
+          width={b.w}
+          height={b.h}
+          rx={b.rx}
+          fill="none"
+          stroke={PADLOCK_PAINT}
+          strokeWidth={PADLOCK_STROKE}
+        />
+      )}
+      {locked ? (
+        <path
+          d="M 7.15 9.15 A 3.15 3.15 0 0 0 13.45 9.15"
+          fill="none"
+          stroke={PADLOCK_PAINT}
+          strokeWidth={PADLOCK_STROKE}
+          strokeLinecap="round"
+        />
+      ) : (
+        <path
+          d="M 7.15 9.15 V 5.65 A 5 5 0 0 0 16.2 6.5"
+          fill="none"
+          stroke={PADLOCK_PAINT}
+          strokeWidth={PADLOCK_STROKE}
+          strokeLinecap="round"
+        />
+      )}
+    </svg>
+  );
+}
+
 export function TosPadlock({
   locked,
   onToggle,
@@ -234,8 +300,7 @@ export function TosPadlock({
     <button
       type="button"
       className={
-        "inline-flex h-4 w-4 items-center justify-center overflow-visible rounded " +
-        (locked ? "bg-black/20 hover:bg-black/35" : "bg-black/10 opacity-90 hover:bg-black/25") +
+        "inline-flex h-[18px] w-[22px] shrink-0 items-center justify-center " +
         (className ? ` ${className}` : "")
       }
       title={locked ? "Unlock package basis" : "Lock at natural mid"}
@@ -243,16 +308,13 @@ export function TosPadlock({
       data-testid={testId}
       data-locked={locked ? "1" : "0"}
       data-padlock-form="tos"
+      data-padlock-footprint="22x18"
       onClick={(e) => {
         e.stopPropagation();
         onToggle();
       }}
     >
-      {locked ? (
-        <IconLock size={12} tone="light" />
-      ) : (
-        <IconUnlock size={12} tone="light" />
-      )}
+      <TosPadlockGlyph locked={locked} />
     </button>
   );
 }
