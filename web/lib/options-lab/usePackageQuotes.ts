@@ -24,7 +24,6 @@ import {
   type LadderRow,
 } from "@/lib/chainLadderApi";
 import {
-  applyPackageQuote,
   cardDefinitionKey,
   cardNeedsMarketTruth,
   definedDebitSigned,
@@ -48,6 +47,8 @@ import {
   positionToUnitInput,
 } from "@/lib/options-lab/positionToTrade";
 import { packageEconomicsFromLegs } from "@/lib/options-lab/packageEconomics";
+import { finishPackageQuote } from "@/lib/options-lab/packageQuoteFinish";
+import { structureKey } from "@/lib/options-lab/structureSignal";
 import type { OptionRight } from "@/lib/options-lab/positionTypes";
 
 /** Max dual-side wing request (server caps effective dual at 50). */
@@ -228,6 +229,7 @@ export function usePackageQuotes(opts: {
   const resolveOne = useCallback(
     async (pos: AnalyzerPosition) => {
       const def = cardDefinitionKey(pos);
+      const startedKey = structureKey(pos);
       if (settledDefRef.current.get(pos.id) === def) {
         return; // already settled this definition — do not re-search
       }
@@ -344,7 +346,12 @@ export function usePackageQuotes(opts: {
         } catch (e) {
           if ((e as { budget?: boolean })?.budget) {
             interestOk = false;
-            finish(applyPackageQuote(working, {}, { interestOk: false }));
+            finish(
+              finishPackageQuote(working, {}, {
+                interestOk: false,
+                expectedStructureKey: startedKey,
+              }),
+            );
             return;
           }
         }
@@ -355,10 +362,14 @@ export function usePackageQuotes(opts: {
 
       if (!gens.length) {
         finish(
-          applyPackageQuote(
+          finishPackageQuote(
             working,
             { complete: false, error: "no generations" },
-            { sessionHeld: held, interestOk },
+            {
+              sessionHeld: held,
+              interestOk,
+              expectedStructureKey: startedKey,
+            },
           ),
         );
         return;
@@ -377,18 +388,26 @@ export function usePackageQuotes(opts: {
         });
         if (!stillCurrent()) return;
         finish(
-          applyPackageQuote(working, q, { sessionHeld: held, interestOk }),
+          finishPackageQuote(working, q, {
+            sessionHeld: held,
+            interestOk,
+            expectedStructureKey: startedKey,
+          }),
         );
       } catch (e) {
         if (!stillCurrent()) return;
         finish(
-          applyPackageQuote(
+          finishPackageQuote(
             working,
             {
               complete: false,
               error: e instanceof Error ? e.message : String(e),
             },
-            { sessionHeld: held, interestOk },
+            {
+              sessionHeld: held,
+              interestOk,
+              expectedStructureKey: startedKey,
+            },
           ),
         );
       }
