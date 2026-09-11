@@ -4,6 +4,78 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-11 — DL-689 Position Control close · PC9b mapper-only · snapshot deferred
+
+**Decision.** Program `p-options-lab-position-control` is **closed** on Coach's
+MacBook (dev). PC0–PC9b gated. Board
+[`agents/p-options-lab-position-control/`](../agents/p-options-lab-position-control/).
+Nothing deployed.
+
+PC9b landed **mapper-only** at `0f5d921`. No schema change.
+`migrations/152_analyzer_promotion_snapshot.sql` was not written and is
+**not to be written** under this program.
+
+**D-PC-8.** PC-LIFE-7 promotion snapshot is deferred to the Trade Log refactor.
+Six of eight snapshot fields are already stored or derivable. Spec flag for
+**v1.3**. Carry-forward:
+[`agents/p-trade-log/PC-LIFE-7-carry-forward.md`](../agents/p-trade-log/PC-LIFE-7-carry-forward.md).
+
+**Supersedes** DL-688's cross-stamp expecting a Trade Log v1.1 snapshot column
+(PC9b). DL-688 itself is not edited — it is the stamp the build ran under.
+Most-recent-entry-wins.
+
+**Does not:** deploy. Mini Two / Dude Two. Write a migration. Reopen PC0–PC9b.
+
+---
+
+## 2026-09-11 — DL-688 Position Control Spec v1.2 BUILD AUTHORITY · PC-W0 GO
+
+**Decision (Coach GO).** Spec
+`Specs/FatTail-Labs-Options-Lab-Position-Control-Spec-v1_2.md`
+is **BUILD AUTHORITY**. Plan
+`docs/Options-Lab-Position-Control-Full-Agent-Bench-Plan-v1.1.md`
+is the program of record. Token [`agents/go/PC-W0.md`](../agents/go/PC-W0.md)
+**GO**. Board `agents/p-options-lab-position-control/`.
+
+Delta confirms sha1 against disk from the token (`d652cace1ec8f940edbb66ca83ca2c51143c2c5f`,
+computed from disk at stamp). Coach identifies the Spec by version: header reads
+`Spec v1.2`; signed pattern `+1/−2/+1` is present.
+
+v1.2 changes **one section**: classifier §4.4 restated as exact signed patterns
+(long form · short form). No classification outcome changes. A structure matches
+a row only if its signed pattern, read in strike order on the normalized ratio,
+is one of the two listed for that row. Anything else is CUSTOM. BWB shares the
+butterfly's pattern and is separated by unequal wings alone.
+
+Prior Specs v1.0 and v1.1 remain on disk as baselines — not strays.
+
+**Process (Coach):**
+
+- **OD-PC-P1 (b)** — PC0 runs first. The `rehearsal` drop is a live defect under
+  PC-TM-2. Do not hold it behind remaining W0 paperwork.
+- **OD-PC-P2 (a)** — Hotel reads the classifier table (signed patterns,
+  wing-equality unit, all-long 1-2-1 → CUSTOM) before PC2 writes classifier
+  code. Same day as GO; not a gate on starting.
+- **JR1–JR6** accept as written.
+
+**DL-539 three-OK (six successive):** independent audit · declared intent · Spec
+through review · bench plan from v1.0 · ToS card as v1.1 · classifier signed
+patterns as v1.2. Freeze **not** lifted for other trees.
+
+**§7 supersessions (logged, not re-litigated):** AZ-CARD-1 · AZ-BOOK-SYM-1 ·
+OD-PB6 · OD-PB1+NX4 (role, not storage) · PC-LOCK-7 v0.1 · PB22 · PB-VIEW-1 vs
+AZ-CARD-1.
+
+**Cross-stamps (JR5 stubs):** AF-L5 (code waits PC9a) · TM One-Source DTE clock
+(PC1/PC7) · PB17b interest symbol axis · Trade Log v1.1 snapshot column (PC9b).
+
+**Does not:** deploy. Mini Two / Dude Two. Edit any frozen Spec. Reopen the four
+accepts or six disregards.
+
+L1–L22 LOCKED.
+
+---
+
 ## 2026-09-09 — DL-687 Sessions Spec v0.3 · L2 unlocked · L3 amended · Fit = current day
 
 **Decision (Coach GSC7).** Spec
