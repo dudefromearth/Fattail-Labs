@@ -40,6 +40,7 @@ import {
   definedDebitSigned,
   closePosition,
   positionFromInput,
+  applyEditPatch,
   saveAlerts,
   savePositions,
   setCardDirection,
@@ -1592,20 +1593,7 @@ export default function OpfRiskAnalyzer() {
       if (editId) {
         setPositions((prev) =>
           prev.map((p) =>
-            p.id === editId
-              ? {
-                  ...positionFromInput(input),
-                  id: editId,
-                  label,
-                  notation,
-                  createdAt: p.createdAt,
-                  entryAt: p.entryAt,
-                  closedAt: p.closedAt,
-                  closedPnl: p.closedPnl,
-                  tradeLogTradeId: p.tradeLogTradeId,
-                  lock: p.lock,
-                }
-              : p,
+            p.id === editId ? applyEditPatch(p, input, label, notation) : p,
           ),
         );
         setFocusedId(editId);

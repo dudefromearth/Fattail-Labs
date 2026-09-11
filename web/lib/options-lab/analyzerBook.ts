@@ -127,7 +127,10 @@ export type AnalyzerPosition = {
   tradeLogTradeId?: number | null;
   createdAt: number;
   updatedAt: number;
-  /** Born under a Time Machine playhead. Never persisted. TMI-80. */
+  /**
+   * Born under a Time Machine playhead. Survives persistence (PC-PERSIST-4).
+   * Never promotes (PC-TM-2). TMI-80 "never persisted" is superseded.
+   */
   rehearsal?: boolean;
 };
 
@@ -386,6 +389,7 @@ function migratePos(raw: unknown): AnalyzerPosition | null {
         : null,
     createdAt: p.createdAt || Date.now(),
     updatedAt: p.updatedAt || Date.now(),
+    rehearsal: p.rehearsal === true ? true : undefined,
   };
 }
 
@@ -415,6 +419,7 @@ export function loadPositions(): AnalyzerPosition[] {
 export const ANALYZER_BOOK_EVENT = "ftl-analyzer-book";
 const POS_REV_KEY = "ft_options_lab_analyzer_positions_rev";
 
+/** Non-rehearsal subset. Not the persist filter — PC-PERSIST-4 requires rehearsal to survive save. */
 export function durablePositions(
   positions: readonly AnalyzerPosition[],
 ): AnalyzerPosition[] {
@@ -423,7 +428,7 @@ export function durablePositions(
 
 export function savePositions(positions: AnalyzerPosition[]): void {
   if (typeof window === "undefined") return;
-  const json = JSON.stringify(durablePositions(positions));
+  const json = JSON.stringify(positions);
   sessionStorage.setItem(POS_KEY, json);
   try {
     localStorage.setItem(POS_KEY, json);
@@ -490,6 +495,35 @@ export function positionFromInput(input: PositionInput): AnalyzerPosition {
     closedPnl: null,
     tradeLogTradeId: null,
     createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+}
+
+/**
+ * Edit-save patch (PC-REC-3 · AT-PC-02). Structure comes from the bound input;
+ * session fields on the existing record survive.
+ */
+export function applyEditPatch(
+  existing: AnalyzerPosition,
+  input: PositionInput,
+  label: string,
+  notation: string,
+): AnalyzerPosition {
+  const next = positionFromInput(input);
+  return {
+    ...next,
+    id: existing.id,
+    label,
+    notation,
+    createdAt: existing.createdAt,
+    entryAt: existing.entryAt,
+    closedAt: existing.closedAt,
+    closedPnl: existing.closedPnl,
+    tradeLogTradeId: existing.tradeLogTradeId,
+    lock: existing.lock,
+    visible: existing.visible,
+    rehearsal: existing.rehearsal,
+    bind: existing.bind ?? null,
     updatedAt: Date.now(),
   };
 }
