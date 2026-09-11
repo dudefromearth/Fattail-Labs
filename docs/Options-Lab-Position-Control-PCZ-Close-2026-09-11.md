@@ -1,8 +1,8 @@
 # Position Control — PCZ close
 
-**Revision:** 2  
+**Revision:** 3  
 **Date:** 2026-09-11  
-**Supersedes:** revision 1 (PC9b waiting on schema pick)  
+**Supersedes:** revision 2 (PC9b mapper-only close)  
 **Machine:** Coach's MacBook (dev)  
 **Reader:** Coach — you were not required to sit with every packet. This is the program.
 
@@ -10,6 +10,7 @@
 |-----|------|--------|
 | 1 | 2026-09-11 | First close. PC9b waiting on Coach schema pick. |
 | 2 | 2026-09-11 | PC9b ran mapper-only. Snapshot deferred to Trade Log refactor (D-PC-8). |
+| 3 | 2026-09-11 | PC8-D card density. ✕ vs Close and entry-time off the card flagged for Spec v1.3 (D-PC-9). |
 
 Nothing deploys. PC9b ran as **mapper only**. The snapshot column was not added.
 
@@ -113,6 +114,7 @@ Resting vs grown stepper dimensions, the growth transition, whether non-interact
 ### Spec §9 rows deferred (named home)
 
 - Promotion snapshot (PC-LIFE-7) → Trade Log refactor / v1.3. See D-PC-8.
+- Card ✕ at the right edge (not stacked with Close); entry-time editor in the Edit dialog, not on the card. Spec v1.2 §5.2. **v1.3.** See D-PC-9.
 - Per-leg live on the **card** — the card correctly shows no per-leg price (PC-VOCAB-6). Dialog MARK/IV remain live.
 
 ### Spec §9 rows closed

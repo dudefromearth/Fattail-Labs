@@ -138,3 +138,17 @@ location.reload();
 
 **Who decided:** Coach 2026-09-11 · Juliet PC9b-G.
 
+---
+
+## D-PC-9 — Card ✕ vs Close, and entry-time off the card (Spec v1.3)
+
+**What the plan or Spec said:** §5.2 Delete is ✕ on the position, confirmed. Remaining buttons Edit and Log stacked under the ✕. Entry time was card chrome.
+
+**What we did instead (PC8-D):** ✕ sits at the **right edge** of the row (ToS-style, low-contrast delete). Close stays a labeled gutter control (`onClosePosition` → `closedAt`). They are not the same act. Entry-time `<input type="time">` left the card; the editor lives in the Edit dialog. `resolveEntryAt` still defaults to cash open; PC9b stamps `exec_at` at Log.
+
+**Why:** Coach rejected the shipped card (too tall) and read ✕/Close as one control because they were identical full-width rail buttons. Findings 1–3 are density defect remediation. Findings 4–5 change card law in Spec v1.2 — **flag for v1.3** alongside PC-LIFE-7.
+
+**Reversible?** Yes — put ✕ back in the rail; remount the time widget on the card.
+
+**Who decided:** Coach 2026-09-11 · Juliet PC8-D.
+

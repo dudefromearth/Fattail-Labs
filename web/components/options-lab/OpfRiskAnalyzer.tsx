@@ -2857,6 +2857,25 @@ export default function OpfRiskAnalyzer() {
             prev.map((p) => (p.id === editId ? unlockCard(p) : p)),
           );
         }}
+        entryAt={
+          editId
+            ? positions.find((p) => p.id === editId)?.entryAt ?? null
+            : null
+        }
+        onSetEntryAt={
+          editId
+            ? (ms) => {
+                const id = editId;
+                commitBook("card", (prev) =>
+                  prev.map((p) =>
+                    p.id === id
+                      ? { ...p, entryAt: ms, updatedAt: Date.now() }
+                      : p,
+                  ),
+                );
+              }
+            : undefined
+        }
       />
     </div>
   );

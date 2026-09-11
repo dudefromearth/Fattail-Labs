@@ -43,7 +43,7 @@ export function TosStepper({
         type="button"
         disabled={disabled}
         className={
-          "flex h-3.5 w-5 items-center justify-center rounded-t bg-black/30 text-[11px] " +
+          "flex h-2 w-3 items-center justify-center rounded-t bg-black/30 text-[8px] " +
           "leading-none text-white/80 hover:bg-black/50 disabled:opacity-30 " +
           "group-hover/step:h-[calc(var(--hit-min)/2)] group-hover/step:w-[var(--hit-min)] " +
           "group-focus-within/step:h-[calc(var(--hit-min)/2)] group-focus-within/step:w-[var(--hit-min)] " +
@@ -62,7 +62,7 @@ export function TosStepper({
         type="button"
         disabled={disabled}
         className={
-          "flex h-3.5 w-5 items-center justify-center rounded-b bg-black/30 text-[11px] " +
+          "flex h-2 w-3 items-center justify-center rounded-b bg-black/30 text-[8px] " +
           "leading-none text-white/80 hover:bg-black/50 disabled:opacity-30 " +
           "group-hover/step:h-[calc(var(--hit-min)/2)] group-hover/step:w-[var(--hit-min)] " +
           "group-focus-within/step:h-[calc(var(--hit-min)/2)] group-focus-within/step:w-[var(--hit-min)]"
@@ -95,7 +95,7 @@ export function TosPadlock({
     <button
       type="button"
       className={
-        "inline-flex h-8 w-8 items-center justify-center overflow-visible rounded " +
+        "inline-flex h-4 w-4 items-center justify-center overflow-visible rounded " +
         (locked ? "bg-black/20 hover:bg-black/35" : "bg-black/10 opacity-90 hover:bg-black/25") +
         (className ? ` ${className}` : "")
       }
@@ -110,9 +110,9 @@ export function TosPadlock({
       }}
     >
       {locked ? (
-        <IconLock size={18} tone="light" />
+        <IconLock size={12} tone="light" />
       ) : (
-        <IconUnlock size={18} tone="light" />
+        <IconUnlock size={12} tone="light" />
       )}
     </button>
   );

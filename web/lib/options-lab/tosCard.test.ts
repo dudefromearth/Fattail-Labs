@@ -249,13 +249,30 @@ test("AT-PC-33 delete is confirmed and names the position", () => {
   assert.match(list, /Cancel/);
 });
 
-test("AT-PC-49 STRATEGY cell is the density exemption", () => {
+test("AT-PC-49 STRATEGY cell is perceptible; column headers keep ToS uppercase", () => {
   const list = readFileSync(
     join(here, "../../components/options-lab/AnalyzerPositionsList.tsx"),
     "utf8",
   );
   assert.match(list, /analyzer-pos-spread-/);
-  assert.match(list, /font-semibold uppercase tracking-wide/);
+  assert.match(list, /text-\[10px\] font-normal uppercase tracking-wide/);
+});
+
+test("PC8-D ✕ deletes and Close closes; no entry-time on the card", () => {
+  const list = readFileSync(
+    join(here, "../../components/options-lab/AnalyzerPositionsList.tsx"),
+    "utf8",
+  );
+  assert.match(list, /analyzer-pos-delete-/);
+  assert.match(list, /onAskDelete/);
+  assert.match(list, /analyzer-pos-close-/);
+  assert.match(list, /onClosePosition/);
+  assert.doesNotMatch(list, /type="time"/);
+  const builder = readFileSync(
+    join(here, "../../components/options-lab/PositionBuilder.tsx"),
+    "utf8",
+  );
+  assert.match(builder, /builder-entry-at/);
 });
 
 test("D-PC-7 Edit dialog displayed price reads CardLockState, not override", () => {

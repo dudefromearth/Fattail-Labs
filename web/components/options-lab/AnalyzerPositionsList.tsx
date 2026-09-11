@@ -24,11 +24,8 @@ import {
 } from "@/lib/options-lab/analyzerBook";
 import { boundSelectValue, dteFromClock } from "@/lib/options-lab/chainControls";
 import {
-  applyEtHm,
-  etHmValue,
   formatEtHm,
   isTmPositionDark,
-  resolveEntryAt,
 } from "@/lib/options-lab/positionSession";
 import {
   packageLivenessChip,
@@ -186,7 +183,7 @@ function PackagePriceField({
       <button
         type="button"
         className={
-          "font-mono text-[20.25px] font-semibold tabular-nums " + textMain
+          "font-mono text-[11px] font-normal tabular-nums " + textMain
         }
         data-testid={`analyzer-pos-price-edit-${id}`}
         title={locked ? "Edit locked basis" : "Lock and edit basis"}
@@ -208,8 +205,8 @@ function PackagePriceField({
       aria-label="Package debit or credit per position"
       data-testid={`analyzer-pos-price-edit-${id}`}
       className={
-        "w-[6.75rem] rounded bg-black/25 px-1 py-0.5 text-right font-mono " +
-        "text-[20.25px] font-semibold tabular-nums outline-none ring-1 ring-white/40 " +
+        "w-[4.5rem] rounded bg-black/25 px-1 py-0 text-right font-mono " +
+        "text-[11px] font-normal tabular-nums outline-none ring-1 ring-white/40 " +
         textMain
       }
       value={draft}
@@ -263,15 +260,14 @@ function legsInDisplayOrder(
     });
 }
 
-// Body 20.25px unchanged — height cut is pad / extra Y / lock, not type.
+/** House scale: chrome 10px, data 11px. Column headers keep ToS uppercase. */
 const th =
-  "px-1.5 py-1 text-left text-[16.5px] font-semibold uppercase tracking-wide text-white/55 whitespace-nowrap";
-/** Horizontal pad only — vertical pad is set per card so extra Y is shared across legs. */
-const td = "px-1.5 text-[20.25px] tabular-nums whitespace-nowrap";
-/** Chrome gutter + the ten PC-VOCAB-7 columns. */
+  "px-1 py-0.5 text-left text-[10px] font-normal uppercase tracking-wide text-white/55 whitespace-nowrap";
+const td = "px-1 text-[11px] font-normal tabular-nums whitespace-nowrap";
+/** Chrome gutter + ten PC-VOCAB-7 columns + delete at the right edge. */
 const COLS = [
-  "7%",
-  "12%",
+  "13%",
+  "11%",
   "7%",
   "7%",
   "7%",
@@ -281,11 +277,13 @@ const COLS = [
   "10%",
   "8%",
   "8%",
+  "3%",
 ] as const;
-const TD_PAD_Y = 4;
-const CARD_EXTRA_Y = 18;
-const actionBtn =
-  "rounded bg-black/25 px-1.5 py-0.5 text-[16.5px] font-semibold uppercase text-white/90 hover:bg-black/40";
+const TD_PAD_Y = 1;
+const CARD_EXTRA_Y = 0;
+const chromeBtn =
+  "rounded px-1 py-0 text-[10px] font-normal text-white/80 hover:bg-black/40";
+const actionBtn = chromeBtn;
 
 export type AnalyzerPositionsListProps = {
   positions: AnalyzerPosition[];
@@ -434,7 +432,7 @@ export default function AnalyzerPositionsList({
       ) : (
         <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto rounded border border-[var(--color-separator)] bg-[#0a0a0e]">
           <table
-            className="w-full min-w-[1400px] table-fixed border-separate border-spacing-0 text-left text-[21.5px] leading-snug"
+            className="w-full min-w-[720px] table-fixed border-separate border-spacing-0 text-left text-[11px] leading-tight"
             data-testid="analyzer-positions-table"
           >
             <colgroup>
@@ -472,6 +470,7 @@ export default function AnalyzerPositionsList({
                     {col}
                   </th>
                 ))}
+                <th className={th + " text-right"} aria-label="Delete" />
               </tr>
             </thead>
             {groupPositionsBySymbol(
@@ -513,7 +512,7 @@ export default function AnalyzerPositionsList({
                       <button
                         type="button"
                         className={
-                          "font-semibold tracking-wide text-white " +
+                          "font-normal tracking-wide text-white " +
                           (groupSelected ? "text-white" : "text-white/85")
                         }
                         data-testid={`analyzer-symbol-group-select-${group.symbol}`}
@@ -908,41 +907,22 @@ function PosBlock({
       >
         <tr className="tabular-nums" style={{ backgroundColor: bg }}>
           <td
-            className={td + " align-top"}
+            className={td + " align-middle"}
             style={pendingEdge}
             onClick={(e) => e.stopPropagation()}
           >
-            <label
-              className={
-                "flex min-h-8 cursor-pointer items-center gap-1.5 " +
-                "text-[16.5px] font-semibold uppercase tracking-wide text-white/80"
+            <input
+              type="checkbox"
+              checked={!hidden}
+              onChange={() => onToggleVisibility(pos.id)}
+              aria-label={
+                hidden
+                  ? `Show ${pos.label} on graph`
+                  : `Hide ${pos.label} from graph`
               }
-            >
-              <input
-                type="checkbox"
-                checked={!hidden}
-                onChange={() => onToggleVisibility(pos.id)}
-                aria-label={
-                  hidden
-                    ? `Show ${pos.label} on graph`
-                    : `Hide ${pos.label} from graph`
-                }
-                data-testid={`analyzer-pos-show-${pos.id}`}
-                className="h-5 w-5 shrink-0 cursor-pointer accent-[var(--color-tint)]"
-              />
-              Show
-            </label>
-            <button
-              type="button"
-              className={
-                actionBtn + " mt-2 min-h-8 w-full px-2 py-1 text-[16.5px] text-red-100"
-              }
-              data-testid={`analyzer-pos-delete-${pos.id}`}
-              aria-label={`Delete ${pos.label} from the list`}
-              onClick={() => onAskDelete()}
-            >
-              ✕
-            </button>
+              data-testid={`analyzer-pos-show-${pos.id}`}
+              className="h-3 w-3 cursor-pointer accent-[var(--color-tint)]"
+            />
           </td>
           <td
             colSpan={10}
@@ -951,6 +931,21 @@ function PosBlock({
             data-testid={`analyzer-pos-pending-${pos.id}`}
           >
             Not yet taken
+          </td>
+          <td
+            className={td + " text-right align-top"}
+            style={pendingEdge}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="px-0.5 text-[10px] font-normal leading-none text-white/35 hover:text-white/80"
+              data-testid={`analyzer-pos-delete-${pos.id}`}
+              aria-label={`Delete ${pos.label} from the list`}
+              onClick={() => onAskDelete()}
+            >
+              ✕
+            </button>
           </td>
         </tr>
       </tbody>
@@ -1007,70 +1002,36 @@ function PosBlock({
             {isTop ? (
               <td
                 rowSpan={nLegs}
-                className={td + " align-top"}
+                className={td + " align-middle"}
                 style={cellBase(true)}
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="flex flex-col items-stretch gap-4 py-0.5">
-                  <label
-                    className={
-                      "flex min-h-8 cursor-pointer items-center gap-1.5 " +
-                      "text-[16.5px] font-semibold uppercase tracking-wide text-white/80"
+                <div className="flex flex-nowrap items-center gap-0.5 overflow-hidden">
+                  <input
+                    type="checkbox"
+                    checked={!hidden}
+                    onChange={() => onToggleVisibility(pos.id)}
+                    aria-label={
+                      hidden
+                        ? `Show ${pos.label} on graph`
+                        : `Hide ${pos.label} from graph`
                     }
-                  >
-                    <input
-                      type="checkbox"
-                      checked={!hidden}
-                      onChange={() => onToggleVisibility(pos.id)}
-                      aria-label={
-                        hidden
-                          ? `Show ${pos.label} on graph`
-                          : `Hide ${pos.label} from graph`
-                      }
-                      data-testid={`analyzer-pos-show-${pos.id}`}
-                      className="h-5 w-5 shrink-0 cursor-pointer accent-[var(--color-tint)]"
-                    />
-                    Show
-                  </label>
-                  {pos.rehearsal ? (
-                    <div className="flex flex-col items-center gap-0.5">
-                      <ReplayBadge className="!min-h-9 !min-w-9" />
-                      <span
-                        className="text-[10px] font-semibold uppercase tracking-wide text-white/55"
-                        data-testid={`analyzer-pos-rehearsal-${pos.id}`}
-                      >
-                        Rehearsal
-                        {pos.entryAt != null
-                          ? ` · ${formatReplayClock(pos.entryAt)}`
-                          : ""}
-                      </span>
-                    </div>
-                  ) : null}
+                    data-testid={`analyzer-pos-show-${pos.id}`}
+                    className="h-3 w-3 shrink-0 cursor-pointer accent-[var(--color-tint)]"
+                  />
                   <button
                     type="button"
-                    className={actionBtn + " min-h-8 w-full px-2 py-1"}
+                    className={chromeBtn}
                     data-testid={`analyzer-pos-edit-${pos.id}`}
                     aria-label={`Edit ${pos.label}`}
                     onClick={() => onEdit(pos.id)}
                   >
                     Edit
                   </button>
-                  <button
-                    type="button"
-                    className={
-                      actionBtn +
-                      " min-h-8 w-full px-2 py-1 text-[16.5px] text-red-100"
-                    }
-                    data-testid={`analyzer-pos-delete-${pos.id}`}
-                    aria-label={`Delete ${pos.label} from the list`}
-                    onClick={() => onAskDelete()}
-                  >
-                    ✕
-                  </button>
                   {onSendToTradeLog && !pos.rehearsal ? (
                     <button
                       type="button"
-                      className={actionBtn + " min-h-8 w-full px-2 py-1"}
+                      className={chromeBtn}
                       data-testid={`analyzer-pos-send-log-${pos.id}`}
                       disabled={tmActive}
                       title={
@@ -1083,27 +1044,9 @@ function PosBlock({
                       Log
                     </button>
                   ) : null}
-                  <label
-                    className="flex items-center gap-1 text-[14px] uppercase tracking-wide text-white/70"
-                    title="When this position was put on. Default is the cash open."
-                  >
-                    In
-                    <input
-                      type="time"
-                      className="min-h-8 min-w-0 flex-1 rounded bg-black/25 px-1 py-0.5 text-[14.5px] text-white"
-                      data-testid={`analyzer-pos-entry-${pos.id}`}
-                      value={etHmValue(resolveEntryAt(pos))}
-                      onChange={(e) =>
-                        onSetEntryAt(
-                          pos.id,
-                          applyEtHm(resolveEntryAt(pos), e.target.value),
-                        )
-                      }
-                    />
-                  </label>
                   {pos.closedAt != null ? (
                     <span
-                      className="px-1 text-[14px] uppercase leading-snug tracking-wide text-white/80"
+                      className="px-0.5 text-[10px] font-normal text-white/70"
                       data-testid={`analyzer-pos-closed-${pos.id}`}
                     >
                       Closed {formatEtHm(pos.closedAt)}
@@ -1111,22 +1054,32 @@ function PosBlock({
                   ) : (
                     <button
                       type="button"
-                      className={actionBtn + " min-h-8 w-full px-2 py-1"}
+                      className={chromeBtn}
                       data-testid={`analyzer-pos-close-${pos.id}`}
                       onClick={() => onClosePosition(pos.id)}
                     >
                       Close
                     </button>
                   )}
+                  {pos.rehearsal ? (
+                    <span
+                      className="px-0.5 text-[10px] font-normal text-white/55"
+                      data-testid={`analyzer-pos-rehearsal-${pos.id}`}
+                    >
+                      <ReplayBadge className="!inline-flex !min-h-4 !min-w-4 !h-4 !w-4" />
+                      Rehearsal
+                      {pos.entryAt != null
+                        ? ` · ${formatReplayClock(pos.entryAt)}`
+                        : ""}
+                    </span>
+                  ) : null}
                 </div>
               </td>
             ) : null}
             <td
               className={
                 td +
-                (isTop
-                  ? ` font-semibold uppercase tracking-wide ${textMain}`
-                  : ` ${textDim}`)
+                (isTop ? ` ${textMain}` : ` ${textDim}`)
               }
               style={edge}
               onClick={(e) => e.stopPropagation()}
@@ -1134,8 +1087,8 @@ function PosBlock({
               {isTop ? (
                 <select
                   className={
-                    "w-full max-w-full cursor-pointer rounded bg-black/20 py-0.5 pl-1 pr-0.5 " +
-                    "font-semibold uppercase tracking-wide outline-none " +
+                    "h-4 w-full max-w-full cursor-pointer rounded bg-black/20 py-0 pl-1 pr-0.5 " +
+                    "outline-none " +
                     textMain
                   }
                   value={currentTemplate ?? ""}
@@ -1168,7 +1121,7 @@ function PosBlock({
               {isTop ? (
                 <select
                   className={
-                    "w-full max-w-full cursor-pointer rounded bg-black/20 py-0.5 pl-1 pr-0.5 text-[20.25px] font-semibold uppercase outline-none " +
+                    "h-4 w-full max-w-full cursor-pointer rounded bg-black/20 py-0 pl-1 pr-0.5 outline-none " +
                     textMain
                   }
                   value={pkgDir === "SELL" ? "sell" : "buy"}
@@ -1184,7 +1137,7 @@ function PosBlock({
                   <option value="sell">SELL</option>
                 </select>
               ) : (
-                <span className={`font-semibold ${textMain}`}>{legSide}</span>
+                <span className={textMain}>{legSide}</span>
               )}
             </td>
             <td
@@ -1231,13 +1184,13 @@ function PosBlock({
               </div>
             </td>
             <td
-              className={td + ` font-semibold ${textMain}`}
+              className={td + ` ${textMain}`}
               style={edge}
             >
               {und}
               {isTop && offSymbol ? (
                 <span
-                  className="ml-1 rounded bg-black/25 px-1 text-[15px] uppercase text-white"
+                  className="ml-1 rounded bg-black/25 px-1 text-[10px] text-white"
                   data-testid="analyzer-pos-off-symbol"
                 >
                   off
@@ -1253,7 +1206,7 @@ function PosBlock({
               exposure.expiration === "per-leg" ? (
                 <select
                   className={
-                    "w-full max-w-full cursor-pointer rounded bg-black/20 py-0.5 pl-1 pr-0.5 text-[20.25px] font-semibold outline-none " +
+                    "h-4 w-full max-w-full cursor-pointer rounded bg-black/20 py-0 pl-1 pr-0.5 outline-none " +
                     textMain
                   }
                   value={boundSelectValue(exp, expChoices).value}
@@ -1304,7 +1257,7 @@ function PosBlock({
             </td>
             <td
               className={
-                td + ` text-right font-mono font-semibold ${textMain}`
+                td + ` text-right font-mono ${textMain}`
               }
               style={edge}
               onClick={(e) => e.stopPropagation()}
@@ -1369,7 +1322,7 @@ function PosBlock({
               </div>
             </td>
             <td
-              className={td + ` uppercase ${textMain}`}
+              className={td + ` ${textMain}`}
               style={edge}
               onClick={(e) => e.stopPropagation()}
             >
@@ -1381,7 +1334,7 @@ function PosBlock({
                 <button
                   type="button"
                   className={
-                    "rounded bg-black/20 px-1.5 py-0.5 uppercase " + textMain
+                    "rounded bg-black/20 px-1 py-0 " + textMain
                   }
                   data-testid={
                     isTop
@@ -1405,7 +1358,7 @@ function PosBlock({
             <td
               className={
                 td +
-                ` text-right font-mono font-semibold ` +
+                ` text-right font-mono ` +
                 (isTop && expired ? "text-amber-200" : textMain)
               }
               style={edge}
@@ -1492,12 +1445,12 @@ function PosBlock({
                         className="flex items-center gap-1"
                         data-testid={`analyzer-pos-check-price-${pos.id}`}
                       >
-                        <span className="text-[13.5px] font-semibold uppercase tracking-wide text-amber-200">
+                        <span className="text-[10px] font-normal uppercase text-amber-200">
                           CHECK PRICE
                         </span>
                         <button
                           type="button"
-                          className="rounded bg-black/25 px-1.5 py-0.5 text-[13.5px] font-semibold uppercase text-white hover:bg-black/40"
+                          className="rounded bg-black/25 px-1 py-0 text-[10px] font-normal text-white hover:bg-black/40"
                           data-testid={`analyzer-pos-keep-${pos.id}`}
                           onClick={() => onKeepCheckPrice?.(pos.id)}
                         >
@@ -1512,7 +1465,7 @@ function PosBlock({
                     {priceLabel}
                     <span
                       className={
-                        "ml-1 text-[13.5px] font-semibold uppercase text-amber-200"
+                        "ml-1 text-[10px] font-normal uppercase text-amber-200"
                       }
                     >
                       EXPIRED
@@ -1521,7 +1474,7 @@ function PosBlock({
                 ) : (
                   <span
                     className={
-                      "text-[16.5px] font-bold uppercase tracking-wide " +
+                      "text-[10px] font-normal uppercase " +
                       (display.kind === "updating"
                         ? textMuted
                         : "text-amber-200")
@@ -1534,7 +1487,7 @@ function PosBlock({
                 )
               ) : i === 1 ? (
                 <span
-                  className={`text-[16.5px] font-semibold uppercase ${textMain}`}
+                  className={`text-[11px] font-normal uppercase ${textMain}`}
                   data-testid={`analyzer-pos-pkg-side-${pos.id}`}
                 >
                   {pkgSide}
@@ -1551,7 +1504,7 @@ function PosBlock({
                   if (nt) {
                     return (
                       <span
-                        className="text-[15px] font-bold uppercase tracking-wide text-amber-200"
+                        className="text-[10px] font-normal uppercase text-amber-200"
                         data-testid={`analyzer-pos-leg-not-traded-${pos.id}-${i}`}
                         title={`${leg.strike} ${leg.type} — not traded`}
                       >
@@ -1575,6 +1528,24 @@ function PosBlock({
             >
               {isTop ? fmtPackageDelta(pkgDelta) : "—"}
             </td>
+            {isTop ? (
+              <td
+                rowSpan={nLegs}
+                className={td + " text-right align-top"}
+                style={cellBase(true)}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  className="px-0.5 text-[10px] font-normal leading-none text-white/35 hover:text-white/80"
+                  data-testid={`analyzer-pos-delete-${pos.id}`}
+                  aria-label={`Delete ${pos.label} from the list`}
+                  onClick={() => onAskDelete()}
+                >
+                  ✕
+                </button>
+              </td>
+            ) : null}
           </tr>
         );
       })}

@@ -22,6 +22,11 @@ import Button from "@/components/ui/Button";
 import { TosPadlock } from "@/components/options-lab/TosControls";
 import type { CardLockState } from "@/lib/options-lab/analyzerBook";
 import {
+  applyEtHm,
+  etHmValue,
+  resolveEntryAt,
+} from "@/lib/options-lab/positionSession";
+import {
   listedStepNear,
   listedWingChoices,
   nearestListedToSpot,
@@ -323,6 +328,9 @@ export type PositionBuilderProps = {
   onLockLimit?: (magnitude: number) => void;
   onLockNatural?: () => void;
   onUnlock?: () => void;
+  /** Edit-only. Card no longer hosts the time widget (PC8-D). */
+  entryAt?: number | null;
+  onSetEntryAt?: (entryAt: number) => void;
 };
 
 /** Wide enough for full Legs table (Qty · Strike · Type · Exp · Mid · ± · IV). */
@@ -346,6 +354,8 @@ export default function PositionBuilder({
   onLockLimit,
   onLockNatural,
   onUnlock,
+  entryAt = null,
+  onSetEntryAt,
 }: PositionBuilderProps) {
   const { profile } = useOptionsLab();
   const profileMinWing =
@@ -2402,6 +2412,33 @@ export default function PositionBuilder({
                 }}
               />
             </div>
+            {mode === "edit" && onSetEntryAt ? (
+              <div className={groupRow}>
+                <span className={rowLabel}>In</span>
+                <input
+                  className={field + " flex-1 text-right"}
+                  type="time"
+                  data-testid="builder-entry-at"
+                  value={etHmValue(
+                    resolveEntryAt({
+                      entryAt,
+                      createdAt: Date.now(),
+                    }),
+                  )}
+                  onChange={(e) =>
+                    onSetEntryAt(
+                      applyEtHm(
+                        resolveEntryAt({
+                          entryAt,
+                          createdAt: Date.now(),
+                        }),
+                        e.target.value,
+                      ),
+                    )
+                  }
+                />
+              </div>
+            ) : null}
             <div className={groupRow}>
               <span className={rowLabel}>Positions</span>
               <input
