@@ -22,6 +22,7 @@ import {
   isOptionPointerExpired,
   type AnalyzerPosition,
 } from "@/lib/options-lab/analyzerBook";
+import { boundSelectValue, dteFromClock } from "@/lib/options-lab/chainControls";
 import {
   applyEtHm,
   etHmValue,
@@ -50,8 +51,8 @@ import {
 } from "@/lib/blotterTheme";
 import { IconLock, IconUnlock } from "@/components/ui/icons";
 
-function dteOf(exp: string): number {
-  return calendarDteOf(exp);
+function dteOf(exp: string, clock?: Date): number {
+  return clock ? dteFromClock(exp, clock) : calendarDteOf(exp);
 }
 
 function fmtExp(exp: string): string {
@@ -448,7 +449,9 @@ export default function AnalyzerPositionsList({
               const pkgQty = positionQty(pos.position);
               const unitScale = packageUnitScale(pos.position.legs);
               const front = pos.position.expiration;
-              const dte = dteOf(front);
+              const dteClock =
+                playheadMs != null ? new Date(playheadMs) : undefined;
+              const dte = dteOf(front, dteClock);
               // Card = pointer: EXPIRED only when the pointed-to option is past
               const expired = isOptionPointerExpired(front);
               const isGhost = expired && !hidden;
@@ -556,6 +559,7 @@ export default function AnalyzerPositionsList({
                   onShiftStrikes={onShiftStrikes}
                   expChoices={expChoices}
                   tmDark={tmDark}
+                  dteClock={dteClock}
                 />
               );
             })}
@@ -609,11 +613,13 @@ function PosBlock({
   onSetExpiration,
   onShiftStrikes,
   expChoices,
+  dteClock,
 }: {
   pos: AnalyzerPosition;
   orderedLegs: LegInput[];
   hidden: boolean;
   tmDark?: boolean;
+  dteClock?: Date;
   locked: boolean;
   und: string;
   offSymbol: boolean;
@@ -965,16 +971,21 @@ function PosBlock({
                     "w-full max-w-full cursor-pointer rounded bg-black/20 py-0.5 pl-1 pr-0.5 text-[20.25px] font-semibold outline-none " +
                     textMain
                   }
-                  value={
-                    expChoices.includes(exp)
-                      ? exp
-                      : front.slice(0, 10) || exp
+                  value={boundSelectValue(exp, expChoices).value}
+                  data-invalid={
+                    boundSelectValue(exp, expChoices).invalid ? "1" : "0"
                   }
                   aria-label="Structure expiration"
                   data-testid={`analyzer-pos-expiration-${pos.id}`}
                   title="Roll structure to listed expiration"
-                  onChange={(e) => onSetExpiration(pos.id, e.target.value)}
+                  onChange={(e) => {
+                    if (!e.target.value) return;
+                    onSetExpiration(pos.id, e.target.value);
+                  }}
                 >
+                  {boundSelectValue(exp, expChoices).invalid ? (
+                    <option value="">{fmtExp(exp)}</option>
+                  ) : null}
                   {expChoices.map((e) => (
                     <option key={e} value={e}>
                       {fmtExp(e)}
@@ -1249,7 +1260,7 @@ function PosBlock({
               style={edge}
               data-testid={isTop ? `analyzer-pos-dte-${pos.id}` : undefined}
             >
-              {isTop && expired ? "EXPIRED" : `${dteOf(exp)}d`}
+              {isTop && expired ? "EXPIRED" : `${dteOf(exp, dteClock)}d`}
             </td>
             {isTop ? (
               <td

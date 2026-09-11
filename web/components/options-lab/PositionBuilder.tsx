@@ -33,6 +33,12 @@ import {
   inferStructureCenter,
 } from "@/lib/options-lab/listedStructure";
 import {
+  boundSelectValue,
+  ladderKind,
+  offeredTemplates,
+  proposeExpirationRoll,
+} from "@/lib/options-lab/chainControls";
+import {
   formatPackageSide,
   packageEconomics,
 } from "@/lib/options-lab/packageEconomics";
@@ -1344,9 +1350,7 @@ export default function PositionBuilder({
             );
             return l;
           }
-          const snapped = snapToListed(next.strike, listed);
-          if (snapped == null) return l;
-          next.strike = snapped;
+          if (!listed.some((s) => s === next.strike)) return l;
         }
         if (patch.strike != null || patch.type != null) {
           const exp = (next.expiration || prev.expiration).slice(0, 10);
@@ -1633,15 +1637,22 @@ export default function PositionBuilder({
                 data-testid="builder-template"
                 onChange={(e) => handleTemplate(e.target.value as TemplateType)}
               >
-                {STRATEGY_GROUPS.map((g) => (
-                  <optgroup key={g.label} label={g.label}>
-                    {g.items.map((t) => (
-                      <option key={t} value={t}>
-                        {TEMPLATE_LABELS[t]}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
+                {STRATEGY_GROUPS.map((g) => {
+                  const items = offeredTemplates(
+                    chain.expirations.length,
+                    g.items,
+                  );
+                  if (!items.length) return null;
+                  return (
+                    <optgroup key={g.label} label={g.label}>
+                      {items.map((t) => (
+                        <option key={t} value={t}>
+                          {TEMPLATE_LABELS[t]}
+                        </option>
+                      ))}
+                    </optgroup>
+                  );
+                })}
               </select>
             </div>
             <div className={groupRow + " justify-between py-2"}>
@@ -1865,52 +1876,105 @@ export default function PositionBuilder({
             <div className={groupRow}>
               <span className={rowLabel}>Expiration</span>
               {hasExps ? (
-                <select
-                  className={field + " flex-1 text-right"}
-                  value={
-                    chain.expirations.includes(position.expiration)
-                      ? position.expiration
-                      : chain.expirations[0] || position.expiration
-                  }
-                  onChange={(e) => {
-                    const exp = e.target.value;
-                    userPickedExp.current = true;
-                    let back = backExpiration;
-                    if (isTimeSpread) {
-                      const exps = chain.expirations;
-                      const idx = exps.indexOf(exp);
-                      back =
-                        idx >= 0 && idx + 1 < exps.length
-                          ? exps[idx + 1]
-                          : nextListedBack(exp, exps) || exp;
-                      setBackExpiration(back);
+                <div className="flex min-w-0 flex-1 flex-col items-end gap-1">
+                  <select
+                    className={field + " w-full text-right"}
+                    value={
+                      boundSelectValue(
+                        position.expiration,
+                        chain.expirations,
+                      ).value
                     }
-                    regenerate(
-                      template,
-                      centerStrike || atmCenter || spotPrice,
-                      wingWidth || DEFAULT_CREATE_WING_WIDTH,
-                      optionSide,
-                      direction,
-                      exp,
-                      back,
-                    );
-                  }}
-                >
-                  {chain.expirations.map((e) => (
-                    <option key={e} value={e}>
-                      {e}
-                    </option>
-                  ))}
-                </select>
+                    data-invalid={
+                      boundSelectValue(
+                        position.expiration,
+                        chain.expirations,
+                      ).invalid
+                        ? "1"
+                        : "0"
+                    }
+                    onChange={(e) => {
+                      const exp = e.target.value;
+                      if (!exp) return;
+                      userPickedExp.current = true;
+                      let back = backExpiration;
+                      if (isTimeSpread) {
+                        const exps = chain.expirations;
+                        const idx = exps.indexOf(exp);
+                        back =
+                          idx >= 0 && idx + 1 < exps.length
+                            ? exps[idx + 1]
+                            : nextListedBack(exp, exps) || exp;
+                        setBackExpiration(back);
+                      }
+                      regenerate(
+                        template,
+                        centerStrike || atmCenter || spotPrice,
+                        wingWidth || DEFAULT_CREATE_WING_WIDTH,
+                        optionSide,
+                        direction,
+                        exp,
+                        back,
+                      );
+                    }}
+                  >
+                    {boundSelectValue(
+                      position.expiration,
+                      chain.expirations,
+                    ).invalid ? (
+                      <option value="">
+                        {position.expiration || "—"}
+                      </option>
+                    ) : null}
+                    {chain.expirations.map((e) => (
+                      <option key={e} value={e}>
+                        {e}
+                      </option>
+                    ))}
+                  </select>
+                  {boundSelectValue(position.expiration, chain.expirations)
+                    .invalid &&
+                  proposeExpirationRoll(
+                    position.expiration,
+                    chain.expirations,
+                  ) ? (
+                    <button
+                      type="button"
+                      className="text-[16.5px] font-semibold uppercase text-amber-200"
+                      data-testid="builder-propose-roll"
+                      onClick={() => {
+                        const next = proposeExpirationRoll(
+                          position.expiration,
+                          chain.expirations,
+                        );
+                        if (!next) return;
+                        userPickedExp.current = true;
+                        regenerate(
+                          template,
+                          centerStrike || atmCenter || spotPrice,
+                          wingWidth || DEFAULT_CREATE_WING_WIDTH,
+                          optionSide,
+                          direction,
+                          next,
+                          backExpiration,
+                        );
+                      }}
+                    >
+                      Roll to{" "}
+                      {proposeExpirationRoll(
+                        position.expiration,
+                        chain.expirations,
+                      )}
+                    </button>
+                  ) : null}
+                </div>
               ) : (
-                <input
-                  className={field + " flex-1 text-right"}
-                  type="date"
-                  value={position.expiration}
-                  onChange={(e) =>
-                    setPosition((p) => ({ ...p, expiration: e.target.value }))
-                  }
-                />
+                <span
+                  className="flex-1 text-right text-[18px] text-[var(--color-label-tertiary)]"
+                  data-testid="builder-exp-loading"
+                >
+                  {ladderKind([]) === "empty" ? "loading" : "—"}
+                </span>
               )}
             </div>
             {isTimeSpread ? (
@@ -1919,12 +1983,12 @@ export default function PositionBuilder({
                 <select
                   className={field + " flex-1 text-right"}
                   value={
-                    timeSpreadBackChoices.includes(backExpiration)
-                      ? backExpiration
-                      : timeSpreadBackChoices[0]
+                    boundSelectValue(backExpiration, timeSpreadBackChoices)
+                      .value
                   }
                   onChange={(e) => {
                     const b = e.target.value;
+                    if (!b) return;
                     setBackExpiration(b);
                     setPosition((prev) => ({
                       ...prev,
@@ -1935,6 +1999,10 @@ export default function PositionBuilder({
                     }));
                   }}
                 >
+                  {boundSelectValue(backExpiration, timeSpreadBackChoices)
+                    .invalid ? (
+                    <option value="">{backExpiration || "—"}</option>
+                  ) : null}
                   {timeSpreadBackChoices.map((e) => (
                     <option key={e} value={e}>
                       {e}
@@ -2179,17 +2247,25 @@ export default function PositionBuilder({
                           <select
                             className={fieldInset + " min-w-[6.75rem] !min-h-9 !py-1"}
                             value={
-                              chain.expirations.includes(exp)
-                                ? exp
-                                : chain.expirations[0] || exp
+                              boundSelectValue(exp, chain.expirations).value
+                            }
+                            data-invalid={
+                              boundSelectValue(exp, chain.expirations).invalid
+                                ? "1"
+                                : "0"
                             }
                             data-testid={`builder-leg-exp-${i}`}
                             onChange={(e) => {
                               const nextExp = e.target.value;
+                              if (!nextExp) return;
                               chain.ensureExpiration(nextExp);
                               updateLeg(i, { expiration: nextExp });
                             }}
                           >
+                            {boundSelectValue(exp, chain.expirations)
+                              .invalid ? (
+                              <option value="">{exp.slice(5) || "—"}</option>
+                            ) : null}
                             {chain.expirations.map((e) => (
                               <option key={e} value={e}>
                                 {e.slice(5)}
