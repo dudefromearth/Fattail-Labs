@@ -38,6 +38,27 @@ export type TosLeg = {
   quantity: number;
 };
 
+/** Current price for the script (PC-TOS-2). Pending CHECK PRICE → live mid. */
+export function tosScriptPrice(pos: {
+  lastNatSigned: number | null;
+  livePackagePerShare: number | null;
+  lock:
+    | { mode: "unlocked" }
+    | {
+        mode: "locked";
+        packageDebitPerShare: number;
+        checkPrice?: true;
+      };
+}): number {
+  if (pos.lock.mode === "locked" && pos.lock.checkPrice) {
+    const live = pos.lastNatSigned ?? pos.livePackagePerShare;
+    return live != null && Number.isFinite(live) ? live : pos.lock.packageDebitPerShare;
+  }
+  if (pos.lock.mode === "locked") return pos.lock.packageDebitPerShare;
+  const live = pos.lastNatSigned ?? pos.livePackagePerShare;
+  return live != null && Number.isFinite(live) ? live : 0;
+}
+
 export function generateTosScript(params: {
   symbol: string;
   legs: TosLeg[];
@@ -47,10 +68,11 @@ export function generateTosScript(params: {
   if (!legs.length) return "";
 
   const sym = (symbol || "SPX").replace(/^I:/i, "").toUpperCase();
-  const price =
+  const mag =
     costBasis != null && Number.isFinite(costBasis)
-      ? ` @${Math.abs(Number(costBasis)).toFixed(2)} LMT`
-      : "";
+      ? Math.abs(Number(costBasis))
+      : 0;
+  const price = ` @${mag.toFixed(2)} LMT`;
 
   const expFormatted = formatTosExpiration(legs[0].expiration);
   const sideUpper = legs[0].right.toUpperCase();

@@ -21,6 +21,7 @@ import {
   migrateLegContracts,
   scaleLegPos,
 } from "@/lib/options-lab/positionQty";
+import { structureKey } from "@/lib/options-lab/structureSignal";
 
 /** Product status — residual book is ANALYSIS-only (PB v0.3 §16.4). */
 export type AnalyzerTradeStatus = "ANALYSIS";
@@ -56,6 +57,8 @@ export type CardLockState =
       freezeIv: boolean;
       freezeMarks: boolean;
       generationHashesAtLock?: Record<string, string>;
+      /** Pending CHECK PRICE (PC-STALE). Kept number stays in packageDebitPerShare. */
+      checkPrice?: true;
     };
 
 /** Per-leg bind report (exp first, then price). See optionBind.ts */
@@ -619,7 +622,7 @@ export function applyEditPatch(
   notation: string,
 ): AnalyzerPosition {
   const next = positionFromInput(input);
-  return {
+  const patched: AnalyzerPosition = {
     ...next,
     id: existing.id,
     label,
@@ -635,6 +638,40 @@ export function applyEditPatch(
     bind: existing.bind ?? null,
     updatedAt: Date.now(),
   };
+  return withCheckPriceIfLocked(existing, patched);
+}
+
+export function isCheckPricePending(pos: AnalyzerPosition): boolean {
+  return pos.lock.mode === "locked" && pos.lock.checkPrice === true;
+}
+
+/**
+ * Locked basis survives iff normalized ratio and instruments are unchanged
+ * (PC-LOCK-8). POS scale keeps the lock. Any other structure change → CHECK PRICE.
+ */
+export function withCheckPriceIfLocked(
+  before: AnalyzerPosition,
+  after: AnalyzerPosition,
+): AnalyzerPosition {
+  if (before.lock.mode !== "locked") return after;
+  if (structureKey(before) === structureKey(after)) {
+    return { ...after, lock: before.lock };
+  }
+  return {
+    ...after,
+    lock: {
+      ...before.lock,
+      checkPrice: true,
+      freezeIv: false,
+      freezeMarks: false,
+    },
+  };
+}
+
+export function keepCheckPrice(pos: AnalyzerPosition): AnalyzerPosition {
+  if (pos.lock.mode !== "locked" || !pos.lock.checkPrice) return pos;
+  const { checkPrice: _drop, ...rest } = pos.lock;
+  return { ...pos, lock: rest, updatedAt: Date.now() };
 }
 
 /**
@@ -644,7 +681,7 @@ export function scaleCardPos(
   pos: AnalyzerPosition,
   newPos: number,
 ): AnalyzerPosition {
-  return {
+  const next: AnalyzerPosition = {
     ...pos,
     position: {
       ...pos.position,
@@ -653,6 +690,7 @@ export function scaleCardPos(
     },
     updatedAt: Date.now(),
   };
+  return withCheckPriceIfLocked(pos, next);
 }
 
 /** Live package mark in OPF sign (+debit / −credit). */
@@ -1034,7 +1072,7 @@ export function setCardDirection(
 ): AnalyzerPosition {
   const cur = pos.position.direction === "sell" ? "sell" : "buy";
   if (cur === direction) return pos;
-  return flipCardDirection(pos);
+  return withCheckPriceIfLocked(pos, flipCardDirection(pos));
 }
 
 /**
@@ -1111,24 +1149,24 @@ export function setCardExpiration(
    *  - set not_live until atomic package resolve settles once
    * UI shows UPDATING then a single final state (price / NOT TRADED / …).
    */
-  return {
+  return withCheckPriceIfLocked(pos, {
     ...pos,
     position,
     label: buildLabel(position.underlying, legs, newE),
     notation: buildNotation(legs),
     lock: { mode: "unlocked" },
-    lastNatSigned: null,
-    definedDebitPerShare: null,
-    livePackagePerShare: null,
-    priceSide: null,
-    liveState: "not_live",
-    displayAsOf: null,
-    contentHashes: {},
-    maxSkewMs: null,
-    epochQuality: null,
-    bind: null, // clear prior bind until atomic resolve completes
+    lastNatSigned: pos.lastNatSigned,
+    definedDebitPerShare: pos.definedDebitPerShare,
+    livePackagePerShare: pos.livePackagePerShare,
+    priceSide: pos.priceSide,
+    liveState: pos.liveState,
+    displayAsOf: pos.displayAsOf,
+    contentHashes: pos.contentHashes,
+    maxSkewMs: pos.maxSkewMs,
+    epochQuality: pos.epochQuality,
+    bind: null,
     updatedAt: Date.now(),
-  };
+  });
 }
 
 /**
@@ -1303,22 +1341,22 @@ export function shiftCardStrikes(
     net_debit_override: null,
   };
 
-  return {
+  return withCheckPriceIfLocked(pos, {
     ...pos,
     position,
     label: buildLabel(position.underlying, legs, position.expiration),
     notation: buildNotation(legs),
     lock: { mode: "unlocked" },
-    lastNatSigned: null,
-    definedDebitPerShare: null,
-    livePackagePerShare: null,
-    priceSide: null,
-    bind: null,
-    liveState: "not_live",
-    displayAsOf: null,
-    contentHashes: {},
+    lastNatSigned: pos.lastNatSigned,
+    definedDebitPerShare: pos.definedDebitPerShare,
+    livePackagePerShare: pos.livePackagePerShare,
+    priceSide: pos.priceSide,
+    bind: pos.bind,
+    liveState: pos.liveState,
+    displayAsOf: pos.displayAsOf,
+    contentHashes: pos.contentHashes,
     updatedAt: Date.now(),
-  };
+  });
 }
 
 /** Move the whole structure `steps` listed strikes. Stops at the chain edge. */

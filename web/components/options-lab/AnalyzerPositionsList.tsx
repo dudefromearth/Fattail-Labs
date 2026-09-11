@@ -288,6 +288,7 @@ export type AnalyzerPositionsListProps = {
   /** Commit a per-position debit/credit magnitude and lock it. */
   onLockLimit: (id: string, magnitude: number) => void;
   onUnlock: (id: string) => void;
+  onKeepCheckPrice?: (id: string) => void;
   /** ToS-style structure BUY/SELL flip (debit↔credit). */
   onSetDirection: (id: string, direction: "buy" | "sell") => void;
   /** ToS-style expiration roll from listed chain expirations. */
@@ -317,6 +318,7 @@ export default function AnalyzerPositionsList({
   onLockNatural,
   onLockLimit,
   onUnlock,
+  onKeepCheckPrice,
   onSetDirection,
   onSetExpiration,
   onShiftStrikes,
@@ -548,6 +550,7 @@ export default function AnalyzerPositionsList({
                   onLockNatural={onLockNatural}
                   onLockLimit={onLockLimit}
                   onUnlock={onUnlock}
+                  onKeepCheckPrice={onKeepCheckPrice}
                   onSetDirection={onSetDirection}
                   onSetExpiration={onSetExpiration}
                   onShiftStrikes={onShiftStrikes}
@@ -601,6 +604,7 @@ function PosBlock({
   onLockNatural,
   onLockLimit,
   onUnlock,
+  onKeepCheckPrice,
   onSetDirection,
   onSetExpiration,
   onShiftStrikes,
@@ -643,6 +647,7 @@ function PosBlock({
   onLockNatural: (id: string) => void;
   onLockLimit: (id: string, magnitude: number) => void;
   onUnlock: (id: string) => void;
+  onKeepCheckPrice?: (id: string) => void;
   onSetDirection: (id: string, direction: "buy" | "sell") => void;
   onSetExpiration: (id: string, expiration: string) => void;
   onShiftStrikes: (id: string, direction: "up" | "down") => void;
@@ -1078,15 +1083,39 @@ function PosBlock({
             >
               {isTop ? (
                 display.kind === "price" ? (
-                  <PackagePriceField
-                    id={pos.id}
-                    locked={locked}
-                    price={price}
-                    priceLabel={priceLabel}
-                    textMain={textMain}
-                    onCommit={(mag) => onLockLimit(pos.id, mag)}
-                    onLockForEdit={() => onLockNatural(pos.id)}
-                  />
+                  <div className="flex flex-col items-end gap-0.5">
+                    <PackagePriceField
+                      id={pos.id}
+                      locked={locked}
+                      price={price}
+                      priceLabel={priceLabel}
+                      textMain={
+                        pos.lock.mode === "locked" && pos.lock.checkPrice
+                          ? "text-amber-200 line-through decoration-amber-200/80"
+                          : textMain
+                      }
+                      onCommit={(mag) => onLockLimit(pos.id, mag)}
+                      onLockForEdit={() => onLockNatural(pos.id)}
+                    />
+                    {pos.lock.mode === "locked" && pos.lock.checkPrice ? (
+                      <div
+                        className="flex items-center gap-1"
+                        data-testid={`analyzer-pos-check-price-${pos.id}`}
+                      >
+                        <span className="text-[13.5px] font-semibold uppercase tracking-wide text-amber-200">
+                          CHECK PRICE
+                        </span>
+                        <button
+                          type="button"
+                          className="rounded bg-black/25 px-1.5 py-0.5 text-[13.5px] font-semibold uppercase text-white hover:bg-black/40"
+                          data-testid={`analyzer-pos-keep-${pos.id}`}
+                          onClick={() => onKeepCheckPrice?.(pos.id)}
+                        >
+                          Keep
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
                 ) : display.kind === "expired" &&
                   definedDebitSigned(pos) != null ? (
                   <>

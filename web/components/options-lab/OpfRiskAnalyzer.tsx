@@ -41,6 +41,7 @@ import {
   closePosition,
   positionFromInput,
   applyEditPatch,
+  keepCheckPrice,
   saveAlerts,
   savePositions,
   setCardDirection,
@@ -1799,6 +1800,11 @@ export default function OpfRiskAnalyzer() {
         prev.map((p) => (p.id === id ? unlockCard(p) : p)),
       );
       risk.refresh();
+    },
+    onKeepCheckPrice: (id: string) => {
+      commitBook("keep", (prev) =>
+        prev.map((p) => (p.id === id ? keepCheckPrice(p) : p)),
+      );
     },
     onSetDirection: (id: string, direction: "buy" | "sell") => {
       commitBook("card", (prev) =>
