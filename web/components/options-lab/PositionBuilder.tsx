@@ -2480,7 +2480,6 @@ export default function PositionBuilder({
           )}
         </div>
       </div>
-      </div>
     </div>
   );
 }
