@@ -1,5 +1,5 @@
 /**
- * DLG2 — AT-DLG-11 · 16 · 17 greps. Layout + HIG itemised.
+ * DLG2 redo — AT-DLG-6 · 11 · 16 · 17 · 18 · 19 · 20. Prototype is normative.
  *
  *   npx --yes tsx lib/options-lab/dlgHig.test.ts
  */
@@ -40,81 +40,107 @@ function grep(pattern: string): string {
   }
 }
 
-test("AT-DLG-11 no Submit, Preview, entry time, Done/Close header", () => {
+test("AT-DLG-6 element order: title · SYMBOL/STRATEGY · direction · LEGS · Add Leg · TOS SCRIPT · actions", () => {
+  const title = builder.indexOf('"Create Position"');
+  const symbol = builder.indexOf("{sectionLabel}>Symbol<");
+  const strategy = builder.indexOf("{sectionLabel}>Strategy<");
+  const direction = builder.indexOf('data-testid="builder-direction-row"');
+  const legs = builder.indexOf("{sectionLabel}>Legs<");
+  const addLeg = builder.indexOf("+ Add Leg");
+  const script = builder.indexOf("{sectionLabel}>Tos Script<");
+  const analyze = builder.indexOf('data-testid="builder-analyze"');
+  const cancel = builder.indexOf('data-testid="position-builder-cancel"');
+  assert.ok(title > 0 && symbol > title, "SYMBOL after title");
+  assert.ok(strategy > symbol, "STRATEGY after SYMBOL");
+  assert.ok(direction > strategy, "direction row after STRATEGY");
+  assert.ok(legs > direction, "LEGS after direction");
+  assert.ok(addLeg > legs, "Add Leg after LEGS");
+  assert.ok(script > addLeg, "TOS SCRIPT after Add Leg");
+  assert.ok(analyze > script, "Analyze after script");
+  assert.ok(cancel > analyze, "Cancel after Analyze (stacked)");
+  assert.match(builder, /grid-cols-2/);
+  assert.match(builder, /Debit/);
+  assert.match(builder, /Pos/);
+  assert.match(builder, /isTop/);
+});
+
+test("AT-DLG-6 no headings that are not in the image", () => {
+  assert.doesNotMatch(builder, /sectionLabel\}>Structure</);
+  assert.doesNotMatch(builder, /sectionLabel\}>Shape</);
+  assert.doesNotMatch(builder, /sectionLabel\}>Position</);
+  assert.doesNotMatch(builder, /aria-label="Structure"/);
+  assert.doesNotMatch(builder, /aria-label="Shape"/);
+  assert.doesNotMatch(builder, /aria-label="Position"/);
+});
+
+test("AT-DLG-11 no Submit, Preview, entry time, Done", () => {
   assert.equal(grep("position-builder-submit"), "");
   assert.equal(grep("builder-entry-at"), "");
   assert.equal(grep("position-builder-close"), "");
   assert.doesNotMatch(builder, /Preview:/);
-  assert.match(builder, /data-testid="builder-analyze"/);
-  assert.match(builder, /data-testid="builder-update"/);
-  assert.match(builder, /data-testid="position-builder-cancel"/);
 });
 
-test("AT-DLG-16 panel 820, inset 20, content 780", () => {
+test("AT-DLG-16 panel 820, inset 20, off-grid spacing empty", () => {
   assert.match(builder, /const PANEL_W = 820/);
   assert.match(builder, /data-panel-width="820"/);
   assert.match(builder, /data-content-inset="20"/);
-  assert.match(builder, /px-5/);
-  assert.match(builder, /pt-5/);
-  assert.match(builder, /py-5/);
-});
-
-test("AT-DLG-16 off-grid spacing classes return nothing", () => {
   const hits = grep(
     String.raw`(^|[^a-z-])(p|px|py|pt|pb|pl|pr|m|mx|my|mt|mb|ml|mr|gap|gap-x|gap-y|space-x|space-y)-(0\.5|1\.5|2\.5|3\.5|7|8|9|10|11|12|14|16)\b`,
   );
   assert.equal(hits, "", hits);
 });
 
-test("AT-DLG-17 type ladder distinct steps", () => {
+test("AT-DLG-17 type ladder, segmented Buy/Sell, pop-up menus, focus ring", () => {
   assert.match(builder, /--text-title-3/);
   assert.match(builder, /--text-caption/);
   assert.match(builder, /--text-subheadline/);
   assert.match(builder, /--text-body/);
   assert.match(builder, /tabular-nums/);
-});
-
-test("AT-DLG-17 Buy/Sell is SegmentedControl; menus are pop-up selects", () => {
-  assert.match(builder, /SegmentedControl/);
-  assert.match(builder, /ariaLabel="Buy or Sell"/);
+  assert.match(builder, /role="radiogroup"/);
+  assert.match(builder, /aria-label="Buy or Sell"/);
   assert.match(builder, /<select/);
-  assert.doesNotMatch(builder, /bg-emerald-600|bg-red-600/);
-  assert.doesNotMatch(builder, /handleDirection\("buy"\)/);
-  assert.match(builder, /id: "buy", label: "Buy"/);
-});
-
-test("AT-DLG-17 alignment axis, default button last, Return-bound", () => {
-  assert.match(builder, /grid-cols-\[7rem_minmax\(0,1fr\)\]/);
-  assert.match(builder, /justify-end/);
-  assert.match(builder, /data-testid="builder-analyze"/);
+  assert.match(builder, /focus-visible:outline-\[var\(--color-tint\)\]/);
   assert.match(builder, /e\.key !== "Enter"/);
   assert.match(builder, /data-value-field/);
 });
 
-test("AT-DLG-17 hairline separators, one elevation, one radius, focus ring", () => {
-  assert.match(builder, /border-\[var\(--color-separator\)\]/);
-  assert.match(builder, /shadow-\[var\(--elevation-3\)\]/);
-  assert.match(builder, /rounded-\[var\(--radius-lg\)\]/);
-  assert.match(builder, /focus-visible:outline-\[var\(--color-tint\)\]/);
-});
-
-test("AT-DLG-17 accessibility labels on controls", () => {
+test("AT-DLG-17 accessibility labels", () => {
   assert.match(builder, /aria-label="Symbol"/);
   assert.match(builder, /aria-label="Strategy"/);
   assert.match(builder, /aria-label="Centre"/);
   assert.match(builder, /aria-label="Width"/);
   assert.match(builder, /aria-label="Expiration"/);
   assert.match(builder, /aria-label="Add leg"/);
-  assert.match(builder, /aria-label="Copy ToS script"/);
+  assert.match(builder, /aria-label="ToS script"/);
   assert.match(builder, /aria-label="Remove leg"/);
 });
 
-test("AT-DLG-6 layout sections present; PNG overrides absent", () => {
-  assert.match(builder, /aria-label="Structure"/);
-  assert.match(builder, /aria-label="Shape"/);
-  assert.match(builder, /aria-label="Position"/);
-  assert.match(builder, /TEMPLATE_HAS_SIDE\[template\]/);
-  assert.doesNotMatch(builder, /aria-modal="true"/);
+test("AT-DLG-18 TOS SCRIPT block present", () => {
+  assert.match(builder, /sectionLabel\}>Tos Script</);
+  assert.match(builder, /data-testid="builder-tos-script"/);
+  assert.match(builder, /data-code-surface="1"/);
+  assert.match(builder, /click to copy/);
+  assert.match(builder, /var\(--color-code-surface\)/);
+});
+
+test("AT-DLG-19 legs table is a filled bordered surface with inner padding", () => {
+  assert.match(builder, /data-testid="builder-legs-surface"/);
+  assert.match(builder, /bg-\[var\(--color-surface-secondary\)\]/);
+  assert.match(builder, /p-4/);
+  assert.match(builder, /bg-\[var\(--color-fill\)\]/);
+});
+
+test("AT-DLG-20 colour present: Buy and payoff use --color-success", () => {
+  assert.match(builder, /stroke="var\(--color-success\)"/);
+  assert.match(builder, /bg-\[var\(--color-success\)\]/);
+  assert.doesNotMatch(builder, /#22c55e|#ef4444|bg-emerald-600/);
+});
+
+test("§5.3.1 held controls present, no invented section", () => {
+  assert.match(builder, /data-testid="builder-held-shape"/);
+  assert.match(builder, /data-testid="builder-center"/);
+  assert.match(builder, /data-testid="builder-width"/);
+  assert.match(builder, /data-testid="builder-expiration"/);
 });
 
 console.log(`${n} ok`);

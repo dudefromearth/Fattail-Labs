@@ -444,7 +444,7 @@ test("PC8-G dialog shares TosControls; no forked stepper/padlock/triangle", () =
   assert.match(builder, /builder-leg-qty-step-/);
   assert.match(builder, /Math\.abs\(leg\.quantity\) \+ 1/);
   assert.doesNotMatch(builder, /builder-entry-at/);
-  assert.match(builder, /Copy ToS script/);
+  assert.match(builder, /click to copy/);
   assert.match(builder, /builder-pos-step/);
   assert.match(builder, /builder-live-package-price/);
 });

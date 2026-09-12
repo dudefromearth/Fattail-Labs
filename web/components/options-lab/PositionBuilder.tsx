@@ -1674,7 +1674,6 @@ export default function PositionBuilder({
       return a.leg.strike - b.leg.strike;
     });
 
-  const spotShown = userSpot > 0 ? userSpot : spotPrice;
   const frontExp = (position.expiration || frontDefault || "").slice(0, 10);
 
   return (
@@ -1693,7 +1692,7 @@ export default function PositionBuilder({
       data-content-inset="20"
     >
       <div
-        className="relative cursor-grab border-b border-[var(--color-separator)] px-5 pt-5 pb-3 active:cursor-grabbing"
+        className="relative cursor-grab border-b border-[var(--color-separator)] px-5 pt-5 pb-3 text-center active:cursor-grabbing"
         onPointerDown={onPanelPointerDown}
         onPointerMove={onPanelPointerMove}
         onPointerUp={onPanelPointerUp}
@@ -1704,29 +1703,6 @@ export default function PositionBuilder({
         <h3 className="text-[length:var(--text-title-3)] font-semibold text-[var(--color-label)]">
           {mode === "edit" ? "Edit Position" : "Create Position"}
         </h3>
-        <div className="mt-2 flex items-center gap-3">
-          <CardMenuField surface="dialog" fit="min">
-            <select
-              className={dlgField + " !w-auto min-w-[6rem]"}
-              value={position.underlying || symbol}
-              aria-label="Symbol"
-              data-testid="builder-symbol"
-              onChange={() => {
-                /* session symbol is host-owned — DLG3 */
-              }}
-            >
-              <option value={position.underlying || symbol}>
-                {position.underlying || symbol}
-              </option>
-            </select>
-          </CardMenuField>
-          <span
-            className="tabular-nums text-[length:var(--text-body)] text-[var(--color-label-secondary)]"
-            aria-label="Spot"
-          >
-            {spotShown > 0 ? spotShown.toFixed(2) : "—"}
-          </span>
-        </div>
       </div>
 
       {planeState.kind !== "ready" ? (
@@ -1746,9 +1722,27 @@ export default function PositionBuilder({
       ) : null}
 
       <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
-        <section className="space-y-3" aria-label="Structure">
-          <h4 className={sectionLabel}>Structure</h4>
-          <FormRow label="Strategy">
+        <section className="grid grid-cols-2 gap-5" aria-label="Symbol and Strategy">
+          <div>
+            <h4 className={sectionLabel}>Symbol</h4>
+            <CardMenuField surface="dialog">
+              <select
+                className={dlgField}
+                value={position.underlying || symbol}
+                aria-label="Symbol"
+                data-testid="builder-symbol"
+                onChange={() => {
+                  /* session symbol is host-owned — DLG3 */
+                }}
+              >
+                <option value={position.underlying || symbol}>
+                  {position.underlying || symbol}
+                </option>
+              </select>
+            </CardMenuField>
+          </div>
+          <div>
+            <h4 className={sectionLabel}>Strategy</h4>
             <CardMenuField surface="dialog">
               <select
                 className={dlgField}
@@ -1775,61 +1769,89 @@ export default function PositionBuilder({
                 })}
               </select>
             </CardMenuField>
-          </FormRow>
-          <div className="flex items-center gap-3">
-            <svg
-              viewBox="0 0 60 24"
-              width={72}
-              height={28}
-              className="shrink-0"
-              style={
-                direction === "sell" ? { transform: "scaleY(-1)" } : undefined
+          </div>
+        </section>
+
+        <div className="flex items-center gap-3" data-testid="builder-direction-row">
+          <svg
+            viewBox="0 0 60 24"
+            width={72}
+            height={28}
+            className="shrink-0"
+            style={
+              direction === "sell" ? { transform: "scaleY(-1)" } : undefined
+            }
+            aria-hidden
+            data-testid="builder-payoff"
+          >
+            <path
+              d={STRATEGY_DIAGRAMS[template]}
+              fill="none"
+              stroke="var(--color-success)"
+              strokeWidth="2.25"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <div
+            role="radiogroup"
+            aria-label="Buy or Sell"
+            data-testid="builder-side"
+            className="inline-flex min-h-[var(--hit-min)] rounded-[var(--radius-md)] bg-[var(--color-fill)] p-1"
+          >
+            <button
+              type="button"
+              role="radio"
+              aria-checked={direction === "buy"}
+              aria-label="Buy"
+              className={
+                "min-h-[var(--hit-min)] rounded-[var(--radius-sm)] px-4 text-[length:var(--text-subheadline)] font-medium " +
+                "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)] " +
+                (direction === "buy"
+                  ? "bg-[var(--color-success)] text-[var(--color-surface)]"
+                  : "text-[var(--color-label-secondary)]")
               }
-              aria-hidden
+              onClick={() => handleDirection("buy")}
             >
-              <path
-                d={STRATEGY_DIAGRAMS[template]}
-                fill="none"
-                stroke="var(--color-label)"
-                strokeWidth="2.25"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <div className="inline-flex min-w-[12rem]">
+              Buy
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={direction === "sell"}
+              aria-label="Sell"
+              className={
+                "min-h-[var(--hit-min)] rounded-[var(--radius-sm)] px-4 text-[length:var(--text-subheadline)] font-medium " +
+                "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)] " +
+                (direction === "sell"
+                  ? "bg-[var(--color-surface)] text-[var(--color-label)] shadow-[var(--elevation-1)]"
+                  : "text-[var(--color-label-secondary)]")
+              }
+              onClick={() => handleDirection("sell")}
+            >
+              Sell
+            </button>
+          </div>
+          {TEMPLATE_HAS_SIDE[template] ? (
+            <div className="inline-flex min-w-[10rem]">
               <SegmentedControl
-                ariaLabel="Buy or Sell"
-                value={direction}
-                onChange={handleDirection}
+                ariaLabel="Call or Put"
+                value={optionSide}
+                onChange={handleRight}
                 options={[
-                  { id: "buy", label: "Buy" },
-                  { id: "sell", label: "Sell" },
+                  { id: "call", label: "Call" },
+                  { id: "put", label: "Put" },
                 ]}
               />
             </div>
-            <span className="text-[length:var(--text-body)] text-[var(--color-label)]">
-              {derivedName}
-            </span>
-          </div>
-          {TEMPLATE_HAS_SIDE[template] ? (
-            <FormRow label="Right">
-              <div className="inline-flex min-w-[12rem]">
-                <SegmentedControl
-                  ariaLabel="Call or Put"
-                  value={optionSide}
-                  onChange={handleRight}
-                  options={[
-                    { id: "call", label: "Call" },
-                    { id: "put", label: "Put" },
-                  ]}
-                />
-              </div>
-            </FormRow>
           ) : null}
-        </section>
+          <span className="text-[length:var(--text-body)] text-[var(--color-label)]">
+            {derivedName}
+          </span>
+        </div>
 
-        <section className="space-y-3 border-t border-[var(--color-separator)] pt-5" aria-label="Shape">
-          <h4 className={sectionLabel}>Shape</h4>
+        {/* §5.3.1 — in the code, not in the prototype. Held; no section heading. */}
+        <div className="space-y-3" data-testid="builder-held-shape">
           <FormRow label="Centre">
             <CardMenuField surface="dialog">
               <select
@@ -1931,6 +1953,14 @@ export default function PositionBuilder({
               </select>
             </CardMenuField>
           </FormRow>
+        </div>
+
+        <section aria-label="Legs">
+          <h4 className={sectionLabel}>Legs</h4>
+          <div
+            data-testid="builder-legs-surface"
+            className="rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface-secondary)] p-4"
+          >
           <table className="w-full table-fixed text-left text-[length:var(--text-body)] tabular-nums">
             <thead>
               <tr className="uppercase tracking-wide text-[length:var(--text-caption)] text-[var(--color-label-tertiary)]">
@@ -1939,6 +1969,8 @@ export default function PositionBuilder({
                 <th className="py-1 font-normal">Strike</th>
                 <th className="py-1 font-normal">Type</th>
                 <th className="py-1 font-normal">Expiration</th>
+                <th className="py-1 text-right font-normal">Debit</th>
+                <th className="py-1 text-right font-normal">Pos</th>
                 <th className="w-6 py-1 font-normal" />
               </tr>
             </thead>
@@ -1947,6 +1979,7 @@ export default function PositionBuilder({
                 const exp = (leg.expiration || position.expiration).slice(0, 10);
                 const legStrikes = chain.getStrikes(exp);
                 const signed = signedActualQty(leg);
+                const isTop = row === 0;
                 return (
                   <tr key={`${i}-${leg.strike}-${leg.type}`}>
                     <td className="py-1 pr-1 text-[var(--color-label-tertiary)]">
@@ -2080,6 +2113,64 @@ export default function PositionBuilder({
                         </span>
                       )}
                     </td>
+                    <td className="py-1 text-right font-mono">
+                      {isTop ? (
+                        <div className="flex items-center justify-end gap-1">
+                          <span
+                            className="tabular-nums"
+                            data-testid="builder-live-package-price"
+                            data-value-field="1"
+                          >
+                            {debitShown != null && Number.isFinite(debitShown)
+                              ? debitShown.toFixed(2)
+                              : "—"}
+                          </span>
+                          <TosStepper surface="dialog"
+                            testId="builder-debit-step"
+                            ariaLabel="Package debit"
+                            disabled={debitShown == null}
+                            onUp={() => stepDebit("up")}
+                            onDown={() => stepDebit("down")}
+                          />
+                          <TosPadlock surface="dialog"
+                            locked={!!overrideActive}
+                            testId="builder-padlock"
+                            onToggle={() => {
+                              if (mode === "edit") {
+                                if (overrideActive) onUnlock?.();
+                                else onLockNatural?.();
+                                return;
+                              }
+                              if (overrideActive) {
+                                setPosition((p) => ({
+                                  ...p,
+                                  net_debit_override: null,
+                                }));
+                              }
+                            }}
+                          />
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className="py-1 text-right font-mono">
+                      {isTop ? (
+                        <div className="flex items-center justify-end gap-1">
+                          <span
+                            className="tabular-nums"
+                            data-testid="builder-pos"
+                            data-value-field="1"
+                          >
+                            {pkgPos}
+                          </span>
+                          <TosQtyControl surface="dialog"
+                            testId="builder-pos-step"
+                            onUp={() => scalePos(pkgPos + 1)}
+                            onDown={() => scalePos(Math.max(1, pkgPos - 1))}
+                            onPick={(n) => scalePos(n)}
+                          />
+                        </div>
+                      ) : null}
+                    </td>
                     <td className="py-1">
                       <button
                         type="button"
@@ -2096,9 +2187,10 @@ export default function PositionBuilder({
               })}
             </tbody>
           </table>
+          </div>
           <button
             type="button"
-            className="min-h-[var(--hit-min)] text-[length:var(--text-body)] text-[var(--color-tint)] hover:text-[var(--color-tint-emphasis)]"
+            className="mt-2 min-h-[var(--hit-min)] text-[length:var(--text-body)] text-[var(--color-tint)] hover:text-[var(--color-tint-emphasis)]"
             onClick={addLeg}
             aria-label="Add leg"
           >
@@ -2106,127 +2198,71 @@ export default function PositionBuilder({
           </button>
         </section>
 
-        <section className="space-y-3 border-t border-[var(--color-separator)] pt-5" aria-label="Position">
-          <h4 className={sectionLabel}>Position</h4>
-          <FormRow label="Basis">
-            <div className="flex items-center gap-2">
-              <span
-                className="tabular-nums text-[length:var(--text-body)]"
-                data-testid="builder-live-package-price"
-                data-value-field="1"
-              >
-                {debitShown != null && Number.isFinite(debitShown)
-                  ? debitShown.toFixed(2)
-                  : "—"}
-              </span>
-              <TosStepper surface="dialog"
-                testId="builder-debit-step"
-                ariaLabel="Package debit"
-                disabled={debitShown == null}
-                onUp={() => stepDebit("up")}
-                onDown={() => stepDebit("down")}
-              />
-              <TosPadlock surface="dialog"
-                locked={!!overrideActive}
-                testId="builder-padlock"
-                onToggle={() => {
-                  if (mode === "edit") {
-                    if (overrideActive) onUnlock?.();
-                    else onLockNatural?.();
-                    return;
-                  }
-                  if (overrideActive) {
-                    setPosition((p) => ({
-                      ...p,
-                      net_debit_override: null,
-                    }));
-                  }
-                }}
-              />
-            </div>
-          </FormRow>
-          <FormRow label="Packages">
-            <div className="flex items-center gap-2">
-              <span
-                className="tabular-nums text-[length:var(--text-body)]"
-                data-testid="builder-pos"
-                data-value-field="1"
-              >
-                {pkgPos}
-              </span>
-              <TosQtyControl surface="dialog"
-                testId="builder-pos-step"
-                onUp={() => scalePos(pkgPos + 1)}
-                onDown={() => scalePos(Math.max(1, pkgPos - 1))}
-                onPick={(n) => scalePos(n)}
-              />
-            </div>
-          </FormRow>
-        </section>
-
-        <section className="space-y-3 border-t border-[var(--color-separator)] pt-5" aria-label="ToS script">
-          <h4 className={sectionLabel}>ToS script</h4>
-          <pre
-            className={
-              "overflow-x-auto rounded-[var(--radius-sm)] px-2 py-2 " +
-              "text-left font-mono text-[length:var(--text-footnote)] leading-relaxed"
-            }
-            style={{
-              margin: 0,
-              background: "var(--color-code-surface)",
-              color: "var(--color-success)",
-            }}
-            data-code-surface="1"
-            data-testid="builder-tos-script"
-          >
-            {tosScript || "—"}
-          </pre>
-          <button
-            type="button"
-            className="min-h-[var(--hit-min)] text-[length:var(--text-body)] text-[var(--color-tint)] hover:text-[var(--color-tint-emphasis)]"
-            aria-label="Copy ToS script"
-            onClick={() => {
-              if (!tosScript) return;
-              rememberTosScript(tosScript);
-              void navigator.clipboard.writeText(tosScript).then(() => {
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1200);
-              });
-            }}
-          >
-            {copied ? "Copied" : "Copy"}
-          </button>
-        </section>
-      </div>
-
-      <div className="flex items-center justify-end gap-3 border-t border-[var(--color-separator)] px-5 py-5">
-        <button
-          type="button"
-          className="min-h-[var(--hit-min)] px-4 text-[length:var(--text-body)] text-[var(--color-label-secondary)] hover:text-[var(--color-label)]"
-          data-testid="position-builder-cancel"
-          onClick={onCancel}
+        <section
+          className="grid grid-cols-[1fr_auto] items-start gap-5"
+          aria-label="ToS script"
         >
-          Cancel
-        </button>
-        {mode === "create" ? (
-          <button
-            type="button"
-            className="min-h-[var(--hit-min)] rounded-[var(--radius-sm)] bg-[var(--color-tint)] px-4 text-[length:var(--text-body)] font-medium text-[var(--color-on-tint)]"
-            data-testid="builder-analyze"
-            onClick={handleSave}
-          >
-            Analyze
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="min-h-[var(--hit-min)] rounded-[var(--radius-sm)] bg-[var(--color-tint)] px-4 text-[length:var(--text-body)] font-medium text-[var(--color-on-tint)]"
-            data-testid="builder-update"
-            onClick={handleSave}
-          >
-            Update
-          </button>
-        )}
+          <div>
+            <h4 className={sectionLabel}>Tos Script</h4>
+            <button
+              type="button"
+              className={
+                "block w-full rounded-[var(--radius-sm)] px-2 py-2 text-left font-mono " +
+                "text-[length:var(--text-footnote)] leading-relaxed " +
+                "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]"
+              }
+              style={{
+                background: "var(--color-code-surface)",
+                color: "var(--color-success)",
+              }}
+              data-code-surface="1"
+              data-testid="builder-tos-script"
+              aria-label="ToS script"
+              onClick={() => {
+                if (!tosScript) return;
+                rememberTosScript(tosScript);
+                void navigator.clipboard.writeText(tosScript).then(() => {
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1200);
+                });
+              }}
+            >
+              {tosScript || "—"}
+              <span className="mt-2 block text-[length:var(--text-caption)] text-[var(--color-label-secondary)]">
+                {copied ? "copied" : "click to copy"}
+              </span>
+            </button>
+          </div>
+          <div className="flex flex-col items-stretch gap-2">
+            {mode === "create" ? (
+              <button
+                type="button"
+                className="min-h-[var(--hit-min)] rounded-[var(--radius-sm)] bg-[var(--color-tint)] px-4 text-[length:var(--text-body)] font-medium text-[var(--color-on-tint)]"
+                data-testid="builder-analyze"
+                onClick={handleSave}
+              >
+                Analyze
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="min-h-[var(--hit-min)] rounded-[var(--radius-sm)] bg-[var(--color-tint)] px-4 text-[length:var(--text-body)] font-medium text-[var(--color-on-tint)]"
+                data-testid="builder-update"
+                onClick={handleSave}
+              >
+                Update
+              </button>
+            )}
+            <button
+              type="button"
+              className="min-h-[var(--hit-min)] px-4 text-[length:var(--text-body)] text-[var(--color-label-secondary)] hover:text-[var(--color-label)]"
+              data-testid="position-builder-cancel"
+              onClick={onCancel}
+            >
+              Cancel
+            </button>
+          </div>
+        </section>
       </div>
     </div>
   );
