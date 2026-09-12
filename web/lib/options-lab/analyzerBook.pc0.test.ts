@@ -144,10 +144,57 @@ test("AT-PC-02 wire: handleBuilderSave edit branch calls applyEditPatch", () => 
   );
   assert.match(src, /applyEditPatch\(/);
   assert.match(src, /record\.position/);
+  assert.match(src, /\{ lock: record\.lock \}/);
   assert.doesNotMatch(
     src,
     /p\.id === editId\s*\n\s*\? \{\s*\n\s*\.\.\.positionFromInput/,
   );
+});
+
+test("applyEditPatch lock override lands; callers without overrides keep existing.lock", () => {
+  const existing = positionFromInput(fly());
+  existing.lock = { mode: "unlocked" };
+  const four = applyEditPatch(existing, fly(), "XSP fly", "763/767/771");
+  assert.equal(four.lock.mode, "unlocked");
+
+  const lockedOverride: AnalyzerPosition["lock"] = {
+    mode: "locked",
+    lockedAt: "2026-09-11T00:00:00Z",
+    packageDebitPerShare: 1.5,
+    lockSource: "user_limit",
+    freezeIv: false,
+    freezeMarks: false,
+  };
+  const withLock = applyEditPatch(existing, fly(), "XSP fly", "763/767/771", {
+    lock: lockedOverride,
+  });
+  assert.equal(withLock.lock.mode, "locked");
+  if (withLock.lock.mode === "locked") {
+    assert.equal(withLock.lock.packageDebitPerShare, 1.5);
+  }
+
+  const wasLocked = positionFromInput(fly());
+  wasLocked.lock = {
+    mode: "locked",
+    lockedAt: "2026-09-11T00:00:00Z",
+    packageDebitPerShare: 0.67,
+    lockSource: "natural_mid",
+    freezeIv: false,
+    freezeMarks: false,
+  };
+  const unlocked = applyEditPatch(
+    wasLocked,
+    fly(),
+    "XSP fly",
+    "763/767/771",
+    { lock: { mode: "unlocked" } },
+  );
+  assert.equal(unlocked.lock.mode, "unlocked");
+
+  const stamped = applyEditPatch(existing, fly(), "XSP fly", "763/767/771", {
+    entryAt: 999,
+  });
+  assert.equal(stamped.entryAt, 999);
 });
 
 test("AT-PC-47 rehearsal and visible survive a persistence round-trip", () => {

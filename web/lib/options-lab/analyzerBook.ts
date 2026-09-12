@@ -621,6 +621,7 @@ export function applyEditPatch(
   input: PositionInput,
   label: string,
   notation: string,
+  overrides?: { lock?: CardLockState; entryAt?: number | null },
 ): AnalyzerPosition {
   const next = positionFromInput(input);
   const patched: AnalyzerPosition = {
@@ -639,9 +640,19 @@ export function applyEditPatch(
     bind: existing.bind ?? null,
     updatedAt: Date.now(),
   };
+  if (overrides?.lock !== undefined) patched.lock = overrides.lock;
+  if (overrides?.entryAt !== undefined) {
+    patched.entryAt = overrides.entryAt ?? undefined;
+  }
   // Do not carry existing.priceSide — it outranks direction (blotterTheme).
   patched.priceSide = packageSideFromStructure(patched);
-  return withCheckPriceIfLocked(existing, patched);
+  // CHECK PRICE compares against the submitted lock so a draft unlock/relock
+  // is not overwritten by existing.lock when structure is unchanged.
+  const before =
+    overrides?.lock !== undefined
+      ? { ...existing, lock: overrides.lock }
+      : existing;
+  return withCheckPriceIfLocked(before, patched);
 }
 
 export function isCheckPricePending(pos: AnalyzerPosition): boolean {

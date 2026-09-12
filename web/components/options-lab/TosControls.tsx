@@ -8,7 +8,17 @@
  * Finding 0: never apply --hit-min at rest on the card; no .split constructions.
  */
 
-import { useId, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
+import { createPortal } from "react-dom";
 import { QTY_QUICK_PICK } from "@/lib/options-lab/tosCard";
 
 export type TosSurface = "card" | "dialog";
@@ -162,6 +172,7 @@ export function TosQtyControl({
   onPick,
   disabled,
   testId,
+  menuPortal = false,
 }: {
   surface: TosSurface;
   onUp: () => void;
@@ -169,13 +180,154 @@ export function TosQtyControl({
   onPick: (n: number) => void;
   disabled?: boolean;
   testId?: string;
+  /** Portal the listbox (dialog legs). Card list omits this — markup unchanged. */
+  menuPortal?: boolean;
 }) {
   const id = useId();
   const [open, setOpen] = useState(false);
+  const [menuBox, setMenuBox] = useState<{ top: number; left: number } | null>(
+    null,
+  );
+  const rootRef = useRef<HTMLDivElement>(null);
+  const caretRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLUListElement>(null);
+  const openedByPointer = useRef(false);
   const card = surface === "card";
+  const portalMenu = surface === "dialog" || menuPortal;
   const rule = card ? H_RULE : H_RULE_DLG;
+
+  const pick = (n: number) => {
+    onPick(n);
+    setOpen(false);
+  };
+
+  const onCaretPointerDown = (e: ReactPointerEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    if (!open) {
+      openedByPointer.current = true;
+      setOpen(true);
+    } else {
+      openedByPointer.current = false;
+    }
+  };
+  const onCaretClick = (e: ReactMouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    if (openedByPointer.current) {
+      openedByPointer.current = false;
+      return;
+    }
+    setOpen((v) => !v);
+  };
+
+  useLayoutEffect(() => {
+    if (!open || !portalMenu) {
+      setMenuBox(null);
+      return;
+    }
+    const place = () => {
+      const caret = caretRef.current;
+      const menu = menuRef.current;
+      if (!caret) return;
+      const rect = caret.getBoundingClientRect();
+      const menuHeight = menu?.offsetHeight || QTY_QUICK_PICK.length * 28 + 8;
+      const menuWidth = menu?.offsetWidth || 56;
+      const flip = rect.bottom + menuHeight + 8 > window.innerHeight;
+      let top = flip ? rect.top - menuHeight - 4 : rect.bottom + 4;
+      let left = rect.right - menuWidth;
+      const m = 8;
+      left = Math.max(m, Math.min(window.innerWidth - menuWidth - m, left));
+      top = Math.max(m, Math.min(window.innerHeight - menuHeight - m, top));
+      setMenuBox({ top, left });
+    };
+    place();
+    const raf = requestAnimationFrame(place);
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [open, portalMenu]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: PointerEvent) => {
+      const t = e.target as Node | null;
+      if (!t) return;
+      if (rootRef.current?.contains(t)) return;
+      if (menuRef.current?.contains(t)) return;
+      setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopPropagation();
+      setOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKey, true);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKey, true);
+    };
+  }, [open]);
+
+  const menuClass = portalMenu
+    ? card
+      ? "min-w-[3.5rem] rounded bg-[#1a1a22] py-1 shadow-lg ring-1 ring-white/20"
+      : "min-w-[3.5rem] rounded-[var(--radius-sm)] bg-[var(--color-surface)] py-1 text-[var(--color-label)] shadow-[var(--elevation-2)] ring-1 ring-[var(--color-separator)]"
+    : card
+      ? "absolute right-0 top-full z-30 mt-0.5 min-w-[3.5rem] rounded bg-[#1a1a22] py-1 shadow-lg ring-1 ring-white/20"
+      : "absolute right-0 top-full z-30 mt-0.5 min-w-[3.5rem] rounded-[var(--radius-sm)] bg-[var(--color-surface)] py-1 text-[var(--color-label)] shadow-[var(--elevation-2)] ring-1 ring-[var(--color-separator)]";
+  const optionClass = card
+    ? "w-full px-2 py-1 text-right font-mono text-[length:var(--ol-card-data)] text-white hover:bg-white/10"
+    : "w-full px-2 py-1 text-right font-mono text-[length:var(--text-body)] text-[var(--color-label)] hover:bg-[var(--color-fill)]";
+
+  const menu = open ? (
+    <ul
+      ref={menuRef}
+      id={id}
+      role="listbox"
+      className={menuClass}
+      style={
+        portalMenu
+          ? {
+              position: "fixed",
+              zIndex: 60,
+              top: menuBox?.top ?? 0,
+              left: menuBox?.left ?? 0,
+            }
+          : undefined
+      }
+      data-testid={testId ? `${testId}-menu` : undefined}
+    >
+      {QTY_QUICK_PICK.map((n) => (
+        <li key={n} role="option">
+          <button
+            type="button"
+            className={optionClass}
+            data-testid={testId ? `${testId}-${n}` : undefined}
+            onPointerUp={(e) => {
+              e.stopPropagation();
+              if (e.button !== 0) return;
+              pick(n);
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              pick(n);
+            }}
+          >
+            {n}
+          </button>
+        </li>
+      ))}
+    </ul>
+  ) : null;
+
   return (
     <div
+      ref={rootRef}
       className={
         card
           ? `tos-qty group/step relative z-0 inline-flex ${REST_H} w-[34px] hover:z-20 focus-within:z-20`
@@ -230,6 +382,7 @@ export function TosQtyControl({
             </button>
           </div>
           <button
+            ref={caretRef}
             type="button"
             className={
               `flex ${CARET_W} shrink-0 items-center justify-center self-stretch ` +
@@ -240,10 +393,8 @@ export function TosQtyControl({
             aria-controls={id}
             aria-label="QTY quick-pick"
             data-testid={testId ? `${testId}-caret` : undefined}
-            onClick={(e) => {
-              e.stopPropagation();
-              setOpen((v) => !v);
-            }}
+            onPointerDown={onCaretPointerDown}
+            onClick={onCaretClick}
           >
             <CaretDown />
           </button>
@@ -286,6 +437,7 @@ export function TosQtyControl({
             </button>
           </div>
           <button
+            ref={caretRef}
             type="button"
             className={
               "flex min-w-[1.25rem] shrink-0 items-center justify-center self-stretch " +
@@ -296,48 +448,16 @@ export function TosQtyControl({
             aria-controls={id}
             aria-label="QTY quick-pick"
             data-testid={testId ? `${testId}-caret` : undefined}
-            onClick={(e) => {
-              e.stopPropagation();
-              setOpen((v) => !v);
-            }}
+            onPointerDown={onCaretPointerDown}
+            onClick={onCaretClick}
           >
             <CaretDown />
           </button>
         </div>
       )}
-      {open ? (
-        <ul
-          id={id}
-          role="listbox"
-          className={
-            card
-              ? "absolute right-0 top-full z-30 mt-0.5 min-w-[3.5rem] rounded bg-[#1a1a22] py-1 shadow-lg ring-1 ring-white/20"
-              : "absolute right-0 top-full z-30 mt-0.5 min-w-[3.5rem] rounded-[var(--radius-sm)] bg-[var(--color-surface)] py-1 text-[var(--color-label)] shadow-[var(--elevation-2)] ring-1 ring-[var(--color-separator)]"
-          }
-          data-testid={testId ? `${testId}-menu` : undefined}
-        >
-          {QTY_QUICK_PICK.map((n) => (
-            <li key={n} role="option">
-              <button
-                type="button"
-                className={
-                  card
-                    ? "w-full px-2 py-1 text-right font-mono text-[length:var(--ol-card-data)] text-white hover:bg-white/10"
-                    : "w-full px-2 py-1 text-right font-mono text-[length:var(--text-body)] text-[var(--color-label)] hover:bg-[var(--color-fill)]"
-                }
-                data-testid={testId ? `${testId}-${n}` : undefined}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onPick(n);
-                  setOpen(false);
-                }}
-              >
-                {n}
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      {portalMenu && menu && typeof document !== "undefined"
+        ? createPortal(menu, document.body)
+        : menu}
     </div>
   );
 }

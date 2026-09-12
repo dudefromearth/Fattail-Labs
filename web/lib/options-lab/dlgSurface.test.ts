@@ -144,4 +144,18 @@ test("AT-DLG-15 dialog appearance — hit-min at rest, no grow-on-hover", () => 
   assert.match(menu, /var\(--color-menu-marker\)/);
 });
 
+test("POS quick-pick: card keeps absolute markup; dialog portal is opt-in", () => {
+  const qty = exportBlock("TosQtyControl");
+  assert.match(
+    qty,
+    /absolute right-0 top-full z-30 mt-0.5 min-w-\[3\.5rem\] rounded bg-\[#1a1a22\] py-1 shadow-lg ring-1 ring-white\/20/,
+  );
+  assert.match(qty, /createPortal\(menu, document\.body\)/);
+  assert.match(qty, /surface === "dialog" \|\| menuPortal/);
+  assert.match(qty, /e\.stopPropagation\(\)/);
+  assert.match(qty, /onPointerUp=/);
+  assert.match(builder, /menuPortal/);
+  assert.doesNotMatch(list, /menuPortal/);
+});
+
 console.log(`${n} ok`);

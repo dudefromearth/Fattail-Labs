@@ -12,6 +12,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -33,7 +34,6 @@ import {
   cardSelect,
 } from "@/components/options-lab/TosControls";
 import {
-  calendarDteOf,
   lockLimit,
   lockNatural,
   positionFromInput,
@@ -47,10 +47,6 @@ import {
   packageSideFromStructure,
   resolvePackageSide,
 } from "@/lib/blotterTheme";
-import {
-  applyEtHm,
-  resolveEntryAt,
-} from "@/lib/options-lab/positionSession";
 import {
   formatStrikeOnGrid,
   listedStepNear,
@@ -81,7 +77,6 @@ import {
   packageDelta,
   stepCardPrice,
 } from "@/lib/options-lab/tosCard";
-import { nyWall } from "@/lib/options-lab/timeOrthoSession";
 import { useOptionsLab } from "@/lib/optionsLabContext";
 import { rememberTosScript } from "@/lib/tradeLogTos";
 import type {
@@ -350,14 +345,6 @@ export type PositionBuilderProps = {
   planePrinting?: boolean;
   onSave: (record: AnalyzerPosition) => void;
   onCancel: () => void;
-  /** Edit live bind — every patch writes the book. Create must not call this. */
-  onLivePatch?: (record: AnalyzerPosition) => void;
-  onLockLimit?: (magnitude: number) => void;
-  onLockNatural?: () => void;
-  onUnlock?: () => void;
-  /** Edit-only. Card no longer hosts the time widget (PC8-D). */
-  entryAt?: number | null;
-  onSetEntryAt?: (entryAt: number) => void;
 };
 
 /** Dialog width is a constant. Height follows leg-row count only. */
@@ -402,6 +389,17 @@ const LEGS_GAP_STYLE: CSSProperties = {
   padding: 0,
 };
 
+function copyAnalyzerPosition(src: AnalyzerPosition): AnalyzerPosition {
+  return {
+    ...src,
+    position: {
+      ...src.position,
+      legs: src.position.legs.map((l) => ({ ...l })),
+    },
+    lock: { ...src.lock },
+  };
+}
+
 export default function PositionBuilder({
   open,
   mode,
@@ -413,12 +411,6 @@ export default function PositionBuilder({
   planePrinting = marketLive,
   onSave,
   onCancel,
-  onLivePatch,
-  onLockLimit,
-  onLockNatural,
-  onUnlock,
-  entryAt = null,
-  onSetEntryAt,
 }: PositionBuilderProps) {
   const { profile, universe, loading: universeLoading } = useOptionsLab();
   const profileMinWing =
@@ -441,8 +433,7 @@ export default function PositionBuilder({
       direction: "buy",
     }),
   );
-  const record: AnalyzerPosition =
-    mode === "edit" && initial ? initial : draft;
+  const record: AnalyzerPosition = draft;
   const position = record.position;
   const setPosition = (
     update: PositionInput | ((prev: PositionInput) => PositionInput),
@@ -476,16 +467,11 @@ export default function PositionBuilder({
             : rec.lastNatSigned,
       };
     };
-    if (mode === "edit" && initial) {
-      onLivePatch?.(apply(initial));
-      return;
-    }
     setDraft((d) => apply(d));
   };
 
   /* Dialog chrome (M3 keep): notices, menus, drag, seed refs — not model. */
   const [copied, setCopied] = useState(false);
-  const [createEntryAt, setCreateEntryAt] = useState<number | null>(null);
   /** Defaults menu (lower-left footer) — Lab + up to 3 user presets */
   const [defaultsMenuOpen, setDefaultsMenuOpen] = useState(false);
   const [defaultsFlash, setDefaultsFlash] = useState<string | null>(null);
@@ -503,6 +489,8 @@ export default function PositionBuilder({
   const resolveGenRef = useRef(0);
   /** One seed per open — never re-seed over the user's structure. */
   const didSeed = useRef(false);
+  /** Open-session key (`edit:<id>` / `create`). Blocks re-seed on live book identity. */
+  const seedOpenKey = useRef<string | null>(null);
   /** Last chain rev we applied prices for (reprice only, no structure rewrite). */
   const lastPriceRev = useRef(-1);
   /** User explicitly changed front exp — do not auto-roll it. */
@@ -521,8 +509,10 @@ export default function PositionBuilder({
     back?: string;
   } | null>(null);
 
-  // Free-floating panel position (viewport coords)
+  // Free-floating panel position (viewport coords). Placed once on open.
   const [panelPos, setPanelPos] = useState(PANEL_DEFAULT_OFFSET);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const placedOnOpen = useRef(false);
   const dragRef = useRef<{
     startX: number;
     startY: number;
@@ -803,27 +793,45 @@ export default function PositionBuilder({
     [chain, priceLegs, symbol, spotPrice],
   );
 
-  // Reset seed flags when dialog closes; place panel when it opens
+  // Reset seed flags when dialog closes. Placement is a one-shot layout pass.
   useEffect(() => {
     if (!open) {
       didSeed.current = false;
+      seedOpenKey.current = null;
       pendingBuild.current = null;
       lastPriceRev.current = -1;
+      placedOnOpen.current = false;
       return;
     }
     setDefaultsStore(loadCreateDefaultsStore());
     userPickedExp.current = mode === "edit";
-    const w =
-      typeof window !== "undefined" ? window.innerWidth : PANEL_W + 96;
-    const x = Math.max(
-      16,
-      Math.min(w - Math.min(PANEL_W, w - 32) - 16, w - PANEL_W - 40),
-    );
-    setPanelPos({
-      x: Number.isFinite(x) ? x : PANEL_DEFAULT_OFFSET.x,
-      y: PANEL_DEFAULT_OFFSET.y,
-    });
   }, [open, mode]);
+
+  useLayoutEffect(() => {
+    if (!open || placedOnOpen.current) return;
+    const place = () => {
+      if (placedOnOpen.current) return;
+      const panel = panelRef.current;
+      const panelHeight = panel?.getBoundingClientRect().height ?? 0;
+      if (panelHeight < 8) return;
+      const canvas = document.querySelector(
+        '[data-testid="analyzer-risk-viewport"]',
+      );
+      const rect = canvas?.getBoundingClientRect();
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const cx = rect ? rect.left + rect.width / 2 : w / 2;
+      const cy = rect ? rect.top + rect.height / 2 : h / 2;
+      const x = Math.max(16, Math.min(w - PANEL_W - 16, cx - PANEL_W / 2));
+      const maxY = h - panelHeight - 16;
+      const y = maxY < 16 ? 16 : Math.max(16, Math.min(maxY, cy - panelHeight / 2));
+      setPanelPos({ x, y });
+      placedOnOpen.current = true;
+    };
+    place();
+    const raf = requestAnimationFrame(place);
+    return () => cancelAnimationFrame(raf);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -844,21 +852,18 @@ export default function PositionBuilder({
   useEffect(() => {
     if (!open || didSeed.current) return;
 
-    if (mode === "edit" && initial?.position.legs.length) {
-      // Live bind: chrome only. Do not snap, reprice, or write the record.
+    if (mode === "edit") {
+      if (!initial?.position.legs.length) return;
+      if (seedOpenKey.current != null) return;
+      seedOpenKey.current = `edit:${initial.id}`;
+      setDraft(copyAnalyzerPosition(initial));
       setStructureNotice(null);
       didSeed.current = true;
       return;
     }
 
-    if (mode === "create" && initial?.position.legs.length) {
-      setDraft({
-        ...initial,
-        position: {
-          ...initial.position,
-          legs: initial.position.legs.map((l) => ({ ...l })),
-        },
-      });
+    if (initial?.position.legs.length) {
+      setDraft(copyAnalyzerPosition(initial));
       didSeed.current = true;
       setStructureNotice(null);
       return;
@@ -1243,9 +1248,10 @@ export default function PositionBuilder({
     : "text-[var(--color-label-secondary)]";
   const pkgDelta = packageDelta(position.legs, effectiveSpot);
   const lockActive = record.lock.mode === "locked";
-  const lockedMagnitude = lockActive
-    ? Math.abs(record.lock.packageDebitPerShare)
-    : null;
+  const lockedMagnitude =
+    record.lock.mode === "locked"
+      ? Math.abs(record.lock.packageDebitPerShare)
+      : null;
   const packageSessionLabel = marketLive
     ? lockActive
       ? "Limit"
@@ -1594,25 +1600,7 @@ export default function PositionBuilder({
   const debitShown =
     lockActive && lockedMagnitude != null
       ? lockedMagnitude
-      : record.livePackagePerShare != null
-        ? Math.abs(record.livePackagePerShare)
-        : eco.absMid;
-  const dte = calendarDteOf(position.expiration);
-  const entryMs = resolveEntryAt({
-    entryAt: entryAt ?? createEntryAt,
-    createdAt: Date.now(),
-  });
-  const entryWall = nyWall(entryMs);
-  const entryHour12 = entryWall.hour % 12 || 12;
-  const entryAmpm = entryWall.hour >= 12 ? "PM" : "AM";
-  const commitEntry = (hour24: number, minute: number) => {
-    const next = applyEtHm(
-      entryMs,
-      `${String(hour24).padStart(2, "0")}:${String(minute).padStart(2, "0")}`,
-    );
-    if (onSetEntryAt) onSetEntryAt(next);
-    else setCreateEntryAt(next);
-  };
+      : eco.absMid;
   const stepDebit = (dir: "up" | "down") => {
     const mag = debitShown != null && debitShown > 0 ? debitShown : 0.05;
     let next: number;
@@ -1621,11 +1609,8 @@ export default function PositionBuilder({
     } catch {
       return;
     }
-    if (mode === "edit") onLockLimit?.(next);
-    else {
-      const isCredit = resolvePackageSide(record) === "credit";
-      setDraft((d) => lockLimit(d, next, isCredit));
-    }
+    const isCredit = resolvePackageSide(record) === "credit";
+    setDraft((d) => lockLimit(d, next, isCredit));
   };
   const scalePos = (n: number) => {
     const next = Math.max(1, Math.round(n));
@@ -1649,6 +1634,7 @@ export default function PositionBuilder({
 
   return (
     <div
+      ref={panelRef}
       className={
         "builder-steppers fixed z-50 flex max-h-[min(92vh,860px)] " +
         "flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-separator)] " +
@@ -2159,18 +2145,24 @@ export default function PositionBuilder({
                             locked={lockActive}
                             testId="builder-padlock"
                             onToggle={() => {
-                              if (mode === "edit") {
-                                if (lockActive) onUnlock?.();
-                                else onLockNatural?.();
+                              if (lockActive) {
+                                setDraft((d) => unlockCard(d));
                                 return;
                               }
-                              if (lockActive) setDraft((d) => unlockCard(d));
-                              else {
-                                try {
-                                  setDraft((d) => lockNatural(d));
-                                } catch {
-                                  /* incomplete quote — stay unlocked */
-                                }
+                              try {
+                                const liveNat =
+                                  eco.signedMid != null &&
+                                  Number.isFinite(eco.signedMid)
+                                    ? -eco.signedMid
+                                    : null;
+                                setDraft((d) =>
+                                  lockNatural({
+                                    ...d,
+                                    lastNatSigned: liveNat ?? d.lastNatSigned,
+                                  }),
+                                );
+                              } catch {
+                                /* incomplete quote — stay unlocked */
                               }
                             }}
                           />
@@ -2192,6 +2184,7 @@ export default function PositionBuilder({
                             {pkgPos}
                           </span>
                           <TosQtyControl surface="card"
+                            menuPortal
                             testId="builder-pos-step"
                             onUp={() => scalePos(pkgPos + 1)}
                             onDown={() => scalePos(Math.max(1, pkgPos - 1))}

@@ -33,15 +33,16 @@ function test(name: string, fn: () => void) {
 }
 
 const editSeed = builder.slice(
-  builder.indexOf('mode === "edit" && initial?.position.legs.length'),
-  builder.indexOf("if (mode === \"create\" && initial?.position.legs.length"),
+  builder.indexOf("if (mode === \"edit\") {"),
+  builder.indexOf("// —— Create: wait for OPF"),
 );
 
-test("AT-PC-04 Opening Edit writes zero fields — no snap, no reprice, no write", () => {
-  assert.match(editSeed, /Live bind: chrome only/);
+test("AT-PC-04 Opening Edit copies into draft once; no snap, no reprice, no book write", () => {
+  assert.match(editSeed, /copyAnalyzerPosition\(initial\)/);
+  assert.match(editSeed, /seedOpenKey/);
   assert.doesNotMatch(editSeed, /snapToListed/);
   assert.doesNotMatch(editSeed, /priceLegs/);
-  assert.doesNotMatch(editSeed, /setPosition/);
+  assert.doesNotMatch(editSeed, /onLivePatch/);
   assert.match(builder, /if \(mode === "edit"\) return;/);
 });
 
@@ -61,10 +62,12 @@ test("AT-PC-21 Create Cancel does not insert; Submit does", () => {
   assert.match(host, /setCreateReopen\(null\)/);
 });
 
-test("AT-PC-22 Create draft is off-book until Submit", () => {
+test("AT-PC-22 Create and Edit drafts are off-book until Analyze/Update", () => {
   assert.match(host, /commitBook\("create-submit"/);
   assert.match(builder, /const \[draft, setDraft\]/);
-  assert.match(builder, /mode === "edit" && initial/);
+  assert.match(builder, /const record: AnalyzerPosition = draft/);
+  assert.doesNotMatch(builder, /onLivePatch/);
+  assert.doesNotMatch(host, /onLivePatch=/);
 });
 
 test("AT-PC-56 Create opens on Butterfly, unlocked, no seeded basis", () => {
@@ -114,13 +117,15 @@ test("AT-PC-50 Create-reopen half: undo restores draft and host reopens Create",
   assert.equal(entry?.book.length, 0);
   assert.match(host, /entry\.kind === "create-submit" && entry\.draft/);
   assert.match(host, /setCreateReopen\(entry\.draft\)/);
-  assert.match(host, /onLivePatch=/);
+  assert.doesNotMatch(host, /onLivePatch=/);
 });
 
-test("AT-PC-01 live bind: card writes go through onLivePatch while dialog is open", () => {
-  assert.match(host, /onLivePatch=\{\(record\) =>/);
+test("AT-PC-01 Edit is transactional — no live patch while the dialog is open", () => {
+  assert.doesNotMatch(host, /onLivePatch=/);
+  assert.doesNotMatch(builder, /onLivePatch/);
   assert.match(host, /applyEditPatch\(/);
-  assert.match(host, /record\.position/);
+  assert.match(host, /\{ lock: record\.lock \}/);
+  assert.match(builder, /const record: AnalyzerPosition = draft/);
 });
 
 test("DLGM M1 draft is AnalyzerPosition", () => {

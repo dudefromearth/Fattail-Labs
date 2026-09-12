@@ -104,6 +104,9 @@ test("AT-DLG-16 panel width is one constant; not window-responsive", () => {
   assert.match(builder, /data-content-inset=\{String\(PANEL_INSET\)\}/);
   assert.doesNotMatch(builder, /100vw/);
   assert.doesNotMatch(builder, /min\(1100px/);
+  assert.doesNotMatch(builder, /w - PANEL_W - 40/);
+  assert.match(builder, /analyzer-risk-viewport/);
+  assert.match(builder, /placedOnOpen/);
   const hits = grep(
     String.raw`(^|[^a-z-])(p|px|py|pt|pb|pl|pr|m|mx|my|mt|mb|ml|mr|gap|gap-x|gap-y|space-x|space-y)-(0\.5|1\.5|2\.5|3\.5|7|8|9|10|11|12|14|16)\b`,
   );

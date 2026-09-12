@@ -1753,6 +1753,7 @@ export default function OpfRiskAnalyzer() {
                   record.position,
                   record.label,
                   record.notation,
+                  { lock: record.lock },
                 )
               : p,
           ),
@@ -2828,61 +2829,6 @@ export default function OpfRiskAnalyzer() {
           setCreateReopen(null);
         }}
         onSave={handleBuilderSave}
-        onLivePatch={(record) => {
-          if (!editId) return;
-          commitBook("dialog", (prev) =>
-            prev.map((p) =>
-              p.id === editId
-                ? applyEditPatch(
-                    p,
-                    record.position,
-                    record.label,
-                    record.notation,
-                  )
-                : p,
-            ),
-          );
-        }}
-        onLockLimit={(mag) => {
-          if (!editId) return;
-          const pos = positionsRef.current.find((p) => p.id === editId);
-          if (!pos) return;
-          const isCredit = pos.priceSide === "credit";
-          commitBook("lock", (prev) =>
-            prev.map((p) => (p.id === editId ? lockLimit(p, mag, isCredit) : p)),
-          );
-        }}
-        onLockNatural={() => {
-          if (!editId) return;
-          commitBook("lock", (prev) =>
-            prev.map((p) => (p.id === editId ? lockNatural(p) : p)),
-          );
-        }}
-        onUnlock={() => {
-          if (!editId) return;
-          commitBook("unlock", (prev) =>
-            prev.map((p) => (p.id === editId ? unlockCard(p) : p)),
-          );
-        }}
-        entryAt={
-          editId
-            ? positions.find((p) => p.id === editId)?.entryAt ?? null
-            : null
-        }
-        onSetEntryAt={
-          editId
-            ? (ms) => {
-                const id = editId;
-                commitBook("card", (prev) =>
-                  prev.map((p) =>
-                    p.id === id
-                      ? { ...p, entryAt: ms, updatedAt: Date.now() }
-                      : p,
-                  ),
-                );
-              }
-            : undefined
-        }
       />
     </div>
   );
