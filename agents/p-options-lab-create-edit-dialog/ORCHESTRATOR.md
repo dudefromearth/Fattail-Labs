@@ -16,10 +16,15 @@ W0  (W0-4 India surface APPROVED is an entry gate on DLG0)
  └── DLG0  surface prop + data-surface
       └── DLG1  theme          ← before chrome
             └── DLG2  chrome / layout / verbs / removals
-                  └── DLG3  symbol
-                        └── DLG4  behaviour
-                              └── DLGZ  Echo + Tango + Delta AT-DLG-1…15
+                  └── DLGM  common model   ← India signed; needs its own Coach GO
+                        └── DLG3  symbol
+                              └── DLG4  behaviour
+                                    └── DLGZ  Echo + Tango + Delta AT-DLG-1…15
 ```
+
+**DLGM** is architecture-signed (`reviews/DLGM-india.md`), not GO'd. Visual
+iteration does not share this packet. Do not seed DLGM from `DLG-W0` as it
+stands. Do not run DLGM in the same packet as layout/colour.
 
 Do **not** seed DLG1 before DLG0-G PASS.
 Do **not** seed DLG2 before DLG1-G PASS. Theme before chrome is the governing sequence.
