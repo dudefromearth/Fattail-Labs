@@ -4,6 +4,35 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-12 — DL-695 Create / Edit Position Dialog Spec v0.11 BUILD AUTHORITY · DLG-VOCAB-5
+
+**Decision (Coach).** Spec
+`Specs/FatTail-Labs-Options-Lab-Create-Edit-Position-Dialog-Spec-v0_11.md`
+is **BUILD AUTHORITY**. Token
+[`agents/go/DLG-W0.md`](../agents/go/DLG-W0.md) re-stamped at v0.11.
+sha1 `9daed092281352bc20bf52582160ea4afe270b37` (Delta, from disk).
+
+**One addition.** **DLG-VOCAB-5** — the card's menu marker is the dialog's
+menu marker. Same `CardMenuField`, `surface="dialog"`. Corner-nested solid
+triangle, bottom-right, flush, not a hit target. Colour is a semantic marker
+token that contrasts with the field — *"white"* describes the ToS reference,
+not a hex. A white triangle on a light field is a defect. On every menu
+field (symbol, strategy, strike, type, expiration) and nowhere else.
+
+**Recorded deviation.** Replaces the platform pop-up chevron that DLG-HIG-3
+otherwise requires. Written into HIG-3 itself. Do not "fix" it back.
+
+**Echo named** `--color-menu-marker`. Follows the document theme (aliases
+`--color-label`). Card keeps its blotter-white triangle.
+
+v0.4–v0.10 stay on disk as baselines. v0.9 and v0.10 land as authored
+baselines; this stamp does not reopen them as BUILD AUTHORITY.
+**DLG0 (`93b08d8`) and DLG1 (`8faf9cd`) are not reopened.**
+
+**Does not:** deploy. Reopen DLG0/DLG1. Restore a chevron. Edit frozen Spec v1.2.
+
+---
+
 ## 2026-09-12 — DL-694 Create / Edit Position Dialog Spec v0.8 BUILD AUTHORITY · DLG2 rebuilds
 
 **Decision (Coach).** Spec
