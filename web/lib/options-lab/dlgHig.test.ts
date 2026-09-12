@@ -157,8 +157,11 @@ test("AT-DLG-19 legs panel is the position card", () => {
   assert.match(legs, /c !== "DELTA"/);
 });
 
-test("AT-DLG-20 colour present: Buy and payoff use --color-success", () => {
-  assert.match(builder, /stroke="var\(--color-success\)"/);
+test("AT-DLG-20 payoff is success on buy, destructive on sell", () => {
+  assert.match(
+    builder,
+    /direction === "buy"[\s\S]*?var\(--color-success\)[\s\S]*?var\(--color-destructive\)/,
+  );
   assert.match(builder, /bg-\[var\(--color-success\)\]/);
   assert.doesNotMatch(builder, /#22c55e|#ef4444|bg-emerald-600/);
 });

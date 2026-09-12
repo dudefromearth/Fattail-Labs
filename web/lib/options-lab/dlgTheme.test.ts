@@ -110,6 +110,7 @@ test("AT-DLG-4 dialog branch of TosControls uses tokens, not card floor", () => 
 
 test("Buy/payoff use success accent token; script uses code-surface", () => {
   assert.match(builder, /var\(--color-success\)/);
+  assert.match(builder, /var\(--color-destructive\)/);
   assert.match(builder, /var\(--color-code-surface\)/);
   assert.doesNotMatch(builder, /#22c55e|#ef4444|bg-emerald-600|bg-red-600/);
 });

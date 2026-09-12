@@ -1745,7 +1745,11 @@ export default function PositionBuilder({
             <path
               d={STRATEGY_DIAGRAMS[template]}
               fill="none"
-              stroke="var(--color-success)"
+              stroke={
+                direction === "buy"
+                  ? "var(--color-success)"
+                  : "var(--color-destructive)"
+              }
               strokeWidth="2.25"
               strokeLinecap="round"
               strokeLinejoin="round"

@@ -351,8 +351,7 @@ export function TosQtyControl({
 const PADLOCK_PAINT = "#ffffff";
 const PADLOCK_W = 22;
 const PADLOCK_H = 18;
-const PADLOCK_STROKE = 2.15;
-const PADLOCK_BODY = { x: 4.6, y: 9.05, w: 11.6, h: 8.1, rx: 1.7 };
+const PADLOCK_STROKE = 1.5;
 
 function TosPadlockGlyph({
   locked,
@@ -361,7 +360,6 @@ function TosPadlockGlyph({
   locked: boolean;
   paint: string;
 }) {
-  const b = PADLOCK_BODY;
   return (
     <svg
       width={PADLOCK_W}
@@ -370,48 +368,22 @@ function TosPadlockGlyph({
       className="block"
       aria-hidden
       data-lock-state={locked ? "locked" : "unlocked"}
-      data-lock-shackle={locked ? "over" : "side"}
-      data-lock-body={locked ? "solid" : "outlined"}
+      data-lock-shackle={locked ? "over" : "left"}
+      data-lock-body="solid"
       data-padlock-footprint="22x18"
     >
-      {locked ? (
-        <rect
-          x={b.x}
-          y={b.y}
-          width={b.w}
-          height={b.h}
-          rx={b.rx}
-          fill={paint}
-        />
-      ) : (
-        <rect
-          x={b.x}
-          y={b.y}
-          width={b.w}
-          height={b.h}
-          rx={b.rx}
-          fill="none"
-          stroke={paint}
-          strokeWidth={PADLOCK_STROKE}
-        />
-      )}
-      {locked ? (
-        <path
-          d="M 7.15 9.15 A 3.15 3.15 0 0 0 13.45 9.15"
-          fill="none"
-          stroke={paint}
-          strokeWidth={PADLOCK_STROKE}
-          strokeLinecap="round"
-        />
-      ) : (
-        <path
-          d="M 7.15 9.15 V 5.65 A 5 5 0 0 0 16.2 6.5"
-          fill="none"
-          stroke={paint}
-          strokeWidth={PADLOCK_STROKE}
-          strokeLinecap="round"
-        />
-      )}
+      <path
+        d={
+          locked
+            ? "M 8.2 8.6 V 5.6 A 2.8 2.8 0 0 1 13.8 5.6 V 8.6"
+            : "M 8.2 8.6 V 5.6 A 2.8 2.8 0 0 0 2.8 6.2"
+        }
+        fill="none"
+        stroke={paint}
+        strokeWidth={PADLOCK_STROKE}
+        strokeLinecap="round"
+      />
+      <rect x="6" y="7.8" width="10" height="9.2" rx="1.8" fill={paint} />
     </svg>
   );
 }

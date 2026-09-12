@@ -151,15 +151,19 @@ test("AT-PC-65 Calendar per-leg exp/strike re-derives the name", () => {
   assert.equal(catalogName(sameStrike.position.legs), "Calendar");
 });
 
-test("AT-PC-66 padlock pair: shackle carries state, unlocked is outlined", () => {
+test("AT-PC-66 padlock pair: body solid both states; unlocked shackle left", () => {
   const src = readFileSync(
     join(here, "../../components/options-lab/TosControls.tsx"),
     "utf8",
   );
+  const glyph = src.slice(src.indexOf("function TosPadlockGlyph"));
   assert.doesNotMatch(src, /IconLock|IconUnlock/);
-  assert.match(src, /data-lock-shackle=\{locked \? "over" : "side"\}/);
-  assert.match(src, /data-lock-body=\{locked \? "solid" : "outlined"\}/);
-  assert.match(src, /fill="none"/);
+  assert.match(glyph, /data-lock-shackle=\{locked \? "over" : "left"\}/);
+  assert.match(glyph, /data-lock-body="solid"/);
+  assert.match(glyph, /<rect x="6" y="7.8" width="10" height="9.2" rx="1.8" fill=\{paint\} \/>/);
+  assert.match(glyph, /A 2.8 2.8 0 0 0 2.8 6.2/);
+  assert.match(glyph, /A 2.8 2.8 0 0 1 13.8 5.6/);
+  assert.doesNotMatch(glyph, /data-lock-body=\{locked/);
   assert.match(src, /data-locked=\{locked \? "1" : "0"\}/);
 });
 

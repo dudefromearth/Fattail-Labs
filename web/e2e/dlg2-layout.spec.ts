@@ -1,5 +1,5 @@
 import { test, expect, type Locator, type Page } from "@playwright/test";
-import { copyFileSync } from "node:fs";
+import { copyFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
 /**
@@ -210,14 +210,67 @@ test("Sell inverts legs, script, and blotter to credit red", async ({
   test.setTimeout(90_000);
   const dialog = await openDialog(page);
   const surface = dialog.getByTestId("builder-legs-surface");
+  const payoff = dialog.getByTestId("builder-payoff").locator("path");
   await expect(surface).toHaveAttribute("data-blotter-kind", "open");
+  await expect(payoff).toHaveAttribute("stroke", "var(--color-success)");
   await dialog.screenshot({ path: join(OUT, "dialog-debit.png") });
 
   await dialog.getByRole("radio", { name: "Sell" }).click();
   await expect(surface).toHaveAttribute("data-blotter-kind", "close");
+  await expect(payoff).toHaveAttribute("stroke", "var(--color-destructive)");
   await expect(dialog.getByTestId("builder-leg-side-1")).toHaveText("BUY");
   await expect(dialog.getByTestId("builder-tos-script")).toContainText(/^SELL/);
   await dialog.screenshot({ path: join(OUT, "dialog-credit.png") });
+});
+
+test("padlock both states on dialog green and on the card", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  const PAD = join(
+    process.cwd(),
+    "../agents/p-options-lab-create-edit-dialog/gate-reports/padlock",
+  );
+  mkdirSync(PAD, { recursive: true });
+  const shot = async (el: Locator, name: string) => {
+    const box = await el.boundingBox();
+    if (!box) throw new Error(`no box for ${name}`);
+    await page.screenshot({
+      path: join(PAD, name),
+      clip: {
+        x: Math.max(0, box.x - 12),
+        y: Math.max(0, box.y - 12),
+        width: box.width + 24,
+        height: box.height + 24,
+      },
+    });
+  };
+
+  const dialog = await openDialog(page);
+  const pad = dialog.getByTestId("builder-padlock");
+  await expect(pad.locator("svg")).toHaveAttribute("data-lock-body", "solid");
+  await expect(pad.locator("svg")).toHaveAttribute("data-lock-shackle", "left");
+  await shot(pad, "dialog-after-unlocked.png");
+
+  await dialog.getByTestId("builder-analyze").click();
+  const cell = page.locator('[data-testid^="analyzer-pos-lock-cell-"]').first();
+  await expect(cell).toBeVisible({ timeout: 30_000 });
+  const cardPad = cell.getByRole("button");
+  await expect(cardPad.locator("svg")).toHaveAttribute("data-lock-body", "solid");
+  await expect(cardPad.locator("svg")).toHaveAttribute("data-lock-shackle", "left");
+  await shot(cell, "card-after-unlocked.png");
+  await cardPad.click();
+  await expect(cardPad).toHaveAttribute("data-locked", "1");
+  await expect(cardPad.locator("svg")).toHaveAttribute("data-lock-shackle", "over");
+  await shot(cell, "card-after-locked.png");
+
+  await page.locator('[data-testid^="analyzer-pos-edit-"]').first().click();
+  const edit = page.getByTestId("position-builder");
+  await expect(edit).toBeVisible();
+  const editPad = edit.getByTestId("builder-padlock");
+  await expect(editPad).toHaveAttribute("data-locked", "1");
+  await expect(editPad.locator("svg")).toHaveAttribute("data-lock-shackle", "over");
+  await shot(editPad, "dialog-after-locked.png");
 });
 
 test("AT-DLG-29 menu marker on menu fields, both themes", async ({ page }) => {
