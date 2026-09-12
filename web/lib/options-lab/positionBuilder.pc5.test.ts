@@ -174,4 +174,29 @@ test("DLGM M6 seam hands and receives a record; undo stores PositionInput", () =
   assert.match(host, /setCreateReopen\(entry\.draft\)/);
 });
 
+test("TYPE select writes origIdx only; view order is model order", () => {
+  const view = builder.slice(
+    builder.indexOf("const orderedLegs"),
+    builder.indexOf("const frontExp"),
+  );
+  assert.match(view, /position\.legs\.map\(\(leg, origIdx\)/);
+  assert.doesNotMatch(view, /\.sort\(/);
+  assert.match(builder, /key=\{`leg-\$\{i\}`\}/);
+  assert.doesNotMatch(builder, /key=\{`\$\{i\}-\$\{leg\.strike\}-\$\{leg\.type\}`\}/);
+
+  const typeIdx = builder.indexOf("data-testid={`builder-leg-type-${i}`}");
+  const typeCell = builder.slice(typeIdx - 180, typeIdx + 500);
+  assert.match(typeCell, /<select/);
+  assert.match(typeCell, /updateLeg\(i, \{ type \}\)/);
+  assert.doesNotMatch(typeCell, /onClick=\{\(\) =>/);
+  assert.match(builder, /orderLegsCanonical/);
+
+  const update = builder.slice(
+    builder.indexOf("const updateLeg"),
+    builder.indexOf("const addLeg"),
+  );
+  assert.match(update, /prev\.legs\.map/);
+  assert.match(update, /if \(i !== index\) return l/);
+});
+
 console.log(`positionBuilder.pc5.test.ts ${n} ok`);

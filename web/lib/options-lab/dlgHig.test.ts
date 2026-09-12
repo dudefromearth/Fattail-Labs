@@ -152,7 +152,8 @@ test("AT-DLG-19 legs panel is the position card", () => {
   assert.match(builder, /CARD_TD/);
   assert.match(builder, /CARD_THEAD/);
   assert.match(builder, /cardSelect/);
-  assert.match(builder, /leg\.type === "call" \? "CALL" : "PUT"/);
+  assert.match(builder, /<option value="call">CALL<\/option>/);
+  assert.match(builder, /<option value="put">PUT<\/option>/);
   assert.doesNotMatch(builder, />EXPIRATION</);
   assert.doesNotMatch(builder, />Call</);
   assert.doesNotMatch(builder, />Put</);

@@ -400,6 +400,16 @@ function copyAnalyzerPosition(src: AnalyzerPosition): AnalyzerPosition {
   };
 }
 
+/** Calls first, then ascending strike. Applied at generation, never in the view. */
+function orderLegsCanonical(legs: readonly LegInput[]): LegInput[] {
+  return legs
+    .map((l) => ({ ...l }))
+    .sort((a, b) => {
+      if (a.type !== b.type) return a.type === "call" ? -1 : 1;
+      return a.strike - b.strike;
+    });
+}
+
 export default function PositionBuilder({
   open,
   mode,
@@ -776,6 +786,7 @@ export default function PositionBuilder({
       if (dir === "sell") {
         legs = flipLegs(legs);
       }
+      legs = orderLegsCanonical(legs);
 
       pendingBuild.current = null;
       setStructureNotice(null);
@@ -1532,6 +1543,7 @@ export default function PositionBuilder({
       if (direction === "sell") {
         legs = flipLegs(legs);
       }
+      legs = orderLegsCanonical(legs);
     } else {
       const listed = chain.getStrikes(exp);
       if (listed.length) {
@@ -1623,12 +1635,7 @@ export default function PositionBuilder({
 
   if (!open) return null;
 
-  const orderedLegs = [...position.legs]
-    .map((leg, origIdx) => ({ leg, origIdx }))
-    .sort((a, b) => {
-      if (a.leg.type !== b.leg.type) return a.leg.type === "call" ? -1 : 1;
-      return a.leg.strike - b.leg.strike;
-    });
+  const orderedLegs = position.legs.map((leg, origIdx) => ({ leg, origIdx }));
 
   const frontExp = (position.expiration || frontDefault || "").slice(0, 10);
 
@@ -1920,7 +1927,7 @@ export default function PositionBuilder({
                   textMain;
                 return (
                   <tr
-                    key={`${i}-${leg.strike}-${leg.type}`}
+                    key={`leg-${i}`}
                     className="tabular-nums"
                     style={{ backgroundColor: blotterBg }}
                   >
@@ -2093,25 +2100,21 @@ export default function PositionBuilder({
                       style={legsPad(rowPad)}
                     >
                       <CardMenuField surface="card" fit="min">
-                        <button
-                          type="button"
-                          className={
-                            "h-[18px] rounded-sm " +
-                            FIELD_FILL +
-                            " px-1 py-0 " +
-                            textMain
-                          }
+                        <select
+                          className={cardSelect + " " + textMain}
+                          value={leg.type}
                           data-testid={`builder-leg-type-${i}`}
                           data-field="type"
                           aria-label="Leg type"
-                          onClick={() =>
-                            updateLeg(i, {
-                              type: leg.type === "call" ? "put" : "call",
-                            })
-                          }
+                          onChange={(e) => {
+                            const type =
+                              e.target.value === "put" ? "put" : "call";
+                            updateLeg(i, { type });
+                          }}
                         >
-                          {leg.type === "call" ? "CALL" : "PUT"}
-                        </button>
+                          <option value="call">CALL</option>
+                          <option value="put">PUT</option>
+                        </select>
                       </CardMenuField>
                     </td>
                     <td
