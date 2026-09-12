@@ -64,7 +64,7 @@ Nothing deploys.
 | AT-DLG-17 | **PASS** | Echo + Tango |
 | AT-DLG-18 | **PASS** | script on screen |
 | AT-DLG-19 | **PASS** | legs pad |
-| AT-DLG-20 | **PASS** | `--color-success` |
+| AT-DLG-20 | **PASS at gate** | `--color-success` only. **§12 (DL-698):** this criterion accepted the flattened payoff stroke. Restored buy success / sell destructive at `18467e0`. |
 | AT-DLG-21 | **PASS** | Playwright wrap, both themes, larger type |
 | AT-DLG-22 | **PASS** | five additions absent |
 | AT-DLG-23 | **PASS** | fields; `Sep 14 26` |

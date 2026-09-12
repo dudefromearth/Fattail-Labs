@@ -4,6 +4,79 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-12 — DL-698 §12 violation · payoff Buy/Sell colour was streamlining mid-build
+
+**Decision.** Doctrine §12 (DL-334) and §13 (DL-336). The strategy-icon
+Buy green / Sell red colour is Coach intent. Removing it mid-build is a
+§12 violation — a refactor that changed what the member sees. Restored
+in tokens at `18467e0`: `--color-success` on buy, `--color-destructive`
+on sell. Same rule the legs panel already uses via
+`blotterKindFromPackageSide`. Nothing deploys.
+
+**As-built sequence (disk, not chat):**
+
+| Commit | What happened to the payoff stroke |
+|--------|--------------------------------------|
+| before DLG1 | `direction === "buy" ? "#22c55e" : "#ef4444"` |
+| **`8faf9cd` (DLG1)** | Hexes replaced with `--color-success` / `--color-destructive`. **The branch was kept.** |
+| **`029a6a1` (DLG2 prototype)** | Rebuilt the icon as `stroke="var(--color-success)"` unconditional. Commit text: *"Green Buy and payoff from --color-success."* **This is the de-scope.** |
+| `18467e0` | Branch restored in tokens. |
+
+Coach attributed the loss to `8faf9cd` because `git log -S"#ef4444"`
+lands there. That is where the hexes left. The **meaning** left one
+packet later, when the layout rebuild inlined a single token.
+
+### Process failure 1 — the gate did not block it
+
+§12 names India and Delta as the block on quiet de-scope.
+
+- **DLG1-G AT-DLG-4 PASS:** "zero hex, zero palette classes" in
+  `PositionBuilder.tsx`. A build that keeps the branch in tokens and a
+  build that deletes the branch both satisfy that grep.
+- **DLG2-G AT-DLG-20 PASS:** "`--color-success`". The flattened stroke
+  **is** the criterion. A criterion a regression can satisfy is not a
+  gate.
+
+India and Delta did not fail a member-visible colour loss because
+nothing in those gates asked whether Buy and Sell still disagreed.
+
+### Process failure 2 — the law invited it
+
+DLG-THEME-4: a literal hex is a defect. It said nothing about
+preserving the branch the hex carried. A rule about *where* colour
+comes from ate *what* the colour meant. `029a6a1` then treated
+"success token" as the whole of Coach's green, and dropped red.
+
+### Siblings in `8faf9cd` — every removed hex / palette pair
+
+Reported, not silently fixed. None of these other sites was a Buy/Sell
+colour pair that got flattened at DLG1:
+
+| Site | Removed | Became | Branch at DLG1? |
+|------|---------|--------|-----------------|
+| Payoff stroke | `#22c55e` / `#ef4444` | success / destructive tokens | **kept** (lost at `029a6a1`) |
+| Buy button | `bg-emerald-600` | `--color-success` | **kept** through DLG2 |
+| Sell button | `bg-red-600` | `--color-destructive` | **kept** through DLG2 |
+| ToS script | `text-emerald-400` + `bg-black` + `border-emerald-800/80` | `--color-code-surface` + `--color-success` | was never buy/sell; script stays green |
+| "click to copy" | `text-emerald-600/80` | `--color-label-secondary` | not a buy/sell pair |
+| Preview line | `text-emerald-400` | `--color-label-secondary` | Preview later struck (v0.8); not buy/sell |
+
+No other `#ef4444` / `#22c55e` pair exists in that diff.
+
+### Repo finding — `INSTRUCTIONS.md`
+
+Not in the repo root. `git log --all -- INSTRUCTIONS.md` is empty —
+**never landed**, not moved, not renamed. `CLAUDE.md` and `AGENTS.md`
+do not list it. Specs and older DLs still cite it (including
+`INSTRUCTIONS.md` §3 in DL-685's pillar note). GSC6-G already recorded
+the same as-built (cited "DL-2804", which is **not** a number in this
+log). Agents told to read three root operating documents are reading
+two. This packet does not invent the file.
+
+**Does not:** deploy. Reopen DLG1 as a packet. Invent INSTRUCTIONS.md.
+
+---
+
 ## 2026-09-12 — DL-697 DLGM GO · dialog working model is a draft AnalyzerPosition
 
 **Decision (Coach).** Token [`agents/go/DLGM.md`](../agents/go/DLGM.md)

@@ -66,3 +66,10 @@ positionBuilder.pc5.test.ts 9 ok
 ## Next
 
 DLG2 (chrome / layout / verbs / removals). Do not start until this commit is on HEAD. No deploy.
+
+## Post-hoc — DL-698 · §12
+
+AT-DLG-4 **PASS**ed "zero hex." That grep cannot see a buy/sell branch
+once the hexes are tokens. The branch survived this commit (tokens) and
+died at `029a6a1`. A criterion a regression can satisfy is not a gate.
+See DL-698.
