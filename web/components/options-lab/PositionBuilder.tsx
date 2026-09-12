@@ -369,15 +369,31 @@ const LEGS_GROUP_GAP = 32;
  * Table + 15px pad + 20px dialog inset, both sides.
  * Measured against max-content legs (no w-full). Do not derive from the window.
  */
-const PANEL_W = 756;
+const PANEL_W = 760;
 const PANEL_DEFAULT_OFFSET = { x: 48, y: 72 };
 
-function legsGroupPad(col: string): CSSProperties | undefined {
-  if (col === "QTY" || col === "TYPE" || col === "POS") {
-    return { paddingRight: LEGS_GROUP_GAP };
-  }
-  return undefined;
+/** Padding belongs on the rows, never on the panel/header band. */
+function legsPad(opts: {
+  first?: boolean;
+  last?: boolean;
+  above?: boolean;
+  below?: boolean;
+  head?: boolean;
+}): CSSProperties {
+  return {
+    ...(opts.head ? { textAlign: "center" as const } : null),
+    ...(opts.first ? { paddingLeft: LEGS_PAD } : null),
+    ...(opts.last ? { paddingRight: LEGS_PAD } : null),
+    ...(opts.above ? { paddingTop: LEGS_PAD } : null),
+    ...(opts.below ? { paddingBottom: LEGS_PAD } : null),
+  };
 }
+
+const LEGS_GAP_STYLE: CSSProperties = {
+  width: LEGS_GROUP_GAP,
+  minWidth: LEGS_GROUP_GAP,
+  padding: 0,
+};
 
 export default function PositionBuilder({
   open,
@@ -1822,11 +1838,10 @@ export default function PositionBuilder({
             data-blotter-kind={blotterKind}
             data-pkg-delta={pkgDelta == null ? "" : String(pkgDelta)}
             data-iv={fmtIv(position.legs[0]?.volatility)}
-            className="rounded border border-[var(--color-separator)]"
+            className="overflow-hidden rounded border border-[var(--color-separator)]"
             style={{
               ...BLOTTER_CSS_VARS,
               backgroundColor: blotterBg,
-              padding: LEGS_PAD,
               width: "max-content",
             }}
           >
@@ -1847,36 +1862,50 @@ export default function PositionBuilder({
                     c !== "SYMBOL" &&
                     c !== "VOL" &&
                     c !== "DELTA",
-                ).flatMap((col) => {
+                ).flatMap((col, i) => {
                   const heading = (
                     <th
                       key={col}
-                      className={
-                        CARD_TH +
-                        (col === "QTY" ||
-                        col === "STRIKE" ||
-                        col === "PRICE"
-                          ? " text-right"
-                          : "")
-                      }
-                      style={legsGroupPad(col)}
+                      className={CARD_TH}
+                      style={legsPad({
+                        first: i === 0,
+                        head: true,
+                      })}
                     >
                       {col}
                     </th>
                   );
+                  const gap = (
+                    <th
+                      key={`${col}-gap`}
+                      className={CARD_TH}
+                      style={LEGS_GAP_STYLE}
+                      aria-hidden
+                    />
+                  );
+                  if (col === "QTY" || col === "TYPE") return [heading, gap];
                   if (col !== "PRICE") return [heading];
                   return [
                     heading,
                     <th
                       key="pos"
-                      className={CARD_TH + " text-right"}
-                      style={legsGroupPad("POS")}
+                      className={CARD_TH}
+                      style={legsPad({ head: true })}
                     >
                       POS
                     </th>,
+                    <th
+                      key="pos-gap"
+                      className={CARD_TH}
+                      style={LEGS_GAP_STYLE}
+                      aria-hidden
+                    />,
                   ];
                 })}
-                <th className={CARD_TH} />
+                <th
+                  className={CARD_TH}
+                  style={legsPad({ last: true, head: true })}
+                />
               </tr>
             </thead>
             <tbody>
@@ -1886,7 +1915,9 @@ export default function PositionBuilder({
                 const strikeDecimals = strikeGridDecimals(legStrikes);
                 const signed = signedActualQty(leg);
                 const isTop = row === 0;
+                const isBot = row === orderedLegs.length - 1;
                 const legSide = leg.side === "long" ? "BUY" : "SELL";
+                const rowPad = { above: isTop, below: isBot };
                 const valueField =
                   "inline-flex h-[18px] items-center justify-end rounded-sm " +
                   FIELD_FILL +
@@ -1902,6 +1933,7 @@ export default function PositionBuilder({
                   >
                     <td
                       className={CARD_TD + " " + textMain}
+                      style={legsPad({ first: true, ...rowPad })}
                       onClick={(e) => e.stopPropagation()}
                     >
                       {isTop ? (
@@ -1927,7 +1959,7 @@ export default function PositionBuilder({
                     </td>
                     <td
                       className={CARD_TD + " text-right font-mono " + textMain}
-                      style={legsGroupPad("QTY")}
+                      style={legsPad(rowPad)}
                     >
                       <div className="flex items-center justify-end gap-1">
                         <span
@@ -1954,7 +1986,15 @@ export default function PositionBuilder({
                         />
                       </div>
                     </td>
-                    <td className={CARD_TD} onClick={(e) => e.stopPropagation()}>
+                    <td
+                      style={{ ...LEGS_GAP_STYLE, ...legsPad(rowPad) }}
+                      aria-hidden
+                    />
+                    <td
+                      className={CARD_TD}
+                      style={legsPad(rowPad)}
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       {hasExps ? (
                         <CardMenuField surface="card" fit="min">
                           <select
@@ -1993,7 +2033,10 @@ export default function PositionBuilder({
                         </span>
                       )}
                     </td>
-                    <td className={CARD_TD + " text-right font-mono " + textMain}>
+                    <td
+                      className={CARD_TD + " text-right font-mono " + textMain}
+                      style={legsPad(rowPad)}
+                    >
                       <div className="flex items-center justify-end gap-1">
                         {legStrikes.length ? (
                           <CardMenuField surface="card" fit="min">
@@ -2054,7 +2097,7 @@ export default function PositionBuilder({
                     </td>
                     <td
                       className={CARD_TD + " " + textMain}
-                      style={legsGroupPad("TYPE")}
+                      style={legsPad(rowPad)}
                     >
                       <CardMenuField surface="card" fit="min">
                         <button
@@ -2078,7 +2121,14 @@ export default function PositionBuilder({
                         </button>
                       </CardMenuField>
                     </td>
-                    <td className={CARD_TD + " text-right font-mono " + textMain}>
+                    <td
+                      style={{ ...LEGS_GAP_STYLE, ...legsPad(rowPad) }}
+                      aria-hidden
+                    />
+                    <td
+                      className={CARD_TD + " text-right font-mono " + textMain}
+                      style={legsPad(rowPad)}
+                    >
                       {isTop ? (
                         <div className="flex items-center justify-end gap-1">
                           <span
@@ -2122,7 +2172,7 @@ export default function PositionBuilder({
                     </td>
                     <td
                       className={CARD_TD + " text-right font-mono " + textMain}
-                      style={legsGroupPad("POS")}
+                      style={legsPad(rowPad)}
                     >
                       {isTop ? (
                         <div className="flex items-center justify-end gap-1">
@@ -2143,7 +2193,14 @@ export default function PositionBuilder({
                         </div>
                       ) : null}
                     </td>
-                    <td className={CARD_TD}>
+                    <td
+                      style={{ ...LEGS_GAP_STYLE, ...legsPad(rowPad) }}
+                      aria-hidden
+                    />
+                    <td
+                      className={CARD_TD}
+                      style={legsPad({ last: true, ...rowPad })}
+                    >
                       <button
                         type="button"
                         className={

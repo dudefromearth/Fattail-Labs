@@ -192,6 +192,33 @@ test("AT-DLG-21/22 layout vs prototype — both themes, larger type", async ({
   );
   expect(laid.slack, "no auto-distributed leftover in the table").toBeLessThan(2);
 
+  const flush = await dialog.evaluate((root) => {
+    const surface = root.querySelector('[data-testid="builder-legs-surface"]');
+    const header = root.querySelector('[data-testid="builder-legs-header"]');
+    const first = root.querySelector(
+      '[data-testid="builder-legs-table"] tbody tr td',
+    );
+    const lastRow = root.querySelector(
+      '[data-testid="builder-legs-table"] tbody tr:last-child td:last-child',
+    );
+    const sf = surface!.getBoundingClientRect();
+    const hd = header!.getBoundingClientRect();
+    const cs = getComputedStyle(first!);
+    const csLast = getComputedStyle(lastRow!);
+    return {
+      top: Math.abs(hd.top - sf.top),
+      padTop: cs.paddingTop,
+      padBottom: csLast.paddingBottom,
+      padLeft: cs.paddingLeft,
+      padRight: csLast.paddingRight,
+    };
+  });
+  expect(flush.top, "header flush to panel top").toBeLessThan(3);
+  expect(flush.padTop).toBe("15px");
+  expect(flush.padBottom).toBe("15px");
+  expect(flush.padLeft).toBe("15px");
+  expect(flush.padRight).toBe("15px");
+
   await page.screenshot({ path: join(OUT, "page.png") });
   await dialog.screenshot({ path: join(OUT, "dialog.png") });
 

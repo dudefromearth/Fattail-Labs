@@ -175,6 +175,13 @@ test("AT-DLG-21 legs table sizes to content; no auto-distribution", () => {
   assert.doesNotMatch(builder, /const COLS/);
   assert.match(builder, /LEGS_PAD = 15/);
   assert.match(builder, /LEGS_GROUP_GAP = 32/);
+  const surface = builder.slice(
+    builder.indexOf("data-testid=\"builder-legs-surface\""),
+    builder.indexOf("data-testid=\"builder-legs-table\""),
+  );
+  assert.doesNotMatch(surface, /padding: LEGS_PAD/);
+  assert.match(builder, /above: isTop/);
+  assert.match(builder, /textAlign: "center"/);
 });
 
 test("AT-DLG-22 five additions absent", () => {
