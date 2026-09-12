@@ -174,6 +174,7 @@ test("AT-DLG-21 legs table sizes to content; no auto-distribution", () => {
   assert.doesNotMatch(builder, /w-full table-fixed/);
   assert.doesNotMatch(builder, /const COLS/);
   assert.match(builder, /LEGS_PAD = 15/);
+  assert.match(builder, /LEGS_ROW_GAP = 8/);
   assert.match(builder, /LEGS_GROUP_GAP = 32/);
   const surface = builder.slice(
     builder.indexOf("data-testid=\"builder-legs-surface\""),

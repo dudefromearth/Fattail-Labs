@@ -363,6 +363,8 @@ export type PositionBuilderProps = {
 /** Dialog width is a constant. Height follows leg-row count only. */
 const PANEL_INSET = 20;
 const LEGS_PAD = 15;
+/** Dialog-only space between leg rows. Not on the card. */
+const LEGS_ROW_GAP = 8;
 /** Explicit gap after a field group — not leftover auto-distribution. */
 const LEGS_GROUP_GAP = 32;
 /**
@@ -378,13 +380,18 @@ function legsPad(opts: {
   last?: boolean;
   above?: boolean;
   below?: boolean;
+  between?: boolean;
   head?: boolean;
 }): CSSProperties {
   return {
     ...(opts.head ? { textAlign: "center" as const } : null),
     ...(opts.first ? { paddingLeft: LEGS_PAD } : null),
     ...(opts.last ? { paddingRight: LEGS_PAD } : null),
-    ...(opts.above ? { paddingTop: LEGS_PAD } : null),
+    ...(opts.above
+      ? { paddingTop: LEGS_PAD }
+      : opts.between
+        ? { paddingTop: LEGS_ROW_GAP }
+        : null),
     ...(opts.below ? { paddingBottom: LEGS_PAD } : null),
   };
 }
@@ -1917,7 +1924,7 @@ export default function PositionBuilder({
                 const isTop = row === 0;
                 const isBot = row === orderedLegs.length - 1;
                 const legSide = leg.side === "long" ? "BUY" : "SELL";
-                const rowPad = { above: isTop, below: isBot };
+                const rowPad = { above: isTop, below: isBot, between: !isTop };
                 const valueField =
                   "inline-flex h-[18px] items-center justify-end rounded-sm " +
                   FIELD_FILL +
