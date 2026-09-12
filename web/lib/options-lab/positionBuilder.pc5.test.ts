@@ -33,8 +33,8 @@ function test(name: string, fn: () => void) {
 }
 
 const editSeed = builder.slice(
-  builder.indexOf('mode === "edit" && initial?.legs.length'),
-  builder.indexOf("if (mode === \"create\" && initial?.legs.length"),
+  builder.indexOf('mode === "edit" && initial?.position.legs.length'),
+  builder.indexOf("if (mode === \"create\" && initial?.position.legs.length"),
 );
 
 test("AT-PC-04 Opening Edit writes zero fields — no snap, no reprice, no write", () => {
@@ -69,7 +69,9 @@ test("AT-PC-22 Create draft is off-book until Submit", () => {
 
 test("AT-PC-56 Create opens on Butterfly, unlocked, no seeded basis", () => {
   assert.match(builder, /template: "butterfly" as TemplateType/);
-  assert.match(builder, /net_debit_override: null/);
+  assert.match(builder, /positionFromInput/);
+  assert.match(builder, /record\.lock\.mode === "locked"/);
+  assert.match(builder, /lockNatural|unlockCard/);
 });
 
 test("AT-PC-32 dialog picker rebuilds legs", () => {
@@ -116,8 +118,46 @@ test("AT-PC-50 Create-reopen half: undo restores draft and host reopens Create",
 });
 
 test("AT-PC-01 live bind: card writes go through onLivePatch while dialog is open", () => {
-  assert.match(host, /onLivePatch=\{\(input, label, notation\) =>/);
-  assert.match(host, /applyEditPatch\(p, input, label, notation\)/);
+  assert.match(host, /onLivePatch=\{\(record\) =>/);
+  assert.match(host, /applyEditPatch\(/);
+  assert.match(host, /record\.position/);
+});
+
+test("DLGM M1 draft is AnalyzerPosition", () => {
+  assert.match(builder, /useState<AnalyzerPosition>/);
+  assert.match(builder, /positionFromInput/);
+  assert.match(builder, /const record: AnalyzerPosition/);
+  assert.match(builder, /const position = record\.position/);
+});
+
+test("DLGM M2/M3 no direction or optionSide hooks", () => {
+  assert.doesNotMatch(builder, /useState<TradeDirection>/);
+  assert.doesNotMatch(builder, /useState<OptionRight>/);
+  assert.doesNotMatch(builder, /setDirection/);
+  assert.doesNotMatch(builder, /setOptionSide/);
+  assert.match(builder, /catalogToTemplate\(detectFamily/);
+  assert.match(builder, /chromeFromLegs/);
+});
+
+test("DLGM M4/M5 lock + shared helpers", () => {
+  assert.match(builder, /record\.lock\.mode === "locked"/);
+  assert.match(builder, /resolvePackageSide/);
+  assert.match(builder, /blotterKindFromPackageSide/);
+  assert.match(builder, /packageDelta/);
+  assert.match(builder, /fmtIv/);
+  const debitBlock = builder.slice(
+    builder.indexOf("const debitShown"),
+    builder.indexOf("const dte ="),
+  );
+  assert.doesNotMatch(debitBlock, /net_debit_override/);
+});
+
+test("DLGM M6 seam hands and receives a record; undo stores PositionInput", () => {
+  assert.match(host, /record: AnalyzerPosition/);
+  assert.match(host, /createInitial/);
+  assert.match(host, /positionFromInput\(createReopen\)/);
+  assert.match(host, /draft: \{\s*\n\s*\.\.\.pos\.position/);
+  assert.match(host, /setCreateReopen\(entry\.draft\)/);
 });
 
 console.log(`positionBuilder.pc5.test.ts ${n} ok`);

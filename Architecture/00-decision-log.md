@@ -4,6 +4,23 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-12 — DL-697 DLGM GO · dialog working model is a draft AnalyzerPosition
+
+**Decision (Coach).** Token [`agents/go/DLGM.md`](../agents/go/DLGM.md)
+is the stamp (DL-328). Proposal
+`docs/Analyzer-Dialog-Common-Model-Architecture-Proposal-v0_1.md`.
+India signed M1–M6 (`reviews/DLGM-india.md`). Juliet sequences DLGM after
+DLG2, before DLG3. HEAD at stamp `1396405`. **`DLG-W0` is not re-stamped.**
+
+The dialog holds a draft `AnalyzerPosition` (envelope + structure). Create
+seeds one off-book; Edit takes a copy. `PositionInput` stays as the inner
+structure. Undo still stores `PositionInput`. No new fields on the record.
+
+**Does not:** deploy. Appearance. Spec version. Delete `PositionInput`.
+Re-stamp DLG-W0.
+
+---
+
 ## 2026-09-12 — DL-696 Create / Edit Position Dialog Spec v0.13 BUILD AUTHORITY · consolidated DLG2
 
 **Decision (Coach).** Spec

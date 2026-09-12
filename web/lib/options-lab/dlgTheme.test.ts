@@ -52,24 +52,30 @@ test("Echo named --color-code-surface; stays dark (not overridden by data-theme)
   assert.equal([...tokens.matchAll(/--color-code-surface:/g)].length, 1);
 });
 
-test("AT-DLG-4 zero card tokens, zero hex, zero palette in PositionBuilder", () => {
-  assert.equal(
-    grep(
-      String.raw`FIELD_FILL|OL_DATA|OL_CHROME|cardSelect|h-\[18px\]`,
-      "components/options-lab/PositionBuilder.tsx",
-    ),
-    "",
+test("AT-DLG-4 dialog chrome: zero card tokens; legs panel is the card", () => {
+  const split = builder.indexOf('data-testid="builder-legs-surface"');
+  assert.ok(split > 0);
+  const chrome = builder.slice(
+    builder.indexOf("if (!open) return null"),
+    split,
   );
+  const legs = builder.slice(split);
+  assert.doesNotMatch(
+    chrome,
+    /FIELD_FILL|OL_DATA|OL_CHROME|cardSelect|h-\[18px\]/,
+  );
+  assert.doesNotMatch(chrome, /#[0-9A-Fa-f]{3,8}/);
+  assert.doesNotMatch(
+    chrome,
+    /(bg|text|border|from|to|stroke|fill|ring|outline)-(emerald|red|green|blue|orange|yellow|zinc|slate|neutral|stone|gray|black|white|rose|lime|teal|cyan|sky|indigo|violet|purple|fuchsia|pink|amber)(-[0-9]{2,3})?/,
+  );
+  assert.match(legs, /FIELD_FILL/);
+  assert.match(legs, /cardSelect/);
+  assert.match(legs, /h-\[18px\]/);
+  assert.match(legs, /text-white/);
   assert.equal(
     grep(
       String.raw`#[0-9A-Fa-f]{3,8}`,
-      "components/options-lab/PositionBuilder.tsx",
-    ),
-    "",
-  );
-  assert.equal(
-    grep(
-      String.raw`(bg|text|border|from|to|stroke|fill|ring|outline)-(emerald|red|green|blue|orange|yellow|zinc|slate|neutral|stone|gray|black|white|rose|lime|teal|cyan|sky|indigo|violet|purple|fuchsia|pink|amber)(-[0-9]{2,3})?`,
       "components/options-lab/PositionBuilder.tsx",
     ),
     "",

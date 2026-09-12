@@ -47,6 +47,8 @@ import {
   type BlotterBlockKind,
 } from "@/lib/blotterTheme";
 import {
+  CARD_TD,
+  CARD_TH,
   CardMenuField,
   FIELD_FILL,
   OL_CHROME as CHROME,
@@ -268,9 +270,8 @@ function legsInDisplayOrder(
 }
 
 /** Card scale is --ol-card-data / --ol-card-chrome (tokens). Column headers keep ToS uppercase. */
-const th =
-  `px-1 py-0.5 text-left ${CHROME} font-normal uppercase tracking-wide text-white/55 whitespace-nowrap`;
-const td = `px-1 ${DATA} font-normal tabular-nums whitespace-nowrap`;
+const th = CARD_TH;
+const td = CARD_TD;
 /** Chrome gutter + ten PC-VOCAB-7 columns + lock chrome + delete at the right edge. */
 const COLS = [
   "15%",

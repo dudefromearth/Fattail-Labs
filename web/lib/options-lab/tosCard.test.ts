@@ -377,8 +377,14 @@ test("AT-PC-49 STRATEGY cell is perceptible; column headers keep ToS uppercase",
     join(here, "../../components/options-lab/AnalyzerPositionsList.tsx"),
     "utf8",
   );
+  const controls = readFileSync(
+    join(here, "../../components/options-lab/TosControls.tsx"),
+    "utf8",
+  );
   assert.match(list, /analyzer-pos-spread-/);
-  assert.match(list, /uppercase tracking-wide/);
+  assert.match(list, /const th = CARD_TH/);
+  assert.match(controls, /export const CARD_TH/);
+  assert.match(controls, /uppercase tracking-wide/);
 });
 
 test("PC8-D ✕ deletes and Close closes; no entry-time on the card", () => {
@@ -403,10 +409,14 @@ test("D-PC-7 Edit dialog displayed price reads CardLockState, not override", () 
     join(here, "../../components/options-lab/PositionBuilder.tsx"),
     "utf8",
   );
-  assert.match(builder, /cardLock/);
-  assert.match(builder, /cardLock\?\.mode === "locked"/);
+  assert.match(builder, /record\.lock\.mode === "locked"/);
   assert.match(builder, /packageDebitPerShare/);
   assert.match(builder, /builder-live-package-price/);
+  const debitBlock = builder.slice(
+    builder.indexOf("const debitShown"),
+    builder.indexOf("const dte ="),
+  );
+  assert.doesNotMatch(debitBlock, /net_debit_override/);
 });
 
 test("row-1 Type flip rebuilds rights; CUSTOM type is per-leg", () => {

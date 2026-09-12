@@ -18,15 +18,31 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import {
+  CARD_TD,
+  CARD_TH,
   CardMenuField,
+  FIELD_FILL,
+  OL_CHROME as CHROME,
+  OL_DATA as DATA,
   TosPadlock,
   TosQtyControl,
   TosStepper,
+  cardSelect,
 } from "@/components/options-lab/TosControls";
 import {
   calendarDteOf,
-  type CardLockState,
+  lockLimit,
+  lockNatural,
+  positionFromInput,
+  unlockCard,
+  type AnalyzerPosition,
 } from "@/lib/options-lab/analyzerBook";
+import {
+  BLOTTER_CSS_VARS,
+  blotterCardBackground,
+  blotterKindFromPackageSide,
+  resolvePackageSide,
+} from "@/lib/blotterTheme";
 import {
   applyEtHm,
   resolveEntryAt,
@@ -43,6 +59,7 @@ import {
 } from "@/lib/options-lab/listedStrikes";
 import {
   buildListedStructure,
+  chromeFromLegs,
   inferStructureCenter,
 } from "@/lib/options-lab/listedStructure";
 import {
@@ -53,7 +70,14 @@ import {
   packageEconomics,
 } from "@/lib/options-lab/packageEconomics";
 import { posAndRatio, scaleLegPos, signedActualQty } from "@/lib/options-lab/positionQty";
-import { stepCardPrice } from "@/lib/options-lab/tosCard";
+import {
+  CARD_COLUMNS,
+  catalogToTemplate,
+  fmtIv,
+  fmtPackageDelta,
+  packageDelta,
+  stepCardPrice,
+} from "@/lib/options-lab/tosCard";
 import { nyWall } from "@/lib/options-lab/timeOrthoSession";
 import { useOptionsLab } from "@/lib/optionsLabContext";
 import { rememberTosScript } from "@/lib/tradeLogTos";
@@ -74,6 +98,7 @@ import {
   buildNotation,
   detectFamily,
 } from "@/lib/options-lab/positionLabels";
+import type { CatalogName } from "@/lib/options-lab/structureClassifier";
 import {
   formatHumanExpiration,
   generateTosScript,
@@ -310,7 +335,8 @@ export type PositionBuilderProps = {
   symbol: string;
   spotPrice: number;
   chain: ChainAccessors;
-  initial?: PositionInput | null;
+  /** Draft or live record. Create seeds off-book; Edit is a copy of the book row. */
+  initial?: AnalyzerPosition | null;
   /**
    * True when market session is Live (still in play). Used for create-default
    * front expiration: today if listed + live, else next listed after today.
@@ -318,17 +344,10 @@ export type PositionBuilderProps = {
   marketLive?: boolean;
   /** Massive still printing (RTH or pre/post). False = dark plane, last print only. */
   planePrinting?: boolean;
-  onSave: (position: PositionInput, label: string, notation: string) => void;
+  onSave: (record: AnalyzerPosition) => void;
   onCancel: () => void;
   /** Edit live bind — every patch writes the book. Create must not call this. */
-  onLivePatch?: (
-    position: PositionInput,
-    label: string,
-    notation: string,
-  ) => void;
-  /** Edit-mode lock. Displayed price reads this, not net_debit_override (D-PC-7). */
-  cardLock?: CardLockState;
-  definedDebit?: number | null;
+  onLivePatch?: (record: AnalyzerPosition) => void;
   onLockLimit?: (magnitude: number) => void;
   onLockNatural?: () => void;
   onUnlock?: () => void;
@@ -353,8 +372,6 @@ export default function PositionBuilder({
   onSave,
   onCancel,
   onLivePatch,
-  cardLock,
-  definedDebit = null,
   onLockLimit,
   onLockNatural,
   onUnlock,
@@ -369,49 +386,51 @@ export default function PositionBuilder({
       : null);
   const hasExps = chain.expirations.length > 0;
   const frontDefault =
-    initial?.expiration ||
+    initial?.position.expiration ||
     pickDefaultFrontExpiration(chain.expirations, marketLive) ||
     etYmd();
 
-  const [draft, setDraft] = useState<PositionInput>(() => ({
-    underlying: symbol,
-    expiration: frontDefault,
-    contracts: 1,
-    legs: [],
-    direction: "buy",
-    net_debit_override: null,
-  }));
-  const position: PositionInput =
-    mode === "edit" && initial
-      ? initial
-      : draft;
+  const [draft, setDraft] = useState<AnalyzerPosition>(() =>
+    positionFromInput({
+      underlying: symbol,
+      expiration: frontDefault,
+      contracts: 1,
+      legs: [],
+      direction: "buy",
+    }),
+  );
+  const record: AnalyzerPosition =
+    mode === "edit" && initial ? initial : draft;
+  const position = record.position;
   const setPosition = (
     update: PositionInput | ((prev: PositionInput) => PositionInput),
   ) => {
-    if (mode === "edit" && initial) {
-      const next =
-        typeof update === "function" ? update(initial) : update;
-      onLivePatch?.(
-        next,
-        buildLabel(next.underlying, next.legs, next.expiration),
-        buildNotation(next.legs),
+    const apply = (rec: AnalyzerPosition): AnalyzerPosition => {
+      const nextPos = typeof update === "function" ? update(rec.position) : update;
+      const label = buildLabel(
+        nextPos.underlying,
+        nextPos.legs,
+        nextPos.expiration,
       );
+      const notation = buildNotation(nextPos.legs);
+      const next: AnalyzerPosition = {
+        ...rec,
+        position: nextPos,
+        label,
+        notation,
+        updatedAt: Date.now(),
+      };
+      const side = resolvePackageSide(next);
+      return { ...next, priceSide: side };
+    };
+    if (mode === "edit" && initial) {
+      onLivePatch?.(apply(initial));
       return;
     }
-    setDraft(update);
+    setDraft((d) => apply(d));
   };
 
-  const [template, setTemplate] = useState<TemplateType>("butterfly");
-  const [direction, setDirection] = useState<TradeDirection>("buy");
-  const [optionSide, setOptionSide] = useState<OptionRight>("call");
-  const [centerStrike, setCenterStrike] = useState(0);
-  /** Editable spot for nearest-listed center (defaults to OPF/underlier mark). */
-  const [userSpot, setUserSpot] = useState(0);
-  const [userSpotDirty, setUserSpotDirty] = useState(false);
-  /** True when user picked Center from dropdown (don't auto-snap until spot edits). */
-  const centerPinnedRef = useRef(false);
-  const [wingWidth, setWingWidth] = useState(DEFAULT_CREATE_WING_WIDTH);
-  const [backExpiration, setBackExpiration] = useState("");
+  /* Dialog chrome (M3 keep): notices, menus, drag, seed refs — not model. */
   const [copied, setCopied] = useState(false);
   const [createEntryAt, setCreateEntryAt] = useState<number | null>(null);
   /** Defaults menu (lower-left footer) — Lab + up to 3 user presets */
@@ -465,13 +484,12 @@ export default function PositionBuilder({
     [chain, position.expiration, chain.rev],
   );
 
-  /** Effective spot mark for nearest-listed center (user edit wins). */
+  /** Effective spot mark for nearest-listed center. */
   const effectiveSpot = useMemo(() => {
-    if (userSpot > 0) return userSpot;
     if (chain.spot != null && chain.spot > 0) return chain.spot;
     if (spotPrice > 0) return spotPrice;
     return 0;
-  }, [userSpot, chain.spot, spotPrice]);
+  }, [chain.spot, spotPrice]);
 
   /**
    * Center MUST be the OPF-listed strike nearest to spot.
@@ -487,79 +505,35 @@ export default function PositionBuilder({
 
   const atmCenter = nearestCenter;
 
-  /**
-   * OPF + symbol-aware wing widths only (SPX → 5/10/15/20…, never 21/22).
-   * Built from listed strike distances around Center — not free integers.
-   */
-  const wingChoices = useMemo(
-    () =>
-      listedWingChoices(
-        centerStrike || atmCenter || nearestCenter,
-        frontStrikes,
-        60,
+  /** Family, center, width, right — views of the legs (M3). Not hooks. */
+  const template: TemplateType =
+    catalogToTemplate(detectFamily(position.legs) as CatalogName) ??
+    "butterfly";
+  const direction: TradeDirection = position.direction ?? "buy";
+  const derivedChrome = chromeFromLegs(position.legs, frontStrikes);
+  const centerStrike =
+    derivedChrome?.center ||
+    inferStructureCenter(position.legs) ||
+    atmCenter;
+  const wingWidth =
+    derivedChrome?.width && derivedChrome.width > 0
+      ? derivedChrome.width
+      : DEFAULT_CREATE_WING_WIDTH;
+  const optionSide: OptionRight = derivedChrome?.optionSide ?? "call";
+  const backExpiration = (() => {
+    const front = (position.expiration || "").slice(0, 10);
+    const exps = [
+      ...new Set(
+        position.legs.map((l) => (l.expiration || front).slice(0, 10)),
       ),
-    [centerStrike, atmCenter, nearestCenter, frontStrikes],
+    ].sort();
+    return exps.find((e) => e > front) || "";
+  })();
+
+  const wingChoices = useMemo(
+    () => listedWingChoices(centerStrike || atmCenter, frontStrikes, 60),
+    [centerStrike, atmCenter, frontStrikes],
   );
-
-  // Keep wingWidth on the listed set whenever the OPF grid or center moves
-  useEffect(() => {
-    if (!open || !wingChoices.length) return;
-    if (wingChoices.includes(wingWidth)) return;
-    const center = centerStrike || atmCenter || nearestCenter;
-    const snapped =
-      snapWidthToListed(wingWidth || DEFAULT_CREATE_WING_WIDTH, center, frontStrikes) ??
-      wingChoices[0];
-    if (snapped > 0 && snapped !== wingWidth) setWingWidth(snapped);
-  }, [
-    open,
-    wingChoices,
-    wingWidth,
-    centerStrike,
-    atmCenter,
-    nearestCenter,
-    frontStrikes,
-  ]);
-
-  // Track OPF/underlier spot into editable field until the user edits
-  useEffect(() => {
-    if (!open) {
-      setUserSpotDirty(false);
-      centerPinnedRef.current = false;
-      return;
-    }
-    if (userSpotDirty) return;
-    const s =
-      (chain.spot != null && chain.spot > 0 ? chain.spot : null) ??
-      (spotPrice > 0 ? spotPrice : null);
-    if (s != null && s > 0) setUserSpot(s);
-  }, [open, chain.spot, spotPrice, userSpotDirty, chain.rev]);
-
-  // Center follows the structure (card body). Spot only seeds Center
-  // when there are no legs yet. Do not snap a live structure back to ATM.
-  useEffect(() => {
-    if (!open) return;
-    if (position.legs.length > 0) {
-      const inferred = inferStructureCenter(position.legs);
-      if (!(inferred > 0)) return;
-      setCenterStrike((prev) =>
-        normalizeStrike(prev) === inferred ? prev : inferred,
-      );
-      return;
-    }
-    if (!frontStrikes.length || !(nearestCenter > 0)) return;
-    if (centerPinnedRef.current) {
-      setCenterStrike((prev) => {
-        const onGrid = frontStrikes.some(
-          (s) => normalizeStrike(s) === normalizeStrike(prev),
-        );
-        if (prev > 0 && onGrid) return prev;
-        centerPinnedRef.current = false;
-        return nearestCenter;
-      });
-      return;
-    }
-    setCenterStrike(nearestCenter);
-  }, [open, frontStrikes, nearestCenter, position.legs]);
 
   // Hydrate every expiration the structure needs so any OPF-listed trade is choosable
   useEffect(() => {
@@ -763,15 +737,12 @@ export default function PositionBuilder({
       pendingBuild.current = null;
       setStructureNotice(null);
       setUnplaceableDetail(null);
-      setCenterStrike(built.body);
-      if (built.width > 0) setWingWidth(built.width);
       setPosition((prev) => ({
         ...prev,
         underlying: symbol,
         expiration: front || prev.expiration,
         legs,
         direction: dir,
-        net_debit_override: null,
       }));
       setAtomicResolving(false);
       return true;
@@ -820,36 +791,21 @@ export default function PositionBuilder({
   useEffect(() => {
     if (!open || didSeed.current) return;
 
-    if (mode === "edit" && initial?.legs.length) {
+    if (mode === "edit" && initial?.position.legs.length) {
       // Live bind: chrome only. Do not snap, reprice, or write the record.
-      setDirection(initial.direction || "buy");
-      const family = detectFamily(initial.legs);
-      const tmpl = (
-        Object.entries(TEMPLATE_LABELS) as [TemplateType, string][]
-      ).find(([, label]) => label === family)?.[0];
-      if (tmpl) setTemplate(tmpl);
-      const body = inferStructureCenter(initial.legs);
-      if (body > 0) {
-        setCenterStrike(body);
-        centerPinnedRef.current = true;
-      }
       setStructureNotice(null);
       didSeed.current = true;
       return;
     }
 
-    if (mode === "create" && initial?.legs.length) {
+    if (mode === "create" && initial?.position.legs.length) {
       setDraft({
         ...initial,
-        legs: initial.legs.map((l) => ({ ...l })),
-        net_debit_override: null,
+        position: {
+          ...initial.position,
+          legs: initial.position.legs.map((l) => ({ ...l })),
+        },
       });
-      setDirection(initial.direction || "buy");
-      const family = detectFamily(initial.legs);
-      const tmpl = (
-        Object.entries(TEMPLATE_LABELS) as [TemplateType, string][]
-      ).find(([, label]) => label === family)?.[0];
-      if (tmpl) setTemplate(tmpl);
       didSeed.current = true;
       setStructureNotice(null);
       return;
@@ -916,25 +872,16 @@ export default function PositionBuilder({
           ? exps[idx + 1]
           : nextListedBack(front, exps) || undefined;
       if (back) {
-        setBackExpiration(back);
         chain.ensureExpiration(back);
       }
-    } else {
-      setBackExpiration("");
     }
 
-    setTemplate(seed.template);
-    setDirection(seed.direction);
-    setOptionSide(side);
-    setCenterStrike(center);
-    setWingWidth(width > 0 ? width : DEFAULT_CREATE_WING_WIDTH);
     setPosition((prev) => ({
       ...prev,
       underlying: symbol,
       expiration: front,
       direction: seed.direction,
       contracts: Math.max(1, seed.contracts || 1),
-      net_debit_override: null,
     }));
 
     const ok = regenerate(
@@ -1026,8 +973,7 @@ export default function PositionBuilder({
     }
 
     // Empty legs: rebuild on real chain only.
-    // Create seed owns first materialization (correct Lab direction e.g. sell
-    // iron). Do not race with state direction still stuck on default "buy".
+    // Create seed owns first materialization (direction lives on the draft).
     if (position.legs.length === 0) {
       if (mode === "create" && !didSeed.current) {
         return;
@@ -1232,20 +1178,26 @@ export default function PositionBuilder({
 
   const costLabel = eco.side ?? "—";
   const displayCost = eco.absMid ?? 0;
-  const lockActive = mode === "edit" && cardLock?.mode === "locked";
-  const lockedMagnitude =
-    lockActive && cardLock && cardLock.mode === "locked"
-      ? Math.abs(cardLock.packageDebitPerShare)
-      : definedDebit != null && Number.isFinite(definedDebit)
-        ? Math.abs(definedDebit)
-        : null;
-  const overrideActive =
-    mode === "edit" ? lockActive : position.net_debit_override != null;
+  const packageSide = resolvePackageSide(record);
+  const blotterKind = blotterKindFromPackageSide(packageSide);
+  const blotterBg = blotterCardBackground(blotterKind, false);
+  const onFill = blotterKind === "open" || blotterKind === "close";
+  const textMain = onFill
+    ? "text-white"
+    : "text-[var(--color-label)]";
+  const textMuted = onFill
+    ? "text-white/80"
+    : "text-[var(--color-label-secondary)]";
+  const pkgDelta = packageDelta(position.legs, effectiveSpot);
+  const lockActive = record.lock.mode === "locked";
+  const lockedMagnitude = lockActive
+    ? Math.abs(record.lock.packageDebitPerShare)
+    : null;
   const packageSessionLabel = marketLive
-    ? overrideActive
+    ? lockActive
       ? "Limit"
       : "Live · unlocked"
-    : overrideActive
+    : lockActive
       ? "Limit"
       : "Close · held";
 
@@ -1266,16 +1218,15 @@ export default function PositionBuilder({
           (leg.side === "long" ? 1 : -1) * Math.abs(leg.quantity) * pkgs,
       })),
       costBasis:
-        overrideActive && position.net_debit_override != null
-          ? Math.abs(position.net_debit_override)
+        lockActive && lockedMagnitude != null
+          ? lockedMagnitude
           : displayCost > 0
             ? displayCost
             : null,
     });
-  }, [position, overrideActive, displayCost, chain]);
+  }, [position, lockActive, lockedMagnitude, displayCost, chain]);
 
   const handleTemplate = (tmpl: TemplateType) => {
-    setTemplate(tmpl);
     const front =
       position.expiration ||
       pickDefaultFrontExpiration(chain.expirations, marketLive) ||
@@ -1283,8 +1234,6 @@ export default function PositionBuilder({
       etYmd();
     const listed = chain.getStrikes(front);
 
-    // When Lab defaults are active, strategy change applies that strategy’s
-    // Options Lab recipe (Wave 1: butterfly · vertical · condor · calendar).
     const useLab = isLabDefaultsActive();
     const lab = useLab ? labDefaultForStrategy(tmpl, symbol) : null;
 
@@ -1296,8 +1245,6 @@ export default function PositionBuilder({
     if (lab) {
       dir = lab.direction;
       side = TEMPLATE_HAS_SIDE[tmpl] ? lab.optionSide : "call";
-      setDirection(dir);
-      setOptionSide(side);
       const atm =
         atmCenter > 0
           ? atmCenter
@@ -1307,7 +1254,6 @@ export default function PositionBuilder({
             ) ?? center;
       center =
         snapToListed(atm + (lab.centerOffsetPts || 0), listed) ?? atm;
-      setCenterStrike(center);
       if (tmpl === "diagonal") {
         width =
           diagonalWidthFromLadder(center, listed, 2) ??
@@ -1319,7 +1265,6 @@ export default function PositionBuilder({
           lab.wingWidth > 0 ? lab.wingWidth : DEFAULT_CREATE_WING_WIDTH,
         );
       }
-      setWingWidth(width);
     } else if (tmpl === "diagonal") {
       width =
         diagonalWidthFromLadder(
@@ -1327,7 +1272,6 @@ export default function PositionBuilder({
           listed.length ? listed : frontStrikes,
           2,
         ) ?? defaultDiagonalWidth(symbol);
-      setWingWidth(width);
     }
 
     let back = backExpiration;
@@ -1338,10 +1282,8 @@ export default function PositionBuilder({
         idx >= 0 && idx + 1 < exps.length
           ? exps[idx + 1]
           : nextListedBack(front, exps) || "";
-      setBackExpiration(back);
       if (back) chain.ensureExpiration(back);
     } else {
-      setBackExpiration("");
       back = "";
     }
 
@@ -1350,46 +1292,12 @@ export default function PositionBuilder({
 
   const handleDirection = (dir: TradeDirection) => {
     if (dir === direction) return;
-    setDirection(dir);
-    // Always rebuild from debit-native template + direction.
-    // Do not flipLegs in place — that drifts if legs were already short/long
-    // from a prior seed, race, or edit (Buy/Sell ends up inverted).
     regenerate(
       template,
       centerStrike || atmCenter || spotPrice,
       wingWidth || DEFAULT_CREATE_WING_WIDTH,
       optionSide,
       dir,
-      position.expiration || frontDefault,
-      backExpiration,
-    );
-  };
-
-  const rebuildShape = (
-    center: number,
-    width: number,
-    side: OptionRight,
-    front: string,
-    back?: string,
-  ) => {
-    regenerate(
-      template,
-      center,
-      width,
-      side,
-      direction,
-      front,
-      back,
-    );
-  };
-
-  const handleRight = (side: OptionRight) => {
-    if (side === optionSide) return;
-    setOptionSide(side);
-    rebuildShape(
-      centerStrike || atmCenter || spotPrice,
-      wingWidth || DEFAULT_CREATE_WING_WIDTH,
-      side,
       position.expiration || frontDefault,
       backExpiration,
     );
@@ -1424,7 +1332,7 @@ export default function PositionBuilder({
         }
         return next;
       });
-      return { ...prev, legs, net_debit_override: null };
+      return { ...prev, legs };
     });
   };
 
@@ -1453,7 +1361,6 @@ export default function PositionBuilder({
           entry_price: 0,
         },
       ],
-      net_debit_override: null,
     }));
   };
 
@@ -1461,7 +1368,6 @@ export default function PositionBuilder({
     setPosition((prev) => ({
       ...prev,
       legs: prev.legs.filter((_, j) => j !== i),
-      net_debit_override: null,
     }));
   };
 
@@ -1562,22 +1468,21 @@ export default function PositionBuilder({
         });
       }
     }
-    const payload = {
+    const nextPos: PositionInput = {
       ...position,
       expiration: exp,
       legs,
       direction,
-      net_debit_override:
-        position.net_debit_override != null &&
-        Number.isFinite(position.net_debit_override)
-          ? position.net_debit_override
-          : null,
     };
-    onSave(
-      payload,
-      buildLabel(payload.underlying, payload.legs, payload.expiration),
-      buildNotation(payload.legs),
-    );
+    const nextRecord: AnalyzerPosition = {
+      ...record,
+      position: nextPos,
+      label: buildLabel(nextPos.underlying, nextPos.legs, nextPos.expiration),
+      notation: buildNotation(nextPos.legs),
+      priceSide: resolvePackageSide({ ...record, position: nextPos }),
+      updatedAt: Date.now(),
+    };
+    onSave(nextRecord);
   }, [
     position,
     chain,
@@ -1594,6 +1499,7 @@ export default function PositionBuilder({
     priceLegs,
     regenerate,
     onSave,
+    record,
   ]);
 
   useEffect(() => {
@@ -1619,10 +1525,10 @@ export default function PositionBuilder({
 
   const pkgPos = Math.max(1, posAndRatio(position.legs).pos);
   const debitShown =
-    mode === "edit" && lockActive && lockedMagnitude != null
+    lockActive && lockedMagnitude != null
       ? lockedMagnitude
-      : overrideActive && position.net_debit_override != null
-        ? Math.abs(position.net_debit_override)
+      : record.livePackagePerShare != null
+        ? Math.abs(record.livePackagePerShare)
         : eco.absMid;
   const dte = calendarDteOf(position.expiration);
   const entryMs = resolveEntryAt({
@@ -1650,7 +1556,8 @@ export default function PositionBuilder({
     }
     if (mode === "edit") onLockLimit?.(next);
     else {
-      setPosition((p) => ({ ...p, net_debit_override: next }));
+      const isCredit = resolvePackageSide(record) === "credit";
+      setDraft((d) => lockLimit(d, next, isCredit));
     }
   };
   const scalePos = (n: number) => {
@@ -1863,25 +1770,51 @@ export default function PositionBuilder({
           <h4 className={sectionLabel}>Legs</h4>
           <div
             data-testid="builder-legs-surface"
-            className="rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface-secondary)] p-4"
+            data-blotter-kind={blotterKind}
+            data-pkg-delta={pkgDelta == null ? "" : String(pkgDelta)}
+            data-iv={fmtIv(position.legs[0]?.volatility)}
+            className="overflow-x-auto rounded border border-[var(--color-separator)]"
+            style={{ ...BLOTTER_CSS_VARS, backgroundColor: blotterBg }}
           >
           <table
             data-testid="builder-legs-table"
-            className="w-full whitespace-nowrap text-left text-[length:var(--text-body)] tabular-nums"
+            className={
+              "w-full table-fixed border-separate border-spacing-0 text-left " +
+              DATA +
+              " leading-tight whitespace-nowrap tabular-nums"
+            }
           >
             <thead>
-              <tr
-                data-testid="builder-legs-header"
-                className="border-b border-[var(--color-separator)] bg-[var(--color-fill)] uppercase tracking-wide text-[length:var(--text-caption)] font-medium text-[var(--color-label-secondary)]"
-              >
-                <th className="py-2 pr-3 font-medium" />
-                <th className="py-2 pr-3 font-medium">Qty</th>
-                <th className="py-2 pr-3 font-medium">Strike</th>
-                <th className="py-2 pr-3 font-medium">Type</th>
-                <th className="py-2 pr-3 font-medium">Expiration</th>
-                <th className="py-2 pr-3 text-right font-medium">Debit</th>
-                <th className="py-2 pr-3 text-right font-medium">Pos</th>
-                <th className="w-6 py-2 font-medium" />
+              <tr data-testid="builder-legs-header">
+                {CARD_COLUMNS.filter(
+                  (c) => c !== "SPREAD" && c !== "SYMBOL",
+                ).flatMap((col) => {
+                  const heading = (
+                    <th
+                      key={col}
+                      className={
+                        CARD_TH +
+                        (col === "QTY" ||
+                        col === "STRIKE" ||
+                        col === "PRICE" ||
+                        col === "VOL" ||
+                        col === "DELTA"
+                          ? " text-right"
+                          : "")
+                      }
+                    >
+                      {col}
+                    </th>
+                  );
+                  if (col !== "PRICE") return [heading];
+                  return [
+                    heading,
+                    <th key="pos" className={CARD_TH + " text-right"}>
+                      POS
+                    </th>,
+                  ];
+                })}
+                <th className={CARD_TH} />
               </tr>
             </thead>
             <tbody>
@@ -1891,22 +1824,34 @@ export default function PositionBuilder({
                 const strikeDecimals = strikeGridDecimals(legStrikes);
                 const signed = signedActualQty(leg);
                 const isTop = row === 0;
+                const legSide = leg.side === "long" ? "BUY" : "SELL";
+                const valueField =
+                  "inline-flex h-[18px] items-center justify-end rounded-sm " +
+                  FIELD_FILL +
+                  " px-1 font-mono " +
+                  DATA +
+                  " " +
+                  textMain;
                 return (
-                  <tr key={`${i}-${leg.strike}-${leg.type}`}>
-                    <td className="whitespace-nowrap py-1 pr-3 text-[var(--color-label-tertiary)]">
-                      Leg {row + 1}:
+                  <tr
+                    key={`${i}-${leg.strike}-${leg.type}`}
+                    className="tabular-nums"
+                    style={{ backgroundColor: blotterBg }}
+                  >
+                    <td className={CARD_TD + " " + textMain}>
+                      <span data-testid={`builder-leg-side-${i}`}>{legSide}</span>
                     </td>
-                    <td className="py-2">
+                    <td className={CARD_TD + " text-right font-mono " + textMain}>
                       <div className="flex items-center justify-end gap-1">
                         <span
-                          className={dlgField + " " + W_QTY + " inline-flex items-center justify-end font-mono"}
+                          className={valueField + " " + W_QTY}
                           data-testid={`builder-leg-qty-${i}`}
                           data-field="qty"
                           data-value-field="1"
                         >
                           {signed}
                         </span>
-                        <TosStepper surface="dialog"
+                        <TosStepper surface="card"
                           testId={`builder-leg-qty-step-${i}`}
                           ariaLabel="Leg quantity"
                           onUp={() =>
@@ -1922,16 +1867,56 @@ export default function PositionBuilder({
                         />
                       </div>
                     </td>
-                    <td className="py-2">
+                    <td className={CARD_TD} onClick={(e) => e.stopPropagation()}>
+                      {hasExps ? (
+                        <CardMenuField surface="card" fit="min">
+                          <select
+                            className={
+                              cardSelect + " !w-[12ch] " + W_EXP + " " + textMain
+                            }
+                            value={boundSelectValue(exp, chain.expirations).value}
+                            data-invalid={
+                              boundSelectValue(exp, chain.expirations).invalid
+                                ? "1"
+                                : "0"
+                            }
+                            data-testid={`builder-leg-exp-${i}`}
+                            data-field="expiration"
+                            aria-label="Expiration"
+                            onChange={(e) => {
+                              const nextExp = e.target.value;
+                              if (!nextExp) return;
+                              chain.ensureExpiration(nextExp);
+                              updateLeg(i, { expiration: nextExp });
+                            }}
+                          >
+                            {boundSelectValue(exp, chain.expirations).invalid ? (
+                              <option value="">{formatHumanExpiration(exp) || "—"}</option>
+                            ) : null}
+                            {chain.expirations.map((e) => (
+                              <option key={e} value={e}>
+                                {formatHumanExpiration(e)}
+                              </option>
+                            ))}
+                          </select>
+                        </CardMenuField>
+                      ) : (
+                        <span className={"font-mono " + textMuted}>
+                          {formatHumanExpiration(exp)}
+                        </span>
+                      )}
+                    </td>
+                    <td className={CARD_TD + " text-right font-mono " + textMain}>
                       <div className="flex items-center justify-end gap-1">
                         {legStrikes.length ? (
-                          <CardMenuField surface="dialog" fit="min">
+                          <CardMenuField surface="card" fit="min">
                             <select
                               className={
-                                dlgField +
-                                " " +
+                                cardSelect +
+                                " !w-[8ch] " +
                                 W_STRIKE +
-                                " text-right font-mono"
+                                " text-right font-mono " +
+                                textMain
                               }
                               value={String(leg.strike)}
                               data-testid={`builder-leg-strike-${i}`}
@@ -1961,7 +1946,7 @@ export default function PositionBuilder({
                             {formatStrikeOnGrid(leg.strike, strikeDecimals)}
                           </span>
                         )}
-                        <TosStepper surface="dialog"
+                        <TosStepper surface="card"
                           testId={`builder-leg-strike-step-${i}`}
                           ariaLabel="Strike"
                           disabled={!legStrikes.length}
@@ -1980,11 +1965,16 @@ export default function PositionBuilder({
                         />
                       </div>
                     </td>
-                    <td className="py-2">
-                      <CardMenuField surface="dialog" fit="min">
+                    <td className={CARD_TD + " " + textMain}>
+                      <CardMenuField surface="card" fit="min">
                         <button
                           type="button"
-                          className={dlgField + " px-3"}
+                          className={
+                            "h-[18px] rounded-sm " +
+                            FIELD_FILL +
+                            " px-1 py-0 " +
+                            textMain
+                          }
                           data-testid={`builder-leg-type-${i}`}
                           data-field="type"
                           aria-label="Leg type"
@@ -1994,52 +1984,15 @@ export default function PositionBuilder({
                             })
                           }
                         >
-                          {leg.type === "call" ? "Call" : "Put"}
+                          {leg.type === "call" ? "CALL" : "PUT"}
                         </button>
                       </CardMenuField>
                     </td>
-                    <td className="py-2" onClick={(e) => e.stopPropagation()}>
-                      {hasExps ? (
-                        <CardMenuField surface="dialog" fit="min">
-                          <select
-                            className={dlgField + " " + W_EXP}
-                            value={boundSelectValue(exp, chain.expirations).value}
-                            data-invalid={
-                              boundSelectValue(exp, chain.expirations).invalid
-                                ? "1"
-                                : "0"
-                            }
-                            data-testid={`builder-leg-exp-${i}`}
-                            data-field="expiration"
-                            aria-label="Expiration"
-                            onChange={(e) => {
-                              const nextExp = e.target.value;
-                              if (!nextExp) return;
-                              chain.ensureExpiration(nextExp);
-                              updateLeg(i, { expiration: nextExp });
-                            }}
-                          >
-                            {boundSelectValue(exp, chain.expirations).invalid ? (
-                              <option value="">{formatHumanExpiration(exp) || "—"}</option>
-                            ) : null}
-                            {chain.expirations.map((e) => (
-                              <option key={e} value={e}>
-                                {formatHumanExpiration(e)}
-                              </option>
-                            ))}
-                          </select>
-                        </CardMenuField>
-                      ) : (
-                        <span className="font-mono text-[var(--color-label-secondary)]">
-                          {formatHumanExpiration(exp)}
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-2 text-right font-mono">
+                    <td className={CARD_TD + " text-right font-mono " + textMain}>
                       {isTop ? (
                         <div className="flex items-center justify-end gap-1">
                           <span
-                            className={dlgField + " " + W_DEBIT + " inline-flex items-center justify-end"}
+                            className={valueField + " " + W_DEBIT}
                             data-testid="builder-live-package-price"
                             data-field="debit"
                             data-value-field="1"
@@ -2048,45 +2001,47 @@ export default function PositionBuilder({
                               ? debitShown.toFixed(2)
                               : "—"}
                           </span>
-                          <TosStepper surface="dialog"
+                          <TosStepper surface="card"
                             testId="builder-debit-step"
                             ariaLabel="Package debit"
                             disabled={debitShown == null}
                             onUp={() => stepDebit("up")}
                             onDown={() => stepDebit("down")}
                           />
-                          <TosPadlock surface="dialog"
-                            locked={!!overrideActive}
+                          <TosPadlock surface="card"
+                            locked={lockActive}
                             testId="builder-padlock"
                             onToggle={() => {
                               if (mode === "edit") {
-                                if (overrideActive) onUnlock?.();
+                                if (lockActive) onUnlock?.();
                                 else onLockNatural?.();
                                 return;
                               }
-                              if (overrideActive) {
-                                setPosition((p) => ({
-                                  ...p,
-                                  net_debit_override: null,
-                                }));
+                              if (lockActive) setDraft((d) => unlockCard(d));
+                              else {
+                                try {
+                                  setDraft((d) => lockNatural(d));
+                                } catch {
+                                  /* incomplete quote — stay unlocked */
+                                }
                               }
                             }}
                           />
                         </div>
                       ) : null}
                     </td>
-                    <td className="py-2 text-right font-mono">
+                    <td className={CARD_TD + " text-right font-mono " + textMain}>
                       {isTop ? (
                         <div className="flex items-center justify-end gap-1">
                           <span
-                            className={dlgField + " " + W_POS + " inline-flex items-center justify-end"}
+                            className={valueField + " " + W_POS}
                             data-testid="builder-pos"
                             data-field="pos"
                             data-value-field="1"
                           >
                             {pkgPos}
                           </span>
-                          <TosQtyControl surface="dialog"
+                          <TosQtyControl surface="card"
                             testId="builder-pos-step"
                             onUp={() => scalePos(pkgPos + 1)}
                             onDown={() => scalePos(Math.max(1, pkgPos - 1))}
@@ -2095,10 +2050,22 @@ export default function PositionBuilder({
                         </div>
                       ) : null}
                     </td>
-                    <td className="py-1">
+                    <td className={CARD_TD + " text-right " + textMuted}>
+                      {fmtIv(leg.volatility)}
+                    </td>
+                    <td
+                      className={CARD_TD + " text-right font-mono " + textMain}
+                    >
+                      {isTop ? fmtPackageDelta(pkgDelta) : "—"}
+                    </td>
+                    <td className={CARD_TD}>
                       <button
                         type="button"
-                        className="px-1 text-[var(--color-label-tertiary)] hover:text-[var(--color-label)]"
+                        className={
+                          "px-1 " +
+                          CHROME +
+                          " font-normal leading-none text-white/35 hover:text-white/80"
+                        }
                         disabled={position.legs.length <= 1}
                         onClick={() => removeLeg(i)}
                         aria-label="Remove leg"

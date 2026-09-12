@@ -340,4 +340,11 @@ export function fmtPackageDelta(d: number | null): string {
   return d.toFixed(4);
 }
 
+/** Card and dialog — IV cell. Decimal or percent in, percent out. */
+export function fmtIv(vol: number | undefined): string {
+  if (vol == null || !Number.isFinite(vol)) return "—";
+  const pct = vol > 0 && vol <= 2 ? vol * 100 : vol;
+  return `${pct.toFixed(2)}%`;
+}
+
 export { boundSelectValue, signedActualQty, scaleCardPos, catalogName };

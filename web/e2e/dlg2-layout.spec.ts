@@ -95,6 +95,7 @@ async function assertMenuMarkers(dialog: Locator, theme: "light" | "dark") {
         bottomFlush: Math.abs(rect.bottom - parent.bottom) < 2,
         rightFlush: Math.abs(rect.right - parent.right) < 2,
         fillLum: rgb ? lum(rgb) : null,
+        inLegs: !!el.closest("[data-testid='builder-legs-surface']"),
       };
     });
     const inTd = (sel: string) =>
@@ -115,7 +116,9 @@ async function assertMenuMarkers(dialog: Locator, theme: "light" | "dark") {
     expect(it.pe).toBe("none");
     expect(it.bottomFlush).toBe(true);
     expect(it.rightFlush).toBe(true);
-    if (theme === "light") {
+    if (it.inLegs) {
+      expect(it.fillLum, "card marker is white").toBeGreaterThan(0.5);
+    } else if (theme === "light") {
       expect(it.fillLum, "not white on a light field").toBeLessThan(0.5);
     } else {
       expect(it.fillLum, "not dark on a dark field").toBeGreaterThan(0.5);

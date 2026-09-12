@@ -470,6 +470,10 @@ export const FIELD_FILL = "bg-white/12";
 export const cardSelect =
   `h-[18px] max-h-[18px] min-h-0 w-full appearance-none cursor-pointer border-0 ${FIELD_FILL} ` +
   `py-0 pl-1 pr-1.5 outline-none leading-[18px] ${OL_DATA} text-white`;
+/** Card table header / cell — dialog legs panel uses these, not a restyle. */
+export const CARD_TH =
+  `px-1 py-0.5 text-left ${OL_CHROME} font-normal uppercase tracking-wide text-white/55 whitespace-nowrap`;
+export const CARD_TD = `px-1 ${OL_DATA} font-normal tabular-nums whitespace-nowrap`;
 
 /** Corner-nested menu marker (ToS). Not a hit target. One component for card and dialog. */
 export function CardMenuField({

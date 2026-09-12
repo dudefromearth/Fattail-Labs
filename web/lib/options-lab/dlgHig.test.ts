@@ -140,11 +140,18 @@ test("AT-DLG-18 TOS SCRIPT block present", () => {
   assert.match(builder, /var\(--color-code-surface\)/);
 });
 
-test("AT-DLG-19 legs table is a filled bordered surface with inner padding", () => {
+test("AT-DLG-19 legs panel is the position card", () => {
   assert.match(builder, /data-testid="builder-legs-surface"/);
-  assert.match(builder, /bg-\[var\(--color-surface-secondary\)\]/);
-  assert.match(builder, /p-4/);
-  assert.match(builder, /bg-\[var\(--color-fill\)\]/);
+  assert.match(builder, /blotterCardBackground/);
+  assert.match(builder, /CARD_COLUMNS/);
+  assert.match(builder, /CARD_TH/);
+  assert.match(builder, /CARD_TD/);
+  assert.match(builder, /cardSelect/);
+  assert.match(builder, /leg\.side === "long" \? "BUY" : "SELL"/);
+  assert.match(builder, /leg\.type === "call" \? "CALL" : "PUT"/);
+  assert.doesNotMatch(builder, />EXPIRATION</);
+  assert.doesNotMatch(builder, />Call</);
+  assert.doesNotMatch(builder, />Put</);
 });
 
 test("AT-DLG-20 colour present: Buy and payoff use --color-success", () => {
@@ -153,10 +160,10 @@ test("AT-DLG-20 colour present: Buy and payoff use --color-success", () => {
   assert.doesNotMatch(builder, /#22c55e|#ef4444|bg-emerald-600/);
 });
 
-test("AT-DLG-21 legs table nowrap, full width, no table-fixed", () => {
+test("AT-DLG-21 legs table nowrap, full width, card table-fixed", () => {
   assert.match(builder, /data-testid="builder-legs-table"/);
   assert.match(builder, /whitespace-nowrap/);
-  assert.doesNotMatch(builder, /table-fixed/);
+  assert.match(builder, /table-fixed/);
 });
 
 test("AT-DLG-22 five additions absent", () => {
@@ -194,9 +201,12 @@ test("AT-DLG-23 expiration is Sep 14 26, every value is a field", () => {
   assert.doesNotMatch(builder, /e\.slice\(5\)/);
 });
 
-test("AT-DLG-24 header band distinct", () => {
+test("AT-DLG-24 header is CARD_COLUMNS language, card chrome", () => {
   assert.match(builder, /data-testid="builder-legs-header"/);
-  assert.match(builder, /builder-legs-header[\s\S]*bg-\[var\(--color-fill\)\]/);
+  assert.match(builder, /CARD_COLUMNS\.filter/);
+  assert.match(builder, /CARD_TH/);
+  assert.match(builder, /fmtIv\(leg\.volatility\)/);
+  assert.match(builder, /fmtPackageDelta\(pkgDelta\)/);
 });
 
 test("AT-DLG-25 elevation on dialog controls", () => {
@@ -215,9 +225,15 @@ test("AT-DLG-27 close is window chrome, not Done", () => {
   assert.equal(grep("position-builder-close"), "");
 });
 
-test("AT-DLG-28 dialog stepper is the card stepper, elevated, no grow", () => {
-  assert.match(builder, /TosStepper surface="dialog"/);
+test("AT-DLG-28 legs controls are the card's 18px controls", () => {
+  const legs = builder.slice(builder.indexOf('data-testid="builder-legs-surface"'));
+  assert.match(legs, /TosStepper surface="card"/);
+  assert.match(legs, /TosQtyControl surface="card"/);
+  assert.match(legs, /TosPadlock surface="card"/);
+  assert.match(legs, /CardMenuField surface="card"/);
+  assert.doesNotMatch(legs, /surface="dialog"/);
   assert.match(controls, /export function TosStepper/);
+  assert.match(controls, /data-resting-h="18"/);
   const stepper = controls.slice(controls.indexOf("export function TosStepper"));
   assert.match(stepper, /shadow-\[var\(--elevation-1\)\]/);
   const dlgInner = stepper.slice(stepper.lastIndexOf(") : ("));

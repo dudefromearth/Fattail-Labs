@@ -15,7 +15,8 @@ India W0-4 APPROVED is an entry gate on DLG0. Theme (DLG1) before chrome (DLG2).
 | `DLG0.md` | DLG0-G **PASS** |
 | `DLG1.md` | DLG1-G **PASS** |
 | `DLG2.md` | DLG2-G **PASS** (v0.13 consolidated) |
-| `DLG3.md` | blocked on DLG2-G |
+| `DLGM.md` | DLGM-G **PASS** (common model) |
+| `DLG3.md` | blocked on DLGM-G |
 | `DLG4.md` | blocked on DLG3-G |
 | `DLGZ.md` | blocked on DLG4-G |
 

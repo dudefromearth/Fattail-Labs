@@ -1743,18 +1743,23 @@ export default function OpfRiskAnalyzer() {
   }, [tmDay, tmOpenSpot]);
 
   const handleBuilderSave = useCallback(
-    (input: PositionInput, label: string, notation: string) => {
+    (record: AnalyzerPosition) => {
       if (editId) {
         commitBook("dialog", (prev) =>
           prev.map((p) =>
-            p.id === editId ? applyEditPatch(p, input, label, notation) : p,
+            p.id === editId
+              ? applyEditPatch(
+                  p,
+                  record.position,
+                  record.label,
+                  record.notation,
+                )
+              : p,
           ),
         );
         setFocusedId(editId);
       } else {
-        const pos = positionFromInput(input);
-        pos.label = label;
-        pos.notation = notation;
+        const pos: AnalyzerPosition = { ...record };
         if (tm.tmActive) {
           pos.rehearsal = true;
           if (tm.tMs != null) pos.entryAt = tm.tMs;
@@ -1763,8 +1768,8 @@ export default function OpfRiskAnalyzer() {
         commitBook("create-submit", (prev) => [pos, ...prev], {
           createdId: pos.id,
           draft: {
-            ...input,
-            legs: input.legs.map((l) => ({ ...l })),
+            ...pos.position,
+            legs: pos.position.legs.map((l) => ({ ...l })),
           },
         });
         setFocusedId(pos.id);
@@ -1780,8 +1785,13 @@ export default function OpfRiskAnalyzer() {
 
   const editInitial = useMemo(() => {
     if (!editId) return null;
-    return positions.find((p) => p.id === editId)?.position ?? null;
+    return positions.find((p) => p.id === editId) ?? null;
   }, [editId, positions]);
+
+  const createInitial = useMemo(() => {
+    if (!createReopen) return null;
+    return positionFromInput(createReopen);
+  }, [createReopen]);
 
   const positionsHandlers = {
     positions,
@@ -2809,7 +2819,7 @@ export default function OpfRiskAnalyzer() {
               : chain.spot || 5000
         }
         chain={chain}
-        initial={editId ? editInitial : createReopen}
+        initial={editId ? editInitial : createInitial}
         marketLive={posture === "Live"}
         planePrinting={planePrinting}
         onCancel={() => {
@@ -2818,29 +2828,21 @@ export default function OpfRiskAnalyzer() {
           setCreateReopen(null);
         }}
         onSave={handleBuilderSave}
-        onLivePatch={(input, label, notation) => {
+        onLivePatch={(record) => {
           if (!editId) return;
           commitBook("dialog", (prev) =>
             prev.map((p) =>
               p.id === editId
-                ? applyEditPatch(p, input, label, notation)
+                ? applyEditPatch(
+                    p,
+                    record.position,
+                    record.label,
+                    record.notation,
+                  )
                 : p,
             ),
           );
         }}
-        cardLock={
-          editId
-            ? positions.find((p) => p.id === editId)?.lock
-            : undefined
-        }
-        definedDebit={
-          editId
-            ? definedDebitSigned(
-                positions.find((p) => p.id === editId) ??
-                  ({ lock: { mode: "unlocked" } } as AnalyzerPosition),
-              )
-            : null
-        }
         onLockLimit={(mag) => {
           if (!editId) return;
           const pos = positionsRef.current.find((p) => p.id === editId);

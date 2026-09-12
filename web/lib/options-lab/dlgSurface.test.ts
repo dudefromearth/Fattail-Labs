@@ -73,11 +73,18 @@ test("AT-DLG-15 card call sites pass surface=\"card\"", () => {
   assert.doesNotMatch(list, /surface="dialog"/);
 });
 
-test("AT-DLG-15 dialog call sites pass surface=\"dialog\"", () => {
+test("AT-DLG-15 dialog chrome is surface=\"dialog\"; legs panel is the card", () => {
+  const chrome = builder.slice(
+    0,
+    builder.indexOf('data-testid="builder-legs-surface"'),
+  );
+  const legs = builder.slice(builder.indexOf('data-testid="builder-legs-surface"'));
+  assert.match(chrome, /<CardMenuField[^>\n]*surface="dialog"/);
+  assert.doesNotMatch(chrome, /surface="card"/);
   for (const name of SHARED) {
-    assert.match(builder, new RegExp(`<${name}[^>\\n]*surface="dialog"`));
+    assert.match(legs, new RegExp(`<${name}[^>\\n]*surface="card"`));
   }
-  assert.doesNotMatch(builder, /surface="card"/);
+  assert.doesNotMatch(legs, /surface="dialog"/);
 });
 
 test("AT-DLG-15 no shared-control JSX without surface=", () => {
