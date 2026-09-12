@@ -4,6 +4,26 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-12 — DL-696 Create / Edit Position Dialog Spec v0.13 BUILD AUTHORITY · consolidated DLG2
+
+**Decision (Coach).** Spec
+`Specs/FatTail-Labs-Options-Lab-Create-Edit-Position-Dialog-Spec-v0_13.md`
+is **BUILD AUTHORITY**. Token
+[`agents/go/DLG-W0.md`](../agents/go/DLG-W0.md) re-stamped at v0.13.
+sha1 `453def888819d4565c09914622957a4ff3348dea` (Delta, from disk).
+
+**Consolidated build instruction.** v0.12 sized fields to content type and
+tied strike precision to the listed grid (DLG-LAYOUT-14 · DLG-FN-10).
+v0.13 makes **width ordering a rule**: EXPIRATION widest, then STRIKE,
+then DEBIT · POS · QTY — even if the date format shortens.
+
+v0.3–v0.12 stay on disk as baselines. **DLG0 (`93b08d8`) and DLG1
+(`8faf9cd`) are not reopened.**
+
+**Does not:** deploy. Reopen DLG0/DLG1. Restore a chevron. Edit frozen Spec v1.2.
+
+---
+
 ## 2026-09-12 — DL-695 Create / Edit Position Dialog Spec v0.11 BUILD AUTHORITY · DLG-VOCAB-5
 
 **Decision (Coach).** Spec

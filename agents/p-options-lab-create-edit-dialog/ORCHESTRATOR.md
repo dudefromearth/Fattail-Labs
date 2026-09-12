@@ -6,7 +6,7 @@
 **India** signs the `surface` mechanism at W0-4 **before** DLG0.
 
 **Plan:** `docs/Options-Lab-Create-Edit-Position-Dialog-Full-Agent-Bench-Plan-v1.0.md`
-**Spec:** `Specs/FatTail-Labs-Options-Lab-Create-Edit-Position-Dialog-Spec-v0_11.md` (v0.4–v0.10 baselines; DLG0/DLG1 not reopened; DLG-VOCAB-5)
+**Spec:** `Specs/FatTail-Labs-Options-Lab-Create-Edit-Position-Dialog-Spec-v0_13.md` (v0.3–v0.12 baselines; DLG0/DLG1 not reopened; consolidated DLG2)
 **Token:** `agents/go/DLG-W0.md`
 
 **MACHINE: COACH'S MACBOOK (dev).** No Mini Two. No staging. No deploy. No migration.

@@ -1,10 +1,10 @@
 # DLG-W0 — Coach GO token · program `p-options-lab-create-edit-dialog`
 
 **Plan:** `docs/Options-Lab-Create-Edit-Position-Dialog-Full-Agent-Bench-Plan-v1.0.md`
-**Spec:** `Specs/FatTail-Labs-Options-Lab-Create-Edit-Position-Dialog-Spec-v0_11.md`
-**sha1:** `9daed092281352bc20bf52582160ea4afe270b37` *(Delta only — computed from disk. Coach does not confirm this number.)*
-**BUILD AUTHORITY:** Spec **v0.11** as of this re-stamp. v0.4–v0.10 remain baselines. **DLG-VOCAB-5.**
-**Stamped by:** Coach (GO 2026-09-11; v0.11 re-stamp 2026-09-12)
+**Spec:** `Specs/FatTail-Labs-Options-Lab-Create-Edit-Position-Dialog-Spec-v0_13.md`
+**sha1:** `453def888819d4565c09914622957a4ff3348dea` *(Delta only — computed from disk. Coach does not confirm this number.)*
+**BUILD AUTHORITY:** Spec **v0.13** as of this re-stamp. v0.3–v0.12 remain baselines. **Consolidated DLG2.**
+**Stamped by:** Coach (GO 2026-09-11; v0.13 re-stamp 2026-09-12)
 **Date:** 2026-09-12
 
 > Ticks below are Coach’s stamp. This file, saved, is the stamp — chat "go" is not (DL-328).
@@ -23,11 +23,11 @@
 
 ## 2. Spec and plan
 
-- [x] Spec is **v0.11** — `head -1` contains `Spec v0.11`; `grep -c 'DLG-VOCAB-5'` · `AT-DLG-29` · `Do not build Preview, Entry time, or Submit` are all non-zero
-- [x] Spec designated **BUILD AUTHORITY** as of this re-stamp (DL-695)
-- [x] Plan **v1.0** is the program of record, executed against v0.11 for this addition
+- [x] Spec is **v0.13** — `head -1` contains `Spec v0.13`; `grep -c 'DLG-LAYOUT-14'` · `AT-DLG-32` · `Do not build Preview, Entry time, or Submit` are all non-zero
+- [x] Spec designated **BUILD AUTHORITY** as of this re-stamp (DL-696)
+- [x] Plan **v1.0** is the program of record, executed against v0.13 as the consolidated DLG2
 - [x] DLG0 (`93b08d8`) and DLG1 (`8faf9cd`) **not reopened**. India W0-4 still stands.
-- [x] **DLG-VOCAB-5** — card menu marker on dialog menu fields; recorded HIG-3 deviation
+- [x] **Consolidated DLG2** — layout, surfaces, card controls, field widths, strike precision
 
 ---
 
@@ -65,15 +65,13 @@ India W0-4 still stands.
 ## 5. Cross-stamps
 
 - [x] Position Control v1.2 stays frozen.
-- [x] Spec v0.4–v0.10 remain on disk as baselines. Not edited.
+- [x] Spec v0.3–v0.12 remain on disk as baselines. Not edited.
 
 ---
 
-## 6. v0.11 re-stamp (DLG-VOCAB-5)
+## 6. v0.13 re-stamp (consolidated DLG2)
 
-- [x] Same `CardMenuField`, `surface="dialog"`
-- [x] Triangle bottom-right, flush, not a hit target, always visible
-- [x] `--color-menu-marker` contrasts with the field in both themes
-- [x] On symbol, strategy, strike, type, expiration — nowhere else
-- [x] Do not restore a chevron
-- [x] sha1 `9daed092281352bc20bf52582160ea4afe270b37` matches disk
+- [x] Prototype is the layout (DLG-LAYOUT-0)
+- [x] Field widths: EXPIRATION > STRIKE > DEBIT · POS · QTY (DLG-LAYOUT-14)
+- [x] Strike precision from the listed chain (DLG-FN-10)
+- [x] sha1 `453def888819d4565c09914622957a4ff3348dea` matches disk
