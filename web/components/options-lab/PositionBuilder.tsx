@@ -189,7 +189,8 @@ function defaultWidth(symbol: string, profileMin?: number | null): number {
   if (profileMin != null && profileMin > 0) return profileMin;
   const s = symbol.toUpperCase();
   if (s === "NDX" || s.startsWith("NQ")) return 50;
-  if (s === "SPX" || s === "XSP" || s === "RUT") return 20;
+  if (s === "XSP" || s === "SPY") return 1;
+  if (s === "SPX" || s === "RUT") return 20;
   return 5;
 }
 
@@ -902,7 +903,7 @@ export default function PositionBuilder({
       template: "butterfly" as TemplateType,
       direction: "buy" as TradeDirection,
       optionSide: "call" as OptionRight,
-      wingWidth: DEFAULT_CREATE_WING_WIDTH,
+      wingWidth: defaultWidth(symbol, profileMinWing),
       centerOffsetPts: 0,
       contracts: 1,
     };
@@ -925,7 +926,7 @@ export default function PositionBuilder({
     const width = resolveCreateWingWidth(
       center,
       listed,
-      seed.wingWidth > 0 ? seed.wingWidth : DEFAULT_CREATE_WING_WIDTH,
+      seed.wingWidth > 0 ? seed.wingWidth : defaultWidth(symbol, profileMinWing),
     );
     const side: OptionRight = TEMPLATE_HAS_SIDE[seed.template]
       ? seed.optionSide
@@ -985,6 +986,7 @@ export default function PositionBuilder({
     atmCenter,
     marketLive,
     symbol,
+    profileMinWing,
   ]);
 
   // Once create seed succeeds (legs on grid), freeze seed even if deps churn

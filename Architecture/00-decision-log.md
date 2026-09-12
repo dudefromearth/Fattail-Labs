@@ -4,6 +4,30 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-12 — DL-699 XSP and SPY fly ladders are 1–7 (`fixed_points`)
+
+**Decision.** XSP and SPY `app_profile_json` use `fly_width_mode: "fixed_points"`
+and `fly_widths: [1, 2, 3, 4, 5, 6, 7]`. Migration 152 JSON_SETs those two
+keys only. Create Position's offline `defaultWidth` fallback returns 1 for
+XSP/SPY. SPX and RUT stay 20; NDX/NQ* stay 50.
+
+**Why.** Migration 119 split by `kind`, which is a settlement label, not a
+scale discriminator. XSP (`kind = index`) inherited the SPX ladder
+`[20, 25, 30, 35, 40, 45, 50]`. A 20-wide XSP fly is 2.6% of spot — the same
+relative structure as a 200-wide SPX fly, four times SPX's widest column.
+Coach: *"a 20 wide fly in XSP is undoable."* Spread probe 2026-09-04
+(`docs/evidence/quant-spread-probe-XSP-2026-09-04.txt`): at 20+ points from
+spot XSP is 95.8% bid-null on puts and 100% on calls. Every column on the
+old XSP ladder has a wing with no bid. Create Position was proposing that
+unfillable 20-wide butterfly as the seed.
+
+**Does not.** Heatmap columns. `symFly.heatmapFlyWidths()` still returns
+`HEATMAP_FLY_WIDTHS` (DL-435, 10…50 by 5) until the width resolver is
+reconnected to the profile. `fetch_step_floor` on XSP. Other symbols.
+Deploy.
+
+---
+
 ## 2026-09-12 — DL-698 §12 violation · payoff Buy/Sell colour was streamlining mid-build
 
 **Decision.** Doctrine §12 (DL-334) and §13 (DL-336). The strategy-icon
