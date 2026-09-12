@@ -78,6 +78,21 @@ export function resolvePackageSide(pos: {
   return null;
 }
 
+/**
+ * Debit/credit of a **new** structure. Ignores a stored `priceSide` and a
+ * `lastNatSigned` from the previous package — those outrank direction and
+ * strand the colour (and the card, and the canvas) after a flip.
+ */
+export function packageSideFromStructure(pos: {
+  position?: { direction?: "buy" | "sell" | null };
+}): "debit" | "credit" | null {
+  return resolvePackageSide({
+    priceSide: null,
+    lastNatSigned: null,
+    position: pos.position,
+  });
+}
+
 export function blotterCardBorder(
   kind: BlotterBlockKind,
   selected: boolean,

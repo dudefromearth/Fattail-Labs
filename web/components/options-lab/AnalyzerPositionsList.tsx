@@ -49,6 +49,7 @@ import {
 import {
   CARD_TD,
   CARD_TH,
+  CARD_THEAD,
   CardMenuField,
   FIELD_FILL,
   OL_CHROME as CHROME,
@@ -458,7 +459,7 @@ export default function AnalyzerPositionsList({
                 <col key={i} style={{ width: w }} />
               ))}
             </colgroup>
-            <thead className="sticky top-0 z-[1] bg-[#0a0a0e] shadow-[0_1px_0_rgba(255,255,255,0.12)]">
+            <thead className={"sticky top-0 z-[1] " + CARD_THEAD}>
               <tr>
                 <th className={th} aria-label="Show, edit, delete, log">
                   <button

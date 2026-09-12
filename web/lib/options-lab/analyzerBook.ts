@@ -22,6 +22,7 @@ import {
   scaleLegPos,
 } from "@/lib/options-lab/positionQty";
 import { structureKey } from "@/lib/options-lab/structureSignal";
+import { packageSideFromStructure } from "@/lib/blotterTheme";
 
 /** Product status — residual book is ANALYSIS-only (PB v0.3 §16.4). */
 export type AnalyzerTradeStatus = "ANALYSIS";
@@ -638,6 +639,8 @@ export function applyEditPatch(
     bind: existing.bind ?? null,
     updatedAt: Date.now(),
   };
+  // Do not carry existing.priceSide — it outranks direction (blotterTheme).
+  patched.priceSide = packageSideFromStructure(patched);
   return withCheckPriceIfLocked(existing, patched);
 }
 
@@ -1034,12 +1037,6 @@ export function flipCardDirection(pos: AnalyzerPosition): AnalyzerPosition {
     legs,
     direction: nextDir,
   };
-  const priceSide: "debit" | "credit" | null =
-    pos.priceSide == null
-      ? null
-      : pos.priceSide === "debit"
-        ? "credit"
-        : "debit";
   const lastNatSigned =
     pos.lastNatSigned == null ? null : -pos.lastNatSigned;
   let lock = pos.lock;
@@ -1054,7 +1051,7 @@ export function flipCardDirection(pos: AnalyzerPosition): AnalyzerPosition {
     position,
     label: buildLabel(position.underlying, legs, position.expiration),
     notation: buildNotation(legs),
-    priceSide,
+    priceSide: packageSideFromStructure({ position }),
     lastNatSigned,
     definedDebitPerShare:
       pos.definedDebitPerShare == null ? null : -pos.definedDebitPerShare,

@@ -204,6 +204,22 @@ test("AT-DLG-21/22 layout vs prototype — both themes, larger type", async ({
   await dialog.screenshot({ path: join(OUT, "dialog-dark-large.png") });
 });
 
+test("Sell inverts legs, script, and blotter to credit red", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  const dialog = await openDialog(page);
+  const surface = dialog.getByTestId("builder-legs-surface");
+  await expect(surface).toHaveAttribute("data-blotter-kind", "open");
+  await dialog.screenshot({ path: join(OUT, "dialog-debit.png") });
+
+  await dialog.getByRole("radio", { name: "Sell" }).click();
+  await expect(surface).toHaveAttribute("data-blotter-kind", "close");
+  await expect(dialog.getByTestId("builder-leg-side-1")).toHaveText("BUY");
+  await expect(dialog.getByTestId("builder-tos-script")).toContainText(/^SELL/);
+  await dialog.screenshot({ path: join(OUT, "dialog-credit.png") });
+});
+
 test("AT-DLG-29 menu marker on menu fields, both themes", async ({ page }) => {
   test.setTimeout(90_000);
   const dialog = await openDialog(page);

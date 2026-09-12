@@ -474,6 +474,11 @@ export const cardSelect =
 export const CARD_TH =
   `px-1 py-0.5 text-left ${OL_CHROME} font-normal uppercase tracking-wide text-white/55 whitespace-nowrap`;
 export const CARD_TD = `px-1 ${OL_DATA} font-normal tabular-nums whitespace-nowrap`;
+/** Card list header band — dialog legs thead uses this, not a restyle. */
+export const CARD_THEAD =
+  "bg-[#0a0a0e] shadow-[0_1px_0_rgba(255,255,255,0.12)]";
+/** macOS traffic-light close on the dialog window chrome. */
+export const WINDOW_CLOSE_DOT = "h-3 w-3 rounded-full bg-[#ff5f57]";
 
 /** Corner-nested menu marker (ToS). Not a hit target. One component for card and dialog. */
 export function CardMenuField({

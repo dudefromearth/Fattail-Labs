@@ -142,6 +142,7 @@ test("DLGM M2/M3 no direction or optionSide hooks", () => {
 test("DLGM M4/M5 lock + shared helpers", () => {
   assert.match(builder, /record\.lock\.mode === "locked"/);
   assert.match(builder, /resolvePackageSide/);
+  assert.match(builder, /packageSideFromStructure/);
   assert.match(builder, /blotterKindFromPackageSide/);
   assert.match(builder, /packageDelta/);
   assert.match(builder, /fmtIv/);
@@ -150,6 +151,14 @@ test("DLGM M4/M5 lock + shared helpers", () => {
     builder.indexOf("const dte ="),
   );
   assert.doesNotMatch(debitBlock, /net_debit_override/);
+});
+
+test("Sell restamps priceSide from structure; handleDirection reads regenerate", () => {
+  assert.match(builder, /structureKeyFromInput/);
+  assert.match(builder, /priceSide: packageSideFromStructure/);
+  const dirFn = builder.slice(builder.indexOf("const handleDirection"));
+  assert.match(dirFn, /const built = regenerate\(/);
+  assert.match(dirFn, /if \(built\) return;/);
 });
 
 test("DLGM M6 seam hands and receives a record; undo stores PositionInput", () => {

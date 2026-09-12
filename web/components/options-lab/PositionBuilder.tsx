@@ -20,6 +20,7 @@ import {
 import {
   CARD_TD,
   CARD_TH,
+  CARD_THEAD,
   CardMenuField,
   FIELD_FILL,
   OL_CHROME as CHROME,
@@ -27,6 +28,7 @@ import {
   TosPadlock,
   TosQtyControl,
   TosStepper,
+  WINDOW_CLOSE_DOT,
   cardSelect,
 } from "@/components/options-lab/TosControls";
 import {
@@ -41,6 +43,7 @@ import {
   BLOTTER_CSS_VARS,
   blotterCardBackground,
   blotterKindFromPackageSide,
+  packageSideFromStructure,
   resolvePackageSide,
 } from "@/lib/blotterTheme";
 import {
@@ -74,7 +77,6 @@ import {
   CARD_COLUMNS,
   catalogToTemplate,
   fmtIv,
-  fmtPackageDelta,
   packageDelta,
   stepCardPrice,
 } from "@/lib/options-lab/tosCard";
@@ -122,6 +124,7 @@ import {
   resolveBuilderPlaneState,
   type BuilderPlaneState,
 } from "@/lib/options-lab/builderAtomicState";
+import { structureKeyFromInput } from "@/lib/options-lab/structureSignal";
 
 export { DEFAULT_CREATE_WING_WIDTH };
 
@@ -420,8 +423,19 @@ export default function PositionBuilder({
         notation,
         updatedAt: Date.now(),
       };
-      const side = resolvePackageSide(next);
-      return { ...next, priceSide: side };
+      if (structureKeyFromInput(rec.position) === structureKeyFromInput(nextPos)) {
+        return next;
+      }
+      const dirFlipped =
+        (rec.position.direction ?? "buy") !== (nextPos.direction ?? "buy");
+      return {
+        ...next,
+        priceSide: packageSideFromStructure(next),
+        lastNatSigned:
+          dirFlipped && rec.lastNatSigned != null
+            ? -rec.lastNatSigned
+            : rec.lastNatSigned,
+      };
     };
     if (mode === "edit" && initial) {
       onLivePatch?.(apply(initial));
@@ -1287,12 +1301,23 @@ export default function PositionBuilder({
       back = "";
     }
 
-    regenerate(tmpl, center, width, side, dir, front, back || undefined);
+    const built = regenerate(
+      tmpl,
+      center,
+      width,
+      side,
+      dir,
+      front,
+      back || undefined,
+    );
+    if (built) return;
+    // pendingBuild or unplaceableDetail already set — do not leave a
+    // picker that looks applied on the old legs (DLG-FN-1).
   };
 
   const handleDirection = (dir: TradeDirection) => {
     if (dir === direction) return;
-    regenerate(
+    const built = regenerate(
       template,
       centerStrike || atmCenter || spotPrice,
       wingWidth || DEFAULT_CREATE_WING_WIDTH,
@@ -1301,6 +1326,9 @@ export default function PositionBuilder({
       position.expiration || frontDefault,
       backExpiration,
     );
+    if (built) return;
+    // Empty ladder → pendingBuild + notice. Unplaceable → CHECK STRUCTURE.
+    // Toggle stays on the old direction until legs actually change.
   };
 
   const updateLeg = (index: number, patch: Partial<LegInput>) => {
@@ -1479,7 +1507,7 @@ export default function PositionBuilder({
       position: nextPos,
       label: buildLabel(nextPos.underlying, nextPos.legs, nextPos.expiration),
       notation: buildNotation(nextPos.legs),
-      priceSide: resolvePackageSide({ ...record, position: nextPos }),
+      priceSide: packageSideFromStructure({ position: nextPos }),
       updatedAt: Date.now(),
     };
     onSave(nextRecord);
@@ -1607,12 +1635,12 @@ export default function PositionBuilder({
       >
         <button
           type="button"
-          className="absolute left-5 top-1/2 min-h-[var(--hit-min)] min-w-[var(--hit-min)] -translate-y-1/2 text-[length:var(--text-title-3)] text-[var(--color-label-secondary)] hover:text-[var(--color-label)]"
+          className="absolute left-5 top-1/2 flex min-h-[var(--hit-min)] min-w-[var(--hit-min)] -translate-y-1/2 items-center justify-center"
           aria-label="Close"
           data-testid="builder-window-close"
           onClick={onCancel}
         >
-          ×
+          <span className={WINDOW_CLOSE_DOT} aria-hidden />
         </button>
         <h3 className="text-[length:var(--text-title-3)] font-semibold text-[var(--color-label)]">
           {mode === "edit" ? "Edit Position" : "Create Position"}
@@ -1784,10 +1812,14 @@ export default function PositionBuilder({
               " leading-tight whitespace-nowrap tabular-nums"
             }
           >
-            <thead>
+            <thead className={CARD_THEAD}>
               <tr data-testid="builder-legs-header">
                 {CARD_COLUMNS.filter(
-                  (c) => c !== "SPREAD" && c !== "SYMBOL",
+                  (c) =>
+                    c !== "SPREAD" &&
+                    c !== "SYMBOL" &&
+                    c !== "VOL" &&
+                    c !== "DELTA",
                 ).flatMap((col) => {
                   const heading = (
                     <th
@@ -1796,9 +1828,7 @@ export default function PositionBuilder({
                         CARD_TH +
                         (col === "QTY" ||
                         col === "STRIKE" ||
-                        col === "PRICE" ||
-                        col === "VOL" ||
-                        col === "DELTA"
+                        col === "PRICE"
                           ? " text-right"
                           : "")
                       }
@@ -1838,8 +1868,30 @@ export default function PositionBuilder({
                     className="tabular-nums"
                     style={{ backgroundColor: blotterBg }}
                   >
-                    <td className={CARD_TD + " " + textMain}>
-                      <span data-testid={`builder-leg-side-${i}`}>{legSide}</span>
+                    <td
+                      className={CARD_TD + " " + textMain}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {isTop ? (
+                        <CardMenuField surface="card">
+                          <select
+                            className={cardSelect + " " + textMain}
+                            value={direction === "sell" ? "sell" : "buy"}
+                            aria-label="Structure side BUY or SELL"
+                            data-testid={`builder-leg-side-${i}`}
+                            onChange={(e) => {
+                              const v =
+                                e.target.value === "sell" ? "sell" : "buy";
+                              handleDirection(v);
+                            }}
+                          >
+                            <option value="buy">BUY</option>
+                            <option value="sell">SELL</option>
+                          </select>
+                        </CardMenuField>
+                      ) : (
+                        <span data-testid={`builder-leg-side-${i}`}>{legSide}</span>
+                      )}
                     </td>
                     <td className={CARD_TD + " text-right font-mono " + textMain}>
                       <div className="flex items-center justify-end gap-1">
@@ -2049,14 +2101,6 @@ export default function PositionBuilder({
                           />
                         </div>
                       ) : null}
-                    </td>
-                    <td className={CARD_TD + " text-right " + textMuted}>
-                      {fmtIv(leg.volatility)}
-                    </td>
-                    <td
-                      className={CARD_TD + " text-right font-mono " + textMain}
-                    >
-                      {isTop ? fmtPackageDelta(pkgDelta) : "—"}
                     </td>
                     <td className={CARD_TD}>
                       <button

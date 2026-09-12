@@ -146,12 +146,15 @@ test("AT-DLG-19 legs panel is the position card", () => {
   assert.match(builder, /CARD_COLUMNS/);
   assert.match(builder, /CARD_TH/);
   assert.match(builder, /CARD_TD/);
+  assert.match(builder, /CARD_THEAD/);
   assert.match(builder, /cardSelect/);
-  assert.match(builder, /leg\.side === "long" \? "BUY" : "SELL"/);
   assert.match(builder, /leg\.type === "call" \? "CALL" : "PUT"/);
   assert.doesNotMatch(builder, />EXPIRATION</);
   assert.doesNotMatch(builder, />Call</);
   assert.doesNotMatch(builder, />Put</);
+  const legs = builder.slice(builder.indexOf('data-testid="builder-legs-surface"'));
+  assert.match(legs, /c !== "VOL"/);
+  assert.match(legs, /c !== "DELTA"/);
 });
 
 test("AT-DLG-20 colour present: Buy and payoff use --color-success", () => {
@@ -205,8 +208,12 @@ test("AT-DLG-24 header is CARD_COLUMNS language, card chrome", () => {
   assert.match(builder, /data-testid="builder-legs-header"/);
   assert.match(builder, /CARD_COLUMNS\.filter/);
   assert.match(builder, /CARD_TH/);
-  assert.match(builder, /fmtIv\(leg\.volatility\)/);
-  assert.match(builder, /fmtPackageDelta\(pkgDelta\)/);
+  assert.match(builder, /CARD_THEAD/);
+  const legs = builder.slice(builder.indexOf('data-testid="builder-legs-surface"'));
+  assert.match(legs, /<option value="buy">BUY</);
+  assert.match(legs, /<option value="sell">SELL</);
+  assert.match(legs, /CardMenuField surface="card"/);
+  assert.doesNotMatch(legs, /fmtPackageDelta/);
 });
 
 test("AT-DLG-25 elevation on dialog controls", () => {
@@ -222,6 +229,7 @@ test("AT-DLG-26 large Analyze/Cancel", () => {
 test("AT-DLG-27 close is window chrome, not Done", () => {
   assert.match(builder, /data-testid="builder-window-close"/);
   assert.match(builder, /aria-label="Close"/);
+  assert.match(builder, /WINDOW_CLOSE_DOT/);
   assert.equal(grep("position-builder-close"), "");
 });
 

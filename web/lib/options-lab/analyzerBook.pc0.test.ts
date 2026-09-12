@@ -142,7 +142,8 @@ test("AT-PC-02 wire: handleBuilderSave edit branch calls applyEditPatch", () => 
     join(here, "../../components/options-lab/OpfRiskAnalyzer.tsx"),
     "utf8",
   );
-  assert.match(src, /applyEditPatch\(p, input, label, notation\)/);
+  assert.match(src, /applyEditPatch\(/);
+  assert.match(src, /record\.position/);
   assert.doesNotMatch(
     src,
     /p\.id === editId\s*\n\s*\? \{\s*\n\s*\.\.\.positionFromInput/,
