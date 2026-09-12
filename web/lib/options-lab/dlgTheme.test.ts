@@ -108,4 +108,9 @@ test("Buy/payoff use success accent token; script uses code-surface", () => {
   assert.doesNotMatch(builder, /#22c55e|#ef4444|bg-emerald-600|bg-red-600/);
 });
 
+test("AT-DLG-29 Echo named --color-menu-marker; follows theme (aliases --color-label)", () => {
+  assert.match(tokens, /--color-menu-marker:\s*var\(--color-label\)/);
+  assert.match(controls, /var\(--color-menu-marker\)/);
+});
+
 console.log(`${n} ok`);

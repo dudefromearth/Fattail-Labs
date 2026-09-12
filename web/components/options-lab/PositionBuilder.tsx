@@ -285,8 +285,9 @@ function defaultDiagonalWidth(symbol: string): number {
 const sectionLabel =
   "pb-2 font-medium uppercase tracking-wide text-[length:var(--text-caption)] text-[var(--color-label-secondary)]";
 const dlgField =
-  "min-h-[var(--hit-min)] w-full appearance-none cursor-pointer rounded-[var(--radius-sm)] " +
-  "border-0 bg-[var(--color-fill)] px-2 text-[length:var(--text-body)] tabular-nums text-[var(--color-label)] " +
+  "min-h-[var(--hit-min)] w-full cursor-pointer rounded-[var(--radius-sm)] " +
+  "appearance-none bg-none bg-[var(--color-fill)] " +
+  "border-0 px-2 text-[length:var(--text-body)] tabular-nums text-[var(--color-label)] " +
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]";
 
 export type PositionBuilderProps = {

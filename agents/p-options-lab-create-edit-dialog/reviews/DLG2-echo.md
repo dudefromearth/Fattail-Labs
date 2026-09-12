@@ -21,3 +21,4 @@
 **AT-DLG-20.** Buy segment and payoff stroke `--color-success`.
 **AT-DLG-21.** No wrap at default and `data-font-size=larger`, light and dark.
 **AT-DLG-22.** Call/Put, derived name, Centre, Width, structure-level Expiration absent.
+**AT-DLG-29.** Corner-nested triangle on menu fields only. `--color-menu-marker` follows the theme. Not a chevron.

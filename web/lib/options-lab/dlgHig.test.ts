@@ -1,6 +1,6 @@
 /**
- * DLG2 v0.8 — AT-DLG-6 · 11 · 16 · 17 · 18 · 19 · 20 · 21 · 22.
- * Prototype is normative. Five additions are absent.
+ * DLG2 v0.11 — AT-DLG-6 · 11 · 16 · 17 · 18 · 19 · 20 · 21 · 22 · 29.
+ * Prototype is normative. Menu marker on menu fields only.
  *
  *   npx --yes tsx lib/options-lab/dlgHig.test.ts
  */
@@ -16,6 +16,18 @@ const builderPath = join(
   "../../components/options-lab/PositionBuilder.tsx",
 );
 const builder = readFileSync(builderPath, "utf8");
+const controls = readFileSync(
+  join(here, "../../components/options-lab/TosControls.tsx"),
+  "utf8",
+);
+const tokens = readFileSync(
+  join(here, "../../styles/tokens.css"),
+  "utf8",
+);
+const globals = readFileSync(
+  join(here, "../../app/globals.css"),
+  "utf8",
+);
 
 let n = 0;
 function test(name: string, fn: () => void) {
@@ -153,6 +165,35 @@ test("AT-DLG-22 five additions absent", () => {
   assert.doesNotMatch(builder, /Buy Butterfly/);
   assert.doesNotMatch(builder, /<FormRow/);
   assert.doesNotMatch(builder, /SegmentedControl/);
+});
+
+test("AT-DLG-29 menu marker: CardMenuField, not a hit target, token fill on dialog", () => {
+  assert.match(controls, /export function CardMenuField/);
+  assert.match(controls, /data-menu-triangle="1"/);
+  assert.match(controls, /pointer-events-none absolute bottom-0 right-0/);
+  assert.match(controls, /points="6,6 0,6 6,0"/);
+  assert.match(controls, /fill=\{card \? "#ffffff" : "var\(--color-menu-marker\)"\}/);
+  assert.match(tokens, /--color-menu-marker:\s*var\(--color-label\)/);
+  assert.doesNotMatch(builder, /data-menu-triangle/);
+  assert.doesNotMatch(globals, /--builder-chevron:/);
+});
+
+test("AT-DLG-29 marker only on menu fields", () => {
+  function wrappedByMenu(needle: string) {
+    const i = builder.indexOf(needle);
+    assert.ok(i > 0, `missing ${needle}`);
+    const open = builder.lastIndexOf("<CardMenuField", i);
+    const close = builder.lastIndexOf("</CardMenuField>", i);
+    return open > close;
+  }
+  assert.equal(wrappedByMenu('data-testid="builder-symbol"'), true);
+  assert.equal(wrappedByMenu('data-testid="builder-template"'), true);
+  assert.equal(wrappedByMenu("builder-leg-strike-"), true);
+  assert.equal(wrappedByMenu("builder-leg-type-"), true);
+  assert.equal(wrappedByMenu("builder-leg-exp-"), true);
+  assert.equal(wrappedByMenu("builder-leg-qty-${i}"), false);
+  assert.equal(wrappedByMenu('data-testid="builder-live-package-price"'), false);
+  assert.equal(wrappedByMenu('data-testid="builder-pos"'), false);
 });
 
 console.log(`${n} ok`);

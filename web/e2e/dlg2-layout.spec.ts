@@ -74,6 +74,55 @@ async function assertNoWrap(table: Locator) {
   expect(report.wrapped, "wrapped headers or leg labels").toEqual([]);
 }
 
+async function assertMenuMarkers(dialog: Locator, theme: "light" | "dark") {
+  const report = await dialog.evaluate((root) => {
+    const parse = (c: string) => {
+      const m = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+      return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+    };
+    const lum = (rgb: number[]) =>
+      (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) / 255;
+    const markers = [...root.querySelectorAll("[data-menu-triangle]")];
+    const items = markers.map((el) => {
+      const style = getComputedStyle(el);
+      const poly = el.querySelector("polygon");
+      const fill = poly ? getComputedStyle(poly).fill : "";
+      const parent = el.parentElement!.getBoundingClientRect();
+      const rect = el.getBoundingClientRect();
+      const rgb = parse(fill);
+      return {
+        pe: style.pointerEvents,
+        bottomFlush: Math.abs(rect.bottom - parent.bottom) < 2,
+        rightFlush: Math.abs(rect.right - parent.right) < 2,
+        fillLum: rgb ? lum(rgb) : null,
+      };
+    });
+    const inTd = (sel: string) =>
+      !!root.querySelector(sel)?.closest("td")?.querySelector("[data-menu-triangle]");
+    return {
+      count: markers.length,
+      items,
+      qtyHas: inTd('[data-testid="builder-leg-qty-0"]'),
+      debitHas: inTd('[data-testid="builder-live-package-price"]'),
+      posHas: inTd('[data-testid="builder-pos"]'),
+    };
+  });
+  expect(report.count, "menu fields carry a marker").toBeGreaterThanOrEqual(5);
+  expect(report.qtyHas, "QTY is not a menu").toBe(false);
+  expect(report.debitHas, "DEBIT is not a menu").toBe(false);
+  expect(report.posHas, "POS is not a menu").toBe(false);
+  for (const it of report.items) {
+    expect(it.pe).toBe("none");
+    expect(it.bottomFlush).toBe(true);
+    expect(it.rightFlush).toBe(true);
+    if (theme === "light") {
+      expect(it.fillLum, "not white on a light field").toBeLessThan(0.5);
+    } else {
+      expect(it.fillLum, "not dark on a dark field").toBeGreaterThan(0.5);
+    }
+  }
+}
+
 test("AT-DLG-21/22 layout vs prototype — both themes, larger type", async ({
   page,
 }) => {
@@ -127,4 +176,19 @@ test("AT-DLG-21/22 layout vs prototype — both themes, larger type", async ({
   });
   await assertNoWrap(table);
   await dialog.screenshot({ path: join(OUT, "dialog-dark-large.png") });
+});
+
+test("AT-DLG-29 menu marker on menu fields, both themes", async ({ page }) => {
+  test.setTimeout(90_000);
+  const dialog = await openDialog(page);
+  await page.evaluate(() => {
+    document.documentElement.setAttribute("data-theme", "light");
+  });
+  await assertMenuMarkers(dialog, "light");
+  await dialog.screenshot({ path: join(OUT, "dialog-marker-light.png") });
+  await page.evaluate(() => {
+    document.documentElement.setAttribute("data-theme", "dark");
+  });
+  await assertMenuMarkers(dialog, "dark");
+  await dialog.screenshot({ path: join(OUT, "dialog-marker-dark.png") });
 });

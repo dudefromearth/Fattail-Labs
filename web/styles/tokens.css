@@ -41,6 +41,14 @@
    */
   --color-code-surface: #1c1c1e;
 
+  /*
+   * Menu-marker token (Dialog Spec v0.11 DLG-VOCAB-5 · Echo).
+   * Contrasts with the field it sits on — dark on light, light on dark.
+   * Follows --color-label so it inverts with the document theme.
+   * "White" describes the ToS blotter reference, not this token.
+   */
+  --color-menu-marker: var(--color-label);
+
   /* —— Type —— */
   --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
     system-ui, "Helvetica Neue", Helvetica, Arial, sans-serif;

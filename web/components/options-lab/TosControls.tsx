@@ -493,17 +493,27 @@ export function CardMenuField({
       data-surface={surface}
     >
       {children}
-      {card ? (
-        <span
-          className="pointer-events-none absolute bottom-0 right-0 block h-[6px] w-[6px]"
+      <span
+        className={
+          "pointer-events-none absolute bottom-0 right-0 block " +
+          (card ? "h-[6px] w-[6px]" : "aspect-square h-1/3")
+        }
+        aria-hidden
+        data-menu-triangle="1"
+      >
+        <svg
+          width={card ? 6 : "100%"}
+          height={card ? 6 : "100%"}
+          viewBox="0 0 6 6"
           aria-hidden
-          data-menu-triangle="1"
+          className="block h-full w-full"
         >
-          <svg width="6" height="6" viewBox="0 0 6 6" aria-hidden>
-            <polygon points="6,6 0,6 6,0" fill="#ffffff" />
-          </svg>
-        </span>
-      ) : null}
+          <polygon
+            points="6,6 0,6 6,0"
+            fill={card ? "#ffffff" : "var(--color-menu-marker)"}
+          />
+        </svg>
+      </span>
     </span>
   );
 }

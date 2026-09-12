@@ -132,8 +132,9 @@ test("AT-DLG-15 dialog appearance — hit-min at rest, no grow-on-hover", () => 
   assert.doesNotMatch(dlgInner, /growBox/);
   assert.doesNotMatch(dlgInner, /group-hover\/step/);
   const menu = exportBlock("CardMenuField");
-  assert.match(menu, /\{card \? \(/);
   assert.match(menu, /data-menu-triangle="1"/);
+  assert.match(menu, /pointer-events-none absolute bottom-0 right-0/);
+  assert.match(menu, /var\(--color-menu-marker\)/);
 });
 
 console.log(`${n} ok`);
