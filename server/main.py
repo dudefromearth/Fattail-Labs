@@ -24,6 +24,10 @@ def create_app() -> FastAPI:
     app = FastAPI(title="FatTail Labs API", docs_url=None, redoc_url=None)
     # M6: Origin/Referer check for cookie-authenticated mutations
     app.add_middleware(CsrfOriginMiddleware)
+    # Rolling session: re-issue the login cookie on activity so an active member
+    # never gets logged out (idle beyond the 7-day window still expires).
+    from session_refresh import rolling_session_middleware
+    app.middleware("http")(rolling_session_middleware)
 
     @app.get("/api/health")
     def health() -> dict:
