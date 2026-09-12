@@ -4,6 +4,39 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-11 — DL-693 Create / Edit Position Dialog Spec v0.7 BUILD AUTHORITY · DLG2 reopened
+
+**Decision (Coach).** Spec
+`Specs/FatTail-Labs-Options-Lab-Create-Edit-Position-Dialog-Spec-v0_7.md`
+is **BUILD AUTHORITY**. Token
+[`agents/go/DLG-W0.md`](../agents/go/DLG-W0.md) re-stamped at v0.7.
+sha1 `8218fed8165c7330cf2a71884109a2f4e1adf814` (Delta, from disk).
+**DLG2 is reopened.**
+
+**Cause.** v0.2 replaced Coach's prototype layout with the previously shipped
+dialog's own sections (Structure · Shape · Position), taken from the code
+rather than `docs/reference/tos/dialog-target-layout.png`. v0.3–v0.6 inherited
+it. DLG2 (`97ed3c2`) built §5.3 correctly; §5.3 was wrong. Author's error.
+
+**Corrections.**
+- §5.3 rewritten from the prototype, element by element. **DLG-LAYOUT-0**:
+  the image is normative; a heading not in the image is a defect.
+- **DLG-HIG-8** restated: semantic tokens govern *where* colour comes from,
+  not whether it exists. Green on selected Buy and the payoff stroke is
+  required, as an accent token, never a hex.
+- **DLG-HIG-9** restated: legs table on a filled, bordered surface with inner
+  padding. A flat dialog fails.
+- **AT-DLG-18/19/20** added (script present · surfaces not flat · colour present).
+- **§5.3.1** Centre, Width, structure-level Expiration: hold as they are;
+  raise at the DLG2 gate for Coach. Do not invent a section; do not delete.
+
+v0.4, v0.5 and v0.6 stay on disk as baselines. **DLG0 (`93b08d8`) and DLG1
+(`8faf9cd`) are not reopened.** India's W0-4 `surface` sign still stands.
+
+**Does not:** deploy. Reopen DLG0/DLG1. Edit frozen Spec v1.2. Fork IKI.
+
+---
+
 ## 2026-09-11 — DL-692 Create / Edit Position Dialog Spec v0.6 BUILD AUTHORITY
 
 **Decision (Coach).** Spec
