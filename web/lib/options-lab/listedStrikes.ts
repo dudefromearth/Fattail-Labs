@@ -21,6 +21,23 @@ export function formatStrike(n: number | null | undefined): string {
   return s;
 }
 
+/** DLG-FN-10: 2 decimals iff the listed grid has a fractional strike. */
+export function strikeGridDecimals(listed: readonly number[]): 0 | 2 {
+  for (const s of listed) {
+    if (!Number.isInteger(normalizeStrike(s))) return 2;
+  }
+  return 0;
+}
+
+export function formatStrikeOnGrid(
+  n: number,
+  decimals: 0 | 2,
+): string {
+  const v = normalizeStrike(n);
+  if (decimals === 2) return v.toFixed(2);
+  return String(Math.round(v));
+}
+
 /** Unique sorted listed strikes from a ladder. */
 export function uniqueListedStrikes(
   strikes: Iterable<number | null | undefined>,

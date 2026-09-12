@@ -1,6 +1,5 @@
 /**
- * DLG2 v0.11 — AT-DLG-6 · 11 · 16 · 17 · 18 · 19 · 20 · 21 · 22 · 29.
- * Prototype is normative. Menu marker on menu fields only.
+ * DLG2 v0.13 — AT-DLG-6 · 11 · 16–32 (chrome, fields, widths, precision).
  *
  *   npx --yes tsx lib/options-lab/dlgHig.test.ts
  */
@@ -9,6 +8,11 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { formatHumanExpiration } from "./tosGenerator";
+import {
+  formatStrikeOnGrid,
+  strikeGridDecimals,
+} from "./listedStrikes";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const builderPath = join(
@@ -63,6 +67,7 @@ test("AT-DLG-6 element order: title · SYMBOL/STRATEGY · direction · LEGS · A
   const script = builder.indexOf("{sectionLabel}>Tos Script<");
   const analyze = builder.indexOf('data-testid="builder-analyze"');
   const cancel = builder.indexOf('data-testid="position-builder-cancel"');
+  assert.match(builder, /data-testid="builder-window-close"/);
   assert.ok(title > 0 && symbol > title, "SYMBOL after title");
   assert.ok(strategy > symbol, "STRATEGY after SYMBOL");
   assert.ok(direction > strategy, "direction row after STRATEGY");
@@ -176,6 +181,66 @@ test("AT-DLG-29 menu marker: CardMenuField, not a hit target, token fill on dial
   assert.match(tokens, /--color-menu-marker:\s*var\(--color-label\)/);
   assert.doesNotMatch(builder, /data-menu-triangle/);
   assert.doesNotMatch(globals, /--builder-chevron:/);
+});
+
+test("AT-DLG-23 expiration is Sep 14 26, every value is a field", () => {
+  assert.match(builder, /formatHumanExpiration/);
+  assert.match(builder, /data-field="qty"/);
+  assert.match(builder, /data-field="strike"/);
+  assert.match(builder, /data-field="debit"/);
+  assert.match(builder, /data-field="pos"/);
+  assert.match(builder, /data-field="expiration"/);
+  assert.equal(formatHumanExpiration("2026-09-14"), "Sep 14 26");
+  assert.doesNotMatch(builder, /e\.slice\(5\)/);
+});
+
+test("AT-DLG-24 header band distinct", () => {
+  assert.match(builder, /data-testid="builder-legs-header"/);
+  assert.match(builder, /builder-legs-header[\s\S]*bg-\[var\(--color-fill\)\]/);
+});
+
+test("AT-DLG-25 elevation on dialog controls", () => {
+  assert.match(builder, /shadow-\[var\(--elevation-1\)\]/);
+  assert.match(controls, /shadow-\[var\(--elevation-1\)\]/);
+});
+
+test("AT-DLG-26 large Analyze/Cancel", () => {
+  assert.match(builder, /const dlgAction/);
+  assert.match(builder, /px-6 py-3/);
+});
+
+test("AT-DLG-27 close is window chrome, not Done", () => {
+  assert.match(builder, /data-testid="builder-window-close"/);
+  assert.match(builder, /aria-label="Close"/);
+  assert.equal(grep("position-builder-close"), "");
+});
+
+test("AT-DLG-28 dialog stepper is the card stepper, elevated, no grow", () => {
+  assert.match(builder, /TosStepper surface="dialog"/);
+  assert.match(controls, /export function TosStepper/);
+  const stepper = controls.slice(controls.indexOf("export function TosStepper"));
+  assert.match(stepper, /shadow-\[var\(--elevation-1\)\]/);
+  const dlgInner = stepper.slice(stepper.lastIndexOf(") : ("));
+  assert.doesNotMatch(dlgInner.slice(0, 800), /growBox/);
+});
+
+test("AT-DLG-30/32 field widths EXP > STRIKE > DEBIT POS QTY", () => {
+  assert.match(builder, /const W_QTY = "w-\[5ch\]"/);
+  assert.match(builder, /const W_STRIKE = "w-\[8ch\]"/);
+  assert.match(builder, /const W_EXP = "w-\[12ch\]"/);
+  assert.match(builder, /const W_DEBIT = "w-\[7ch\]"/);
+  assert.match(builder, /const W_POS = "w-\[4ch\]"/);
+  assert.ok(12 > 8 && 8 > 7 && 7 > 5 && 5 > 4);
+});
+
+test("AT-DLG-31 strike precision from listed grid", () => {
+  assert.equal(strikeGridDecimals([7635, 7640, 7645]), 0);
+  assert.equal(strikeGridDecimals([7635, 7635.25, 7635.5]), 2);
+  assert.equal(formatStrikeOnGrid(7635.25, 2), "7635.25");
+  assert.equal(formatStrikeOnGrid(7635, 2), "7635.00");
+  assert.equal(formatStrikeOnGrid(7635, 0), "7635");
+  assert.match(builder, /strikeGridDecimals/);
+  assert.match(builder, /strikeDecimals/);
 });
 
 test("AT-DLG-29 marker only on menu fields", () => {

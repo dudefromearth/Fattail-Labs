@@ -32,12 +32,14 @@ import {
   resolveEntryAt,
 } from "@/lib/options-lab/positionSession";
 import {
+  formatStrikeOnGrid,
   listedStepNear,
   listedWingChoices,
   nearestListedToSpot,
   normalizeStrike,
   snapToListed,
   snapWidthToListed,
+  strikeGridDecimals,
 } from "@/lib/options-lab/listedStrikes";
 import {
   buildListedStructure,
@@ -72,7 +74,10 @@ import {
   buildNotation,
   detectFamily,
 } from "@/lib/options-lab/positionLabels";
-import { generateTosScript } from "@/lib/options-lab/tosGenerator";
+import {
+  formatHumanExpiration,
+  generateTosScript,
+} from "@/lib/options-lab/tosGenerator";
 import {
   DEFAULT_CREATE_WING_WIDTH,
   formatShapeSummary,
@@ -285,9 +290,18 @@ function defaultDiagonalWidth(symbol: string): number {
 const sectionLabel =
   "pb-2 font-medium uppercase tracking-wide text-[length:var(--text-caption)] text-[var(--color-label-secondary)]";
 const dlgField =
-  "min-h-[var(--hit-min)] w-full cursor-pointer rounded-[var(--radius-sm)] " +
-  "appearance-none bg-none bg-[var(--color-fill)] " +
+  "min-h-[var(--hit-min)] cursor-pointer rounded-[var(--radius-sm)] " +
+  "appearance-none bg-none bg-[var(--color-fill)] shadow-[var(--elevation-1)] " +
   "border-0 px-2 text-[length:var(--text-body)] tabular-nums text-[var(--color-label)] " +
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]";
+/** DLG-LAYOUT-14 — content widths; EXPIRATION > STRIKE > DEBIT · POS · QTY. */
+const W_QTY = "w-[5ch]";
+const W_STRIKE = "w-[8ch]";
+const W_EXP = "w-[12ch]";
+const W_DEBIT = "w-[7ch]";
+const W_POS = "w-[4ch]";
+const dlgAction =
+  "min-h-12 rounded-[var(--radius-sm)] px-6 py-3 text-[length:var(--text-body)] font-semibold shadow-[var(--elevation-1)] " +
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]";
 
 export type PositionBuilderProps = {
@@ -347,7 +361,7 @@ export default function PositionBuilder({
   entryAt = null,
   onSetEntryAt,
 }: PositionBuilderProps) {
-  const { profile } = useOptionsLab();
+  const { profile, universe, loading: universeLoading } = useOptionsLab();
   const profileMinWing =
     profile?.fly_widths?.[0] ??
     (profile?.strike_step != null && profile.strike_step > 0
@@ -1238,8 +1252,12 @@ export default function PositionBuilder({
   const tosScript = useMemo(() => {
     if (!position.legs.length) return "";
     const pkgs = Math.max(1, position.contracts || 1);
+    const listed = chain.getStrikes(
+      (position.expiration || "").slice(0, 10),
+    );
     return generateTosScript({
       symbol: position.underlying,
+      strikeDecimals: strikeGridDecimals(listed),
       legs: position.legs.map((leg) => ({
         strike: leg.strike,
         expiration: leg.expiration || position.expiration,
@@ -1254,7 +1272,7 @@ export default function PositionBuilder({
             ? displayCost
             : null,
     });
-  }, [position, overrideActive, displayCost]);
+  }, [position, overrideActive, displayCost, chain]);
 
   const handleTemplate = (tmpl: TemplateType) => {
     setTemplate(tmpl);
@@ -1680,6 +1698,15 @@ export default function PositionBuilder({
         data-testid="position-builder-drag-handle"
         title="Drag to move"
       >
+        <button
+          type="button"
+          className="absolute left-5 top-1/2 min-h-[var(--hit-min)] min-w-[var(--hit-min)] -translate-y-1/2 text-[length:var(--text-title-3)] text-[var(--color-label-secondary)] hover:text-[var(--color-label)]"
+          aria-label="Close"
+          data-testid="builder-window-close"
+          onClick={onCancel}
+        >
+          ×
+        </button>
         <h3 className="text-[length:var(--text-title-3)] font-semibold text-[var(--color-label)]">
           {mode === "edit" ? "Edit Position" : "Create Position"}
         </h3>
@@ -1707,17 +1734,33 @@ export default function PositionBuilder({
             <h4 className={sectionLabel}>Symbol</h4>
             <CardMenuField surface="dialog">
               <select
-                className={dlgField}
+                className={dlgField + " w-full"}
                 value={position.underlying || symbol}
                 aria-label="Symbol"
                 data-testid="builder-symbol"
-                onChange={() => {
-                  /* session symbol is host-owned — DLG3 */
+                onChange={(e) => {
+                  const next = e.target.value;
+                  if (!next) return;
+                  setPosition((p) => ({ ...p, underlying: next }));
                 }}
               >
-                <option value={position.underlying || symbol}>
-                  {position.underlying || symbol}
-                </option>
+                {universeLoading && universe.length === 0 ? (
+                  <option value="">Loading symbols…</option>
+                ) : null}
+                {(universe.some((u) => u.symbol === (position.underlying || symbol))
+                  ? universe
+                  : [{ symbol: position.underlying || symbol }, ...universe]
+                ).map((u) => (
+                  <option
+                    key={u.symbol}
+                    value={u.symbol}
+                    disabled={"enabled" in u && u.enabled === false}
+                  >
+                    {"enabled" in u && u.enabled === false
+                      ? `${u.symbol} — no chain held`
+                      : u.symbol}
+                  </option>
+                ))}
               </select>
             </CardMenuField>
           </div>
@@ -1725,7 +1768,7 @@ export default function PositionBuilder({
             <h4 className={sectionLabel}>Strategy</h4>
             <CardMenuField surface="dialog">
               <select
-                className={dlgField}
+                className={dlgField + " w-full"}
                 value={template}
                 data-testid="builder-template"
                 aria-label="Strategy"
@@ -1749,10 +1792,10 @@ export default function PositionBuilder({
                 })}
               </select>
             </CardMenuField>
-          </div>
-        </section>
-
-        <div className="flex items-center gap-3" data-testid="builder-direction-row">
+            <div
+              className="mt-3 flex items-center gap-3"
+              data-testid="builder-direction-row"
+            >
           <svg
             viewBox="0 0 60 24"
             width={72}
@@ -1777,7 +1820,7 @@ export default function PositionBuilder({
             role="radiogroup"
             aria-label="Buy or Sell"
             data-testid="builder-side"
-            className="inline-flex min-h-[var(--hit-min)] rounded-[var(--radius-md)] bg-[var(--color-fill)] p-1"
+            className="inline-flex min-h-[var(--hit-min)] rounded-[var(--radius-md)] bg-[var(--color-fill)] p-1 shadow-[var(--elevation-1)]"
           >
             <button
               type="button"
@@ -1812,7 +1855,9 @@ export default function PositionBuilder({
               Sell
             </button>
           </div>
-        </div>
+            </div>
+          </div>
+        </section>
 
         <section aria-label="Legs">
           <h4 className={sectionLabel}>Legs</h4>
@@ -1825,21 +1870,25 @@ export default function PositionBuilder({
             className="w-full whitespace-nowrap text-left text-[length:var(--text-body)] tabular-nums"
           >
             <thead>
-              <tr className="uppercase tracking-wide text-[length:var(--text-caption)] text-[var(--color-label-tertiary)]">
-                <th className="py-1 pr-3 font-normal" />
-                <th className="py-1 pr-3 font-normal">Qty</th>
-                <th className="py-1 pr-3 font-normal">Strike</th>
-                <th className="py-1 pr-3 font-normal">Type</th>
-                <th className="py-1 pr-3 font-normal">Expiration</th>
-                <th className="py-1 pr-3 text-right font-normal">Debit</th>
-                <th className="py-1 pr-3 text-right font-normal">Pos</th>
-                <th className="w-6 py-1 font-normal" />
+              <tr
+                data-testid="builder-legs-header"
+                className="border-b border-[var(--color-separator)] bg-[var(--color-fill)] uppercase tracking-wide text-[length:var(--text-caption)] font-medium text-[var(--color-label-secondary)]"
+              >
+                <th className="py-2 pr-3 font-medium" />
+                <th className="py-2 pr-3 font-medium">Qty</th>
+                <th className="py-2 pr-3 font-medium">Strike</th>
+                <th className="py-2 pr-3 font-medium">Type</th>
+                <th className="py-2 pr-3 font-medium">Expiration</th>
+                <th className="py-2 pr-3 text-right font-medium">Debit</th>
+                <th className="py-2 pr-3 text-right font-medium">Pos</th>
+                <th className="w-6 py-2 font-medium" />
               </tr>
             </thead>
             <tbody>
               {orderedLegs.map(({ leg, origIdx: i }, row) => {
                 const exp = (leg.expiration || position.expiration).slice(0, 10);
                 const legStrikes = chain.getStrikes(exp);
+                const strikeDecimals = strikeGridDecimals(legStrikes);
                 const signed = signedActualQty(leg);
                 const isTop = row === 0;
                 return (
@@ -1847,11 +1896,12 @@ export default function PositionBuilder({
                     <td className="whitespace-nowrap py-1 pr-3 text-[var(--color-label-tertiary)]">
                       Leg {row + 1}:
                     </td>
-                    <td className="py-1">
+                    <td className="py-2">
                       <div className="flex items-center justify-end gap-1">
                         <span
-                          className="w-6 text-right font-mono tabular-nums"
+                          className={dlgField + " " + W_QTY + " inline-flex items-center justify-end font-mono"}
                           data-testid={`builder-leg-qty-${i}`}
+                          data-field="qty"
                           data-value-field="1"
                         >
                           {signed}
@@ -1872,17 +1922,20 @@ export default function PositionBuilder({
                         />
                       </div>
                     </td>
-                    <td className="py-1">
+                    <td className="py-2">
                       <div className="flex items-center justify-end gap-1">
                         {legStrikes.length ? (
                           <CardMenuField surface="dialog" fit="min">
                             <select
                               className={
                                 dlgField +
-                                " !w-auto max-w-[6.5rem] text-right font-mono"
+                                " " +
+                                W_STRIKE +
+                                " text-right font-mono"
                               }
                               value={String(leg.strike)}
                               data-testid={`builder-leg-strike-${i}`}
+                              data-field="strike"
                               data-value-field="1"
                               aria-label="Strike"
                               onChange={(e) => {
@@ -1892,17 +1945,21 @@ export default function PositionBuilder({
                               }}
                             >
                               {legStrikes.some((s) => s === leg.strike) ? null : (
-                                <option value={leg.strike}>{leg.strike}</option>
+                                <option value={leg.strike}>
+                                  {formatStrikeOnGrid(leg.strike, strikeDecimals)}
+                                </option>
                               )}
                               {legStrikes.map((s) => (
                                 <option key={s} value={s}>
-                                  {s}
+                                  {formatStrikeOnGrid(s, strikeDecimals)}
                                 </option>
                               ))}
                             </select>
                           </CardMenuField>
                         ) : (
-                          <span className="font-mono">{leg.strike}</span>
+                          <span className="font-mono">
+                            {formatStrikeOnGrid(leg.strike, strikeDecimals)}
+                          </span>
                         )}
                         <TosStepper surface="dialog"
                           testId={`builder-leg-strike-step-${i}`}
@@ -1923,12 +1980,13 @@ export default function PositionBuilder({
                         />
                       </div>
                     </td>
-                    <td className="py-1">
+                    <td className="py-2">
                       <CardMenuField surface="dialog" fit="min">
                         <button
                           type="button"
-                          className={dlgField + " !w-auto px-2"}
+                          className={dlgField + " px-3"}
                           data-testid={`builder-leg-type-${i}`}
+                          data-field="type"
                           aria-label="Leg type"
                           onClick={() =>
                             updateLeg(i, {
@@ -1940,11 +1998,11 @@ export default function PositionBuilder({
                         </button>
                       </CardMenuField>
                     </td>
-                    <td className="py-1" onClick={(e) => e.stopPropagation()}>
+                    <td className="py-2" onClick={(e) => e.stopPropagation()}>
                       {hasExps ? (
-                        <CardMenuField surface="dialog">
+                        <CardMenuField surface="dialog" fit="min">
                           <select
-                            className={dlgField}
+                            className={dlgField + " " + W_EXP}
                             value={boundSelectValue(exp, chain.expirations).value}
                             data-invalid={
                               boundSelectValue(exp, chain.expirations).invalid
@@ -1952,6 +2010,7 @@ export default function PositionBuilder({
                                 : "0"
                             }
                             data-testid={`builder-leg-exp-${i}`}
+                            data-field="expiration"
                             aria-label="Expiration"
                             onChange={(e) => {
                               const nextExp = e.target.value;
@@ -1961,27 +2020,28 @@ export default function PositionBuilder({
                             }}
                           >
                             {boundSelectValue(exp, chain.expirations).invalid ? (
-                              <option value="">{exp || "—"}</option>
+                              <option value="">{formatHumanExpiration(exp) || "—"}</option>
                             ) : null}
                             {chain.expirations.map((e) => (
                               <option key={e} value={e}>
-                                {e.slice(5)}
+                                {formatHumanExpiration(e)}
                               </option>
                             ))}
                           </select>
                         </CardMenuField>
                       ) : (
                         <span className="font-mono text-[var(--color-label-secondary)]">
-                          {exp.slice(5)}
+                          {formatHumanExpiration(exp)}
                         </span>
                       )}
                     </td>
-                    <td className="py-1 text-right font-mono">
+                    <td className="py-2 text-right font-mono">
                       {isTop ? (
                         <div className="flex items-center justify-end gap-1">
                           <span
-                            className="tabular-nums"
+                            className={dlgField + " " + W_DEBIT + " inline-flex items-center justify-end"}
                             data-testid="builder-live-package-price"
+                            data-field="debit"
                             data-value-field="1"
                           >
                             {debitShown != null && Number.isFinite(debitShown)
@@ -2015,12 +2075,13 @@ export default function PositionBuilder({
                         </div>
                       ) : null}
                     </td>
-                    <td className="py-1 text-right font-mono">
+                    <td className="py-2 text-right font-mono">
                       {isTop ? (
                         <div className="flex items-center justify-end gap-1">
                           <span
-                            className="tabular-nums"
+                            className={dlgField + " " + W_POS + " inline-flex items-center justify-end"}
                             data-testid="builder-pos"
+                            data-field="pos"
                             data-value-field="1"
                           >
                             {pkgPos}
@@ -2100,7 +2161,7 @@ export default function PositionBuilder({
             {mode === "create" ? (
               <button
                 type="button"
-                className="min-h-[var(--hit-min)] rounded-[var(--radius-sm)] bg-[var(--color-tint)] px-4 text-[length:var(--text-body)] font-medium text-[var(--color-on-tint)]"
+                className={dlgAction + " bg-[var(--color-tint)] text-[var(--color-on-tint)]"}
                 data-testid="builder-analyze"
                 onClick={handleSave}
               >
@@ -2109,7 +2170,7 @@ export default function PositionBuilder({
             ) : (
               <button
                 type="button"
-                className="min-h-[var(--hit-min)] rounded-[var(--radius-sm)] bg-[var(--color-tint)] px-4 text-[length:var(--text-body)] font-medium text-[var(--color-on-tint)]"
+                className={dlgAction + " bg-[var(--color-tint)] text-[var(--color-on-tint)]"}
                 data-testid="builder-update"
                 onClick={handleSave}
               >
@@ -2118,7 +2179,7 @@ export default function PositionBuilder({
             )}
             <button
               type="button"
-              className="min-h-[var(--hit-min)] px-4 text-[length:var(--text-body)] text-[var(--color-label-secondary)] hover:text-[var(--color-label)]"
+              className={dlgAction + " bg-[var(--color-fill)] text-[var(--color-label)]"}
               data-testid="position-builder-cancel"
               onClick={onCancel}
             >

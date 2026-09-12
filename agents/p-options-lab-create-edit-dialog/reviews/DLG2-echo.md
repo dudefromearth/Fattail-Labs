@@ -22,3 +22,4 @@
 **AT-DLG-21.** No wrap at default and `data-font-size=larger`, light and dark.
 **AT-DLG-22.** Call/Put, derived name, Centre, Width, structure-level Expiration absent.
 **AT-DLG-29.** Corner-nested triangle on menu fields only. `--color-menu-marker` follows the theme. Not a chevron.
+**AT-DLG-23–28 · 30–32.** Fields, header band, elevation, large actions, close chrome, card stepper, content widths, strike precision. **PASS.**

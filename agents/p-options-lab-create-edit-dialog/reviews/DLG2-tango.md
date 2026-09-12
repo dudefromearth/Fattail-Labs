@@ -19,3 +19,5 @@
 No Call/Put, no "Buy Butterfly", no Centre, no Width, no extra Expiration. The STRATEGY menu and Buy/Sell already said it. Copy is "click to copy" / "copied". Process, not theater.
 
 A field that opens a menu carries the same corner triangle the blotter uses. A field that does not, does not. Light triangle on dark, dark triangle on light — never white on white.
+
+Expiration is a date a person can read. Fields are as wide as what they hold. Analyze is a real button. The window closes in the corner it always should.

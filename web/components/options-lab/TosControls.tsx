@@ -140,7 +140,8 @@ export function TosStepper({
         <div
           className={
             "tos-stepper inline-flex h-full w-full flex-col overflow-hidden " +
-            "rounded-[var(--radius-sm)] bg-[var(--color-fill)] text-[var(--color-label)]"
+            "rounded-[var(--radius-sm)] bg-[var(--color-fill)] text-[var(--color-label)] " +
+            "shadow-[var(--elevation-1)]"
           }
           data-testid={testId}
           data-tos-stepper="1"
@@ -251,7 +252,8 @@ export function TosQtyControl({
         <div
           className={
             "inline-flex h-full w-full items-stretch overflow-hidden " +
-            "rounded-[var(--radius-sm)] bg-[var(--color-fill)] text-[var(--color-label)]"
+            "rounded-[var(--radius-sm)] bg-[var(--color-fill)] text-[var(--color-label)] " +
+            "shadow-[var(--elevation-1)]"
           }
         >
           <div className="flex min-w-[var(--hit-min)] flex-col self-stretch">

@@ -30,6 +30,38 @@ export function formatTosExpiration(dateStr: string): string {
   return `${parts[2]} ${mon} ${parts[0].slice(2)}`;
 }
 
+const MONTHS_TITLE = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
+/** Dialog field: YYYY-MM-DD → `Sep 14 26`. Never `09-14`. */
+export function formatHumanExpiration(dateStr: string): string {
+  const parts = String(dateStr).slice(0, 10).split("-");
+  if (parts.length !== 3) return dateStr;
+  const mon = MONTHS_TITLE[parseInt(parts[1], 10) - 1];
+  if (!mon) return dateStr;
+  return `${mon} ${parseInt(parts[2], 10)} ${parts[0].slice(2)}`;
+}
+
+function formatTosStrike(n: number, decimals?: 0 | 2): string {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return String(n);
+  if (decimals === 2) return v.toFixed(2);
+  if (decimals === 0) return String(Math.round(v));
+  return Number.isInteger(v) ? String(v) : v.toFixed(2);
+}
+
 export type TosLeg = {
   strike: number;
   expiration: string;
@@ -63,8 +95,11 @@ export function generateTosScript(params: {
   symbol: string;
   legs: TosLeg[];
   costBasis?: number | null;
+  /** DLG-FN-10 — same precision as the strike field. */
+  strikeDecimals?: 0 | 2;
 }): string {
-  const { symbol, legs, costBasis } = params;
+  const { symbol, legs, costBasis, strikeDecimals } = params;
+  const strike = (n: number) => formatTosStrike(n, strikeDecimals);
   if (!legs.length) return "";
 
   const sym = (symbol || "SPX").replace(/^I:/i, "").toUpperCase();
@@ -88,7 +123,7 @@ export function generateTosScript(params: {
     const a = leg.quantity > 0 ? "BUY" : "SELL";
     const s = leg.quantity > 0 ? "+" : "-";
     const q = Math.abs(leg.quantity);
-    return `${a} ${s}${q} ${sym} 100 (Weeklys) ${expFormatted} ${leg.strike} ${leg.right.toUpperCase()}${price}`;
+    return `${a} ${s}${q} ${sym} 100 (Weeklys) ${expFormatted} ${strike(leg.strike)} ${leg.right.toUpperCase()}${price}`;
   }
 
   if (
@@ -96,7 +131,7 @@ export function generateTosScript(params: {
     legs[0].right === legs[1].right &&
     legs[0].expiration === legs[1].expiration
   ) {
-    const strikes = sorted.map((l) => l.strike).join("/");
+    const strikes = sorted.map((l) => strike(l.strike)).join("/");
     const qty = Math.abs(sorted[0].quantity);
     return `${action} ${sign}${qty} VERTICAL ${sym} 100 (Weeklys) ${expFormatted} ${strikes} ${sideUpper}${price}`;
   }
@@ -108,7 +143,7 @@ export function generateTosScript(params: {
     sorted.every((l) => l.expiration === sorted[0].expiration) &&
     Math.abs(sorted[1].quantity) === 2 * Math.abs(sorted[0].quantity)
   ) {
-    const strikes = sorted.map((l) => l.strike).join("/");
+    const strikes = sorted.map((l) => strike(l.strike)).join("/");
     const qty = Math.abs(sorted[0].quantity);
     // netQty is 0 for a unit fly — infer BUY from body short (long fly) vs long body (short fly)
     const bodyShort = sorted[1].quantity < 0;
@@ -124,7 +159,7 @@ export function generateTosScript(params: {
         const s = leg.quantity > 0 ? "+" : "-";
         const q = Math.abs(leg.quantity);
         const exp = formatTosExpiration(leg.expiration);
-        return `${a} ${s}${q} ${sym} 100 (Weeklys) ${exp} ${leg.strike} ${leg.right.toUpperCase()}`;
+        return `${a} ${s}${q} ${sym} 100 (Weeklys) ${exp} ${strike(leg.strike)} ${leg.right.toUpperCase()}`;
       })
       .join("\n") + (price ? `\n${price.trim()}` : "")
   );

@@ -140,6 +140,29 @@ test("AT-DLG-21/22 layout vs prototype — both themes, larger type", async ({
   await expect(dialog.getByTestId("builder-held-shape")).toHaveCount(0);
   await expect(dialog.getByLabel("Call or Put")).toHaveCount(0);
   await expect(dialog.getByText("Buy Butterfly")).toHaveCount(0);
+  await expect(dialog.getByTestId("builder-window-close")).toBeVisible();
+  await expect(dialog.getByTestId("builder-legs-header")).toBeVisible();
+  const expLabel = await dialog
+    .getByTestId("builder-leg-exp-0")
+    .evaluate((el) => (el as HTMLSelectElement).selectedOptions[0]?.textContent || "");
+  expect(expLabel).toMatch(/[A-Z][a-z]{2} \d{1,2} \d{2}/);
+
+  const widths = await dialog.evaluate((root) => {
+    const w = (sel: string) => {
+      const el = root.querySelector(sel);
+      return el ? el.getBoundingClientRect().width : 0;
+    };
+    return {
+      exp: w('[data-field="expiration"]'),
+      strike: w('[data-field="strike"]'),
+      debit: w('[data-field="debit"]'),
+      pos: w('[data-field="pos"]'),
+      qty: w('[data-field="qty"]'),
+    };
+  });
+  expect(widths.exp, "EXPIRATION widest").toBeGreaterThan(widths.strike);
+  expect(widths.strike, "STRIKE second").toBeGreaterThan(widths.debit);
+  expect(widths.strike).toBeGreaterThan(widths.qty);
 
   const table = dialog.getByTestId("builder-legs-table");
   await expect(table).toBeVisible();
