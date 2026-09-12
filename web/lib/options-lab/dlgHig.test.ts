@@ -1,5 +1,6 @@
 /**
- * DLG2 redo — AT-DLG-6 · 11 · 16 · 17 · 18 · 19 · 20. Prototype is normative.
+ * DLG2 v0.8 — AT-DLG-6 · 11 · 16 · 17 · 18 · 19 · 20 · 21 · 22.
+ * Prototype is normative. Five additions are absent.
  *
  *   npx --yes tsx lib/options-lab/dlgHig.test.ts
  */
@@ -80,10 +81,11 @@ test("AT-DLG-11 no Submit, Preview, entry time, Done", () => {
   assert.doesNotMatch(builder, /Preview:/);
 });
 
-test("AT-DLG-16 panel 820, inset 20, off-grid spacing empty", () => {
-  assert.match(builder, /const PANEL_W = 820/);
-  assert.match(builder, /data-panel-width="820"/);
+test("AT-DLG-16 panel 1100 floor, inset 20, content 1060, off-grid spacing empty", () => {
+  assert.match(builder, /const PANEL_W = 1100/);
+  assert.match(builder, /data-panel-width="1100"/);
   assert.match(builder, /data-content-inset="20"/);
+  assert.match(builder, /data-content-width="1060"/);
   const hits = grep(
     String.raw`(^|[^a-z-])(p|px|py|pt|pb|pl|pr|m|mx|my|mt|mb|ml|mr|gap|gap-x|gap-y|space-x|space-y)-(0\.5|1\.5|2\.5|3\.5|7|8|9|10|11|12|14|16)\b`,
   );
@@ -107,8 +109,6 @@ test("AT-DLG-17 type ladder, segmented Buy/Sell, pop-up menus, focus ring", () =
 test("AT-DLG-17 accessibility labels", () => {
   assert.match(builder, /aria-label="Symbol"/);
   assert.match(builder, /aria-label="Strategy"/);
-  assert.match(builder, /aria-label="Centre"/);
-  assert.match(builder, /aria-label="Width"/);
   assert.match(builder, /aria-label="Expiration"/);
   assert.match(builder, /aria-label="Add leg"/);
   assert.match(builder, /aria-label="ToS script"/);
@@ -136,11 +136,23 @@ test("AT-DLG-20 colour present: Buy and payoff use --color-success", () => {
   assert.doesNotMatch(builder, /#22c55e|#ef4444|bg-emerald-600/);
 });
 
-test("§5.3.1 held controls present, no invented section", () => {
-  assert.match(builder, /data-testid="builder-held-shape"/);
-  assert.match(builder, /data-testid="builder-center"/);
-  assert.match(builder, /data-testid="builder-width"/);
-  assert.match(builder, /data-testid="builder-expiration"/);
+test("AT-DLG-21 legs table nowrap, full width, no table-fixed", () => {
+  assert.match(builder, /data-testid="builder-legs-table"/);
+  assert.match(builder, /whitespace-nowrap/);
+  assert.doesNotMatch(builder, /table-fixed/);
+});
+
+test("AT-DLG-22 five additions absent", () => {
+  assert.doesNotMatch(builder, /data-testid="builder-held-shape"/);
+  assert.doesNotMatch(builder, /data-testid="builder-center"/);
+  assert.doesNotMatch(builder, /data-testid="builder-width"/);
+  assert.doesNotMatch(builder, /data-testid="builder-expiration"/);
+  assert.doesNotMatch(builder, /aria-label="Call or Put"/);
+  assert.doesNotMatch(builder, /ariaLabel="Call or Put"/);
+  assert.doesNotMatch(builder, /derivedName/);
+  assert.doesNotMatch(builder, /Buy Butterfly/);
+  assert.doesNotMatch(builder, /<FormRow/);
+  assert.doesNotMatch(builder, /SegmentedControl/);
 });
 
 console.log(`${n} ok`);

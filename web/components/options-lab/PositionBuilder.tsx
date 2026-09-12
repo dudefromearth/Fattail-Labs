@@ -16,7 +16,6 @@ import {
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
-  type ReactNode,
 } from "react";
 import {
   CardMenuField,
@@ -24,7 +23,6 @@ import {
   TosQtyControl,
   TosStepper,
 } from "@/components/options-lab/TosControls";
-import SegmentedControl from "@/components/ui/SegmentedControl";
 import {
   calendarDteOf,
   type CardLockState,
@@ -290,25 +288,6 @@ const dlgField =
   "min-h-[var(--hit-min)] w-full appearance-none cursor-pointer rounded-[var(--radius-sm)] " +
   "border-0 bg-[var(--color-fill)] px-2 text-[length:var(--text-body)] tabular-nums text-[var(--color-label)] " +
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]";
-const formRow =
-  "grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-x-3";
-const formLabel =
-  "text-[length:var(--text-subheadline)] text-[var(--color-label-secondary)]";
-
-function FormRow({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className={formRow}>
-      <div className={formLabel}>{label}</div>
-      <div>{children}</div>
-    </div>
-  );
-}
 
 export type PositionBuilderProps = {
   open: boolean;
@@ -343,8 +322,8 @@ export type PositionBuilderProps = {
   onSetEntryAt?: (entryAt: number) => void;
 };
 
-/** Wide enough for full Legs table (Qty · Strike · Type · Exp · Mid · ± · IV). */
-const PANEL_W = 820;
+/** Floor: six-column legs table on one line. Widen, never shrink type. */
+const PANEL_W = 1100;
 const PANEL_DEFAULT_OFFSET = { x: 48, y: 72 };
 
 export default function PositionBuilder({
@@ -1642,7 +1621,6 @@ export default function PositionBuilder({
     if (onSetEntryAt) onSetEntryAt(next);
     else setCreateEntryAt(next);
   };
-  const derivedName = `${direction === "buy" ? "Buy" : "Sell"} ${TEMPLATE_LABELS[template]}`;
   const stepDebit = (dir: "up" | "down") => {
     const mag = debitShown != null && debitShown > 0 ? debitShown : 0.05;
     let next: number;
@@ -1679,7 +1657,7 @@ export default function PositionBuilder({
   return (
     <div
       className={
-        "builder-steppers fixed z-50 flex max-h-[min(92vh,860px)] w-[min(820px,calc(100vw-1.5rem))] " +
+        "builder-steppers fixed z-50 flex max-h-[min(92vh,860px)] w-[min(1100px,calc(100vw-1.5rem))] " +
         "flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-separator)] " +
         "bg-[var(--color-surface)] text-[var(--color-label)] shadow-[var(--elevation-3)]"
       }
@@ -1688,8 +1666,9 @@ export default function PositionBuilder({
       aria-modal="false"
       aria-label={mode === "edit" ? "Edit Position" : "Create Position"}
       data-testid="position-builder"
-      data-panel-width="820"
+      data-panel-width="1100"
       data-content-inset="20"
+      data-content-width="1060"
     >
       <div
         className="relative cursor-grab border-b border-[var(--color-separator)] px-5 pt-5 pb-3 text-center active:cursor-grabbing"
@@ -1832,127 +1811,6 @@ export default function PositionBuilder({
               Sell
             </button>
           </div>
-          {TEMPLATE_HAS_SIDE[template] ? (
-            <div className="inline-flex min-w-[10rem]">
-              <SegmentedControl
-                ariaLabel="Call or Put"
-                value={optionSide}
-                onChange={handleRight}
-                options={[
-                  { id: "call", label: "Call" },
-                  { id: "put", label: "Put" },
-                ]}
-              />
-            </div>
-          ) : null}
-          <span className="text-[length:var(--text-body)] text-[var(--color-label)]">
-            {derivedName}
-          </span>
-        </div>
-
-        {/* §5.3.1 — in the code, not in the prototype. Held; no section heading. */}
-        <div className="space-y-3" data-testid="builder-held-shape">
-          <FormRow label="Centre">
-            <CardMenuField surface="dialog">
-              <select
-                className={dlgField}
-                aria-label="Centre"
-                data-testid="builder-center"
-                data-value-field="1"
-                value={
-                  frontStrikes.some((s) => s === (centerStrike || atmCenter))
-                    ? String(centerStrike || atmCenter)
-                    : ""
-                }
-                onChange={(e) => {
-                  const s = parseFloat(e.target.value);
-                  if (!Number.isFinite(s)) return;
-                  centerPinnedRef.current = true;
-                  setCenterStrike(s);
-                  rebuildShape(
-                    s,
-                    wingWidth || DEFAULT_CREATE_WING_WIDTH,
-                    optionSide,
-                    frontExp || frontDefault,
-                    backExpiration,
-                  );
-                }}
-              >
-                {frontStrikes.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </CardMenuField>
-          </FormRow>
-          <FormRow label="Width">
-            <CardMenuField surface="dialog">
-              <select
-                className={dlgField}
-                aria-label="Width"
-                data-testid="builder-width"
-                data-value-field="1"
-                value={wingChoices.includes(wingWidth) ? String(wingWidth) : ""}
-                onChange={(e) => {
-                  const w = parseFloat(e.target.value);
-                  if (!Number.isFinite(w)) return;
-                  setWingWidth(w);
-                  rebuildShape(
-                    centerStrike || atmCenter || spotPrice,
-                    w,
-                    optionSide,
-                    frontExp || frontDefault,
-                    backExpiration,
-                  );
-                }}
-              >
-                {wingChoices.map((w) => (
-                  <option key={w} value={w}>
-                    {w}
-                  </option>
-                ))}
-              </select>
-            </CardMenuField>
-          </FormRow>
-          <FormRow label="Expiration">
-            <CardMenuField surface="dialog">
-              <select
-                className={dlgField}
-                aria-label="Expiration"
-                data-testid="builder-expiration"
-                value={boundSelectValue(frontExp, chain.expirations).value}
-                data-invalid={
-                  boundSelectValue(frontExp, chain.expirations).invalid
-                    ? "1"
-                    : "0"
-                }
-                onChange={(e) => {
-                  const nextExp = e.target.value;
-                  if (!nextExp) return;
-                  chain.ensureExpiration(nextExp);
-                  userPickedExp.current = true;
-                  setPosition((p) => ({ ...p, expiration: nextExp }));
-                  rebuildShape(
-                    centerStrike || atmCenter || spotPrice,
-                    wingWidth || DEFAULT_CREATE_WING_WIDTH,
-                    optionSide,
-                    nextExp,
-                    backExpiration,
-                  );
-                }}
-              >
-                {boundSelectValue(frontExp, chain.expirations).invalid ? (
-                  <option value="">{frontExp || "—"}</option>
-                ) : null}
-                {chain.expirations.map((e) => (
-                  <option key={e} value={e}>
-                    {e.slice(5)}
-                  </option>
-                ))}
-              </select>
-            </CardMenuField>
-          </FormRow>
         </div>
 
         <section aria-label="Legs">
@@ -1961,16 +1819,19 @@ export default function PositionBuilder({
             data-testid="builder-legs-surface"
             className="rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface-secondary)] p-4"
           >
-          <table className="w-full table-fixed text-left text-[length:var(--text-body)] tabular-nums">
+          <table
+            data-testid="builder-legs-table"
+            className="w-full whitespace-nowrap text-left text-[length:var(--text-body)] tabular-nums"
+          >
             <thead>
               <tr className="uppercase tracking-wide text-[length:var(--text-caption)] text-[var(--color-label-tertiary)]">
-                <th className="w-12 py-1 font-normal" />
-                <th className="py-1 font-normal">Qty</th>
-                <th className="py-1 font-normal">Strike</th>
-                <th className="py-1 font-normal">Type</th>
-                <th className="py-1 font-normal">Expiration</th>
-                <th className="py-1 text-right font-normal">Debit</th>
-                <th className="py-1 text-right font-normal">Pos</th>
+                <th className="py-1 pr-3 font-normal" />
+                <th className="py-1 pr-3 font-normal">Qty</th>
+                <th className="py-1 pr-3 font-normal">Strike</th>
+                <th className="py-1 pr-3 font-normal">Type</th>
+                <th className="py-1 pr-3 font-normal">Expiration</th>
+                <th className="py-1 pr-3 text-right font-normal">Debit</th>
+                <th className="py-1 pr-3 text-right font-normal">Pos</th>
                 <th className="w-6 py-1 font-normal" />
               </tr>
             </thead>
@@ -1982,7 +1843,7 @@ export default function PositionBuilder({
                 const isTop = row === 0;
                 return (
                   <tr key={`${i}-${leg.strike}-${leg.type}`}>
-                    <td className="py-1 pr-1 text-[var(--color-label-tertiary)]">
+                    <td className="whitespace-nowrap py-1 pr-3 text-[var(--color-label-tertiary)]">
                       Leg {row + 1}:
                     </td>
                     <td className="py-1">
@@ -2090,6 +1951,7 @@ export default function PositionBuilder({
                                 : "0"
                             }
                             data-testid={`builder-leg-exp-${i}`}
+                            aria-label="Expiration"
                             onChange={(e) => {
                               const nextExp = e.target.value;
                               if (!nextExp) return;
