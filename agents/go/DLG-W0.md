@@ -1,11 +1,11 @@
 # DLG-W0 — Coach GO token · program `p-options-lab-create-edit-dialog`
 
 **Plan:** `docs/Options-Lab-Create-Edit-Position-Dialog-Full-Agent-Bench-Plan-v1.0.md`
-**Spec:** `Specs/FatTail-Labs-Options-Lab-Create-Edit-Position-Dialog-Spec-v0_7.md`
-**sha1:** `8218fed8165c7330cf2a71884109a2f4e1adf814` *(Delta only — computed from disk. Coach does not confirm this number.)*
-**BUILD AUTHORITY:** Spec **v0.7** as of this re-stamp. v0.4–v0.6 remain baselines. **DLG2 reopened.**
-**Stamped by:** Coach (GO 2026-09-11; v0.7 re-stamp same day)
-**Date:** 2026-09-11
+**Spec:** `Specs/FatTail-Labs-Options-Lab-Create-Edit-Position-Dialog-Spec-v0_8.md`
+**sha1:** `218270651607a202eeb871df081e84ccc50f09e2` *(Delta only — computed from disk. Coach does not confirm this number.)*
+**BUILD AUTHORITY:** Spec **v0.8** as of this re-stamp. v0.4–v0.7 remain baselines. **DLG2 rebuilds.**
+**Stamped by:** Coach (GO 2026-09-11; v0.8 re-stamp 2026-09-12)
+**Date:** 2026-09-12
 
 > Ticks below are Coach’s stamp. This file, saved, is the stamp — chat "go" is not (DL-328).
 
@@ -23,11 +23,11 @@
 
 ## 2. Spec and plan
 
-- [x] Spec is **v0.7** — `head -1` contains `Spec v0.7`; `grep -c 'DLG-LAYOUT-0'` · `AT-DLG-18` · `AT-DLG-20` · `Do not build Preview, Entry time, or Submit` are all non-zero
-- [x] Spec designated **BUILD AUTHORITY** as of this re-stamp (DL-693)
-- [x] Plan **v1.0** is the program of record, executed against v0.7 from the DLG2 redo
+- [x] Spec is **v0.8** — `head -1` contains `Spec v0.8`; `grep -c 'DLG-LAYOUT-12'` · `AT-DLG-21` · `AT-DLG-22` · `Do not build Preview, Entry time, or Submit` are all non-zero
+- [x] Spec designated **BUILD AUTHORITY** as of this re-stamp (DL-694)
+- [x] Plan **v1.0** is the program of record, executed against v0.8 from this DLG2 rebuild
 - [x] DLG0 (`93b08d8`) and DLG1 (`8faf9cd`) **not reopened**. India W0-4 still stands.
-- [x] **DLG2 reopened** — layout regression (author: v0.2 transcribed the shipped dialog, not the prototype)
+- [x] **DLG2 rebuilds** — five Spec additions Coach never asked for are struck; panel 1100 floor
 
 ---
 
@@ -65,14 +65,15 @@ India W0-4 still stands.
 ## 5. Cross-stamps
 
 - [x] Position Control v1.2 stays frozen.
-- [x] Spec v0.4, v0.5, v0.6 remain on disk as baselines. Not edited.
+- [x] Spec v0.4, v0.5, v0.6, v0.7 remain on disk as baselines. Not edited.
 
 ---
 
-## 6. v0.7 re-stamp (DLG2 reopened)
+## 6. v0.8 re-stamp (DLG2 rebuilds)
 
-- [x] Prototype image is normative (DLG-LAYOUT-0). Headings not in the image are defects.
-- [x] DLG-HIG-8: green on Buy and payoff stroke from an accent token, required
-- [x] DLG-HIG-9: legs table filled, bordered, inner padding
-- [x] Centre / Width / structure-level Expiration held (§5.3.1) — raise at DLG2-G
-- [x] sha1 `8218fed8165c7330cf2a71884109a2f4e1adf814` matches disk
+- [x] Prototype image is normative (DLG-LAYOUT-0). Anything not in the image is a defect.
+- [x] Five additions struck: Call/Put, derived name, Centre, Width, structure-level Expiration
+- [x] §8 decision 5 reversed — right is per-leg in TYPE
+- [x] DLG-HIG-10: panel 1100 / content 1060, floor not target
+- [x] DLG-LAYOUT-12: legs table does not wrap; widen, never shrink type
+- [x] sha1 `218270651607a202eeb871df081e84ccc50f09e2` matches disk

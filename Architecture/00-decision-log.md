@@ -4,6 +4,37 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-12 — DL-694 Create / Edit Position Dialog Spec v0.8 BUILD AUTHORITY · DLG2 rebuilds
+
+**Decision (Coach).** Spec
+`Specs/FatTail-Labs-Options-Lab-Create-Edit-Position-Dialog-Spec-v0_8.md`
+is **BUILD AUTHORITY**. Token
+[`agents/go/DLG-W0.md`](../agents/go/DLG-W0.md) re-stamped at v0.8.
+sha1 `218270651607a202eeb871df081e84ccc50f09e2` (Delta, from disk).
+**DLG2 rebuilds against v0.8.**
+
+**Cause.** Coach's marked-up prototype, 2026-09-12: five things the Spec
+added and Coach never asked for. *"You added things I did not ask for."*
+
+**Struck.**
+- Call / Put control — right is per-leg in TYPE. **Reverses §8 decision 5.**
+- Derived-name text ("Buy Butterfly")
+- Centre
+- Width
+- Structure-level Expiration
+
+**Also.** **DLG-HIG-10** panel **1100** / content **1060** (floor). New
+**DLG-LAYOUT-12**: legs table spans full content width; nothing wraps;
+widen the panel, never shrink the type. **DLG-LAYOUT-0** restated: anything
+in the dialog that is not in the image is a defect. **AT-DLG-21/22** added.
+
+v0.4–v0.7 stay on disk as baselines. **DLG0 (`93b08d8`) and DLG1
+(`8faf9cd`) are not reopened.** India's W0-4 `surface` sign still stands.
+
+**Does not:** deploy. Reopen DLG0/DLG1. Edit frozen Spec v1.2. Fork IKI.
+
+---
+
 ## 2026-09-11 — DL-693 Create / Edit Position Dialog Spec v0.7 BUILD AUTHORITY · DLG2 reopened
 
 **Decision (Coach).** Spec
