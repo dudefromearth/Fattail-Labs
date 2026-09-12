@@ -171,7 +171,27 @@ test("AT-DLG-21/22 layout vs prototype — both themes, larger type", async ({
   await expect(table).toBeVisible();
   await assertNoWrap(table);
 
-  await expect(dialog).toHaveAttribute("data-panel-width", "1100");
+  const laid = await dialog.evaluate((root) => {
+    const table = root.querySelector('[data-testid="builder-legs-table"]');
+    const surface = root.querySelector('[data-testid="builder-legs-surface"]');
+    const tr = table?.querySelector("tbody tr");
+    const cells = tr
+      ? [...tr.children].map((c) => c.getBoundingClientRect().width)
+      : [];
+    const sum = cells.reduce((a, b) => a + b, 0);
+    const tw = table?.getBoundingClientRect().width ?? 0;
+    return {
+      panel: Math.round(root.getBoundingClientRect().width),
+      table: Math.round(tw),
+      surface: Math.round(surface?.getBoundingClientRect().width ?? 0),
+      slack: Math.abs(tw - sum),
+    };
+  });
+  expect(laid.panel, "hard-coded panel").toBe(
+    Number(await dialog.getAttribute("data-panel-width")),
+  );
+  expect(laid.slack, "no auto-distributed leftover in the table").toBeLessThan(2);
+
   await page.screenshot({ path: join(OUT, "page.png") });
   await dialog.screenshot({ path: join(OUT, "dialog.png") });
 
@@ -202,6 +222,49 @@ test("AT-DLG-21/22 layout vs prototype — both themes, larger type", async ({
   });
   await assertNoWrap(table);
   await dialog.screenshot({ path: join(OUT, "dialog-dark-large.png") });
+});
+
+test("dialog width is constant; height follows leg rows only", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  const dialog = await openDialog(page);
+  const w0 = await dialog.evaluate((el) => el.getBoundingClientRect().width);
+  const h0 = await dialog.evaluate((el) => el.getBoundingClientRect().height);
+  const rows0 = await dialog.locator('[data-testid="builder-legs-table"] tbody tr').count();
+
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await expect
+    .poll(async () => dialog.evaluate((el) => el.getBoundingClientRect().width))
+    .toBe(w0);
+
+  await dialog.getByLabel("Add leg").click();
+  await expect
+    .poll(async () =>
+      dialog.locator('[data-testid="builder-legs-table"] tbody tr').count(),
+    )
+    .toBe(rows0 + 1);
+  const afterAdd = await dialog.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return { w: r.width, h: r.height };
+  });
+  expect(afterAdd.w).toBe(w0);
+  expect(afterAdd.h).toBeGreaterThan(h0);
+
+  await dialog.locator('[aria-label="Remove leg"]').last().evaluate((el) => {
+    (el as HTMLButtonElement).click();
+  });
+  await expect
+    .poll(async () =>
+      dialog.locator('[data-testid="builder-legs-table"] tbody tr').count(),
+    )
+    .toBe(rows0);
+  const afterRm = await dialog.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return { w: r.width, h: r.height };
+  });
+  expect(afterRm.w).toBe(w0);
+  expect(afterRm.h).toBeLessThan(afterAdd.h);
 });
 
 test("Sell inverts legs, script, and blotter to credit red", async ({

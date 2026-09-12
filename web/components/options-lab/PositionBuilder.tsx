@@ -15,6 +15,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import {
@@ -359,9 +360,24 @@ export type PositionBuilderProps = {
   onSetEntryAt?: (entryAt: number) => void;
 };
 
-/** Floor: six-column legs table on one line. Widen, never shrink type. */
-const PANEL_W = 1100;
+/** Dialog width is a constant. Height follows leg-row count only. */
+const PANEL_INSET = 20;
+const LEGS_PAD = 15;
+/** Explicit gap after a field group — not leftover auto-distribution. */
+const LEGS_GROUP_GAP = 32;
+/**
+ * Table + 15px pad + 20px dialog inset, both sides.
+ * Measured against max-content legs (no w-full). Do not derive from the window.
+ */
+const PANEL_W = 756;
 const PANEL_DEFAULT_OFFSET = { x: 48, y: 72 };
+
+function legsGroupPad(col: string): CSSProperties | undefined {
+  if (col === "QTY" || col === "TYPE" || col === "POS") {
+    return { paddingRight: LEGS_GROUP_GAP };
+  }
+  return undefined;
+}
 
 export default function PositionBuilder({
   open,
@@ -1611,7 +1627,7 @@ export default function PositionBuilder({
   return (
     <div
       className={
-        "builder-steppers fixed z-50 flex max-h-[min(92vh,860px)] w-[min(1100px,calc(100vw-1.5rem))] " +
+        "builder-steppers fixed z-50 flex max-h-[min(92vh,860px)] " +
         "flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-separator)] " +
         "bg-[var(--color-surface)] text-[var(--color-label)] shadow-[var(--elevation-3)]"
       }
@@ -1620,9 +1636,10 @@ export default function PositionBuilder({
       aria-modal="false"
       aria-label={mode === "edit" ? "Edit Position" : "Create Position"}
       data-testid="position-builder"
-      data-panel-width="1100"
-      data-content-inset="20"
-      data-content-width="1060"
+      data-panel-width={String(PANEL_W)}
+      data-content-inset={String(PANEL_INSET)}
+      data-content-width={String(PANEL_W - 2 * PANEL_INSET)}
+      data-legs-pad={String(LEGS_PAD)}
     >
       <div
         className="relative cursor-grab border-b border-[var(--color-separator)] px-5 pt-5 pb-3 text-center active:cursor-grabbing"
@@ -1805,16 +1822,22 @@ export default function PositionBuilder({
             data-blotter-kind={blotterKind}
             data-pkg-delta={pkgDelta == null ? "" : String(pkgDelta)}
             data-iv={fmtIv(position.legs[0]?.volatility)}
-            className="overflow-x-auto rounded border border-[var(--color-separator)]"
-            style={{ ...BLOTTER_CSS_VARS, backgroundColor: blotterBg }}
+            className="rounded border border-[var(--color-separator)]"
+            style={{
+              ...BLOTTER_CSS_VARS,
+              backgroundColor: blotterBg,
+              padding: LEGS_PAD,
+              width: "max-content",
+            }}
           >
           <table
             data-testid="builder-legs-table"
             className={
-              "w-full table-fixed border-separate border-spacing-0 text-left " +
+              "border-separate border-spacing-0 text-left " +
               DATA +
               " leading-tight whitespace-nowrap tabular-nums"
             }
+            style={{ width: "max-content" }}
           >
             <thead className={CARD_THEAD}>
               <tr data-testid="builder-legs-header">
@@ -1836,6 +1859,7 @@ export default function PositionBuilder({
                           ? " text-right"
                           : "")
                       }
+                      style={legsGroupPad(col)}
                     >
                       {col}
                     </th>
@@ -1843,7 +1867,11 @@ export default function PositionBuilder({
                   if (col !== "PRICE") return [heading];
                   return [
                     heading,
-                    <th key="pos" className={CARD_TH + " text-right"}>
+                    <th
+                      key="pos"
+                      className={CARD_TH + " text-right"}
+                      style={legsGroupPad("POS")}
+                    >
                       POS
                     </th>,
                   ];
@@ -1897,7 +1925,10 @@ export default function PositionBuilder({
                         <span data-testid={`builder-leg-side-${i}`}>{legSide}</span>
                       )}
                     </td>
-                    <td className={CARD_TD + " text-right font-mono " + textMain}>
+                    <td
+                      className={CARD_TD + " text-right font-mono " + textMain}
+                      style={legsGroupPad("QTY")}
+                    >
                       <div className="flex items-center justify-end gap-1">
                         <span
                           className={valueField + " " + W_QTY}
@@ -2021,7 +2052,10 @@ export default function PositionBuilder({
                         />
                       </div>
                     </td>
-                    <td className={CARD_TD + " " + textMain}>
+                    <td
+                      className={CARD_TD + " " + textMain}
+                      style={legsGroupPad("TYPE")}
+                    >
                       <CardMenuField surface="card" fit="min">
                         <button
                           type="button"
@@ -2086,7 +2120,10 @@ export default function PositionBuilder({
                         </div>
                       ) : null}
                     </td>
-                    <td className={CARD_TD + " text-right font-mono " + textMain}>
+                    <td
+                      className={CARD_TD + " text-right font-mono " + textMain}
+                      style={legsGroupPad("POS")}
+                    >
                       {isTop ? (
                         <div className="flex items-center justify-end gap-1">
                           <span
