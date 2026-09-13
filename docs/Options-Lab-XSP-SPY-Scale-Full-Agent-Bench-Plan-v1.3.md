@@ -990,7 +990,7 @@ Seed naming: `XS0-{n}-{agent}-{slug}.md` · `XS1-{n}-…` · gates `XS0-G.md` �
 | **XS0-8** | Juliet | Board on disk; **pasteable seed files**; isolation note on WF / AF / LIM / QFRIC / Dialog boards |
 | **XS0-9** | Lima | **PR 1:** GO DL + AGENTS.md reassignment (not outline). Draft scoped DL-435 reverse text for PR 3 |
 | **XS0-G** | Delta | All XS0-* PASS/FAIL; OD table ready; **seed files exist on disk**; **no product code** |
-| **XS0-0** | Coach | Stamp `agents/go/XS0-W0.md` **only after** seeds exist (S10). OD-XS0, XS1, XS2, XS4–**XS11**. JR1–8. Plan sha1 → DL. AGENTS.md line **in the GO commit / PR 1**. **v1.2**, not v1.0 or v1.1 |
+| **XS0-0** | Coach | Stamp `agents/go/XS0-W0.md` **only after** seeds exist (S10). OD-XS0, XS1, XS2, XS4–**XS11**. JR1–8. Plan sha1 → DL. AGENTS.md line **in the GO commit / PR 1**. **v1.3**, not v1.0, v1.1, or v1.2 |
 
 ### Phase XS1 — Create / recipe scale
 
