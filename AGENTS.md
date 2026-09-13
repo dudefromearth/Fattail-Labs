@@ -25,6 +25,7 @@ LearnDash. No shared code with MarketSwarm-Canonical (HTTP only).
 |----------|---------------------|
 | **Options Lab Heatmap LIM (active program · DL-651 · DL-652 · LIM7)** | LIM remains active (LIM7 surface fit). Do not drift LIM. IKI Lab is **parked**, not cancelled. DL-539 §8 five-module freeze is **unchanged** except the Quant line below. |
 | **Quant Lab fill-friction (active program · DL-679 · QFRIC)** | ATRV v0.10 §3.7.1 BUILD. Board `agents/p-quant-friction/`. Token `agents/go/QFRIC-W0.md`. Isolation: DL-677 quant files + Monte Carlo page + `validate_quant_env` + `.env.example`. No LIM file, no OPF file, no store/builder. P4 skipped until fill history (never in the repo). |
+| **Options Lab XSP/SPY scale (active program · DL-700 · XS)** | Plan **v1.3**. Board `agents/p-options-lab-xsp-spy-scale/`. Token `agents/go/XS0-W0.md` **GO**. Third tree alongside LIM and QFRIC. WIDTH-1 `a27f187` prerequisite. No LIM file, no QFRIC file, no `AnalyzerPositionsList`, no MiniTwo. **NX18:** a passing XS gate is not IKI progress. Runner is Template Runner (`web/lib/runner/`). |
 | **Strategy Lab NOW** | Lock **Design + Curate** for entitled members. Multi-member Curate is absolute. |
 | **Deploy** | Members get **Deploy UX** except **real-broker (Tradier) real-money**. Admin dogfoods Tradier, then provision. **DL-251 / DL-252**. |
 | **Market Bus (shipped core)** | Live chains/symbols: **Massive → feeds → Redis → one WS/tab → shared client**. Options Lab at `/app/options-lab`. See Arch **28**. |

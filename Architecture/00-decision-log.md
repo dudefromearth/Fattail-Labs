@@ -4,6 +4,44 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-13 — DL-700 Options Lab XSP/SPY scale is GO · third tree alongside LIM and QFRIC
+
+**Decision (Coach, 2026-09-13).** *"let’s execute plan 1.3"* Recorded on
+`agents/go/XS0-W0.md` XS0-0.
+
+**Stamped:** Plan **v1.3** Accept (sha1
+`6959b93629991a3c47481b8c6dc230850d6c3158`). Token
+[`agents/go/XS0-W0.md`](../agents/go/XS0-W0.md) **GO**. WIDTH-1 `a27f187`
+(**DL-699**) is prerequisite, not this packet. Board
+`agents/p-options-lab-xsp-spy-scale/`.
+
+**OD-XS0:** Reassignment DL (this entry · QFRIC B1 pattern). Options Lab
+XSP/SPY scale is an **active program alongside** Heatmap LIM and Quant Lab
+fill-friction. LIM and QFRIC are not cancelled, not parked. The three-OK
+log on `XS0-W0.md` is **N/A** — superseded by this reassignment, not
+satisfied. Named in `AGENTS.md` current-state row.
+
+**Dispositions (silent-at-GO defaults, ticked on the token):** OD-XS1 (a)
+overlay; OD-XS2 (a) listed-only; OD-XS4 new board; OD-XS5 DL + changelog
+row, no Spec version bump; OD-XS6 hold `a27f187` until the stack travels;
+OD-XS7 XSP only; OD-XS8 same resolver; OD-XS9 (a) butterfly-only,
+`productWingHint` unchanged; OD-XS10 (a) `ChainContext.columnWidths`;
+OD-XS11 (a) keep `OFFLINE_FALLBACK_WIDTHS`. L3 Width picker locked (not an
+OD). JR1–8 Accept.
+
+**NX18 / FI-049:** this GO does not entitle IKI Labs, `observer-light`, or
+Factory catalog. **A passing XS gate is not progress on the bigger goal.**
+Runner is existing Template Runner (`web/lib/runner/`).
+
+**Does not:** product code · `heatmapColumnWidths` · `builderCreateDefault`
+· `AnalyzerPositionsList.tsx` · `fetch_step_floor` · `defaultWidth` ·
+MiniTwo · DL-435 reverse (that is PR 3 if OD-XS1 (a)) · Spec version bump.
+
+**Cites:** **DL-539** · **DL-328** · **DL-699** · **DL-435** remainder ·
+**DL-679** (B1 pattern).
+
+---
+
 ## 2026-09-12 — DL-699 XSP and SPY fly ladders are 1–7 (`fixed_points`)
 
 **Decision.** XSP and SPY `app_profile_json` use `fly_width_mode: "fixed_points"`
