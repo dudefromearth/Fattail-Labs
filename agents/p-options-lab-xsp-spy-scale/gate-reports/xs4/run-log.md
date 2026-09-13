@@ -33,5 +33,11 @@ Unit tests for those ATs **PASS on this worktree**. They will pass in Playwright
 ## Leftovers (do not “fix”)
 
 - `productWingHint`: `s === "SPX" \|\| s === "XSP"` → 20 remains (OD-XS9 a)
-- QQQ/IWM heatmap still 10…50 (XS-ETF deferred)
+- QQQ/IWM heatmap still 10…50 (XS-ETF deferred · **FI-050**)
 - `fetch_step_floor` not edited
+
+## Recapture (2026-09-13, after Next served the XS packet)
+
+`:3000` cwd = `/Users/ernie/Fattail-Labs-execute-plan/pr-6/web`. API `:4000` unchanged. Did not stop servers. Did not SSH MiniTwo.
+
+`npx playwright test e2e/width1-xsp-spy.spec.ts` → **5 passed** (`playwright-recapture.txt`). AT-XS6 / AT-XS9 / AT-XS10 live PASS. One earlier full-run walk flake (off-market Create opened 20 for 45s); isolated + subsequent full run PASS.

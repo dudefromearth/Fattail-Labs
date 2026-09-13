@@ -19,12 +19,12 @@ XS1, XS2, XS3 are **siblings after XS0-0**. Heatmap columns do not wait on Creat
 
 | Phase | Name | State |
 |-------|------|--------|
-| **XS0** | Board · OD-XS* · seeds · AGENTS reassignment · plan hash | **GO** — `XS0-W0.md` · **DL-700** |
-| **XS1** | Create / recipe scale + OD-XS7 XSP fallbacks | After XS0-0 |
-| **XS2** | Heatmap column resolver + scoped DL-435 reverse in the same PR | After XS0-0 · OD-XS1 (a) |
-| **XS3** | SPY listed-snap policy | After XS0-0 · OD-XS2 (a) |
-| **XS4** | AT-XS* · pytest · live migrate-152 · Playwright · e2e fold | After XS1 · XS2 · XS3 |
-| **XS5** | Arch 29 · AF changelog row · pointer honesty · close | After XS4 |
+| **XS0** | Board · OD-XS* · seeds · AGENTS reassignment · plan hash | **PASS** `XS0-G.md` · **GO** `XS0-W0.md` · **DL-700** |
+| **XS1** | Create / recipe scale + OD-XS7 XSP fallbacks | **PASS** `XS1-G.md` |
+| **XS2** | Heatmap column resolver + scoped DL-435 reverse in the same PR | **PASS** `XS2-G.md` · **DL-701** |
+| **XS3** | SPY listed-snap policy | **PASS** `XS3-G.md` |
+| **XS4** | AT-XS* · pytest · live migrate-152 · Playwright · e2e fold | **PASS** `XS4-G.md` · live recapture 5/5 |
+| **XS5** | Arch 29 · AF changelog row · pointer honesty · close | **PASS** `XS5-G.md` · Coach close remaining |
 | **XS-W** | Width picker | **Never this board** (L3) |
 
 **Data law:** Universe overlay (`source === "market_symbol_universe"` ∧ `fixed_points`) is scale SoR. Kind-default must not paint as overlay. AZ-DEF-4: never invent unlisted arithmetic width. Panel and runner consume **one** resolved list (`ChainContext.columnWidths`).

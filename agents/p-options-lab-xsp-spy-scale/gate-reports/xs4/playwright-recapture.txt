@@ -1,0 +1,12 @@
+
+Running 5 tests using 1 worker
+
+(node:63083) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 e2e/width1-xsp-spy.spec.ts:110:5 › AT-XS4/5/11/16 Create: XSP 1-wide listed, SPY listed honesty, SPX 20-wide (13.1s)
+  ✓  2 e2e/width1-xsp-spy.spec.ts:166:5 › AT-XS4 XSP listed-wing walk stays inside 1…7 (3.5s)
+  ✓  3 e2e/width1-xsp-spy.spec.ts:194:5 › AT-XS6 handleTemplate butterfly on XSP does not re-seed 20 (5.1s)
+  ✓  4 e2e/width1-xsp-spy.spec.ts:227:5 › AT-XS9 Heatmap XSP columns 1–7; SPX 10…50 (4.9s)
+  ✓  5 e2e/width1-xsp-spy.spec.ts:262:5 › AT-XS10 Width Fit XSP footer 7; SPX footer 9 (3.1s)
+
+  5 passed (30.2s)

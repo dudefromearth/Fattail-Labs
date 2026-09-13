@@ -62,4 +62,4 @@ Reconnect remaining XSP/SPY fly-scale consumers (heatmap columns, Create butterf
 
 ## Status
 
-**XS0-0 GO** · **DL-700**. Plan **v1.3**. WIDTH-1 `a27f187` prerequisite.
+**XS0–XS5 landed** `origin/main`. Gates `XS0-G`…`XS5-G` **PASS**. Plan **v1.3**. WIDTH-1 `a27f187` prerequisite. **DL-700** / **DL-701**. Live AT recapture 5/5. **FI-050** XS-ETF deferred. MiniTwo is Coach remote (named; this agent does not SSH). Coach close remaining. **NX18** still holds.
