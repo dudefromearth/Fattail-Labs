@@ -36,9 +36,10 @@ import {
   rocSensitivityToThreshold,
 } from "@/lib/options-lab/templates/color";
 import {
-  heatmapFlyWidths,
-  symFlyTemplate,
-} from "@/lib/options-lab/templates/symFly";
+  heatmapColumnWidths,
+  heatmapProfileLine,
+} from "@/lib/options-lab/templates/heatmapColumnWidths";
+import { symFlyTemplate } from "@/lib/options-lab/templates/symFly";
 import {
   isFlySurfaceTemplate,
   isWidthFitTemplate,
@@ -317,6 +318,10 @@ const StrikeRow = memo(function StrikeRow({
 export default function HeatmapChainPanel() {
   const { symbol, setSymbol, universe, profile, loading: universeLoading } =
     useOptionsLab();
+  const flyWidths = useMemo(
+    () => heatmapColumnWidths({ symbol, profile }),
+    [symbol, profile?.source, profile?.fly_widths, profile?.fly_width_mode],
+  );
   const [expiryContracts, setExpiryContracts] = useState<
     LadderExpirationContract[]
   >([]);
@@ -470,6 +475,8 @@ export default function HeatmapChainPanel() {
   /** Lightweight paint for active mode only (never store all 11 mode grids). */
   const [flyPaint, setFlyPaint] = useState<FlyPipelinePaint | null>(null);
   const lastIngestKeyRef = useRef("");
+  /** Written ONLY after pipeline.ingest actually runs. */
+  const lastIngestRef = useRef<{ hash: string; symbol: string } | null>(null);
   const genReceivedAtRef = useRef<{ key: string; at: number }>({
     key: "",
     at: 0,
@@ -636,6 +643,7 @@ export default function HeatmapChainPanel() {
       contracts: bus.contracts,
       asOf: bus.asOf,
       contentHash: bus.hash,
+      columnWidths: flyWidths,
     }),
     [
       symbol,
@@ -646,6 +654,7 @@ export default function HeatmapChainPanel() {
       bus.contracts,
       bus.asOf,
       bus.hash,
+      flyWidths,
     ],
   );
   const atPlayhead = useChainAtPlayhead({
@@ -781,9 +790,6 @@ export default function HeatmapChainPanel() {
     };
   }, []);
 
-  /** Coach: 10…50 by 5 for every Advanced Fly variant (DL-435). */
-  const flyWidths = useMemo(() => heatmapFlyWidths(), []);
-
   const genKey = `${bus.hash ?? ""}|${side}|${valueMode}`;
   if (bus.hash && genReceivedAtRef.current.key !== (bus.hash || "")) {
     genReceivedAtRef.current = {
@@ -800,10 +806,20 @@ export default function HeatmapChainPanel() {
     if (!isFlySurfaceTemplate(templateId)) return;
     if (!bus.hash || !chainCtx.contracts.size) return;
 
+    const last = lastIngestRef.current;
+    if (
+      last &&
+      symbol !== last.symbol &&
+      bus.hash === last.hash
+    ) {
+      // panel symbol moved; generation hash has not — leftover contracts
+      return; // skip ingest; do not paint new widths onto the old book
+    }
+
     const ingestMode = isWidthFitTemplate(templateId)
       ? "width_fit"
       : valueMode;
-    const ingestKey = `${bus.hash}|${side}|${ingestMode}|${flyWidths.join(",")}`;
+    const ingestKey = `${bus.hash}|${symbol}|${side}|${ingestMode}|${flyWidths.join(",")}`;
     if (ingestKey === lastIngestKeyRef.current) return;
 
     if (ingestRafRef.current) cancelAnimationFrame(ingestRafRef.current);
@@ -836,7 +852,8 @@ export default function HeatmapChainPanel() {
       } else {
         symFlyTemplate.assignColors(paint.cells, colorParams);
       }
-      lastIngestKeyRef.current = `${hashAtSchedule}|${side}|${modeAtSchedule}|${flyWidths.join(",")}`;
+      lastIngestKeyRef.current = `${hashAtSchedule}|${symbol}|${side}|${modeAtSchedule}|${flyWidths.join(",")}`;
+      lastIngestRef.current = { hash: hashAtSchedule, symbol };
       setFlyPaint(paint);
     });
 
@@ -845,7 +862,7 @@ export default function HeatmapChainPanel() {
     };
     // Intentionally NOT depending on full chainCtx identity — hash is the gen gate.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- chainCtx read inside when hash changes
-  }, [templateId, bus.hash, side, valueMode, flyWidths, stickyScale, gradientThreshold, widthFitWeights]);
+  }, [templateId, bus.hash, symbol, side, valueMode, flyWidths, stickyScale, gradientThreshold, widthFitWeights]);
 
   const templateParams: TemplateParams = useMemo(
     () => ({
@@ -874,26 +891,29 @@ export default function HeatmapChainPanel() {
     ],
   );
 
+  const flyPaintReady =
+    lastIngestRef.current?.symbol === symbol ? flyPaint : null;
+
   const matrix = useMemo(() => {
     if (tpl.layout !== "matrix") return null;
     if (isFlySurfaceTemplate(tpl.id)) {
       const wantMode = isWidthFitTemplate(tpl.id) ? "width_fit" : valueMode;
-      if (!flyPaint || flyPaint.mode !== wantMode) return null;
-      const cells = flyPaint.cells.map((row) => row.map((c) => ({ ...c })));
+      if (!flyPaintReady || flyPaintReady.mode !== wantMode) return null;
+      const cells = flyPaintReady.cells.map((row) => row.map((c) => ({ ...c })));
       if (isWidthFitTemplate(tpl.id)) {
         const wf = assignWidthFitColors(cells, templateParams);
         return {
-          rows: flyPaint.rows,
-          cols: flyPaint.cols,
+          rows: flyPaintReady.rows,
+          cols: flyPaintReady.cols,
           cells,
           stickyScale: wf.stickyScale,
-          footer: attachFooterWidths(wf.footer, flyPaint.cols),
+          footer: attachFooterWidths(wf.footer, flyPaintReady.cols),
         };
       }
       const colored = symFlyTemplate.assignColors(cells, templateParams);
       return {
-        rows: flyPaint.rows,
-        cols: flyPaint.cols,
+        rows: flyPaintReady.rows,
+        cols: flyPaintReady.cols,
         cells,
         stickyScale: colored.stickyScale,
         footer: [] as WidthFitFooterCol[],
@@ -901,7 +921,7 @@ export default function HeatmapChainPanel() {
     }
     const built = buildGrid(tpl, chainCtx, templateParams);
     return { ...built, footer: [] as WidthFitFooterCol[] };
-  }, [tpl, chainCtx, templateParams, flyPaint, valueMode, stickyScale]);
+  }, [tpl, chainCtx, templateParams, flyPaintReady, valueMode, stickyScale]);
 
   const bookKey = interestKey(symbol, expiration);
   const weightsFp = weightsFingerprint(widthFitWeights);
@@ -1218,12 +1238,12 @@ export default function HeatmapChainPanel() {
         onBwStrikeCountChange={setBwStrikeCount}
         bwWingSide={bwWingSide}
         onBwWingSideChange={setBwWingSide}
-        profileLine={
-          `Profile` +
-          (profile.strike_step != null ? ` · step ${profile.strike_step}` : "") +
-          ` · widths ${flyWidths[0]}–${flyWidths[flyWidths.length - 1]}` +
-          (profile.kind ? ` · ${profile.kind}` : "")
-        }
+        profileLine={heatmapProfileLine({
+          strikeStep: profile.strike_step,
+          flyWidths,
+          source: profile.source,
+          kind: profile.kind,
+        })}
         expiration={expiration}
         expiryContracts={expiryContracts}
         onExpirationChange={(v) => {

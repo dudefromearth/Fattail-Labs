@@ -32,22 +32,14 @@ import type {
   TemplateParams,
 } from "./types";
 import { contractKey } from "@/lib/chainLadderApi";
-import { heatmapFlyWidths, SYM_FLY_WIDTHS_DEFAULT } from "./symFly";
+import { heatmapWidthList } from "./heatmapColumnWidths";
 
 export const BW_STRIKE_COUNT_DEFAULT = 1;
 export const BW_STRIKE_COUNT_CHOICES = [1, 2, 3, 4, 5, 6, 7, 8] as const;
 export const BW_WING_SIDE_DEFAULT = "closest" as const;
 
 function widthList(ctx: ChainContext, params: TemplateParams): number[] {
-  if (params.widthMode === "fixed_points" && params.fixedPoints?.length) {
-    return [...params.fixedPoints];
-  }
-  if (params.widthMode === "step_multiples") {
-    const step = ctx.strikeStep && ctx.strikeStep > 0 ? ctx.strikeStep : 5;
-    const n = Math.max(1, Math.min(12, params.widthCount ?? 7));
-    return heatmapFlyWidths(step, n);
-  }
-  return heatmapFlyWidths(ctx.strikeStep, params.widthCount ?? 7);
+  return heatmapWidthList(ctx, params);
 }
 
 function bwParams(params: TemplateParams): {

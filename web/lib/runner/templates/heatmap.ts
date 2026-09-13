@@ -4,10 +4,7 @@
  */
 
 import { FlySurfacePipeline } from "@/lib/options-lab/templates/flySurfacePipeline";
-import {
-  heatmapFlyWidths,
-  symFlyTemplate,
-} from "@/lib/options-lab/templates/symFly";
+import { symFlyTemplate } from "@/lib/options-lab/templates/symFly";
 import type {
   ChainContext,
   GridCell,
@@ -22,29 +19,39 @@ import {
 const HEATMAP_ID = "sym-fly";
 const HEATMAP_VERSION = "0.2";
 
-const DEFAULT_PARAMS: TemplateParams = {
-  valueMode: "debit",
-  widthMode: "fixed_points",
-  fixedPoints: heatmapFlyWidths(),
-  stickyScale: 1,
-};
-
 function isChainContext(x: unknown): x is ChainContext {
   if (!x || typeof x !== "object") return false;
   const o = x as ChainContext;
   return o.contracts instanceof Map && typeof o.symbol === "string";
 }
 
+function emptyTiles(ctx: ChainContext): HeatmapTiles {
+  return {
+    rows: [],
+    cols: [],
+    cells: [],
+    contentHash: ctx.contentHash,
+  };
+}
+
 /** Current-path paint: pipeline ingest + assignColors (HeatmapChainPanel fly). */
 export function paintCurrentHeatmap(ctx: ChainContext): HeatmapTiles {
+  const widths = ctx.columnWidths;
+  if (!widths || !widths.length) return emptyTiles(ctx);
+  const params: TemplateParams = {
+    valueMode: "debit",
+    widthMode: "fixed_points",
+    fixedPoints: widths,
+    stickyScale: 1,
+  };
   const pipe = new FlySurfacePipeline();
-  const paint = pipe.ingest(ctx, "debit", heatmapFlyWidths(), {
+  const paint = pipe.ingest(ctx, "debit", widths, {
     receivedAt: 1,
   });
   const cells: GridCell[][] = paint.cells.map((row) =>
     row.map((c) => ({ ...c })),
   );
-  const colored = symFlyTemplate.assignColors(cells, DEFAULT_PARAMS);
+  const colored = symFlyTemplate.assignColors(cells, params);
   void colored;
   return {
     rows: paint.rows.map((r) => ({

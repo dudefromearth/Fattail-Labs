@@ -33,6 +33,7 @@ import type {
   RowDef,
   TemplateParams,
 } from "./types";
+import { heatmapWidthList } from "./heatmapColumnWidths";
 import { contractKey } from "@/lib/chainLadderApi";
 import {
   assignWidthFitColors,
@@ -64,15 +65,7 @@ export function heatmapFlyWidths(
 }
 
 function widthList(ctx: ChainContext, params: TemplateParams): number[] {
-  if (params.widthMode === "fixed_points" && params.fixedPoints?.length) {
-    return [...params.fixedPoints];
-  }
-  if (params.widthMode === "step_multiples") {
-    const step = ctx.strikeStep && ctx.strikeStep > 0 ? ctx.strikeStep : 5;
-    const n = Math.max(1, Math.min(12, params.widthCount ?? 7));
-    return heatmapFlyWidths(step, n);
-  }
-  return heatmapFlyWidths(ctx.strikeStep, params.widthCount ?? 7);
+  return heatmapWidthList(ctx, params);
 }
 
 function formatDebit(n: number): string {

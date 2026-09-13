@@ -3,7 +3,8 @@
  * Geometry = Advanced Fly columns/rows. Internal mode id stays `width_fit`.
  */
 
-import { heatmapFlyWidths, symFlyTemplate } from "./symFly";
+import { heatmapWidthList } from "./heatmapColumnWidths";
+import { symFlyTemplate } from "./symFly";
 import { assignWidthFitColors, widthFitComputeCell } from "./widthFit";
 import type { HeatmapTemplate } from "./types";
 
@@ -19,7 +20,7 @@ export const widthFitTemplate: HeatmapTemplate = {
   defaultValueMode: "width_fit",
   resolveColumns: (ctx, params) => {
     if (!params.fixedPoints?.length) {
-      return heatmapFlyWidths().map((w) => ({
+      return heatmapWidthList(ctx, params).map((w) => ({
         id: `w${w}`,
         label: String(w),
         widthPts: w,

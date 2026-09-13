@@ -36,6 +36,8 @@ export type ChainContext = {
   contracts: Map<string, LadderRow>;
   asOf: string | null;
   contentHash: string | null;
+  /** Resolved heatmap column list (OD-XS10). Panel sets; runner consumes. */
+  columnWidths?: number[];
 };
 
 export type ColDef = {

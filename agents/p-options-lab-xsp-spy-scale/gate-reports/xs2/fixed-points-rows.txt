@@ -1,0 +1,20 @@
+AT-XS7g — live labs DB SELECT fly_width_mode = fixed_points
+Date: 2026-09-13
+Host: 127.0.0.1:3306  database: labs
+
+SQL:
+SELECT symbol, JSON_EXTRACT(app_profile_json, '$.fly_width_mode') AS fly_width_mode
+FROM market_symbol_universe
+WHERE JSON_UNQUOTE(JSON_EXTRACT(app_profile_json, '$.fly_width_mode')) = 'fixed_points'
+ORDER BY symbol;
+
++--------+----------------+
+| symbol | fly_width_mode |
++--------+----------------+
+| SPY    | "fixed_points" |
+| XSP    | "fixed_points" |
++--------+----------------+
+
+row_count: 2
+expect: exactly XSP and SPY
+result: PASS — no third symbol

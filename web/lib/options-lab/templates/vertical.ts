@@ -11,7 +11,7 @@ import {
   NULL_CELL_COLOR,
   debitColor,
 } from "./color";
-import { heatmapFlyWidths } from "./symFly";
+import { heatmapWidthList } from "./heatmapColumnWidths";
 import {
   isPositiveListedDebit,
   verticalDebitPctFromSpot,
@@ -71,10 +71,7 @@ function verticalDirection(kind: VerticalKind): FlyDirection {
 }
 
 function widthList(ctx: ChainContext, params: TemplateParams): number[] {
-  if (params.widthMode === "fixed_points" && params.fixedPoints?.length) {
-    return [...params.fixedPoints];
-  }
-  return heatmapFlyWidths(ctx.strikeStep, params.widthCount ?? 7);
+  return heatmapWidthList(ctx, params);
 }
 
 function formatPkg(n: number): string {

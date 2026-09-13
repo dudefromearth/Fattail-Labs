@@ -3,7 +3,6 @@
  * options-lab/templates. No MA here (TR14 / WF4).
  */
 
-import { heatmapFlyWidths } from "@/lib/options-lab/templates/symFly";
 import { FlySurfacePipeline } from "@/lib/options-lab/templates/flySurfacePipeline";
 import {
   assignWidthFitColors,
@@ -28,9 +27,20 @@ function isChainContext(x: unknown): x is ChainContext {
   return o.contracts instanceof Map && typeof o.symbol === "string";
 }
 
+function emptyTiles(ctx: ChainContext): HeatmapTiles {
+  return {
+    rows: [],
+    cols: [],
+    cells: [],
+    contentHash: ctx.contentHash,
+  };
+}
+
 function paint(ctx: ChainContext): HeatmapTiles {
+  const widths = ctx.columnWidths;
+  if (!widths || !widths.length) return emptyTiles(ctx);
   const pipe = new FlySurfacePipeline();
-  const paint0 = pipe.ingest(ctx, "width_fit", heatmapFlyWidths(), {
+  const paint0 = pipe.ingest(ctx, "width_fit", widths, {
     receivedAt: 1,
   });
   const cells: GridCell[][] = paint0.cells.map((row) =>
@@ -39,7 +49,7 @@ function paint(ctx: ChainContext): HeatmapTiles {
   assignWidthFitColors(cells, {
     valueMode: "width_fit",
     widthMode: "fixed_points",
-    fixedPoints: heatmapFlyWidths(),
+    fixedPoints: widths,
     widthFitWeights: DEFAULT_WIDTH_FIT_WEIGHTS,
     minValidN: DEFAULT_MIN_VALID_N,
     stabilityPenaltyStrength: DEFAULT_STABILITY_PENALTY,

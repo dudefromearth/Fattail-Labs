@@ -18,6 +18,7 @@ import {
   FLY_HISTORY_DEFAULT_DEPTH,
 } from "./flySurfaceHistory";
 import { HEATMAP_FLY_WIDTHS, heatmapFlyWidths } from "./symFly";
+import { XSP_SPY_FLY_WIDTHS } from "./heatmapColumnWidths";
 import {
   isPositiveListedDebit,
   symFlyCpAsym,
@@ -36,8 +37,11 @@ import { widthFitComputeCell } from "./widthFit";
 
 /** Hard caps — SPX ±50 dual-side can be large; fly surface must stay lean. */
 export const FLY_MAX_CENTERS = 80;
-/** Must cover HEATMAP_FLY_WIDTHS (10…50 by 5 = 9 cols). 8 dropped the 50. */
-export const FLY_MAX_WIDTHS = HEATMAP_FLY_WIDTHS.length;
+/** Cap ≥ 9. Covers HEATMAP_FLY_WIDTHS (9) and XSP_SPY_FLY_WIDTHS (7). Do not shrink to 7. */
+export const FLY_MAX_WIDTHS = Math.max(
+  HEATMAP_FLY_WIDTHS.length,
+  XSP_SPY_FLY_WIDTHS.length,
+);
 /** History depth for time modes (velocity needs ≥2 gens). */
 export const FLY_HISTORY_DEPTH = 4;
 
@@ -462,8 +466,11 @@ export class FlySurfacePipeline {
     widths?: number[],
     opts?: { receivedAt?: number },
   ): FlyPipelinePaint {
-    const wList = (widths?.length ? widths : heatmapFlyWidths(ctx.strikeStep, 7))
-      .slice(0, FLY_MAX_WIDTHS);
+    const resolved =
+      widths !== undefined
+        ? widths
+        : heatmapFlyWidths(ctx.strikeStep, 7);
+    const wList = resolved.slice(0, FLY_MAX_WIDTHS);
     const centers = centersFromCtx(ctx, wList);
     const side = ctx.viewSide;
     const hash = ctx.contentHash;

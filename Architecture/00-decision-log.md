@@ -4,6 +4,27 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-13 — DL-701 Heatmap XSP/SPY columns consume universe overlay (scoped DL-435 reverse)
+
+**Decision.** Advanced Fly / Width Fit column lists for symbols whose universe
+profile is `source === "market_symbol_universe"` and `fly_width_mode ===
+"fixed_points"` consume that overlay list (today XSP and SPY: `[1..7]`).
+SPX / NDX / RUT / VIX heatmap columns remain DL-435 `HEATMAP_FLY_WIDTHS`
+`[10…50]` by 5. QQQ / IWM heatmap `[10…50]` is unchanged this packet and is
+a named deferred defect (XS-ETF), not a non-regression Keep.
+
+**Why.** WIDTH-1 (DL-699) overlayed XSP/SPY Create onto 1–7. Heatmap was
+explicitly left on DL-435. Every 10…50 column on XSP sits in the 95.8–100%
+bid-null region of the 2026-09-04 probe.
+
+**Does not.** Mutate `HEATMAP_FLY_WIDTHS`. Change SPX-class heatmap.
+Change `fetch_step_floor`. Edit `AnalyzerPositionsList.tsx`. Spec version bump
+(changelog row only, OD-XS5). MiniTwo.
+
+**Cites:** **DL-435** remainder · **DL-699** · **DL-700** · OD-XS1 (a) · OD-XS10 (a).
+
+---
+
 ## 2026-09-13 — DL-700 Options Lab XSP/SPY scale is GO · third tree alongside LIM and QFRIC
 
 **Decision (Coach, 2026-09-13).** *"let’s execute plan 1.3"* Recorded on
