@@ -59,4 +59,35 @@ test("snapWidthToListed refuses non-grid prefer", () => {
   assert(snapWidthToListed(18, 7730, listed) === 20, "18→20");
 });
 
+// AT-XS11 / OD-XS2 (a): prefer 1; place only a listed wing; never invent 1-wide.
+test("AT-XS11 dense $1 grid at a center → snapWidthToListed(1) === 1", () => {
+  const listed: number[] = [];
+  for (let s = 740; s <= 790; s += 1) listed.push(s);
+  const center = 765;
+  const choices = listedWingChoices(center, listed, 20);
+  assert(choices.includes(1), "1 is listed both wings");
+  const placed = snapWidthToListed(1, center, listed);
+  assert(placed === 1, "prefer 1 stays 1 on a $1 grid");
+  assert(choices.includes(placed as number), "placed ∈ listedWingChoices");
+});
+
+test("AT-XS11 sparse 20-grid → first listed ≥ 1 (e.g. 20), never unlisted 1", () => {
+  // WIDTH-1 SPY off-market: 744/764/784 — first symmetric listed fly is 20.
+  const listed: number[] = [];
+  for (let s = 644; s <= 884; s += 20) listed.push(s);
+  const center = 764;
+  const choices = listedWingChoices(center, listed, 20);
+  assert(choices.includes(20), "20 is listed");
+  assert(!choices.includes(1), "1 is not listed");
+  const placed = snapWidthToListed(1, center, listed);
+  assert(placed != null, "has a listed snap");
+  assert(placed !== 1, "never returns unlisted 1");
+  assert(
+    placed === choices.find((c) => c >= 1),
+    "first listed ≥ 1",
+  );
+  assert(placed === 20, "honest 20");
+  assert(choices.includes(placed as number), "placed ∈ listedWingChoices");
+});
+
 console.log(`\n${n} tests passed`);
