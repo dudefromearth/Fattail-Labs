@@ -5,6 +5,7 @@
 import {
   DEFAULT_CREATE_WING_WIDTH,
   MAX_USER_PRESETS,
+  butterflyWingWidth,
   clearCreateDefault,
   factoryCreateDefault,
   isLabDefaultsActive,
@@ -62,9 +63,23 @@ test("lab butterfly is create-open factory", () => {
   assert(f.wingWidth === DEFAULT_CREATE_WING_WIDTH, "20-wide");
 });
 
-test("create-open default is 20-wide butterfly at spot for any symbol", () => {
+test("create-open default is 1-wide butterfly at spot for XSP and SPY (AT-XS1)", () => {
   store.clear();
-  for (const sym of ["SPX", "XSP", "SPY", "QQQ", "IWM", "AAPL", "NDX", "RUT"]) {
+  for (const sym of ["XSP", "SPY"]) {
+    const s = resolveCreateSeed(sym);
+    const lab = labCreateOpenDefault(sym);
+    assert(s.template === "butterfly", `${sym} template`);
+    assert(s.wingWidth === 1, `${sym} width 1`);
+    assert(s.centerOffsetPts === 0, `${sym} at spot`);
+    assert(lab.wingWidth === 1 && lab.centerOffsetPts === 0, `${sym} lab seed`);
+    assert(labDefaultForStrategy("butterfly", sym).wingWidth === 1, `${sym} recipe`);
+    assert(butterflyWingWidth(sym) === 1, `${sym} butterflyWingWidth`);
+  }
+});
+
+test("create-open default stays 20-wide butterfly for SPX-class and ETFs (AT-XS2 / AT-XS5)", () => {
+  store.clear();
+  for (const sym of ["SPX", "NDX", "RUT", "QQQ", "IWM", "AAPL"]) {
     const s = resolveCreateSeed(sym);
     const lab = labCreateOpenDefault(sym);
     assert(s.template === "butterfly", `${sym} template`);
@@ -72,7 +87,24 @@ test("create-open default is 20-wide butterfly at spot for any symbol", () => {
     assert(s.centerOffsetPts === 0, `${sym} at spot`);
     assert(lab.wingWidth === 20 && lab.centerOffsetPts === 0, `${sym} lab seed`);
     assert(labDefaultForStrategy("butterfly", sym).wingWidth === 20, `${sym} recipe`);
+    assert(butterflyWingWidth(sym) === DEFAULT_CREATE_WING_WIDTH, `${sym} butterflyWingWidth`);
   }
+});
+
+test("OD-XS9 (a): non-butterfly Lab recipes keep productWingHint (AT-XS2b / AT-XS3)", () => {
+  // productWingHint is unchanged: SPX|XSP → 20, SPY → 5, NDX → 50.
+  const xspVert = labDefaultForStrategy("vertical", "XSP");
+  assert(xspVert.wingWidth === 20, "XSP vertical stays 20");
+  const spyVert = labDefaultForStrategy("vertical", "SPY");
+  assert(spyVert.wingWidth === 5, "SPY vertical stays 5");
+  const xspStraddle = labDefaultForStrategy("straddle", "XSP");
+  assert(xspStraddle.wingWidth === 20, "XSP straddle stays 20");
+  const xspIronFly = labDefaultForStrategy("iron_fly", "XSP");
+  assert(xspIronFly.wingWidth === 20, "XSP iron_fly stays 20");
+  const xspIc = labDefaultForStrategy("iron_condor", "XSP");
+  assert(xspIc.wingWidth === 40, "XSP iron_condor stays Math.max(w, w*2)=40");
+  const ndxVert = labDefaultForStrategy("vertical", "NDX");
+  assert(ndxVert.wingWidth === 50, "NDX vertical stays 50");
 });
 
 test("lab iron_fly is short credit", () => {

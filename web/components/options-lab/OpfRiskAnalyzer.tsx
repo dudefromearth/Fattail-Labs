@@ -1517,7 +1517,8 @@ export default function OpfRiskAnalyzer() {
     if (Number.isFinite(n) && n > 0) return n;
     // Product-ish defaults so grid still paints before first mark
     const s = (symbol || "SPX").toUpperCase();
-    if (s === "SPX" || s === "XSP") return 6000;
+    if (s === "SPX") return 6000;
+    if (s === "XSP") return 600;
     if (s === "NDX" || s.startsWith("NQ")) return 21000;
     if (s === "RUT") return 2200;
     return 100;

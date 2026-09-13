@@ -8,7 +8,9 @@ import { buildListedStructure } from "./listedStructure";
 import { snapToListed } from "./listedStrikes";
 import { packageEconomics } from "./packageEconomics";
 import {
+  butterflyWingWidth,
   isLabDefaultsActive,
+  labCreateOpenDefault,
   labDefaultForStrategy,
   resolveCreateSeed,
 } from "./builderCreateDefault";
@@ -49,7 +51,17 @@ assert(seed.contracts === 1, "1 package");
 
 const lab = labDefaultForStrategy("butterfly", "SPX");
 assert(/ATM|fly/i.test(lab.blurb), "presentation blurb");
+assert(!/20-wide/i.test(lab.blurb), "blurb is not universal 20-wide");
 assert(lab.label.length > 0, "label");
+
+for (const sym of ["XSP", "SPY"] as const) {
+  assert(butterflyWingWidth(sym) === 1, `${sym} butterflyWingWidth 1`);
+  assert(labCreateOpenDefault(sym).wingWidth === 1, `${sym} labCreateOpenDefault 1`);
+  assert(labDefaultForStrategy("butterfly", sym).wingWidth === 1, `${sym} butterfly recipe 1`);
+}
+for (const sym of ["SPX", "NDX", "RUT", "QQQ", "IWM", "AAPL"] as const) {
+  assert(labDefaultForStrategy("butterfly", sym).wingWidth === 20, `${sym} butterfly recipe 20`);
+}
 
 // Simulated OPF dual-side listed strikes (5-pt grid)
 const listed: number[] = [];

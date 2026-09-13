@@ -21,8 +21,15 @@ const LEGACY_V1_KEY = "ft_options_lab_builder_create_default_v1";
 
 export const MAX_USER_PRESETS = 3;
 
-/** Create-open default: 20-wide butterfly at spot (ATM). Listed grid only. */
+/** SPX-class Create-open wing (20). Butterfly uses `butterflyWingWidth`. */
 export const DEFAULT_CREATE_WING_WIDTH = 20;
+
+/** Butterfly / `labCreateOpenDefault` only. Never `productWingHint` (JR2). */
+export function butterflyWingWidth(symbol: string): number {
+  const s = (symbol || "").toUpperCase();
+  if (s === "XSP" || s === "SPY") return 1;
+  return DEFAULT_CREATE_WING_WIDTH;
+}
 
 export type ShapeSnapshot = {
   template: TemplateType;
@@ -144,11 +151,11 @@ export function labDefaultForStrategy(
         template: "butterfly",
         direction: "buy",
         optionSide: "call",
-        wingWidth: DEFAULT_CREATE_WING_WIDTH,
+        wingWidth: butterflyWingWidth(symbol),
         centerOffsetPts: 0,
         label: "ATM call butterfly",
         blurb:
-          "Long wing / short 2× body / long wing — 20-wide butterfly at spot (Labs Create seed).",
+          "Long wing / short 2× body / long wing — ATM call butterfly — profile minimum listed wing.",
       };
     case "bwb":
       return {
@@ -241,20 +248,21 @@ export function labDefaultForStrategy(
         template: "butterfly",
         direction: "buy",
         optionSide: "call",
+        wingWidth: butterflyWingWidth(symbol),
         label: "ATM call butterfly",
         blurb: "Long call fly at ATM.",
       };
   }
 }
 
-/** Create-open Lab seed: 20-wide butterfly at spot. */
+/** Create-open Lab seed: butterfly at spot (profile minimum listed wing). */
 export function labCreateOpenDefault(symbol: string): ShapeSnapshot {
   const lab = labDefaultForStrategy("butterfly", symbol);
   return {
     template: "butterfly",
     direction: lab.direction,
     optionSide: lab.optionSide,
-    wingWidth: DEFAULT_CREATE_WING_WIDTH,
+    wingWidth: butterflyWingWidth(symbol),
     centerOffsetPts: 0,
     contracts: lab.contracts,
   };

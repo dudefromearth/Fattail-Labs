@@ -307,7 +307,8 @@ function nextListedBack(front: string, listed: string[]): string | null {
 function defaultDiagonalWidth(symbol: string): number {
   const s = symbol.toUpperCase();
   if (s === "NDX" || s.startsWith("NQ")) return 75;
-  if (s === "SPX" || s === "XSP") return 15;
+  if (s === "XSP") return 1;
+  if (s === "SPX") return 15;
   return 5;
 }
 
@@ -1331,11 +1332,7 @@ export default function PositionBuilder({
           diagonalWidthFromLadder(center, listed, 2) ??
           defaultDiagonalWidth(symbol);
       } else {
-        width = resolveCreateWingWidth(
-          center,
-          listed,
-          lab.wingWidth > 0 ? lab.wingWidth : DEFAULT_CREATE_WING_WIDTH,
-        );
+        width = resolveCreateWingWidth(center, listed, lab.wingWidth);
       }
     } else if (tmpl === "diagonal") {
       width =
