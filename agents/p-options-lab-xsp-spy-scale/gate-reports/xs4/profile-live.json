@@ -1,0 +1,116 @@
+{
+  "at": [
+    "AT-XS12b",
+    "AT-XS7g"
+  ],
+  "date": "2026-09-13T08:49:09",
+  "host": "127.0.0.1:3306",
+  "database": "labs",
+  "rows": [
+    {
+      "symbol": "SPX",
+      "fly_width_mode": "msc_spx",
+      "fly_widths": [
+        20,
+        25,
+        30,
+        35,
+        40,
+        45,
+        50
+      ],
+      "fetch_step_floor": 5.0
+    },
+    {
+      "symbol": "SPY",
+      "fly_width_mode": "fixed_points",
+      "fly_widths": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "fetch_step_floor": 2.5
+    },
+    {
+      "symbol": "VIX",
+      "fly_width_mode": "msc_spx",
+      "fly_widths": [
+        20,
+        25,
+        30,
+        35,
+        40,
+        45,
+        50
+      ],
+      "fetch_step_floor": 5.0
+    },
+    {
+      "symbol": "XSP",
+      "fly_width_mode": "fixed_points",
+      "fly_widths": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "fetch_step_floor": 5.0
+    }
+  ],
+  "fixed_points_symbols": [
+    "SPY",
+    "XSP"
+  ],
+  "expect": {
+    "XSP": {
+      "fly_width_mode": "fixed_points",
+      "fly_widths": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "fetch_step_floor": 5.0
+    },
+    "SPY": {
+      "fly_width_mode": "fixed_points",
+      "fly_widths": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "fetch_step_floor": 2.5
+    },
+    "fixed_points_exactly": [
+      "SPY",
+      "XSP"
+    ],
+    "SPX_VIX_not_fixed_points": true,
+    "fetch_step_floor_unchanged": {
+      "XSP": 5.0,
+      "SPY": 2.5
+    }
+  },
+  "checks": {
+    "xsp_1_7_floor_5": true,
+    "spy_1_7_floor_2_5": true,
+    "spx_not_fixed_points": true,
+    "vix_not_fixed_points": true,
+    "fixed_points_exactly_xsp_spy": true
+  },
+  "result": "PASS"
+}

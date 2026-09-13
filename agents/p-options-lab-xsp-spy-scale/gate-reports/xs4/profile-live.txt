@@ -1,0 +1,31 @@
+AT-XS12b — live labs DB migrate-152 profile SELECT
+Date: 2026-09-13T08:49:09-0400
+Host: 127.0.0.1:3306  database: labs
+
+SQL:
+SELECT symbol,
+  JSON_UNQUOTE(JSON_EXTRACT(app_profile_json, '$.fly_width_mode')) AS fly_width_mode,
+  JSON_EXTRACT(app_profile_json, '$.fly_widths') AS fly_widths,
+  JSON_EXTRACT(app_profile_json, '$.fetch_step_floor') AS fetch_step_floor
+FROM market_symbol_universe
+WHERE symbol IN ('XSP','SPY','SPX','VIX')
+ORDER BY symbol;
+
+symbol	fly_width_mode	fly_widths	fetch_step_floor
+SPX	msc_spx	[20, 25, 30, 35, 40, 45, 50]	5.0
+SPY	fixed_points	[1, 2, 3, 4, 5, 6, 7]	2.5
+VIX	msc_spx	[20, 25, 30, 35, 40, 45, 50]	5.0
+XSP	fixed_points	[1, 2, 3, 4, 5, 6, 7]	5.0
+
+AT-XS7g — fly_width_mode = fixed_points (expect exactly XSP, SPY)
+
+SQL:
+SELECT symbol,
+  JSON_UNQUOTE(JSON_EXTRACT(app_profile_json, '$.fly_width_mode')) AS fly_width_mode
+FROM market_symbol_universe
+WHERE JSON_UNQUOTE(JSON_EXTRACT(app_profile_json, '$.fly_width_mode')) = 'fixed_points'
+ORDER BY symbol;
+
+symbol	fly_width_mode
+SPY	fixed_points
+XSP	fixed_points

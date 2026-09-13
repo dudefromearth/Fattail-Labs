@@ -1,0 +1,45 @@
+=== heatmapColumnWidths.test.ts (AT-XS7*) ===
+  ok  AT-XS7 universe overlay 1–7
+  ok  AT-XS7b coerced kind-default XSP/SPY → [1..7], not kind ladder
+  ok  AT-XS7c interior overlay [1,2,3] — profile is SoR, not the constant
+  ok  AT-XS7d overlay [1..8] is not clamped to 7
+  ok  AT-XS7e coerce of universe-shaped XSP payload keeps source
+  ok  AT-XS7f runner cols[].widthPts equals panel flyWidths (OD-XS10)
+  ok  AT-XS8 SPX and heatmapFlyWidths stay 10…50
+  ok  AT-XS8b NDX/RUT/VIX known-good; QQQ/IWM/AAPL deferred-defect freeze
+  ok  AT-XS13 FLY_MAX_WIDTHS cap ≥ 9
+  ok  AT-XS17 profileLine universe vs kind default
+  ok  AT-XS18 empty flyWidths never interpolates undefined
+  ok  AT-XS19 SPX chrome appends source token
+  ok  AT-XS20 TESTSYM universe overlay — no XSP||SPY branch
+  ok  AT-XS21 TESTSYM kind-default equity → 10…50
+  ok  empty universe overlay fails loud (no substitute)
+  ok  heatmapFlyWidths identity unchanged
+  ok  widthList honors fixedPoints then columnWidths then helper
+  ok  AT-XS15 panel ingestKey includes symbol; lastIngestRef skip
+ok  heatmapColumnWidths 18 tests
+
+=== builderCreateDefault.test.ts (AT-XS1/2/2b/3/5/6) ===
+builderCreateDefault v2
+  ok  lab butterfly is create-open factory
+  ok  create-open default is 1-wide butterfly at spot for XSP and SPY (AT-XS1)
+  ok  create-open default stays 20-wide butterfly for SPX-class and ETFs (AT-XS2 / AT-XS5)
+  ok  OD-XS9 (a): non-butterfly Lab recipes keep productWingHint (AT-XS2b / AT-XS3)
+  ok  lab iron_fly is short credit
+  ok  wave-1 Lab recipes: butterfly vertical condor calendar
+  ok  lab defaults active when empty store
+  ok  save up to three presets; one active
+  ok  setActive + resolveCreateSeed
+  ok  reset keeps presets, activates lab
+
+10 tests passed
+
+=== listedWingChoices.test.ts (AT-XS11) ===
+listedWingChoices OPF/symbol-aware
+  ok  SPX 5-pt grid → only multiples of 5, never 21/22
+  ok  2.50-pt product grid
+  ok  snapWidthToListed refuses non-grid prefer
+  ok  AT-XS11 dense $1 grid at a center → snapWidthToListed(1) === 1
+  ok  AT-XS11 sparse 20-grid → first listed ≥ 1 (e.g. 20), never unlisted 1
+
+5 tests passed

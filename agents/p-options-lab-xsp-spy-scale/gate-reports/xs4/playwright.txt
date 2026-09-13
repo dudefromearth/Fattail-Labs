@@ -1,0 +1,129 @@
+
+Running 5 tests using 1 worker
+
+(node:57114) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 e2e/width1-xsp-spy.spec.ts:110:5 › AT-XS4/5/11/16 Create: XSP 1-wide listed, SPY listed honesty, SPX 20-wide (12.3s)
+  ✘  2 e2e/width1-xsp-spy.spec.ts:166:5 › AT-XS4 XSP listed-wing walk stays inside 1…7 (1.4s)
+(node:57133) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  3 e2e/width1-xsp-spy.spec.ts:190:5 › AT-XS6 handleTemplate butterfly on XSP does not re-seed 20 (3.6s)
+(node:57141) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  4 e2e/width1-xsp-spy.spec.ts:223:5 › AT-XS9 Heatmap XSP columns 1–7; SPX 10…50 (7.3s)
+(node:57155) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  5 e2e/width1-xsp-spy.spec.ts:258:5 › AT-XS10 Width Fit XSP footer 7; SPX footer 9 (2.3s)
+
+
+  1) e2e/width1-xsp-spy.spec.ts:166:5 › AT-XS4 XSP listed-wing walk stays inside 1…7 ───────────────
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1
+    Received: 20
+
+      172 |   const dialog = await openCreate(page);
+      173 |   const start = await wingWidth(dialog);
+    > 174 |   expect(start.width).toBe(1);
+          |                       ^
+      175 |   const walked: number[] = [start.width!];
+      176 |   for (let n = 0; n < 8; n++) {
+      177 |     await dialog.getByTestId("builder-leg-strike-step-0-down").click();
+        at /Users/ernie/Fattail-Labs-execute-plan/pr-5/web/e2e/width1-xsp-spy.spec.ts:174:23
+
+    Error Context: test-results/width1-xsp-spy-AT-XS4-XSP-listed-wing-walk-stays-inside-1…7/error-context.md
+
+  2) e2e/width1-xsp-spy.spec.ts:190:5 › AT-XS6 handleTemplate butterfly on XSP does not re-seed 20 ─
+
+    Error: AT-XS6 XSP butterfly re-seed from 746,766,786
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1
+    Received: 20
+
+      218 |     afterTemplate.width,
+      219 |     `AT-XS6 XSP butterfly re-seed from ${afterTemplate.strikes}`,
+    > 220 |   ).toBe(1);
+          |     ^
+      221 | });
+      222 |
+      223 | test("AT-XS9 Heatmap XSP columns 1–7; SPX 10…50", async ({ page }) => {
+        at /Users/ernie/Fattail-Labs-execute-plan/pr-5/web/e2e/width1-xsp-spy.spec.ts:220:5
+
+    Error Context: test-results/width1-xsp-spy-AT-XS6-hand-0ec3f--on-XSP-does-not-re-seed-20/error-context.md
+
+  3) e2e/width1-xsp-spy.spec.ts:223:5 › AT-XS9 Heatmap XSP columns 1–7; SPX 10…50 ──────────────────
+
+    Error: XSP Advanced Fly columns 10,15,20,25,30,35,40,45,50
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 7
+    + Received  + 9
+
+      Array [
+    -   "1",
+    -   "2",
+    -   "3",
+    -   "4",
+    -   "5",
+    -   "6",
+    -   "7",
+    +   "10",
+    +   "15",
+    +   "20",
+    +   "25",
+    +   "30",
+    +   "35",
+    +   "40",
+    +   "45",
+    +   "50",
+      ]
+
+      248 |     fullPage: false,
+      249 |   });
+    > 250 |   expect(xspCols, `XSP Advanced Fly columns ${xspCols.join(",")}`).toEqual(
+          |                                                                    ^
+      251 |     XSP_COLS,
+      252 |   );
+      253 |   expect(spxCols, `SPX Advanced Fly columns ${spxCols.join(",")}`).toEqual(
+        at /Users/ernie/Fattail-Labs-execute-plan/pr-5/web/e2e/width1-xsp-spy.spec.ts:250:68
+
+    Error Context: test-results/width1-xsp-spy-AT-XS9-Heatmap-XSP-columns-1–7-SPX-10…50/error-context.md
+
+  4) e2e/width1-xsp-spy.spec.ts:258:5 › AT-XS10 Width Fit XSP footer 7; SPX footer 9 ───────────────
+
+    Error: XSP Width Fit footer length
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 7
+    Received: 9
+
+      286 |     .locator('[data-testid^="width-fit-footer-"]')
+      287 |     .count();
+    > 288 |   expect(xspFooterCount, "XSP Width Fit footer length").toBe(7);
+          |                                                         ^
+      289 |   expect(spxFooterCount, "SPX Width Fit footer length").toBe(9);
+      290 |   for (const w of ["10", "50"]) {
+      291 |     await expect(page.getByTestId(`width-fit-footer-${w}`)).toBeVisible();
+        at /Users/ernie/Fattail-Labs-execute-plan/pr-5/web/e2e/width1-xsp-spy.spec.ts:288:57
+
+    Error Context: test-results/width1-xsp-spy-AT-XS10-Width-Fit-XSP-footer-7-SPX-footer-9/error-context.md
+
+  4 failed
+    e2e/width1-xsp-spy.spec.ts:166:5 › AT-XS4 XSP listed-wing walk stays inside 1…7 ────────────────
+    e2e/width1-xsp-spy.spec.ts:190:5 › AT-XS6 handleTemplate butterfly on XSP does not re-seed 20 ──
+    e2e/width1-xsp-spy.spec.ts:223:5 › AT-XS9 Heatmap XSP columns 1–7; SPX 10…50 ───────────────────
+    e2e/width1-xsp-spy.spec.ts:258:5 › AT-XS10 Width Fit XSP footer 7; SPX footer 9 ────────────────
+  1 passed (28.3s)
+
+Running 1 test using 1 worker
+
+(node:57252) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 e2e/width1-xsp-spy.spec.ts:166:5 › AT-XS4 XSP listed-wing walk stays inside 1…7 (8.9s)
+
+  1 passed (9.4s)

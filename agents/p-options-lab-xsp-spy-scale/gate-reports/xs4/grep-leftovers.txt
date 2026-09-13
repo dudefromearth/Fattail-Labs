@@ -1,0 +1,45 @@
+XS4 leftover greps — 2026-09-13T08:50:09-0400
+
+=== AT-XS3 productWingHint SPX||XSP still 20 (OD-XS9 a — expected present) ===
+102:  if (s === "SPX" || s === "XSP") return 20;
+
+=== productWingHint ===
+98:function productWingHint(symbol: string): number {
+99-  const s = (symbol || "").toUpperCase();
+100-  if (s === "NDX" || s.startsWith("NQ")) return 50;
+101-  if (s === "RUT") return 20;
+102-  if (s === "SPX" || s === "XSP") return 20;
+103-  return 5;
+104-}
+
+=== AT-XS5b defaultWidth NDX/NQ → 50 (WIDTH-1 Keep) ===
+188:function defaultWidth(symbol: string, profileMin?: number | null): number {
+189-  if (profileMin != null && profileMin > 0) return profileMin;
+190-  const s = symbol.toUpperCase();
+191-  if (s === "NDX" || s.startsWith("NQ")) return 50;
+192-  if (s === "XSP" || s === "SPY") return 1;
+193-  if (s === "SPX" || s === "RUT") return 20;
+194-  return 5;
+195-}
+196-
+
+=== heatmapColumnWidths XSP/SPY (overlay path has no symbol literal; offline map only) ===
+5: * Offline / kind-default fallback is XSP/SPY only; else DL-435 remainder.
+20:  XSP: [1, 2, 3, 4, 5, 6, 7],
+21:  SPY: [1, 2, 3, 4, 5, 6, 7],
+25:export const XSP_SPY_FLY_WIDTHS = OFFLINE_FALLBACK_WIDTHS.XSP;
+
+=== QQQ/IWM in heatmapColumnWidths.ts (must be absent — do not fix ETFs) ===
+(none — good)
+
+=== QQQ/IWM in heatmapColumnWidths.test.ts (AT-XS8b freeze) ===
+176:test("AT-XS8b NDX/RUT/VIX known-good; QQQ/IWM/AAPL deferred-defect freeze", () => {
+177:  for (const symbol of ["NDX", "RUT", "VIX", "QQQ", "IWM", "AAPL"]) {
+
+=== AnalyzerPositionsList.tsx working tree ===
+(empty = not touched)
+
+=== working tree names ===
+ M server/tests/test_symbol_profile.py
+?? agents/p-options-lab-xsp-spy-scale/gate-reports/xs4/
+?? web/e2e/width1-xsp-spy.spec.ts

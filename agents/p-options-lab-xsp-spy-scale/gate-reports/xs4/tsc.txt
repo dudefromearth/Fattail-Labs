@@ -1,0 +1,11 @@
+npx tsc --noEmit  (web/)  exit=1  errors=34  all pre-existing
+XS files (heatmapColumnWidths, builderCreateDefault, listedWingChoices, e2e excluded): no errors
+
+Files with errors:
+lib/blotterTheme.test.ts
+lib/options-lab/algoDayReplay.test.ts
+lib/options-lab/algoP1.fixtures.test.ts
+lib/options-lab/packageEconomics.test.ts
+lib/options-lab/templates/advancedFly.structure.test.ts
+lib/options-lab/templates/lim.test.ts
+lib/options-lab/templates/limQuadrant.test.ts
