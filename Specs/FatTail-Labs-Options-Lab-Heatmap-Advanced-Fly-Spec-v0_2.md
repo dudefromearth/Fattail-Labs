@@ -594,6 +594,7 @@ Ship with:
 | **v0.2.2** | 2026-08-18 | Coach: Long/Debit = +1/−2/+1 · Short/Credit = −1/+2/−1. Drop forced CR chip. **DL-434**. |
 | **v0.2.3** | 2026-08-18 | Columns **10…50 by 5** for every variant. −/+ RoC sensitivity slider under Side. **DL-435**. |
 | **v0.2.4** | 2026-08-24 | Parent **HM21** citation (inspector tab-session). No AF compute change. **DL-575**. |
+| **v0.2.4** | 2026-09-13 | **OD-XS5 (no version bump).** DL-701 amends §3.2 for XSP/SPY only. Overlay columns via profile `source=market_symbol_universe` + `fixed_points`. Every other symbol remains 10…50 × 5 (DL-435). |
 
 **One-line product law:**  
 **One OPF-held dual-side chain; Advanced Fly is the Symmetric Fly surface with honest Value modes and client generation history — pure template, never a second data path, never a profit claim.**

@@ -524,6 +524,7 @@ Foundation already landed: workspace layout, push stream, hydrate-if-empty, ladd
 | **1.2** | 2026-08-10 | Spec **v0.2** review fold: Width vocabulary; modal step; next_url fail-loud; standard contracts only; color hysteresis; gex units; parent citation table |
 | **1.4** | 2026-08-26 | Instant Replay DRAFT (TMI Spec v0.1). Heatmap recorder; green glow; playback time. **DL-594**. |
 | **1.3** | 2026-08-24 | **HM21** inspector tab-session as-built (`heatmapSession.ts`). VT7. Distinct from VT6 and TR14. Spec v0.2.1. **DL-575**. |
+| **1.5** | 2026-09-13 | As-built: XSP/SPY heatmap columns follow universe `fixed_points` overlay (**DL-701**); SPX-class remainder `HEATMAP_FLY_WIDTHS` 10…50 (**DL-435**); helper `heatmapColumnWidths`. Not IKI Labs. **NX18**. |
 
 **One-line law:**  
 **One dual-side, standard-contract, non-truncated chain under a wing band; pushed and diffed once; pure templates recompute every snapshot — Width is center-to-wing; GEX is a labeled estimate — last print held when closed; inspector selections stick for this tab (HM21).**
