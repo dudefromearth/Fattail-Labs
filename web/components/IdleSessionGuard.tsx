@@ -1,7 +1,7 @@
 "use client";
 
 // Idle session timeout — all signed-in roles except administrator.
-// Default 30 min; member preference 15–60 via Profile /api/me/profile.
+// Default 30 min; member preference 15–960 (up to 16h) via /api/me/profile.
 // On timeout: clear cookie via logout redirect → /login.
 //
 // Crash / freeze hardening:
@@ -23,7 +23,7 @@ import {
 
 const DEFAULT_MINUTES = 30;
 const MIN_MINUTES = 15;
-const MAX_MINUTES = 60;
+const MAX_MINUTES = 960; // up to 16h — a session can span pre→post-market
 
 const ACTIVITY_EVENTS: (keyof WindowEventMap)[] = [
   "mousedown",

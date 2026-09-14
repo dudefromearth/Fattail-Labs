@@ -29,7 +29,21 @@ type Profile = {
   role: string;
 };
 
-const IDLE_OPTIONS = [15, 20, 30, 45, 60] as const;
+const IDLE_OPTIONS = [15, 30, 45, 60, 120, 240, 480, 720, 960] as const;
+
+function idleLabel(m: number): string {
+  const base =
+    m < 60
+      ? `${m} minutes`
+      : m === 60
+        ? "1 hour"
+        : Number.isInteger(m / 60)
+          ? `${m / 60} hours`
+          : `${(m / 60).toFixed(1)} hours`;
+  if (m === 30) return `${base} (default)`;
+  if (m === 960) return `${base} (full trading day)`;
+  return base;
+}
 
 function initials(p: Profile): string {
   const source = p.display_name || p.email;
@@ -84,7 +98,7 @@ export default function ProfileSettings() {
     setShareGrowth(!!p.share_personal_growth);
     setShareAtt(p.share_attendance !== false);
     const idle = p.session_idle_minutes ?? 30;
-    setIdleMinutes(Math.min(60, Math.max(15, idle)));
+    setIdleMinutes(Math.min(960, Math.max(15, idle)));
     setQuickNav(normalizeHomeQuickNav(p.home_quick_nav));
   }
 
@@ -497,7 +511,10 @@ export default function ProfileSettings() {
             <span className="text-sm font-medium">Session idle timeout</span>
             <p className="mt-0.5 text-xs text-[var(--color-label-secondary)]">
               After this much inactivity you are signed out and returned to the
-              login page. Administrators are exempt. Default 30 minutes.
+              login page. Watching live market data counts as activity, so the
+              clock only runs when nothing is moving. Administrators are exempt.
+              Default 30 minutes — set it higher (up to 16 hours) to stay signed
+              in through the full trading day.
             </p>
             <select
               value={idleMinutes}
@@ -506,7 +523,7 @@ export default function ProfileSettings() {
             >
               {IDLE_OPTIONS.map((m) => (
                 <option key={m} value={m}>
-                  {m} minutes{m === 30 ? " (default)" : ""}
+                  {idleLabel(m)}
                 </option>
               ))}
             </select>

@@ -36,7 +36,7 @@ SURFACE_VIEW_MAX = 12
 # Idle timeout preference (minutes) — all roles except administrator
 SESSION_IDLE_MIN_DEFAULT = 30
 SESSION_IDLE_MIN_LO = 15
-SESSION_IDLE_MIN_HI = 60
+SESSION_IDLE_MIN_HI = 960  # up to 16h so a session can span a full pre→post-market trading day
 
 # Home quick nav — journal is always first; optional chips from profile.
 HOME_QUICK_NAV_DEFAULT = ("journal",)
