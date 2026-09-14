@@ -245,6 +245,11 @@ def get_my_question(question_id: int, request: Request) -> dict:
             q = cur.fetchone()
             if not q or int(q["identity_id"]) != iid:
                 raise HTTPException(status_code=404, detail="Question not found")
+            # Record that the member has viewed their ticket (read signal for admins).
+            cur.execute(
+                "UPDATE help_questions SET member_last_viewed_at = NOW() WHERE id = %s",
+                (question_id,),
+            )
             cur.execute(
                 """SELECT id, author_role, body, rating, created_at FROM help_messages
                    WHERE question_id = %s AND visibility = 'public'

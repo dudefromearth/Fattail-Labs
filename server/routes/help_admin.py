@@ -55,10 +55,15 @@ def list_questions(
             cur.execute(
                 f"""SELECT q.id, q.email, q.subject, q.category, q.status,
                            q.created_at, q.updated_at, q.answered_at,
-                           q.screenshot_path,
+                           q.screenshot_path, q.member_last_viewed_at,
                     (SELECT COUNT(*) FROM help_messages m WHERE m.question_id = q.id) AS reply_count,
                     (SELECT COUNT(*) FROM help_messages m WHERE m.question_id = q.id
-                        AND m.author_role = 'admin' AND m.visibility = 'public') AS team_reply_count
+                        AND m.author_role = 'admin' AND m.visibility = 'public') AS team_reply_count,
+                    (SELECT m2.author_role FROM help_messages m2 WHERE m2.question_id = q.id
+                        AND m2.visibility = 'public' ORDER BY m2.id DESC LIMIT 1) AS last_author,
+                    (SELECT m3.email_status FROM help_messages m3 WHERE m3.question_id = q.id
+                        AND m3.author_role = 'admin' AND m3.visibility = 'public'
+                        ORDER BY m3.id DESC LIMIT 1) AS last_email_status
                     FROM help_questions q
                     {where}
                     ORDER BY
@@ -86,6 +91,9 @@ def list_questions(
                 "has_screenshot": bool(r.get("screenshot_path")),
                 "created_at": _iso(r["created_at"]), "updated_at": _iso(r["updated_at"]),
                 "answered_at": _iso(r["answered_at"]),
+                "member_last_viewed_at": _iso(r.get("member_last_viewed_at")),
+                "member_replied": (r.get("last_author") == "member"),
+                "last_email_status": r.get("last_email_status"),
             }
             for r in rows
         ],
@@ -100,7 +108,8 @@ def get_question(question_id: int, request: Request) -> dict:
         with conn.cursor() as cur:
             cur.execute(
                 """SELECT id, identity_id, email, subject, body, category, status,
-                          page_context, screenshot_path, created_at, updated_at, answered_at
+                          page_context, screenshot_path, created_at, updated_at, answered_at,
+                          member_last_viewed_at
                    FROM help_questions WHERE id = %s""",
                 (question_id,),
             )
@@ -108,7 +117,8 @@ def get_question(question_id: int, request: Request) -> dict:
             if not q:
                 raise HTTPException(status_code=404, detail="Question not found")
             cur.execute(
-                """SELECT id, author_identity_id, author_role, body, visibility, created_at
+                """SELECT id, author_identity_id, author_role, body, visibility, created_at,
+                          email_status, emailed_at
                    FROM help_messages WHERE question_id = %s
                    ORDER BY created_at ASC, id ASC""",
                 (question_id,),
@@ -122,12 +132,15 @@ def get_question(question_id: int, request: Request) -> dict:
             "screenshot_url": f"/api/media/{q['screenshot_path']}" if q.get("screenshot_path") else None,
             "created_at": _iso(q["created_at"]), "updated_at": _iso(q["updated_at"]),
             "answered_at": _iso(q["answered_at"]),
+            "member_last_viewed_at": _iso(q.get("member_last_viewed_at")),
         },
         "messages": [
             {
                 "id": int(m["id"]), "author_role": m["author_role"],
                 "visibility": m["visibility"], "body": m["body"],
                 "created_at": _iso(m["created_at"]),
+                "email_status": m.get("email_status"),
+                "emailed_at": _iso(m.get("emailed_at")),
             }
             for m in msgs
         ],
@@ -175,14 +188,25 @@ async def answer_question(question_id: int, request: Request) -> dict:
                     cur, identity_id=int(q["identity_id"]), question_id=question_id,
                     subject=q["subject"], message_id=msg_id,
                 )
-                email_after = (q["email"], q["subject"], text)
+                email_after = (q["email"], q["subject"], text, msg_id)
 
-    # Email after commit so SMTP latency never holds the transaction.
+    # Email after commit so SMTP latency never holds the transaction, then
+    # record the send result on the reply so the admin UI can show sent/failed.
     if email_after:
-        help_domain.email_member_answered(
+        status = help_domain.email_member_answered(
             member_email=email_after[0], question_id=question_id, subject=email_after[1],
             reply_body=email_after[2],
         )
+        try:
+            with db.transaction() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "UPDATE help_messages SET email_status = %s, "
+                        "emailed_at = IF(%s = 'sent', NOW(), NULL) WHERE id = %s",
+                        (status, status, email_after[3]),
+                    )
+        except Exception as exc:  # noqa: BLE001 — status record is best-effort
+            pass
     return {"ok": True}
 
 

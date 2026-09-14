@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import html as _html
 import logging
 import os
 import uuid
@@ -173,40 +174,93 @@ def _help_ticket_link(question_id: int) -> str:
     return f"{origin}/help?q={question_id}" if origin else f"/help?q={question_id}"
 
 
-def email_member_ticket_received(*, member_email: str | None, question_id: int, subject: str) -> None:
-    """Confirm to the member their ticket reached the human team. Best-effort — SMTP optional."""
+_EMAIL_LOGO = "https://labs.fattail.ai/brand/fattail-labs-logo.jpg"
+
+
+def _esc(s) -> str:
+    return _html.escape(str(s or ""), quote=True)
+
+
+def _br(s) -> str:
+    return _esc(s).replace("\n", "<br>")
+
+
+def _help_email_html(*, heading: str, intro_html: str, panel_text, link: str, cta_label: str) -> str:
+    """Branded, email-safe HTML (table layout + inline styles) for member emails."""
+    panel = ""
+    if panel_text:
+        panel = (
+            '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0 4px;">'
+            '<tr><td style="background:#f5f5f7;border-left:3px solid #0d9488;border-radius:8px;'
+            'padding:14px 16px;font-size:15px;line-height:1.55;color:#1d1d1f;">'
+            + _br(panel_text) + "</td></tr></table>"
+        )
+    return (
+        '<!doctype html><html><body style="margin:0;padding:0;background:#f5f5f7;">'
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f7;padding:24px 12px;">'
+        '<tr><td align="center">'
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;'
+        'border-radius:14px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">'
+        '<tr><td style="background:#0b0b0f;padding:18px 28px;text-align:center;">'
+        f'<img src="{_EMAIL_LOGO}" alt="FatTail Labs" width="150" '
+        'style="display:inline-block;max-width:150px;height:auto;border:0;"></td></tr>'
+        '<tr><td style="padding:28px;">'
+        f'<h1 style="margin:0 0 12px;font-size:19px;line-height:1.3;color:#1d1d1f;font-weight:700;">{_esc(heading)}</h1>'
+        f'<div style="font-size:15px;line-height:1.55;color:#3a3a3c;">{intro_html}</div>'
+        f"{panel}"
+        '<table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0 6px;"><tr>'
+        f'<td style="border-radius:10px;background:#0d9488;"><a href="{_esc(link)}" '
+        'style="display:inline-block;padding:13px 28px;font-size:15px;font-weight:600;color:#ffffff;'
+        f'text-decoration:none;border-radius:10px;">{_esc(cta_label)}</a></td></tr></table>'
+        '<p style="font-size:13px;line-height:1.5;color:#6e6e73;margin:16px 0 0;">'
+        'Or open it manually: sign in to FatTail Labs, click the <strong>?</strong> Help button in the '
+        "bottom-right corner, and select this ticket.</p>"
+        "</td></tr>"
+        '<tr><td style="padding:16px 28px;border-top:1px solid #e5e5ea;text-align:center;">'
+        '<p style="margin:0;font-size:12px;color:#8e8e93;">FatTail Labs &middot; '
+        '<a href="https://labs.fattail.ai" style="color:#0d9488;text-decoration:none;">labs.fattail.ai</a></p>'
+        "</td></tr></table></td></tr></table></body></html>"
+    )
+
+
+def email_member_ticket_received(*, member_email: str | None, question_id: int, subject: str) -> str:
+    """Confirm to the member their ticket reached the human team. Returns send status."""
     if not member_email:
-        return
+        return "skipped"
     try:
         import notify
         link = _help_ticket_link(question_id)
         body = (
             "Hi,\n\n"
             "Thanks for reaching out - your support ticket has been received and "
-            "passed to our team:\n\n"
-            f'    "{subject}"\n\n'
+            f'passed to our team:\n\n    "{subject}"\n\n'
             "We'll email you as soon as we reply. There's nothing else you need to do.\n\n"
-            "You can view this ticket any time inside FatTail Labs: open the app, "
-            'click the "?" Help button in the bottom corner, and select your ticket '
-            "- or go straight to it here:\n"
-            f"{link}\n\n"
-            "- The FatTail Labs Team\n"
+            "Open your ticket in FatTail Labs: " + link + "\n\n- The FatTail Labs Team\n"
         )
-        notify._send_email(
-            member_email,
-            "We've received your FatTail Labs support ticket",
-            body,
+        html = _help_email_html(
+            heading="We've received your support ticket",
+            intro_html=(
+                "Thanks for reaching out — your support ticket has been received and passed to our team:"
+                f'<br><br><strong>{_esc(subject)}</strong><br><br>'
+                "We'll email you as soon as we reply. There's nothing else you need to do."
+            ),
+            panel_text=None,
+            link=link,
+            cta_label="View your ticket",
         )
+        notify._send_email(member_email, "We've received your FatTail Labs support ticket", body, html=html)
+        return "sent"
     except Exception as exc:  # noqa: BLE001 — SMTP optional / may fail
         log.warning("help ticket-received email skipped/failed (q=%s): %s", question_id, exc)
+        return "failed"
 
 
 def email_member_answered(
     *, member_email: str | None, question_id: int, subject: str, reply_body: str | None = None,
-) -> None:
-    """Send the 'ticket updated' email AFTER commit. Best-effort — SMTP is optional."""
+) -> str:
+    """Send the 'ticket updated' email AFTER commit. Returns send status (sent|failed|skipped)."""
     if not member_email:
-        return
+        return "skipped"
     try:
         import notify
         link = _help_ticket_link(question_id)
@@ -216,16 +270,21 @@ def email_member_answered(
             "Hi,\n\n"
             f'Our team has replied to your support ticket "{subject}":\n'
             + quoted
-            + "\nYour ticket has been updated. To read the full conversation or reply "
-            'back, open FatTail Labs, click the "?" Help button in the bottom corner, '
-            "and select this ticket - or go straight to it here:\n"
-            f"{link}\n\n"
-            "- The FatTail Labs Team\n"
+            + "\nYour ticket has been updated. Read the full conversation or reply back here: "
+            + link + "\n\n- The FatTail Labs Team\n"
         )
-        notify._send_email(
-            member_email,
-            "Your FatTail Labs support ticket has been updated",
-            body,
+        html = _help_email_html(
+            heading="Your support ticket has been updated",
+            intro_html=(
+                f'Our team has replied to your support ticket <strong>{_esc(subject)}</strong>. '
+                "Read the full conversation or reply back:"
+            ),
+            panel_text=reply or None,
+            link=link,
+            cta_label="View reply & respond",
         )
+        notify._send_email(member_email, "Your FatTail Labs support ticket has been updated", body, html=html)
+        return "sent"
     except Exception as exc:  # noqa: BLE001 — SMTP optional / may fail
         log.warning("help member email skipped/failed (q=%s): %s", question_id, exc)
+        return "failed"

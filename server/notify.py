@@ -92,7 +92,7 @@ def _smtp_config() -> dict[str, Any] | None:
     }
 
 
-def _send_email(to_addr: str, subject: str, body: str) -> None:
+def _send_email(to_addr: str, subject: str, body: str, html: str | None = None) -> None:
     smtp = _smtp_config()
     if smtp is None:
         required = os.environ.get("LABS_NOTIFY_EMAIL_REQUIRED", "").strip() == "1"
@@ -106,7 +106,9 @@ def _send_email(to_addr: str, subject: str, body: str) -> None:
     msg["Subject"] = subject
     msg["From"] = smtp["from_addr"]
     msg["To"] = to_addr
-    msg.set_content(body)
+    msg.set_content(body)  # plain-text part (fallback)
+    if html:
+        msg.add_alternative(html, subtype="html")  # preferred rich part
 
     # HELO/EHLO must be a valid FQDN. The box default (e.g. 'MiniTwo.local')
     # is rejected/dropped by strict MTAs (Hostinger). Derive from From domain.
