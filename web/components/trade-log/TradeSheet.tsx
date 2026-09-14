@@ -412,10 +412,15 @@ export default function TradeSheet({
   const [allowDrift, setAllowDrift] = useState(false);
 
   const unmatchedOpens = listUnmatchedOpens(trades);
-  const pairedClose =
+  const rawPairedClose =
     mode === "edit" && trade && !tradeIsCloseFill(trade)
       ? findPairedClose(trades, trade.id)
       : null;
+  // A synthetic expiry ("expired worthless") close is not a real, deletable
+  // fill. It must never render the "delete the TO CLOSE first" gate or block
+  // deleting an expired open — mirrors canDeleteTrade's `!close.synthetic`.
+  const pairedClose =
+    rawPairedClose && !rawPairedClose.synthetic ? rawPairedClose : null;
   const pairedOpen =
     mode === "edit" && trade && tradeIsCloseFill(trade)
       ? findPairedOpen(trades, trade.id)
