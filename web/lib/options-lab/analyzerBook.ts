@@ -350,6 +350,37 @@ function uid(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/** Create-submit must never reuse a book id (dialog stays mounted). */
+export function prependCreatedPosition(
+  prev: AnalyzerPosition[],
+  pos: AnalyzerPosition,
+): AnalyzerPosition[] {
+  const next =
+    prev.some((p) => p.id === pos.id)
+      ? { ...pos, id: uid("pos"), updatedAt: Date.now() }
+      : pos;
+  return [next, ...prev];
+}
+
+/** Heal twin cards that already landed with the same id. */
+export function remintDuplicateIds(
+  positions: AnalyzerPosition[],
+): AnalyzerPosition[] {
+  const seen = new Set<string>();
+  let changed = false;
+  const out = positions.map((p) => {
+    if (!seen.has(p.id)) {
+      seen.add(p.id);
+      return p;
+    }
+    changed = true;
+    const id = uid("pos");
+    seen.add(id);
+    return { ...p, id, updatedAt: Date.now() };
+  });
+  return changed ? out : positions;
+}
+
 function migratePos(raw: unknown): AnalyzerPosition | null {
   if (!raw || typeof raw !== "object") return null;
   const p = raw as Partial<AnalyzerPosition> & {
@@ -512,10 +543,12 @@ export function loadPositions(): AnalyzerPosition[] {
     if (!s) return [];
     const arr = JSON.parse(s) as unknown[];
     if (!Array.isArray(arr)) return [];
-    const loaded = arr
-      .map(migratePos)
-      .filter(Boolean)
-      .map((p) => migrateLoaded(p as AnalyzerPosition));
+    const loaded = remintDuplicateIds(
+      arr
+        .map(migratePos)
+        .filter(Boolean)
+        .map((p) => migrateLoaded(p as AnalyzerPosition)),
+    );
     try {
       const json = JSON.stringify(loaded);
       localStorage.setItem(POS_KEY, json);
@@ -859,18 +892,16 @@ export function applyPackageQuote(
   }
 
   if (!quote.complete || quote.package_debit_per_share == null) {
+    const keepMark =
+      pos.livePackagePerShare != null || pos.lastNatSigned != null;
     return finish({
       ...pos,
-      liveState: "incomplete",
-      livePackagePerShare: null,
-      priceSide: null,
-      lastNatSigned: null,
+      liveState: keepMark ? pos.liveState : "incomplete",
       displayAsOf: quote.as_of ?? pos.displayAsOf,
       maxSkewMs: quote.max_skew_ms ?? null,
       epochQuality: quote.epoch_quality ?? null,
-      markMode: quote.mark_mode ?? null,
-      markDisclaimer: quote.mark_disclaimer ?? null,
-      // keep last bind snapshot if present
+      markMode: quote.mark_mode ?? pos.markMode ?? null,
+      markDisclaimer: quote.mark_disclaimer ?? pos.markDisclaimer ?? null,
     });
   }
 
@@ -947,7 +978,8 @@ export function applyPackageQuote(
 }
 
 export function lockNatural(pos: AnalyzerPosition): AnalyzerPosition {
-  if (pos.lastNatSigned == null || pos.liveState === "incomplete") {
+  const nat = pos.lastNatSigned;
+  if (nat == null || !Number.isFinite(nat)) {
     throw new Error("cannot lock natural: incomplete package");
   }
   return {

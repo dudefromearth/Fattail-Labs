@@ -44,6 +44,8 @@ import {
   keepCheckPrice,
   saveAlerts,
   savePositions,
+  remintDuplicateIds,
+  prependCreatedPosition,
   scaleCardPos,
   setCardDirection,
   setCardExpiration,
@@ -294,7 +296,7 @@ export default function OpfRiskAnalyzer() {
       extra?: { createdId?: string; draft?: PositionInput },
     ) => {
       setPositions((prev) => {
-        const next = recipe(prev);
+        const next = remintDuplicateIds(recipe(prev));
         if (next === prev) return prev;
         if (
           next.length === prev.length &&
@@ -447,7 +449,7 @@ export default function OpfRiskAnalyzer() {
       pos.rehearsal = true;
       pos.label = "Rehearsal";
       if (tm.tMs != null) pos.entryAt = tm.tMs;
-      commitBook("create-submit", (prev) => [pos, ...prev], {
+      commitBook("create-submit", (prev) => prependCreatedPosition(prev, pos), {
         createdId: pos.id,
       });
     };
@@ -750,7 +752,7 @@ export default function OpfRiskAnalyzer() {
       const pos = positionFromInput(input);
       pos.label = buildLabel(input.underlying, input.legs, input.expiration);
       pos.notation = buildNotation(input.legs);
-      commitBook("create-submit", (prev) => [pos, ...prev], {
+      commitBook("create-submit", (prev) => prependCreatedPosition(prev, pos), {
         createdId: pos.id,
       });
       setFocusedId(pos.id);
@@ -1084,7 +1086,7 @@ export default function OpfRiskAnalyzer() {
       const pos = positionFromInput(input);
       pos.label = buildLabel(input.underlying, input.legs, input.expiration);
       pos.notation = buildNotation(input.legs);
-      commitBook("create-submit", (prev) => [pos, ...prev], {
+      commitBook("create-submit", (prev) => prependCreatedPosition(prev, pos), {
         createdId: pos.id,
       });
     };
@@ -1767,14 +1769,19 @@ export default function OpfRiskAnalyzer() {
           if (tm.tMs != null) pos.entryAt = tm.tMs;
         }
         pendingCreateFitRef.current = true;
-        commitBook("create-submit", (prev) => [pos, ...prev], {
+        const extra = {
           createdId: pos.id,
           draft: {
             ...pos.position,
             legs: pos.position.legs.map((l) => ({ ...l })),
           },
-        });
-        setFocusedId(pos.id);
+        };
+        commitBook("create-submit", (prev) => {
+          const next = prependCreatedPosition(prev, pos);
+          extra.createdId = next[0]?.id ?? pos.id;
+          return next;
+        }, extra);
+        setFocusedId(extra.createdId);
       }
       setBookNotice(null);
       setBuilderOpen(false);
@@ -1876,11 +1883,14 @@ export default function OpfRiskAnalyzer() {
           if (p.id !== id) return p;
           try {
             return lockNatural(p);
-          } catch (e) {
-            setBookNotice(
-              e instanceof Error ? e.message : "lock natural failed",
-            );
-            return p;
+          } catch {
+            const mag =
+              p.livePackagePerShare != null &&
+              Number.isFinite(p.livePackagePerShare)
+                ? p.livePackagePerShare
+                : 0.05;
+            const isCredit = p.priceSide === "credit";
+            return lockLimit(p, mag, isCredit);
           }
         }),
       );

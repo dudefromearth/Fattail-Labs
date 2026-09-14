@@ -145,6 +145,7 @@ function PackagePriceField({
       }
       return;
     }
+    if (stayEditingRef.current) return;
     setEditing(false);
   }, [locked]);
 
@@ -1408,14 +1409,18 @@ function PosBlock({
 
             >
               {isTop ? (
-                display.kind === "price" ? (
+                display.kind === "price" || display.kind === "updating" ? (
                   <div className="flex flex-col items-end gap-0.5">
                     <div className="flex items-center justify-end gap-0.5">
                       <PackagePriceField
                         id={pos.id}
                         locked={locked}
                         price={price}
-                        priceLabel={priceLabel}
+                        priceLabel={
+                          display.kind === "updating" && price == null
+                            ? "—"
+                            : priceLabel
+                        }
                         textMain={
                           pos.lock.mode === "locked" && pos.lock.checkPrice
                             ? "text-amber-200 line-through decoration-amber-200/80"
@@ -1427,27 +1432,33 @@ function PosBlock({
                       <TosStepper surface="card"
                         testId={`analyzer-pos-price-step-${pos.id}`}
                         ariaLabel="Price"
-                        disabled={price == null}
+                        disabled={false}
                         onUp={() => {
-                          if (price == null) return;
+                          const mag =
+                            price != null && Number.isFinite(price)
+                              ? price
+                              : 0.05;
                           try {
                             onLockLimit(
                               pos.id,
-                              stepCardPrice(und, price, "up"),
+                              stepCardPrice(und, mag, "up"),
                             );
                           } catch {
-                            /* unknown product — no step */
+                            onLockLimit(pos.id, mag);
                           }
                         }}
                         onDown={() => {
-                          if (price == null) return;
+                          const mag =
+                            price != null && Number.isFinite(price)
+                              ? price
+                              : 0.05;
                           try {
                             onLockLimit(
                               pos.id,
-                              stepCardPrice(und, price, "down"),
+                              stepCardPrice(und, mag, "down"),
                             );
                           } catch {
-                            /* unknown product — no step */
+                            onLockLimit(pos.id, mag);
                           }
                         }}
                       />

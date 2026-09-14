@@ -807,6 +807,8 @@ export default function PositionBuilder({
   );
 
   // Reset seed flags when dialog closes. Placement is a one-shot layout pass.
+  // Create must mint a new id each open — the dialog stays mounted, so the
+  // previous Analyze draft's id would otherwise be prepended as a duplicate card.
   useEffect(() => {
     if (!open) {
       didSeed.current = false;
@@ -815,6 +817,17 @@ export default function PositionBuilder({
       lastPriceRev.current = -1;
       placedOnOpen.current = false;
       return;
+    }
+    if (mode === "create" && !initial?.position.legs.length) {
+      setDraft(
+        positionFromInput({
+          underlying: symbol,
+          expiration: frontDefault,
+          contracts: 1,
+          legs: [],
+          direction: "buy",
+        }),
+      );
     }
     setDefaultsStore(loadCreateDefaultsStore());
     userPickedExp.current = mode === "edit";
@@ -1558,14 +1571,33 @@ export default function PositionBuilder({
       legs,
       direction,
     };
-    const nextRecord: AnalyzerPosition = {
-      ...record,
-      position: nextPos,
-      label: buildLabel(nextPos.underlying, nextPos.legs, nextPos.expiration),
-      notation: buildNotation(nextPos.legs),
-      priceSide: packageSideFromStructure({ position: nextPos }),
-      updatedAt: Date.now(),
-    };
+    const label = buildLabel(nextPos.underlying, nextPos.legs, nextPos.expiration);
+    const notation = buildNotation(nextPos.legs);
+    const priceSide = packageSideFromStructure({ position: nextPos });
+    // Create always mints a new book id. The dialog is long-lived; reusing
+    // the previous Analyze draft id prepends a twin of the first card.
+    const nextRecord: AnalyzerPosition =
+      mode === "create"
+        ? {
+            ...positionFromInput(nextPos),
+            lock: record.lock,
+            lastNatSigned: record.lastNatSigned,
+            livePackagePerShare: record.livePackagePerShare,
+            definedDebitPerShare: record.definedDebitPerShare,
+            bind: record.bind,
+            label,
+            notation,
+            priceSide,
+            updatedAt: Date.now(),
+          }
+        : {
+            ...record,
+            position: nextPos,
+            label,
+            notation,
+            priceSide,
+            updatedAt: Date.now(),
+          };
     onSave(nextRecord);
   }, [
     position,
@@ -1584,6 +1616,7 @@ export default function PositionBuilder({
     regenerate,
     onSave,
     record,
+    mode,
   ]);
 
   useEffect(() => {
@@ -1611,17 +1644,30 @@ export default function PositionBuilder({
   const debitShown =
     lockActive && lockedMagnitude != null
       ? lockedMagnitude
-      : eco.absMid;
+      : eco.absMid != null && Number.isFinite(eco.absMid)
+        ? eco.absMid
+        : record.lastNatSigned != null && Number.isFinite(record.lastNatSigned)
+          ? Math.abs(record.lastNatSigned)
+          : record.livePackagePerShare != null &&
+              Number.isFinite(record.livePackagePerShare)
+            ? Math.abs(record.livePackagePerShare)
+            : null;
   const stepDebit = (dir: "up" | "down") => {
     const mag = debitShown != null && debitShown > 0 ? debitShown : 0.05;
     let next: number;
     try {
       next = stepCardPrice(position.underlying || symbol, mag, dir);
     } catch {
-      return;
+      next = mag;
     }
     const isCredit = resolvePackageSide(record) === "credit";
     setDraft((d) => lockLimit(d, next, isCredit));
+  };
+  const commitDebit = (raw: string) => {
+    const mag = Math.abs(parseFloat(String(raw).replace(/[−–—]/g, "-")));
+    if (!Number.isFinite(mag) || mag <= 0) return;
+    const isCredit = resolvePackageSide(record) === "credit";
+    setDraft((d) => lockLimit(d, mag, isCredit));
   };
   const scalePos = (n: number) => {
     const next = Math.max(1, Math.round(n));
@@ -2126,20 +2172,43 @@ export default function PositionBuilder({
                     >
                       {isTop ? (
                         <div className="flex items-center justify-end gap-1">
-                          <span
-                            className={valueField + " " + W_DEBIT}
+                          <input
+                            className={
+                              valueField +
+                              " " +
+                              W_DEBIT +
+                              " bg-transparent text-right outline-none"
+                            }
                             data-testid="builder-live-package-price"
                             data-field="debit"
                             data-value-field="1"
-                          >
-                            {debitShown != null && Number.isFinite(debitShown)
-                              ? debitShown.toFixed(2)
-                              : "—"}
-                          </span>
+                            inputMode="decimal"
+                            aria-label="Package debit"
+                            defaultValue={
+                              debitShown != null && Number.isFinite(debitShown)
+                                ? debitShown.toFixed(2)
+                                : ""
+                            }
+                            key={
+                              lockActive
+                                ? `l-${lockedMagnitude}`
+                                : `u-${debitShown ?? "x"}`
+                            }
+                            onBlur={(e) => commitDebit(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                commitDebit(
+                                  (e.target as HTMLInputElement).value,
+                                );
+                                (e.target as HTMLInputElement).blur();
+                              }
+                            }}
+                          />
                           <TosStepper surface="card"
                             testId="builder-debit-step"
                             ariaLabel="Package debit"
-                            disabled={debitShown == null}
+                            disabled={false}
                             onUp={() => stepDebit("up")}
                             onDown={() => stepDebit("down")}
                           />

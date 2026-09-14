@@ -62,6 +62,15 @@ test("AT-PC-21 Create Cancel does not insert; Submit does", () => {
   assert.match(host, /setCreateReopen\(null\)/);
 });
 
+test("Create Analyze mints a new id (dialog stays mounted across opens)", () => {
+  const save = builder.slice(
+    builder.indexOf("const nextPos: PositionInput"),
+    builder.indexOf("onSave(nextRecord)"),
+  );
+  assert.match(save, /mode === "create"/);
+  assert.match(save, /positionFromInput\(nextPos\)/);
+});
+
 test("AT-PC-22 Create and Edit drafts are off-book until Analyze/Update", () => {
   assert.match(host, /commitBook\("create-submit"/);
   assert.match(builder, /const \[draft, setDraft\]/);

@@ -12,6 +12,8 @@ import {
   applyPackageQuote,
   loadPositions,
   positionFromInput,
+  prependCreatedPosition,
+  remintDuplicateIds,
   savePositions,
   shiftCardStrikes,
   type AnalyzerPosition,
@@ -242,13 +244,15 @@ test("AT-PC-60 persist is not session-only: dual-write localStorage", () => {
   assert.equal(fromLocal[0].rehearsal, true);
 });
 
-test("characterization: applyPackageQuote incomplete currently nulls lastNatSigned", () => {
+test("incomplete quote keeps last known mark (not UPDATING)", () => {
   let pos = positionFromInput(fly());
   pos.lastNatSigned = 0.67;
   pos.livePackagePerShare = 0.67;
+  pos.liveState = "live";
   pos = applyPackageQuote(pos, { complete: false });
-  assert.equal(pos.lastNatSigned, null);
-  assert.equal(pos.liveState, "incomplete");
+  assert.equal(pos.lastNatSigned, 0.67);
+  assert.equal(pos.livePackagePerShare, 0.67);
+  assert.equal(pos.liveState, "live");
 });
 
 test("characterization: unlocked mapper does not record a limit (PC9b)", () => {
@@ -261,6 +265,27 @@ test("characterization: shiftCardStrikes without listed ladder is a no-op", () =
   const pos = positionFromInput(fly());
   const next = shiftCardStrikes(pos, "up");
   assert.equal(next, pos);
+});
+
+test("prependCreatedPosition mints when the id is already on the book", () => {
+  const a = positionFromInput(fly());
+  a.id = "same";
+  const b = positionFromInput(fly());
+  b.id = "same";
+  const next = prependCreatedPosition([a], b);
+  assert.equal(next.length, 2);
+  assert.notEqual(next[0].id, "same");
+  assert.equal(next[1].id, "same");
+});
+
+test("remintDuplicateIds splits twin ids", () => {
+  const a = positionFromInput(fly());
+  a.id = "twin";
+  const b = { ...a };
+  const next = remintDuplicateIds([a, b]);
+  assert.equal(next.length, 2);
+  assert.equal(next[0].id, "twin");
+  assert.notEqual(next[1].id, "twin");
 });
 
 console.log(`analyzerBook.pc0.test.ts ${n} ok`);
