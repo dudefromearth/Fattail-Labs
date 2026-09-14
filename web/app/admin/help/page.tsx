@@ -10,6 +10,7 @@ type Row = {
   id: number; email: string; subject: string; category: string; status: string;
   reply_count: number; team_reply_count: number; has_screenshot: boolean;
   created_at: string | null; updated_at: string | null; answered_at: string | null;
+  member_last_viewed_at: string | null; member_replied: boolean; last_email_status: string | null;
 };
 
 // A ticket that was answered and then re-opened by a member reply reads as
@@ -28,7 +29,10 @@ function replyLabel(r: Row): string {
   if (r.reply_count > 0) return "no team reply yet · AI only";
   return "no replies";
 }
-type Msg = { id: number; author_role: string; visibility: string; body: string; created_at: string | null };
+type Msg = {
+  id: number; author_role: string; visibility: string; body: string; created_at: string | null;
+  email_status?: string | null; emailed_at?: string | null;
+};
 
 // Who sent a message, made visually distinct so the bot is never mistaken for the member.
 function roleStyle(authorRole: string, visibility?: string): { label: string; box: string; badge: string } {
@@ -61,6 +65,7 @@ type Detail = {
     id: number; email: string; subject: string; body: string; category: string;
     status: string; page_context: string | null; screenshot_url: string | null;
     created_at: string | null; answered_at: string | null;
+    member_last_viewed_at?: string | null;
   };
   messages: Msg[];
 };
@@ -160,6 +165,14 @@ export default function AdminHelpPage() {
                   <td className="px-3 py-2">
                     <div className="font-medium">{r.subject}</div>
                     <div className="text-xs text-zinc-500">{r.category} · {replyLabel(r)}{r.has_screenshot ? " · 📷" : ""}</div>
+                    {(r.member_replied || r.member_last_viewed_at || r.last_email_status) && (
+                      <div className="mt-1 flex flex-wrap items-center gap-1">
+                        {r.member_replied && <Sig tone="sky">💬 replied</Sig>}
+                        {r.member_last_viewed_at && <Sig tone="zinc">{`👁 seen ${fmtShort(r.member_last_viewed_at)}`}</Sig>}
+                        {r.last_email_status === "sent" && <Sig tone="emerald">✉ sent</Sig>}
+                        {r.last_email_status === "failed" && <Sig tone="red">⚠ email failed</Sig>}
+                      </div>
+                    )}
                   </td>
                   <td className="px-3 py-2 text-xs">{r.email || "—"}</td>
                   <td className="px-3 py-2"><StatusPill s={displayStatus(r.status, r.answered_at)} /></td>
@@ -187,6 +200,9 @@ export default function AdminHelpPage() {
                   {detail.question.email} · {detail.question.category}
                   {detail.question.page_context ? ` · on ${detail.question.page_context}` : ""} · {fmt(detail.question.created_at)}
                 </p>
+                {detail.question.member_last_viewed_at && (
+                  <p className="mt-0.5 text-xs text-zinc-400">👁 Member last viewed {fmt(detail.question.member_last_viewed_at)}</p>
+                )}
               </div>
 
               <div className="rounded-md border-l-4 border-l-sky-400 bg-sky-50/70 p-3 dark:bg-sky-950/30">
@@ -214,6 +230,13 @@ export default function AdminHelpPage() {
                           {s.label}
                         </span>
                         <span>{fmt(m.created_at)}</span>
+                        {m.author_role === "admin" && m.visibility === "public" && m.email_status && (
+                          m.email_status === "sent"
+                            ? <Sig tone="emerald">{`✉ emailed${m.emailed_at ? " " + fmtShort(m.emailed_at) : ""}`}</Sig>
+                            : m.email_status === "failed"
+                              ? <Sig tone="red">⚠ email failed</Sig>
+                              : <Sig tone="zinc">✉ not emailed</Sig>
+                        )}
                       </div>
                       <div className="whitespace-pre-wrap">{m.body}</div>
                     </li>
@@ -264,4 +287,21 @@ function StatusPill({ s }: { s: string }) {
     : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800";
   const label = s === "ai_resolved" ? "AI resolved" : s === "ai_pending" ? "AI pending" : s;
   return <span className={`rounded-full px-2 py-0.5 text-xs capitalize ${color}`}>{label}</span>;
+}
+
+// Small read/sent signal pill.
+function Sig({ tone, children }: { tone: string; children: string }) {
+  const c: Record<string, string> = {
+    sky: "bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300",
+    emerald: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300",
+    red: "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300",
+    zinc: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300",
+  };
+  return <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${c[tone] || c.zinc}`}>{children}</span>;
+}
+
+function fmtShort(iso: string | null) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
