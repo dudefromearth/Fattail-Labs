@@ -17,7 +17,7 @@ from market_data.underlier_marks import (
     ensure_fresh_underlier_marks,
     get_underlier_mark,
 )
-from trade_log_domain.matching import match_open_close
+from trade_log_domain.matching import match_open_close, slot_remaining
 from trade_log_domain.structure import (
     multiplier,
     net_cash_points,
@@ -194,7 +194,11 @@ def positions_valuation(
     }
 
     matched = match_open_close(trades)
-    opens = [m for m in matched if m.get("close") is None]
+    opens = [
+        m
+        for m in matched
+        if m.get("close") is None and slot_remaining(m) > 0
+    ]
 
     # Refresh stale underliers for equity opens (bus + MySQL) before marking
     underliers: list[str] = []
@@ -242,6 +246,12 @@ def positions_valuation(
                 continue
 
         qty, avg_cost, cost_basis = open_qty_and_avg_cost(t)
+        rem = slot_remaining(m)
+        orig = int(m.get("open_units") or 0)
+        if orig > 0 and rem != orig:
+            qty = float(rem)
+            if cost_basis is not None:
+                cost_basis = float(cost_basis) * (rem / float(orig))
         under = _underlier(t)
         equity_like = _is_equity_like(t)
         # Always 1 for shares; 100 for options — never trust mis-tagged asset_class

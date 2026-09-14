@@ -501,12 +501,13 @@ function TradeLogBody() {
     [ctxCampaigns],
   );
 
-  /** Prefer server opens for accuracy; fall back to client match on loaded pages. */
+  /** Prefer server opens for accuracy; fall back to client match on loaded pages.
+   *  Residual lots (fully_unmatched === false) are still on the book but not bulk-deletable. */
   const unmatched = useMemo(() => {
     if (openTrades.length > 0 || state === "ok") {
-      // openTrades is authoritative when loaded (may be empty book)
-      if (openTrades.length > 0) return openTrades;
-      // Still loading opens failed — derive from page
+      if (openTrades.length > 0) {
+        return openTrades.filter((t) => t.fully_unmatched !== false);
+      }
       return listUnmatchedOpens(trades);
     }
     return listUnmatchedOpens(trades);
@@ -805,6 +806,11 @@ function TradeLogBody() {
             setSheetOpen(true);
           }}
           onSelect={(t) => {
+            if (selected?.id === t.id && sheetOpen && sheetMode === "edit") {
+              setSelected(null);
+              setSheetOpen(false);
+              return;
+            }
             setSelected(t);
             setSheetMode("edit");
             setSheetOpen(true);

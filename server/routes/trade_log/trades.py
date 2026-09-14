@@ -318,7 +318,11 @@ def list_unmatched_opens(
     """
     claims = require_session(request)
     _require_tool_member(claims, capability="read")
-    from trade_log_domain.matching import match_open_close
+    from trade_log_domain.matching import (
+        match_open_close,
+        real_close_slices,
+        slot_remaining,
+    )
 
     with db.transaction() as conn:
         with conn.cursor() as cur:
@@ -326,7 +330,19 @@ def list_unmatched_opens(
             default_acct = _ensure_default_account(cur, iid)
             trades, accounts = _load_member_book(cur, iid, account_id)
             matched = match_open_close(trades)
-            opens = [m["open"] for m in matched if m.get("close") is None]
+            opens: list[dict] = []
+            for m in matched:
+                if m.get("close") is not None:
+                    continue
+                rem = slot_remaining(m)
+                if rem <= 0:
+                    continue
+                row = dict(m["open"])
+                row["remaining_units"] = rem
+                row["open_units"] = int(m.get("open_units") or 0)
+                row["closed_units"] = int(m.get("closed_units") or 0)
+                row["fully_unmatched"] = not real_close_slices(m)
+                opens.append(row)
     return {
         "trades": opens,
         "accounts": accounts,
@@ -353,7 +369,7 @@ def get_trade_chart(
 ) -> dict:
     """Static underlier OHLC for trade review (Phase 2 charts).
 
-    Query: ``tf=5m|15m|1d`` (default 15m).
+    Query: ``tf=5m|15m|30m|2h|4h|1d`` (default 15m).
     Fail loud: missing/stale bars → ``ok: false`` with empty bars (never a fake path).
     SPX/XSP/VIX use labeled proxy series per Massive doctrine.
     """

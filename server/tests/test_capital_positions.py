@@ -176,3 +176,112 @@ def test_realized_dd_and_overview_still_ok(client):
         assert "master_drawdown" in r.json()
     finally:
         _cleanup(iid)
+
+
+def test_at_ppl_3_open_qty_overstates_partial_close_remainder(client):
+    """AT-PPL-3 inverted (PPL2): positions_valuation qty is slot remainder 4.
+
+    open_qty_and_avg_cost(trade) still sees the fill (5) — it is not qty SoR.
+    """
+    from trade_log_domain.structure import unit_qty
+
+    exp = "2026-12-31"
+    open_t = {
+        "id": 1,
+        "account_id": 1,
+        "exec_at": "2026-04-21T10:00:00",
+        "strategy": "BUTTERFLY",
+        "asset_class": "equity_option",
+        "net_price": 0.60,
+        "net_side": "DEBIT",
+        "legs": [
+            {
+                "side": "BUY",
+                "quantity": 5,
+                "pos_effect": "TO_OPEN",
+                "underlier": "SPX",
+                "expiry": exp,
+                "strike": 7080,
+                "right": "PUT",
+                "fill_price": 1.0,
+                "asset_class": "equity_option",
+            },
+            {
+                "side": "SELL",
+                "quantity": 10,
+                "pos_effect": "TO_OPEN",
+                "underlier": "SPX",
+                "expiry": exp,
+                "strike": 7075,
+                "right": "PUT",
+                "fill_price": 1.0,
+                "asset_class": "equity_option",
+            },
+            {
+                "side": "BUY",
+                "quantity": 5,
+                "pos_effect": "TO_OPEN",
+                "underlier": "SPX",
+                "expiry": exp,
+                "strike": 7070,
+                "right": "PUT",
+                "fill_price": 1.0,
+                "asset_class": "equity_option",
+            },
+        ],
+    }
+    assert unit_qty(open_t) == 5
+    fill_qty, _avg, _basis = cpos.open_qty_and_avg_cost(open_t)
+    assert fill_qty == 5  # fill helper unchanged
+
+    iid = _member("zztest-ppl2-qty@labs.test")
+    cookies = cookie_for("activator", iid)
+    try:
+        a1 = client.post(
+            "/api/me/trade-log/accounts",
+            cookies=cookies,
+            json={"label": "PPL2qty", "broker": "fattail", "starting_balance": 10000},
+        )
+        assert a1.status_code == 200, a1.text
+        aid = int(a1.json()["id"])
+        open_r = client.post(
+            "/api/me/trade-log/trades",
+            cookies=cookies,
+            json={
+                "account_id": aid,
+                "exec_at": "2026-04-21T10:00:00",
+                "strategy": "BUTTERFLY",
+                "asset_class": "equity_option",
+                "net_price": 0.60,
+                "net_side": "DEBIT",
+                "legs": open_t["legs"],
+            },
+        )
+        assert open_r.status_code == 200, open_r.text
+        close_legs = [
+            {**open_t["legs"][0], "side": "SELL", "quantity": 1, "pos_effect": "TO_CLOSE"},
+            {**open_t["legs"][1], "side": "BUY", "quantity": 2, "pos_effect": "TO_CLOSE"},
+            {**open_t["legs"][2], "side": "SELL", "quantity": 1, "pos_effect": "TO_CLOSE"},
+        ]
+        close_r = client.post(
+            "/api/me/trade-log/trades",
+            cookies=cookies,
+            json={
+                "account_id": aid,
+                "exec_at": "2026-04-21T14:00:00",
+                "strategy": "BUTTERFLY",
+                "asset_class": "equity_option",
+                "net_price": 0.20,
+                "net_side": "CREDIT",
+                "legs": close_legs,
+            },
+        )
+        assert close_r.status_code == 200, close_r.text
+        val = client.get("/api/me/capital/positions-valuation", cookies=cookies)
+        assert val.status_code == 200, val.text
+        groups = val.json().get("accounts") or []
+        g = next(x for x in groups if x["account_id"] == aid)
+        row = next(p for p in g["positions"] if p["trade_id"] == open_r.json()["id"])
+        assert row["qty"] == 4
+    finally:
+        _cleanup(iid)

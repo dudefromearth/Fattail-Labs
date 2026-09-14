@@ -1241,3 +1241,226 @@ def test_default_book_filter_includes_unstamped_and_playbook_unaffiliated(client
         assert t_book["id"] in cids
     finally:
         _purge(a)
+
+
+# --- PPL1 characterization lock (AT-PPL-4…8). Invert in PPL2/PPL3/PPL4. ---
+
+
+def _ppl_fly_legs(units: int, effect: str, exp: str = "2026-12-31") -> list[dict]:
+    """Butterfly legs: wings = units, body = 2×units. Reverse sides on TO_CLOSE."""
+    open_buy = effect == "TO_OPEN"
+    return [
+        {
+            "side": "BUY" if open_buy else "SELL",
+            "quantity": units,
+            "pos_effect": effect,
+            "underlier": "SPX",
+            "expiry": exp,
+            "strike": 7080,
+            "right": "PUT",
+            "fill_price": 1.0,
+            "asset_class": "equity_option",
+        },
+        {
+            "side": "SELL" if open_buy else "BUY",
+            "quantity": units * 2,
+            "pos_effect": effect,
+            "underlier": "SPX",
+            "expiry": exp,
+            "strike": 7075,
+            "right": "PUT",
+            "fill_price": 1.0,
+            "asset_class": "equity_option",
+        },
+        {
+            "side": "BUY" if open_buy else "SELL",
+            "quantity": units,
+            "pos_effect": effect,
+            "underlier": "SPX",
+            "expiry": exp,
+            "strike": 7070,
+            "right": "PUT",
+            "fill_price": 1.0,
+            "asset_class": "equity_option",
+        },
+    ]
+
+
+def test_at_ppl_4_5_opens_and_delete_partial_open(client):
+    """AT-PPL-4 + AT-PPL-5 inverted (PPL2).
+
+    AT-PPL-4: GET /opens remaining_units == 4 (not original 5).
+    AT-PPL-5: fully_unmatched is false (not bulk-deletable). DELETE still 200
+              until PPL3 409 — client canDeleteTrade is TS (tradeLog.ppl2.test.ts).
+    """
+    a = _id("zztest-ppl1-opens@labs.test")
+    try:
+        ca = cookie_for("activator", a)
+        acct = client.post(
+            "/api/me/trade-log/accounts",
+            cookies=ca,
+            json={"label": "PPL1", "broker": "fattail"},
+        )
+        assert acct.status_code == 200, acct.text
+        aid = int((acct.json().get("account") or acct.json())["id"])
+
+        open_r = client.post(
+            "/api/me/trade-log/trades",
+            cookies=ca,
+            json={
+                "account_id": aid,
+                "exec_at": "2026-04-21T10:00:00",
+                "strategy": "BUTTERFLY",
+                "asset_class": "equity_option",
+                "net_price": 0.60,
+                "net_side": "DEBIT",
+                "legs": _ppl_fly_legs(5, "TO_OPEN"),
+            },
+        )
+        assert open_r.status_code == 200, open_r.text
+        open_id = int(open_r.json()["id"])
+
+        close_r = client.post(
+            "/api/me/trade-log/trades",
+            cookies=ca,
+            json={
+                "account_id": aid,
+                "exec_at": "2026-04-21T14:00:00",
+                "strategy": "BUTTERFLY",
+                "asset_class": "equity_option",
+                "net_price": 0.20,
+                "net_side": "CREDIT",
+                "legs": _ppl_fly_legs(1, "TO_CLOSE"),
+            },
+        )
+        assert close_r.status_code == 200, close_r.text
+        close_id = int(close_r.json()["id"])
+        assert close_id != open_id
+
+        opens = client.get("/api/me/trade-log/opens", cookies=ca)
+        assert opens.status_code == 200, opens.text
+        rows = opens.json().get("trades") or []
+        hit = next((t for t in rows if int(t["id"]) == open_id), None)
+        assert hit is not None  # still on the book
+        assert int(hit.get("remaining_units") or 0) == 4  # AT-PPL-4
+        assert hit.get("fully_unmatched") is False  # AT-PPL-5: not bulk-deletable
+        # PPL3: DELETE still 200 until 409. Do not invert AT-PPL-7 here.
+    finally:
+        _purge(a)
+
+
+def test_at_ppl_6_ungated_orphan_close_is_200(client):
+    """AT-PPL-6 — CURRENT LIE. Invert in PPL3: 422 without override.
+
+    POST a TO_CLOSE with no matching open (orphan), no override flag → 200.
+    """
+    a = _id("zztest-ppl1-orphan-close@labs.test")
+    try:
+        ca = cookie_for("activator", a)
+        acct = client.post(
+            "/api/me/trade-log/accounts",
+            cookies=ca,
+            json={"label": "PPL1-orphan", "broker": "fattail"},
+        )
+        assert acct.status_code == 200, acct.text
+        aid = int((acct.json().get("account") or acct.json())["id"])
+
+        r = client.post(
+            "/api/me/trade-log/trades",
+            cookies=ca,
+            json={
+                "account_id": aid,
+                "exec_at": "2026-04-21T14:00:00",
+                "strategy": "BUTTERFLY",
+                "asset_class": "equity_option",
+                "net_price": 0.20,
+                "net_side": "CREDIT",
+                "legs": _ppl_fly_legs(1, "TO_CLOSE"),
+            },
+        )
+        assert r.status_code == 200, r.text
+        assert r.status_code != 422
+    finally:
+        _purge(a)
+
+
+def test_at_ppl_7_delete_fully_paired_open_is_200(client):
+    """AT-PPL-7 — CURRENT LIE. Invert in PPL3: DELETE paired open → 409.
+
+    Full 1-unit open + matching 1-unit close; delete the TO_OPEN first → 200.
+    """
+    a = _id("zztest-ppl1-del-paired@labs.test")
+    try:
+        ca = cookie_for("activator", a)
+        acct = client.post(
+            "/api/me/trade-log/accounts",
+            cookies=ca,
+            json={"label": "PPL1-paired", "broker": "fattail"},
+        )
+        assert acct.status_code == 200, acct.text
+        aid = int((acct.json().get("account") or acct.json())["id"])
+
+        open_r = client.post(
+            "/api/me/trade-log/trades",
+            cookies=ca,
+            json={
+                "account_id": aid,
+                "exec_at": "2026-04-21T10:00:00",
+                "strategy": "BUTTERFLY",
+                "asset_class": "equity_option",
+                "net_price": 0.60,
+                "net_side": "DEBIT",
+                "legs": _ppl_fly_legs(1, "TO_OPEN"),
+            },
+        )
+        assert open_r.status_code == 200, open_r.text
+        open_id = int(open_r.json()["id"])
+
+        close_r = client.post(
+            "/api/me/trade-log/trades",
+            cookies=ca,
+            json={
+                "account_id": aid,
+                "exec_at": "2026-04-21T14:00:00",
+                "strategy": "BUTTERFLY",
+                "asset_class": "equity_option",
+                "net_price": 0.20,
+                "net_side": "CREDIT",
+                "legs": _ppl_fly_legs(1, "TO_CLOSE"),
+            },
+        )
+        assert close_r.status_code == 200, close_r.text
+
+        gone = client.delete(f"/api/me/trade-log/trades/{open_id}", cookies=ca)
+        assert gone.status_code == 200, gone.text
+        assert gone.status_code != 409
+    finally:
+        _purge(a)
+
+
+def test_at_ppl_8_imports_have_no_coverage_window_columns():
+    """AT-PPL-8 — CURRENT. Invert in PPL4 after OD-9: from/to columns exist."""
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'member_trade_log_imports'
+                """
+            )
+            cols = {str(r["COLUMN_NAME"]).lower() for r in (cur.fetchall() or [])}
+    assert cols, "member_trade_log_imports must exist"
+    forbidden = {
+        "from",
+        "to",
+        "from_date",
+        "to_date",
+        "coverage_from",
+        "coverage_to",
+        "window_from",
+        "window_to",
+        "coverage_start",
+        "coverage_end",
+    }
+    assert cols.isdisjoint(forbidden), cols & forbidden

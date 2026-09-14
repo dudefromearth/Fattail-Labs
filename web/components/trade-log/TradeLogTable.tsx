@@ -130,6 +130,11 @@ function badgeMeta(badge: ReturnType<typeof positionBadge>): {
         label: "Orphan close",
         cls: "bg-amber-400 text-black",
       };
+    case "partial_residual":
+      return {
+        label: "partial_residual",
+        cls: "bg-emerald-700/80 text-white",
+      };
     default:
       return { label: "", cls: "" };
   }

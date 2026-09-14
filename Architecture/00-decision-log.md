@@ -4,6 +4,25 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-14 — DL-702 Practice Position Lifecycle is GO · fourth tree alongside LIM, QFRIC, XS
+
+**Decision (Coach, 2026-09-14).** Two calls with no silent default:
+
+1. **RUN NOW.** Seat Practice Position Lifecycle as a **fourth active program** beside Heatmap LIM, Quant Lab QFRIC, and Options Lab XS. Isolation: plan v1.1 §3. No matcher FIFO rewrite. No `AnalyzerPositionsList.tsx`. StudioTwo only.
+2. **PERMANENT + kit warning dialog** for blotter-row delete. No trash-bin this round (OD-19). Undo can be added later.
+
+**Silent defaults accepted (named so the record is honest):** OD-21 two words (partial-residual vs unfinished cycle); OD-23 30 stays as typo-guard; OD-24 show FIFO open, no lot picker; OD-25 member closes gated, file imports not 422 on missing open.
+
+**Still OPEN (PPL4):** OD-9 coverage window · OD-22 declarations store · FI-PPL-1 day-book/blotter hold direction.
+
+**Stamped:** Plan **v1.1** SOUND. Spec **v0.1.1 BUILD AUTHORITY**. Token [`agents/go/PPL0-W0.md`](../agents/go/PPL0-W0.md) **GO**. Board `agents/p-practice-position-lifecycle/`. AGENTS.md current-state table + invariant 7 updated in this body of work.
+
+**Does not.** Product code until PPL0-G then PPL1. MiniTwo / DudeTwo. LIM / QFRIC / XS files. Matcher FIFO.
+
+**Cites:** B0 audit v1.1 · source audit `87ab8748` · Grok PPL0-A* · Advisor plan review SOUND.
+
+---
+
 ## 2026-09-13 — DL-701 Heatmap XSP/SPY columns consume universe overlay (scoped DL-435 reverse)
 
 **Decision.** Advanced Fly / Width Fit column lists for symbols whose universe

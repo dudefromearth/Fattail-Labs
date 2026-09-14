@@ -9,7 +9,12 @@ from trade_log_domain import (
     structure_key,
     unit_qty,
 )
-from trade_log_domain.matching import STATUS_COMPLETE, STATUS_OPEN, STATUS_ORPHAN
+from trade_log_domain.matching import (
+    STATUS_COMPLETE,
+    STATUS_OPEN,
+    STATUS_ORPHAN,
+    STATUS_PARTIAL_RESIDUAL,
+)
 from trade_log_domain.matching import SYNTHETIC_EXPIRED_WORTHLESS
 
 
@@ -608,3 +613,85 @@ def test_account_filter_scopes_reports():
     assert book["trade_count"] == 1
     assert book["end_balance"] == 10010.0
     assert book["account_label"] == "A"
+
+
+# --- PPL1 characterization lock (AT-PPL-*). Invert in PPL2/PPL4; do not "fix" here. ---
+
+
+def _ppl_1_of_5(as_of: str = "2026-04-21"):
+    """Spine: 5-unit fly open + 1-unit TO_CLOSE, as_of before expiry."""
+    exp = "2026-12-31"
+    open_t = _trade(
+        1,
+        1,
+        "2026-04-21T10:00:00",
+        "BUTTERFLY",
+        [
+            _leg("BUY", 5, "TO_OPEN", 7080, exp=exp),
+            _leg("SELL", 10, "TO_OPEN", 7075, exp=exp),
+            _leg("BUY", 5, "TO_OPEN", 7070, exp=exp),
+        ],
+        net_price=0.60,
+        net_side="DEBIT",
+    )
+    close_t = _trade(
+        2,
+        1,
+        "2026-04-21T14:00:00",
+        "BUTTERFLY",
+        [
+            _leg("SELL", 1, "TO_CLOSE", 7080, exp=exp),
+            _leg("BUY", 2, "TO_CLOSE", 7075, exp=exp),
+            _leg("SELL", 1, "TO_CLOSE", 7070, exp=exp),
+        ],
+        net_price=0.20,
+        net_side="CREDIT",
+    )
+    return open_t, close_t, as_of
+
+
+def test_at_ppl_2_blotter_status_partial_close_is_orphan_and_open():
+    """AT-PPL-2 inverted (PPL2): close and open are partial_residual, not Orphan/Open-at-5.
+
+    Machine key only. Client positionBadge must agree (tradeLog.ppl2.test.ts).
+    """
+    open_t, close_t, as_of = _ppl_1_of_5()
+    status = blotter_status_by_id([open_t, close_t])
+    assert status[2] == STATUS_PARTIAL_RESIDUAL
+    assert status[1] == STATUS_PARTIAL_RESIDUAL
+    assert status[2] != STATUS_ORPHAN
+    assert status[1] != STATUS_OPEN
+
+
+def test_at_ppl_9_day_book_drops_30d_open_blotter_still_open():
+    """AT-PPL-9 — CURRENT LIE. Invert in PPL4 after FI-PPL-1 names the direction.
+
+    Unmatched open older than MAX_STRUCTURE_HOLD_DAYS: day-book empty, blotter Open.
+    Expiry is far future so synthetic expire does not fire.
+    """
+    from trade_log_domain.day_book import opens_on_day
+    from trade_log_domain.matching import MAX_STRUCTURE_HOLD_DAYS
+
+    exp = "2099-12-31"
+    open_t = _trade(
+        11,
+        1,
+        "2026-04-21T10:00:00",
+        "BUTTERFLY",
+        [
+            _leg("BUY", 1, "TO_OPEN", 100, exp=exp),
+            _leg("SELL", 2, "TO_OPEN", 95, exp=exp),
+            _leg("BUY", 1, "TO_OPEN", 90, exp=exp),
+        ],
+        net_price=0.50,
+        net_side="DEBIT",
+    )
+    # 31 days after open (> 30)
+    later = "2026-05-22"
+    assert MAX_STRUCTURE_HOLD_DAYS == 30
+    matched = match_open_close([open_t], as_of=later)
+    assert matched[0]["close"] is None
+    status = blotter_status_by_id([open_t])
+    assert status[11] == STATUS_OPEN
+    book_opens = opens_on_day([open_t], later)
+    assert book_opens == []

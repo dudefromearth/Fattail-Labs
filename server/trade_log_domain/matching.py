@@ -183,33 +183,53 @@ def match_open_close(
 STATUS_OPEN = "Open"
 STATUS_COMPLETE = "Complete"
 STATUS_ORPHAN = "Orphan close"
+# Machine key only (PPL2). Member English waits on OD-21 / PPL4.
+STATUS_PARTIAL_RESIDUAL = "partial_residual"
+
+
+def real_close_slices(m: dict[str, Any]) -> list[dict[str, Any]]:
+    """Persisted TO_CLOSE slices on a slot — not synthetic expire-worthless."""
+    out: list[dict[str, Any]] = []
+    for sl in m.get("closes") or []:
+        ct = sl.get("close") or {}
+        if ct.get("synthetic"):
+            continue
+        cid = ct.get("id")
+        if cid is None or int(cid) < 0:
+            continue
+        out.append(ct)
+    return out
 
 
 def blotter_status_by_id(trades: list[dict[str, Any]]) -> dict[int, str]:
     """Autofilter Status tokens — same grain as client ``positionBadge``.
 
-    Open / Complete / Orphan close. Trades with no named state are omitted
-    (client NONE_TOKEN).
+    Open / Complete / Orphan close / partial_residual (machine key).
+    Walks ``closes[]`` even when ``m.close`` is None (PPL-2 read model).
     """
     matches = match_open_close(trades)
     complete_open_ids: set[int] = set()
     open_ids: set[int] = set()
+    partial_open_ids: set[int] = set()
     paired_close_ids: set[int] = set()
+    partial_close_ids: set[int] = set()
     for m in matches:
         oid = m.get("open") or {}
         oid_n = oid.get("id")
         if oid_n is None:
             continue
+        slices = real_close_slices(m)
+        for ct in slices:
+            paired_close_ids.add(int(ct["id"]))
         close = m.get("close")
         if close is not None:
             complete_open_ids.add(int(oid_n))
             if not close.get("synthetic") and close.get("id"):
                 paired_close_ids.add(int(close["id"]))
-            for sl in m.get("closes") or []:
-                ct = sl.get("close") or {}
-                if ct.get("synthetic") or not ct.get("id"):
-                    continue
-                paired_close_ids.add(int(ct["id"]))
+        elif slices and slot_remaining(m) > 0:
+            partial_open_ids.add(int(oid_n))
+            for ct in slices:
+                partial_close_ids.add(int(ct["id"]))
         elif slot_is_open(m):
             open_ids.add(int(oid_n))
     out: dict[int, str] = {}
@@ -219,14 +239,19 @@ def blotter_status_by_id(trades: list[dict[str, Any]]) -> dict[int, str]:
             continue
         tid = int(tid)
         if trade_is_close_fill(t):
-            out[tid] = (
-                STATUS_COMPLETE if tid in paired_close_ids else STATUS_ORPHAN
-            )
+            if tid in partial_close_ids:
+                out[tid] = STATUS_PARTIAL_RESIDUAL
+            elif tid in paired_close_ids:
+                out[tid] = STATUS_COMPLETE
+            else:
+                out[tid] = STATUS_ORPHAN
             continue
         if not (t.get("legs") or []):
             continue
         if tid in complete_open_ids:
             out[tid] = STATUS_COMPLETE
+        elif tid in partial_open_ids:
+            out[tid] = STATUS_PARTIAL_RESIDUAL
         elif tid in open_ids:
             out[tid] = STATUS_OPEN
     return out

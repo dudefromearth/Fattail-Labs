@@ -31,6 +31,8 @@ export function tradeStatus(t: Trade, all: Trade[]): string {
   if (b === "open") return TL_STATUS.open;
   if (b === "complete") return TL_STATUS.complete;
   if (b === "orphan_close") return TL_STATUS.orphan;
+  // Machine key only — not Orphan, not new English (OD-21 / PPL4).
+  if (b === "partial_residual") return "partial_residual";
   return NONE_TOKEN;
 }
 

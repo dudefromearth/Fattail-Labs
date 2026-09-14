@@ -53,6 +53,10 @@ def test_normalize_tf():
     assert normalize_tf("5m") == "5m"
     assert normalize_tf("15M") == "15m"
     assert normalize_tf("1d") == "1d"
+    assert normalize_tf("30m") == "30m"
+    assert normalize_tf("2h") == "2h"
+    assert normalize_tf("4hr") == "4h"
+    assert normalize_tf("day") == "1d"
     assert normalize_tf(None) == "15m"
     with pytest.raises(ValueError):
         normalize_tf("1h")
@@ -227,4 +231,7 @@ def test_bars_look_complete_fail_loud():
 def test_tf_agg_params():
     assert tf_agg_params("5m") == (5, "minute")
     assert tf_agg_params("15m") == (15, "minute")
+    assert tf_agg_params("30m") == (30, "minute")
+    assert tf_agg_params("2h") == (2, "hour")
+    assert tf_agg_params("4h") == (4, "hour")
     assert tf_agg_params("1d") == (1, "day")

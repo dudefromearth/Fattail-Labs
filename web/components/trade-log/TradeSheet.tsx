@@ -23,6 +23,7 @@ import {
   findPairedClose,
   findPairedOpen,
   formatStructurePreview,
+  formatTosScriptFromLegs,
   isManualEntry,
   listUnmatchedOpens,
   netDollarHint,
@@ -41,6 +42,7 @@ import {
 } from "@/lib/tradeLogPrefs";
 import TagPicker from "@/components/tags/TagPicker";
 import TradeChart from "@/components/trade-log/TradeChart";
+import TradeQuickJournal from "@/components/trade-log/TradeQuickJournal";
 import {
   fetchCampaigns,
   fetchEligibleCampaigns,
@@ -386,10 +388,10 @@ export default function TradeSheet({
   );
   const [entryUi, setEntryUi] = useState<EntryUi>("structure");
   /** Legs editor collapsed by default; Order/Net/Debit live above it. */
-  const [showLegsAdvanced, setShowLegsAdvanced] = useState(false);
+  const [showLegsAdvanced, setShowLegsAdvanced] = useState(true);
   /** Once expanded, save uses form.legs even if section is collapsed again. */
   const [legsTouched, setLegsTouched] = useState(false);
-  const [showProcess, setShowProcess] = useState(false);
+
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createContinueNew, setCreateContinueNew] = useState(false);
@@ -405,6 +407,7 @@ export default function TradeSheet({
   >("");
   /** Delete confirm lives only in this drawer (not on the blotter row). */
   const [trashConfirm, setTrashConfirm] = useState(false);
+  const [trashIntent, setTrashIntent] = useState<"fill" | "entire">("fill");
   const [trashReason, setTrashReason] = useState("");
   const [allowOrphanClose, setAllowOrphanClose] = useState(false);
   const [allowAccountMismatch, setAllowAccountMismatch] = useState(false);
@@ -521,10 +524,10 @@ export default function TradeSheet({
     setError(null);
     setCreateContinueNew(false);
     if (mode !== "create") setTosParsed(null);
-    setShowProcess(false);
-    setShowLegsAdvanced(false);
+    setShowLegsAdvanced(true);
     setLegsTouched(false);
     setTrashConfirm(false);
+    setTrashIntent("fill");
     setTrashReason("");
     setAllowOrphanClose(false);
     setAllowAccountMismatch(false);
@@ -938,6 +941,46 @@ export default function TradeSheet({
     if (!r.ok) {
       setError(await r.text().catch(() => "Could not trash trade"));
       setTrashConfirm(false);
+      return;
+    }
+    setTrashConfirm(false);
+    onTrashed();
+    onClose();
+  }
+
+  async function trashEntirePosition() {
+    if (!trade || mode !== "edit") return;
+    const closeFill = tradeIsCloseFill(trade) ? trade : pairedClose;
+    const openFill = tradeIsCloseFill(trade) ? pairedOpen : trade;
+    if (!closeFill || !openFill) {
+      setError("Need both fills to delete the whole position.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    const closeR = await fetch(`/api/me/trade-log/trades/${closeFill.id}`, {
+      method: "DELETE",
+      credentials: "same-origin",
+    });
+    if (!closeR.ok) {
+      setBusy(false);
+      setError(await closeR.text().catch(() => "Could not delete the close fill"));
+      setTrashConfirm(false);
+      return;
+    }
+    const openR = await fetch(`/api/me/trade-log/trades/${openFill.id}`, {
+      method: "DELETE",
+      credentials: "same-origin",
+    });
+    setBusy(false);
+    if (!openR.ok) {
+      setError(
+        await openR.text().catch(
+          () => "Close fill removed; the open fill could not be deleted.",
+        ),
+      );
+      setTrashConfirm(false);
+      onTrashed();
       return;
     }
     setTrashConfirm(false);
@@ -1367,55 +1410,19 @@ export default function TradeSheet({
                   </div>
                 )}
 
-                {mode === "edit" && trade && tradeIsCloseFill(trade) && (
-                    <div className="rounded-lg border border-amber-400 bg-amber-50 p-3 text-xs dark:bg-amber-950">
-                      <p className="font-semibold text-amber-900 dark:text-amber-100">
-                        TO CLOSE fill
-                        {positionBadge(trade, trades) === "complete"
-                          ? " · paired with an open"
-                          : " · orphan"}
+                {mode === "edit" &&
+                  trade &&
+                  tradeIsCloseFill(trade) &&
+                  positionBadge(trade, trades) === "complete" &&
+                  pairedOpen && (
+                    <div className="rounded-xl border border-emerald-600/40 bg-emerald-50 p-4 text-xs dark:bg-emerald-950/40">
+                      <p className="text-sm font-semibold text-emerald-950 dark:text-emerald-100">
+                        This close completes the position
                       </p>
-                      <p className="mt-1 text-amber-800 dark:text-amber-200">
-                        Delete this close first if you want to remove the whole
-                        position. After it is gone, the matching TO OPEN can be
-                        deleted.
+                      <p className="mt-1.5 leading-snug text-emerald-900 dark:text-emerald-200">
+                        TO CLOSE #{trade.id} is matched with TO OPEN #{pairedOpen.id}.
+                        Together they are one cycle — not two leftover fills.
                       </p>
-                      {!trashConfirm ? (
-                        <button
-                          type="button"
-                          className="mt-2 w-full rounded-full border border-red-400 bg-white px-4 py-2.5 text-sm font-semibold text-red-800 dark:bg-transparent dark:text-red-200"
-                          onClick={() => setTrashConfirm(true)}
-                        >
-                          Delete this TO CLOSE
-                        </button>
-                      ) : (
-                        <div className="mt-2 space-y-3 rounded-lg border-2 border-red-500 bg-red-50 p-3 dark:bg-red-950">
-                          <p className="text-sm font-bold text-red-900 dark:text-red-100">
-                            Confirm delete of TO CLOSE #{trade.id}?
-                          </p>
-                          <p className="text-[11px] text-red-800 dark:text-red-200">
-                            The paired open will show as open again. You can
-                            delete that open only after this close is gone.
-                          </p>
-                          <div className="flex flex-col gap-2">
-                            <button
-                              type="button"
-                              disabled={busy}
-                              className="w-full rounded-full bg-red-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-                              onClick={() => void trashOpen()}
-                            >
-                              {busy ? "Deleting…" : "Yes, delete this TO CLOSE"}
-                            </button>
-                            <button
-                              type="button"
-                              className="text-xs text-[var(--color-label-secondary)] underline"
-                              onClick={() => setTrashConfirm(false)}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   )}
 
@@ -1480,13 +1487,6 @@ export default function TradeSheet({
                 className="space-y-3 px-4 pb-3"
                 aria-labelledby="tl-sheet-details-h"
               >
-                <h3
-                  id="tl-sheet-details-h"
-                  className="text-[11px] font-bold uppercase tracking-wide text-[var(--color-label-secondary)]"
-                >
-                  Trade details
-                </h3>
-
               <ul className="flex flex-wrap gap-1.5">
                 {checklist.map((c) => (
                   <li
@@ -1541,17 +1541,27 @@ export default function TradeSheet({
               {mode !== "close" && (
                 <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
                   Strategy
-                  <select
-                    className={field}
-                    value={form.strategy}
-                    onChange={(e) => setStrategy(e.target.value)}
-                  >
-                    {strategies.map((s) => (
-                      <option key={s.code} value={s.code}>
-                        {s.group}: {s.label}
-                      </option>
-                    ))}
-                  </select>
+                  {mode === "edit" ? (
+                    <p
+                      className={`${field} mt-0.5 cursor-default bg-[var(--color-fill)]`}
+                      data-testid="trade-strategy-readonly"
+                    >
+                      {strategies.find((s) => s.code === form.strategy)?.label ||
+                        form.strategy}
+                    </p>
+                  ) : (
+                    <select
+                      className={field}
+                      value={form.strategy}
+                      onChange={(e) => setStrategy(e.target.value)}
+                    >
+                      {strategies.map((s) => (
+                        <option key={s.code} value={s.code}>
+                          {s.group}: {s.label}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </label>
               )}
 
@@ -1639,7 +1649,7 @@ export default function TradeSheet({
               {showStructureFields && (
                 <div className="space-y-3 rounded-xl border border-[var(--color-separator)] bg-[var(--color-canvas)] p-3">
                   <p className="text-xs font-semibold text-[var(--color-label)]">
-                    Structure — legs built automatically
+                    Structure
                   </p>
                   <div className="grid grid-cols-2 gap-2">
                     <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
@@ -1923,7 +1933,7 @@ export default function TradeSheet({
                 </div>
               )}
 
-              {/* —— Legs advanced (collapsed by default) —— */}
+              {/* —— Legs (primary). Hide → ToS script / preview, never empty. —— */}
               {entryUi !== "simple_asset" &&
                 (showStructureFields ||
                   showCloseSimple ||
@@ -1943,18 +1953,53 @@ export default function TradeSheet({
                       aria-expanded={showLegsAdvanced}
                     >
                       <span className="text-sm font-bold text-[var(--color-label)]">
-                        Legs (advanced)
+                        Legs
                       </span>
                       <span className="text-xs font-medium text-[var(--color-label-secondary)]">
                         {showLegsAdvanced ? "Hide ▲" : "Show ▼"}
                       </span>
                     </button>
+                    {!showLegsAdvanced && (
+                      <div className="space-y-2 border-t border-[var(--color-separator)] px-3 pb-3 pt-2">
+                        <p className="font-mono text-[11px] text-[var(--color-label)]">
+                          {formatStructurePreview(
+                            structurePreviewLegs.length
+                              ? structurePreviewLegs
+                              : form.legs,
+                          )}
+                        </p>
+                        {(() => {
+                          const script = formatTosScriptFromLegs(
+                            structurePreviewLegs.length
+                              ? structurePreviewLegs
+                              : form.legs,
+                            form.net_price === ""
+                              ? null
+                              : Number(form.net_price),
+                          );
+                          if (!script) return null;
+                          return (
+                            <button
+                              type="button"
+                              className="w-full rounded-lg border border-[var(--color-separator)] px-2 py-1.5 text-left font-mono text-[10px] leading-snug text-[var(--color-label-secondary)] hover:bg-[var(--color-fill)]"
+                              onClick={() =>
+                                void navigator.clipboard.writeText(script)
+                              }
+                            >
+                              {script}
+                              <span className="mt-1 block text-[10px] font-sans text-[var(--color-tint)]">
+                                Copy ToS script
+                              </span>
+                            </button>
+                          );
+                        })()}
+                      </div>
+                    )}
                     {showLegsAdvanced && (
                       <div className="space-y-2 border-t border-[var(--color-separator)] px-3 pb-3 pt-2">
                         <div className="flex items-center justify-between">
                           <p className="text-[11px] text-[var(--color-label-tertiary)]">
-                            Edit individual legs only when structure entry is
-                            not enough.
+                            The structure is these legs.
                           </p>
                           {mode !== "close" && (
                             <button
@@ -2110,45 +2155,7 @@ export default function TradeSheet({
                   </div>
                 )}
 
-              <div>
-                <button
-                  type="button"
-                  className="text-xs font-medium text-[var(--color-label-secondary)] underline"
-                  onClick={() => setShowProcess((v) => !v)}
-                >
-                  {showProcess ? "Hide" : "Process notes"}
-                  {mode === "close" ? " on close" : ""} (optional)
-                </button>
-                {showProcess && (
-                  <div className="mt-2 space-y-2">
-                    <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
-                      Setup
-                      <textarea
-                        className={field}
-                        rows={2}
-                        value={form.setup_md}
-                        onChange={(e) =>
-                          setForm((f) => ({
-                            ...f,
-                            setup_md: e.target.value,
-                          }))
-                        }
-                      />
-                    </label>
-                    <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
-                      Plan
-                      <textarea
-                        className={field}
-                        rows={2}
-                        value={form.plan_md}
-                        onChange={(e) =>
-                          setForm((f) => ({
-                            ...f,
-                            plan_md: e.target.value,
-                          }))
-                        }
-                      />
-                    </label>
+              <div className="space-y-2">
                     <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
                       Campaign
                       <select
@@ -2246,20 +2253,6 @@ export default function TradeSheet({
                         Save the fill first, then open it to add process tags.
                       </p>
                     ) : null}
-                    <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
-                      Lesson
-                      <textarea
-                        className={field}
-                        rows={2}
-                        value={form.lesson_md}
-                        onChange={(e) =>
-                          setForm((f) => ({
-                            ...f,
-                            lesson_md: e.target.value,
-                          }))
-                        }
-                      />
-                    </label>
                     <label className="block text-xs font-medium text-[var(--color-label-tertiary)]">
                       P&amp;L (optional)
                       <input
@@ -2275,8 +2268,77 @@ export default function TradeSheet({
                         }
                       />
                     </label>
-                  </div>
-                )}
+                    {mode === "edit" && form.exec_at ? (
+                      <TradeQuickJournal
+                        journalDate={String(form.exec_at).slice(0, 10)}
+                        disabled={busy}
+                      />
+                    ) : null}
+
+                    {mode === "edit" &&
+                      trade &&
+                      tradeIsCloseFill(trade) && (
+                        <div className="space-y-2 rounded-xl border border-[var(--color-separator)] p-3">
+                          <p className="text-[11px] font-medium text-[var(--color-label-secondary)]">
+                            Position actions
+                          </p>
+                          {!trashConfirm ? (
+                            <div className="flex flex-col gap-2">
+                              <button
+                                type="button"
+                                className="rounded-full border border-[var(--color-separator)] px-4 py-2 text-xs font-medium text-[var(--color-label)]"
+                                onClick={() => {
+                                  setTrashIntent("fill");
+                                  setTrashConfirm(true);
+                                }}
+                              >
+                                Remove the closing trade
+                              </button>
+                              {pairedOpen ? (
+                                <button
+                                  type="button"
+                                  className="rounded-full border border-red-300 px-4 py-2 text-xs font-medium text-red-700 dark:border-red-800 dark:text-red-300"
+                                  onClick={() => {
+                                    setTrashIntent("entire");
+                                    setTrashConfirm(true);
+                                  }}
+                                >
+                                  Delete the entire position
+                                </button>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <div className="space-y-2 rounded-lg border border-red-400 bg-red-50 p-3 dark:bg-red-950">
+                              <p className="text-xs font-semibold text-red-900 dark:text-red-100">
+                                {trashIntent === "entire"
+                                  ? "Delete the open and this close? Permanent."
+                                  : "Remove this closing trade? The open stays on the book."}
+                              </p>
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  disabled={busy}
+                                  className="rounded-full bg-red-600 px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                                  onClick={() =>
+                                    void (trashIntent === "entire"
+                                      ? trashEntirePosition()
+                                      : trashOpen())
+                                  }
+                                >
+                                  {busy ? "Deleting…" : "Yes, delete"}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="text-xs text-[var(--color-label-secondary)] underline"
+                                  onClick={() => setTrashConfirm(false)}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
               </div>
 
               {error && (

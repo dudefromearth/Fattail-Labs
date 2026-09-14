@@ -9,13 +9,16 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 
-Timeframe = Literal["5m", "15m", "1d"]
-VALID_TFS: frozenset[str] = frozenset({"5m", "15m", "1d"})
+Timeframe = Literal["5m", "15m", "30m", "2h", "4h", "1d"]
+VALID_TFS: frozenset[str] = frozenset({"5m", "15m", "30m", "2h", "4h", "1d"})
 
 # Context margin around hold window (spec: hold ± context).
 _MARGIN: dict[str, timedelta] = {
     "5m": timedelta(hours=1),
     "15m": timedelta(hours=3),
+    "30m": timedelta(hours=6),
+    "2h": timedelta(hours=12),
+    "4h": timedelta(days=1),
     "1d": timedelta(days=7),
 }
 
@@ -39,13 +42,19 @@ _DEFAULT_PROXY: dict[str, str] = {
 
 def normalize_tf(raw: str | None) -> Timeframe:
     s = (raw or "15m").strip().lower()
-    if s == "1d" or s == "d" or s == "day":
+    if s in ("1d", "d", "day"):
         return "1d"
-    if s == "5m" or s == "5":
+    if s in ("5m", "5"):
         return "5m"
-    if s == "15m" or s == "15":
+    if s in ("15m", "15"):
         return "15m"
-    raise ValueError(f"tf must be one of 5m|15m|1d, got {raw!r}")
+    if s in ("30m", "30"):
+        return "30m"
+    if s in ("2h", "2hr", "2"):
+        return "2h"
+    if s in ("4h", "4hr", "4"):
+        return "4h"
+    raise ValueError(f"tf must be one of 5m|15m|30m|2h|4h|1d, got {raw!r}")
 
 
 def product_underlier(trade: dict[str, Any]) -> str | None:
@@ -170,8 +179,12 @@ def chart_window(
     start = entry_t - margin
     end = exit_t + margin
     # Intraday floors: at least ~ half session of bars for short holds.
-    if tf in ("5m", "15m"):
-        min_span = timedelta(hours=2) if tf == "5m" else timedelta(hours=4)
+    if tf in ("5m", "15m", "30m"):
+        min_span = {
+            "5m": timedelta(hours=2),
+            "15m": timedelta(hours=4),
+            "30m": timedelta(hours=8),
+        }[tf]
         if end - start < min_span:
             mid = entry_t + (exit_t - entry_t) / 2
             start = mid - min_span / 2
@@ -338,6 +351,12 @@ def tf_agg_params(tf: Timeframe) -> tuple[int, str]:
         return 5, "minute"
     if tf == "15m":
         return 15, "minute"
+    if tf == "30m":
+        return 30, "minute"
+    if tf == "2h":
+        return 2, "hour"
+    if tf == "4h":
+        return 4, "hour"
     return 1, "day"
 
 
@@ -368,6 +387,8 @@ def bars_look_complete(
         gap = window_end - last_dt
         if tf == "1d" and gap > timedelta(days=5):
             return False, "stale_bars"
-        if tf in ("5m", "15m") and gap > timedelta(hours=6):
+        if tf in ("5m", "15m", "30m") and gap > timedelta(hours=6):
+            return False, "stale_bars"
+        if tf in ("2h", "4h") and gap > timedelta(hours=18):
             return False, "stale_bars"
     return True, None

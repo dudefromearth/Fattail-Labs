@@ -1,5 +1,7 @@
 /** Trade Log v1.1 client types — Spec FatTail-Labs-Trade-Log-Spec-v1.1 */
 
+import { generateTosScript } from "./options-lab/tosGenerator";
+
 export type Venue = {
   code: string;
   label: string;
@@ -83,6 +85,11 @@ export type Trade = {
   stamped_by?: string | null;
   /** Matching-only expire-worthless row (not a blotter fill). */
   synthetic?: string | null;
+  /** GET /opens slot fields (PPL-2). Stored legs keep original fill qty. */
+  remaining_units?: number;
+  open_units?: number;
+  closed_units?: number;
+  fully_unmatched?: boolean;
 };
 
 /** Normalize API/legacy values for display and policy. */
@@ -266,6 +273,32 @@ export function formatStructurePreview(legs: Leg[]): string {
       return `${side}${l.quantity} ${k}${rt}`;
     })
     .join(" · ");
+}
+
+/** ToS order script from blotter legs — copy into thinkorswim (FI-PPL-8). */
+export function formatTosScriptFromLegs(
+  legs: Leg[],
+  netPrice?: number | null,
+): string {
+  const usable = (legs || []).filter(
+    (l) => l.strike != null && l.expiry && l.right,
+  );
+  if (!usable.length) return "";
+  const mapped = usable.map((l) => ({
+    strike: Number(l.strike),
+    expiration: String(l.expiry),
+    right: (String(l.right).toLowerCase() === "call" ? "call" : "put") as
+      | "call"
+      | "put",
+    quantity:
+      l.side === "BUY" ? Math.abs(Number(l.quantity)) : -Math.abs(Number(l.quantity)),
+  }));
+  const symbol = String(usable[0].underlier || usable[0].symbol || "SPX");
+  return generateTosScript({
+    symbol,
+    legs: mapped,
+    costBasis: netPrice ?? null,
+  });
 }
 
 /** Default net side for open of this strategy (process convenience). */
@@ -461,10 +494,20 @@ export type OpenCloseMatch = {
   closes?: CloseSlice[];
 };
 
-function slotRemaining(m: OpenCloseMatch): number {
+export function slotRemaining(m: OpenCloseMatch): number {
   const openU = m.open_units ?? 0;
   const closedU = m.closed_units ?? 0;
   return Math.max(0, openU - closedU);
+}
+
+function isRealCloseFill(t: Trade | null | undefined): boolean {
+  if (!t || t.synthetic) return false;
+  if (t.id == null || t.id < 0) return false;
+  return true;
+}
+
+export function realCloseSlices(m: OpenCloseMatch): CloseSlice[] {
+  return (m.closes || []).filter((sl) => isRealCloseFill(sl.close));
 }
 
 function syntheticExpireClose(open: Trade, exp: string): Trade {
@@ -568,10 +611,15 @@ export function matchOpenClose(
   return result;
 }
 
-/** Opens still without a paired close (still “on the book”). */
+/** Fully unmatched opens (no real close slice). Bulk-delete SoR — not residual lots. */
 export function listUnmatchedOpens(trades: Trade[]): Trade[] {
   return matchOpenClose(trades)
-    .filter((m) => m.close === null)
+    .filter(
+      (m) =>
+        m.close === null &&
+        slotRemaining(m) > 0 &&
+        realCloseSlices(m).length === 0,
+    )
     .map((m) => m.open);
 }
 
@@ -580,7 +628,10 @@ export function findPairedClose(
   openId: number,
 ): Trade | null {
   const m = matchOpenClose(trades).find((x) => x.open.id === openId);
-  return m?.close ?? null;
+  if (!m) return null;
+  if (isRealCloseFill(m.close)) return m.close;
+  const sl = realCloseSlices(m)[0];
+  return sl?.close ?? null;
 }
 
 /** Given a close fill id, the open it is paired with (if any). */
@@ -588,10 +639,11 @@ export function findPairedOpen(
   trades: Trade[],
   closeId: number,
 ): Trade | null {
-  const m = matchOpenClose(trades).find(
-    (x) => x.close != null && x.close.id === closeId,
-  );
-  return m?.open ?? null;
+  for (const m of matchOpenClose(trades)) {
+    if (m.close != null && m.close.id === closeId) return m.open;
+    if (realCloseSlices(m).some((sl) => sl.close.id === closeId)) return m.open;
+  }
+  return null;
 }
 
 /**
@@ -760,12 +812,12 @@ export function tradeRowIssues(
   const isClose = tradeIsCloseFill(trade);
   if (!isClose && (trade.legs || []).length > 0) {
     const m = matchOpenClose(all).find((x) => x.open.id === trade.id);
-    if (m && !m.close) issues.push("unmatched_open");
+    if (m && !m.close && realCloseSlices(m).length === 0) {
+      issues.push("unmatched_open");
+    }
   }
   if (isClose) {
-    const paired = matchOpenClose(all).some(
-      (m) => m.close && m.close.id === trade.id,
-    );
+    const paired = findPairedOpen(all, trade.id) != null;
     if (!paired) issues.push("orphan_close");
   }
   return issues;
@@ -786,21 +838,32 @@ export function issueLabel(issue: TradeRowIssue): string {
   }
 }
 
-export type PositionBadge = "open" | "complete" | "orphan_close" | "neutral";
+export type PositionBadge =
+  | "open"
+  | "complete"
+  | "orphan_close"
+  | "partial_residual"
+  | "neutral";
 
 export function positionBadge(
   trade: Trade,
   all: Trade[],
 ): PositionBadge {
   if (tradeIsCloseFill(trade)) {
-    const paired = matchOpenClose(all).some(
-      (m) => m.close && m.close.id === trade.id,
+    const m = matchOpenClose(all).find((x) =>
+      realCloseSlices(x).some((sl) => sl.close.id === trade.id),
     );
-    return paired ? "complete" : "orphan_close";
+    if (!m) return "orphan_close";
+    if (m.close && m.close.id === trade.id) return "complete";
+    if (m.close) return "complete";
+    return "partial_residual";
   }
   if ((trade.legs || []).length === 0) return "neutral";
   const m = matchOpenClose(all).find((x) => x.open.id === trade.id);
   if (m?.close) return "complete";
+  if (m && realCloseSlices(m).length > 0 && slotRemaining(m) > 0) {
+    return "partial_residual";
+  }
   if (m) return "open";
   return "neutral";
 }

@@ -158,7 +158,7 @@ export type TradeChartPayload = {
 
 export async function fetchTradeChart(
   tradeId: number,
-  tf: "5m" | "15m" | "1d" = "15m",
+  tf: "5m" | "15m" | "30m" | "2h" | "4h" | "1d" = "15m",
 ): Promise<AnalyticsResult<TradeChartPayload>> {
   const q = new URLSearchParams({ tf });
   const r = await fetch(

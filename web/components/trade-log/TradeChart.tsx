@@ -16,12 +16,14 @@ import {
   type TradeChartPayload,
 } from "@/lib/tradeLogApi";
 
-type Tf = "5m" | "15m" | "1d";
+type Tf = "5m" | "15m" | "30m" | "2h" | "4h" | "1d";
 
 const TFS: { id: Tf; label: string }[] = [
-  { id: "5m", label: "5m" },
-  { id: "15m", label: "15m" },
-  { id: "1d", label: "1D" },
+  { id: "5m", label: "5 min" },
+  { id: "30m", label: "30 min" },
+  { id: "2h", label: "2 hr" },
+  { id: "4h", label: "4 hr" },
+  { id: "1d", label: "Day" },
 ];
 
 function isDarkMode(): boolean {
@@ -306,7 +308,7 @@ function CandleChart({
 }
 
 export default function TradeChart({ tradeId }: { tradeId: number }) {
-  const [tf, setTf] = useState<Tf>("15m");
+  const [tf, setTf] = useState<Tf>("5m");
   const [payload, setPayload] = useState<TradeChartPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
