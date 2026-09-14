@@ -769,9 +769,9 @@ export default function TradeSheet({
     Number(form.units) || 1,
   );
   const showStructureFields =
+    mode === "create" &&
     entryUi === "structure" &&
-    strategySupportsStructureSimple(form.strategy) &&
-    mode !== "close";
+    strategySupportsStructureSimple(form.strategy);
   const showCloseSimple = mode === "close";
   const showOrderNetFields =
     entryUi !== "simple_asset" &&
@@ -1538,32 +1538,37 @@ export default function TradeSheet({
                 </select>
               </label>
 
-              {mode !== "close" && (
-                <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
-                  Strategy
-                  {mode === "edit" ? (
+              <div className="block text-xs font-medium text-[var(--color-label-secondary)]">
+                Strategy
+                {mode === "create" ? (
+                  <select
+                    className={field}
+                    value={form.strategy}
+                    onChange={(e) => setStrategy(e.target.value)}
+                    data-testid="trade-strategy-select"
+                  >
+                    {strategies.map((s) => (
+                      <option key={s.code} value={s.code}>
+                        {s.group}: {s.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <>
                     <p
-                      className={`${field} mt-0.5 cursor-default bg-[var(--color-fill)]`}
+                      className="mt-0.5 text-sm font-semibold text-[var(--color-label)]"
                       data-testid="trade-strategy-readonly"
                     >
                       {strategies.find((s) => s.code === form.strategy)?.label ||
                         form.strategy}
                     </p>
-                  ) : (
-                    <select
-                      className={field}
-                      value={form.strategy}
-                      onChange={(e) => setStrategy(e.target.value)}
-                    >
-                      {strategies.map((s) => (
-                        <option key={s.code} value={s.code}>
-                          {s.group}: {s.label}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </label>
-              )}
+                    <p className="mt-0.5 text-[11px] font-normal text-[var(--color-label-tertiary)]">
+                      Fixed for this fill. Edit details, or delete and start
+                      over — do not change strategy mid-stream.
+                    </p>
+                  </>
+                )}
+              </div>
 
               {/* Execution date/time — backdate allowed for errata fixes */}
               <div className="space-y-2 rounded-xl border-2 border-[var(--color-tint)]/40 bg-[var(--color-fill)] p-3">
@@ -1774,8 +1779,8 @@ export default function TradeSheet({
 
               {showCloseSimple && (
                 <p className="text-xs text-[var(--color-label-secondary)]">
-                  Structure is fixed from the open. Set order type and net
-                  below, then save. Expand Legs only if you need per-leg edits.
+                  Structure is fixed from the open. Legs below are the trade.
+                  Set order type and net, then save.
                 </p>
               )}
 
@@ -2155,6 +2160,13 @@ export default function TradeSheet({
                   </div>
                 )}
 
+              {mode === "edit" && form.exec_at ? (
+                <TradeQuickJournal
+                  journalDate={String(form.exec_at).replace(" ", "T").slice(0, 10)}
+                  disabled={busy}
+                />
+              ) : null}
+
               <div className="space-y-2">
                     <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
                       Campaign
@@ -2208,26 +2220,6 @@ export default function TradeSheet({
                         ))}
                       </select>
                     </label>
-                    <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
-                      {playbookEntryId !== ""
-                        ? "Against your playbook"
-                        : "Adherence"}
-                      <select
-                        className={field}
-                        value={form.adherence}
-                        onChange={(e) =>
-                          setForm((f) => ({
-                            ...f,
-                            adherence: e.target.value,
-                          }))
-                        }
-                      >
-                        <option value="followed">Followed plan</option>
-                        <option value="partial">Partial</option>
-                        <option value="broke">Broke rules</option>
-                        <option value="unknown">Not sure</option>
-                      </select>
-                    </label>
                     {mode === "edit" && trade?.id ? (
                       <div
                         className="rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] p-2"
@@ -2268,12 +2260,6 @@ export default function TradeSheet({
                         }
                       />
                     </label>
-                    {mode === "edit" && form.exec_at ? (
-                      <TradeQuickJournal
-                        journalDate={String(form.exec_at).slice(0, 10)}
-                        disabled={busy}
-                      />
-                    ) : null}
 
                     {mode === "edit" &&
                       trade &&
