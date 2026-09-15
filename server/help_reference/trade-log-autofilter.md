@@ -34,9 +34,12 @@ the page.
   the code. Filtering uses the stored code, never an invented name.
 - **Symbol** — underlier or symbol on any leg. A match returns the whole
   block, never a partial trade.
-- **Status** — Open, Complete, or Orphan close, from the **full account
-  book** (not only the rows on screen). These are **matching states**
-  (whether an open still needs a close), not a grade of the trade.
+- **Status** — Open, Complete, Orphan close, or **partial_residual**, from
+  the **full account book** (not only the rows on screen). These are
+  **matching states** (whether an open still needs a close, and whether
+  leftover units remain), not a grade of the trade. **partial_residual** is
+  the word on the badge: an open that still has remaining units after a
+  smaller close (for example 1 of 5).
 
 ## Filter on
 When any column is filtering, **Filter on** appears with **shown/total**.
