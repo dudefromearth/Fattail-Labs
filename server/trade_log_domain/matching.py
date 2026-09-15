@@ -49,6 +49,19 @@ def calendar_days_between(open_day: str, close_day: str) -> int | None:
     return (b - a).days
 
 
+_CASH_STRATEGIES = frozenset({"STOCK", "FUTURE", "CRYPTO", "NOTE"})
+
+
+def hold_window_applies(trade: dict[str, Any]) -> bool:
+    """30-day cap is a typo-guard for option structures, not stocks/futures."""
+    strat = str(trade.get("strategy") or "").upper()
+    if strat in _CASH_STRATEGIES:
+        return False
+    if not trade_expiry(trade):
+        return False
+    return True
+
+
 def hold_within_limit(open_day: str, close_day: str) -> bool:
     """True if close may be paired with open under MAX_STRUCTURE_HOLD_DAYS."""
     span = calendar_days_between(open_day, close_day)
@@ -152,7 +165,9 @@ def match_open_close(
             leftover = slot_remaining(open_slot)
             if leftover <= 0:
                 continue
-            if not hold_within_limit(str(open_slot["open_day"]), day):
+            if hold_window_applies(open_slot["open"]) and not hold_within_limit(
+                str(open_slot["open_day"]), day
+            ):
                 continue
             take = min(leftover, remaining_close)
             open_slot["closed_units"] = int(open_slot["closed_units"]) + take

@@ -43,6 +43,11 @@ def allowed_origins() -> frozenset[str]:
                 "http://localhost:4000",
                 "http://127.0.0.1:4000",
                 "http://testserver",
+                # StudioTwo LAN/Tailscale (Coach browser is not localhost)
+                "http://studiotwo:3000",
+                "http://studiotwo.local:3000",
+                "http://studiotwo:4000",
+                "http://studiotwo.local:4000",
             }
         )
     return frozenset(out)

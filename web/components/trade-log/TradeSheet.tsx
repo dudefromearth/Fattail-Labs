@@ -284,6 +284,7 @@ function formFromCloseDraft(
 ): FormState {
   const d = buildCloseDraftFromOpen(open);
   const base = fromTrade(open);
+  const firstAsset = d.legs[0];
   return {
     ...base,
     account_id: d.account_id || accountFallback,
@@ -303,20 +304,47 @@ function formFromCloseDraft(
     lesson_md: "",
     pnl_amount: "",
     legs: d.legs,
+    asset_symbol: firstAsset?.symbol || firstAsset?.underlier || base.asset_symbol,
+    asset_qty: firstAsset ? String(firstAsset.quantity) : base.asset_qty,
+    asset_price: "",
   };
 }
 
-function buildAssetLegs(f: FormState): Leg[] {
+function buildAssetLegs(
+  f: FormState,
+  posEffect: "TO_OPEN" | "TO_CLOSE" = "TO_OPEN",
+): Leg[] {
   const qty = Math.max(1, Number(f.asset_qty) || 1);
   const price = Number(f.asset_price) || 0;
+  const fromOpen = f.legs[0];
+  if (posEffect === "TO_CLOSE" && fromOpen) {
+    const ac =
+      f.strategy === "STOCK"
+        ? "equity"
+        : f.strategy === "FUTURE"
+          ? "future"
+          : fromOpen.asset_class || "crypto";
+    return [
+      {
+        ...fromOpen,
+        side: fromOpen.side,
+        quantity: qty,
+        pos_effect: "TO_CLOSE",
+        asset_class: ac,
+        symbol: f.asset_symbol || fromOpen.symbol || fromOpen.underlier,
+        fill_price: price,
+      },
+    ];
+  }
+  const side: "BUY" | "SELL" = fromOpen?.side === "SELL" ? "SELL" : "BUY";
   if (f.strategy === "STOCK") {
     return [
       {
-        side: "BUY",
+        side,
         quantity: qty,
-        pos_effect: "TO_OPEN",
+        pos_effect: posEffect,
         asset_class: "equity",
-        symbol: f.asset_symbol || "SPY",
+        symbol: f.asset_symbol || fromOpen?.symbol || "SPY",
         fill_price: price,
       },
     ];
@@ -324,22 +352,22 @@ function buildAssetLegs(f: FormState): Leg[] {
   if (f.strategy === "FUTURE") {
     return [
       {
-        side: "BUY",
+        side,
         quantity: qty,
-        pos_effect: "TO_OPEN",
+        pos_effect: posEffect,
         asset_class: "future",
-        symbol: f.asset_symbol || "/ES",
+        symbol: f.asset_symbol || fromOpen?.symbol || "/ES",
         fill_price: price,
       },
     ];
   }
   return [
     {
-      side: "BUY",
+      side,
       quantity: qty,
-      pos_effect: null,
+      pos_effect: posEffect === "TO_CLOSE" ? "TO_CLOSE" : null,
       asset_class: "crypto",
-      symbol: f.asset_symbol || "BTC-USD",
+      symbol: f.asset_symbol || fromOpen?.symbol || "BTC-USD",
       fill_price: price,
     },
   ];
@@ -538,19 +566,11 @@ export default function TradeSheet({
 
     if (mode === "edit" && trade) {
       setForm(fromTrade(trade));
-      setEntryUi(
-        strategySupportsStructureSimple(trade.strategy)
-          ? "structure"
-          : "legs",
-      );
+      setEntryUi(defaultEntryUi(trade.strategy));
       scopeAccountId = trade.account_id;
     } else if (mode === "close" && trade) {
       setForm(formFromCloseDraft(trade, defaultAccountId ?? ""));
-      setEntryUi(
-        strategySupportsStructureSimple(trade.strategy)
-          ? "structure"
-          : "legs",
-      );
+      setEntryUi(defaultEntryUi(trade.strategy));
       scopeAccountId = trade.account_id ?? defaultAccountId ?? null;
     } else {
       type DupT = {
@@ -768,13 +788,17 @@ export default function TradeSheet({
     form.asset_class,
     Number(form.units) || 1,
   );
+  const isSimpleAsset = ["STOCK", "FUTURE", "CRYPTO"].includes(
+    (form.strategy || trade?.strategy || "").toUpperCase(),
+  );
   const showStructureFields =
     mode === "create" &&
+    !isSimpleAsset &&
     entryUi === "structure" &&
     strategySupportsStructureSimple(form.strategy);
   const showCloseSimple = mode === "close";
   const showOrderNetFields =
-    entryUi !== "simple_asset" &&
+    !isSimpleAsset &&
     (showStructureFields ||
       showCloseSimple ||
       entryUi === "legs" ||
@@ -801,14 +825,19 @@ export default function TradeSheet({
       }
       items.push({ ok: !!form.expiry, label: "Expiration" });
     }
-    if (entryUi !== "simple_asset") {
+    if (isSimpleAsset) {
+      items.push({
+        ok: form.asset_price !== "" && !Number.isNaN(Number(form.asset_price)),
+        label: "Fill price",
+      });
+    } else {
       items.push({
         ok: form.net_price !== "" && !Number.isNaN(Number(form.net_price)),
         label: "Net debit/credit",
       });
     }
     return items;
-  }, [form, defaultAccountId, showStructureFields, entryUi]);
+  }, [form, defaultAccountId, showStructureFields, isSimpleAsset]);
 
   if (!open) return null;
 
@@ -841,8 +870,11 @@ export default function TradeSheet({
   }
 
   function resolveLegsForSave(): Leg[] | null {
-    if (entryUi === "simple_asset") {
-      return buildAssetLegs(form);
+    if (isSimpleAsset) {
+      return buildAssetLegs(
+        form,
+        mode === "close" ? "TO_CLOSE" : "TO_OPEN",
+      );
     }
     // Advanced legs were used → use explicit leg list
     if (legsTouched || showLegsAdvanced) {
@@ -998,7 +1030,16 @@ export default function TradeSheet({
       setBusy(false);
       return;
     }
-    if (form.net_price === "" && entryUi !== "simple_asset") {
+    if (isSimpleAsset && form.asset_price === "") {
+      setError(
+        mode === "close"
+          ? "Enter the stock (or future) fill price for this close."
+          : "Enter fill price.",
+      );
+      setBusy(false);
+      return;
+    }
+    if (form.net_price === "" && !isSimpleAsset) {
       setError(
         mode === "close"
           ? "Enter net credit (or debit) for the close."
@@ -1088,7 +1129,14 @@ export default function TradeSheet({
       strategy: form.strategy,
       asset_class: tradeAssetClass,
       order_type: form.order_type,
-      net_price: form.net_price === "" ? null : Number(form.net_price),
+      net_price:
+        isSimpleAsset
+          ? form.asset_price === ""
+            ? null
+            : Number(form.asset_price)
+          : form.net_price === ""
+            ? null
+            : Number(form.net_price),
       net_side: form.net_side || null,
       setup_md: form.setup_md,
       plan_md: form.plan_md,
@@ -1777,15 +1825,21 @@ export default function TradeSheet({
                 </div>
               )}
 
-              {showCloseSimple && (
+              {showCloseSimple && !isSimpleAsset && (
                 <p className="text-xs text-[var(--color-label-secondary)]">
                   Structure is fixed from the open. Legs below are the trade.
                   Set order type and net, then save.
                 </p>
               )}
+              {showCloseSimple && isSimpleAsset && (
+                <p className="text-xs text-[var(--color-label-secondary)]">
+                  Closing this stock (or future). Same symbol as the open.
+                  Enter quantity and fill price — not an options net.
+                </p>
+              )}
 
               {/* —— Stock / future / crypto simple —— */}
-              {entryUi === "simple_asset" && mode !== "close" && (
+              {isSimpleAsset && (
                 <div className="space-y-3 rounded-xl border border-[var(--color-separator)] bg-[var(--color-canvas)] p-3">
                   <div className="grid grid-cols-2 gap-2">
                     <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
@@ -1793,10 +1847,11 @@ export default function TradeSheet({
                       <input
                         className={field}
                         value={form.asset_symbol}
+                        readOnly={mode !== "create"}
                         onChange={(e) =>
                           setForm((f) => ({
                             ...f,
-                            asset_symbol: e.target.value,
+                            asset_symbol: e.target.value.toUpperCase(),
                           }))
                         }
                       />
@@ -1927,19 +1982,21 @@ export default function TradeSheet({
                     />
                     Allow unit size ≠ open (partial / scaled)
                   </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={allowDrift}
-                      onChange={(e) => setAllowDrift(e.target.checked)}
-                    />
-                    Allow structure drift from open
-                  </label>
+                  {!isSimpleAsset ? (
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={allowDrift}
+                        onChange={(e) => setAllowDrift(e.target.checked)}
+                      />
+                      Allow structure drift from open
+                    </label>
+                  ) : null}
                 </div>
               )}
 
               {/* —— Legs (primary). Hide → ToS script / preview, never empty. —— */}
-              {entryUi !== "simple_asset" &&
+              {!isSimpleAsset &&
                 (showStructureFields ||
                   showCloseSimple ||
                   entryUi === "legs" ||

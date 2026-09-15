@@ -461,6 +461,14 @@ export function structureKey(trade: Trade): string {
 }
 
 const MAX_STRUCTURE_HOLD_DAYS = 30;
+const CASH_STRATEGIES = new Set(["STOCK", "FUTURE", "CRYPTO", "NOTE"]);
+
+function holdWindowApplies(trade: Trade): boolean {
+  const strat = String(trade.strategy || "").toUpperCase();
+  if (CASH_STRATEGIES.has(strat)) return false;
+  if (!tradeExpiry(trade)) return false;
+  return true;
+}
 
 function holdWithinLimit(openDay: string, closeDay: string): boolean {
   const a = Date.parse(openDay);
@@ -577,7 +585,11 @@ export function matchOpenClose(
       if (remainingClose <= 0) break;
       const leftover = slotRemaining(openSlot);
       if (leftover <= 0) continue;
-      if (!holdWithinLimit(openSlot.open_day, day)) continue;
+      if (
+        holdWindowApplies(openSlot.open) &&
+        !holdWithinLimit(openSlot.open_day, day)
+      )
+        continue;
       const take = Math.min(leftover, remainingClose);
       openSlot.closed_units = (openSlot.closed_units ?? 0) + take;
       remainingClose -= take;
@@ -764,7 +776,11 @@ export function findOpenForCloseDraft(
   for (const m of matched) {
     if (m.close != null) continue;
     if (structureKey(m.open) !== key) continue;
-    if (!holdWithinLimit(m.open_day, day)) continue;
+    if (
+      holdWindowApplies(m.open) &&
+      !holdWithinLimit(m.open_day, day)
+    )
+      continue;
     return m.open;
   }
   return null;

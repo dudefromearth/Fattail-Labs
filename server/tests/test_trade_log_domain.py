@@ -271,6 +271,52 @@ def test_match_refuses_year_long_hold():
     assert book["open_ids"] == []
 
 
+def test_stock_close_pairs_past_thirty_day_hold():
+    """STOCK is not the option typo-guard. Aug 9 open → Sep 14 close must pair."""
+    open_t = _trade(
+        1632,
+        1,
+        "2026-08-09T14:37:00",
+        "STOCK",
+        [
+            {
+                "side": "BUY",
+                "quantity": 100,
+                "pos_effect": "TO_OPEN",
+                "asset_class": "equity",
+                "symbol": "SPCX",
+                "fill_price": 10.0,
+            }
+        ],
+        net_price=10.0,
+        net_side="DEBIT",
+        asset_class="equity",
+    )
+    close_t = _trade(
+        2000,
+        1,
+        "2026-09-14T20:22:00",
+        "STOCK",
+        [
+            {
+                "side": "SELL",
+                "quantity": 100,
+                "pos_effect": "TO_CLOSE",
+                "asset_class": "equity",
+                "symbol": "SPCX",
+                "fill_price": 11.0,
+            }
+        ],
+        net_price=11.0,
+        net_side="CREDIT",
+        asset_class="equity",
+    )
+    matched = match_open_close([open_t, close_t], as_of="2026-09-14")
+    assert len(matched) == 1
+    assert matched[0]["close"] is not None
+    assert matched[0]["close"]["id"] == 2000
+
+
 def test_match_allows_short_multi_day_hold():
     open_t = _trade(
         1,

@@ -11,6 +11,8 @@ from starlette.datastructures import Headers
 def test_allowed_origins_include_dev_defaults():
     origins = allowed_origins()
     assert "http://testserver" in origins or "http://localhost:3000" in origins
+    assert "http://studiotwo:3000" in origins
+    assert "http://studiotwo.local:3000" in origins
 
 
 def test_mutation_with_session_cookie_wrong_origin_403(client):

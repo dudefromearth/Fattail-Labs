@@ -8,6 +8,7 @@ from typing import Any
 from trade_log_domain.matching import (
     MAX_STRUCTURE_HOLD_DAYS,
     calendar_days_between,
+    hold_window_applies,
     hold_within_limit,
     match_open_close,
 )
@@ -46,7 +47,11 @@ def opens_on_day(trades: list[dict[str, Any]], day_ymd: str) -> list[dict[str, A
         # Stale unmatched open (or refused year-long pair): do not keep open
         # interest forever just because expiry/close was mis-imported.
         age = calendar_days_between(str(m["open_day"]), day_ymd)
-        if age is not None and age > MAX_STRUCTURE_HOLD_DAYS:
+        if (
+            hold_window_applies(m["open"])
+            and age is not None
+            and age > MAX_STRUCTURE_HOLD_DAYS
+        ):
             continue
         # Close exists but was outside hold limit → still unmatched; drop if age past limit
         # (handled above). If close is set within limit, hold_within_limit is True.
