@@ -58,6 +58,20 @@ export default function AdminNav() {
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const rootRef = useRef<HTMLElement>(null);
 
+  // Open help tickets awaiting a team reply → red badge on the Help nav item.
+  const [helpOpen, setHelpOpen] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    const load = () =>
+      fetch("/api/admin/help/open-count", { credentials: "same-origin" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { if (alive && d && typeof d.count === "number") setHelpOpen(d.count); })
+        .catch(() => {});
+    load();
+    const t = window.setInterval(load, 60000);
+    return () => { alive = false; window.clearInterval(t); };
+  }, []);
+
   // Close any open dropdown when the route changes (a link was followed). Resetting
   // during render — React's recommended pattern for deriving state from a changed prop.
   const [lastPath, setLastPath] = useState(pathname);
@@ -113,6 +127,9 @@ export default function AdminNav() {
               data-testid={`admin-nav-group-${entry.label.toLowerCase().replace(/[^a-z]+/g, "-").replace(/^-|-$/g, "")}`}
             >
               {entry.label}
+              {entry.items.some((it) => it.href === "/admin/help") && helpOpen > 0 && (
+                <span aria-hidden title={`${helpOpen} ticket(s) awaiting reply`} className="ml-0.5 inline-block h-2 w-2 rounded-full bg-red-600" />
+              )}
               <svg
                 width="10"
                 height="10"
@@ -143,7 +160,14 @@ export default function AdminNav() {
                           : "text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white"
                       }`}
                     >
-                      {it.label}
+                      <span className="inline-flex items-center gap-2">
+                        {it.label}
+                        {it.href === "/admin/help" && helpOpen > 0 && (
+                          <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1 text-[11px] font-bold text-white">
+                            {helpOpen > 99 ? "99+" : helpOpen}
+                          </span>
+                        )}
+                      </span>
                     </Link>
                   );
                 })}

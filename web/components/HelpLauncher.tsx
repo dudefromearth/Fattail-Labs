@@ -15,6 +15,7 @@ type Q = {
   id: number; subject: string; body: string; category: string; status: string;
   closed_reason?: string | null;
   screenshot_url: string | null; created_at: string | null;
+  unread?: boolean;
 };
 type Msg = { id: number; author_role: string; body: string; rating?: string | null; created_at: string | null };
 
@@ -50,6 +51,23 @@ export default function HelpLauncher() {
     return () => { alive = false; };
   }, [pathname]);
 
+  // Unread team replies on my tickets → red dot on the Help button.
+  const [unread, setUnread] = useState(0);
+  const refreshUnread = useCallback(() => {
+    fetch("/api/help/unread-count", { credentials: "same-origin" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d && typeof d.count === "number") setUnread(d.count); })
+      .catch(() => {});
+  }, []);
+  useEffect(() => {
+    if (!authed) return;
+    refreshUnread();
+    const t = setInterval(refreshUnread, 45000);
+    return () => clearInterval(t);
+  }, [authed, refreshUnread]);
+  // Re-check when the panel opens/closes or the view changes (opening a ticket clears it).
+  useEffect(() => { if (authed) refreshUnread(); }, [authed, open, view, refreshUnread]);
+
   if (!authed || pathname === "/admin" || pathname.startsWith("/admin/")) return null;
 
   const compact = view.mode === "compose";
@@ -58,10 +76,18 @@ export default function HelpLauncher() {
   return (
     <>
       {!open && (
-        <button onClick={() => { setOpen(true); setView({ mode: "compose" }); }} aria-label="Get help"
-          className="shrink-0 rounded-full bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg hover:bg-emerald-500">
-          Help
-        </button>
+        <div className="relative shrink-0">
+          <button onClick={() => { setOpen(true); setView(unread > 0 ? { mode: "list" } : { mode: "compose" }); }}
+            aria-label={unread > 0 ? `Get help — ${unread} new ${unread === 1 ? "reply" : "replies"}` : "Get help"}
+            className="rounded-full bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg hover:bg-emerald-500">
+            Help
+          </button>
+          {unread > 0 && (
+            <span className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1 text-[11px] font-bold text-white ring-2 ring-white dark:ring-zinc-900">
+              {unread > 9 ? "9+" : unread}
+            </span>
+          )}
+        </div>
       )}
       {open && (
         <div className={`flex max-h-[85vh] ${widthCls} shrink-0 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-2xl transition-all dark:border-zinc-700 dark:bg-zinc-900`}>
@@ -348,8 +374,14 @@ function MyQuestions({ onOpen }: { onOpen: (id: number) => void }) {
       {(list || []).map((it) => (
         <button key={it.id} onClick={() => onOpen(it.id)}
           className="flex w-full items-center justify-between gap-2 rounded-md border border-zinc-200 p-2 text-left hover:border-zinc-400 dark:border-zinc-700">
-          <span className="truncate">{it.subject}</span>
-          <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-500 dark:bg-zinc-800">{statusLabel(it.status)}</span>
+          <span className={`flex min-w-0 items-center gap-1.5 ${it.unread ? "font-semibold" : ""}`}>
+            {it.unread && <span aria-hidden className="h-2 w-2 shrink-0 rounded-full bg-red-600" />}
+            <span className="truncate">{it.subject}</span>
+          </span>
+          <span className="flex shrink-0 items-center gap-1">
+            {it.unread && <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950/50 dark:text-red-300">New reply</span>}
+            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-500 dark:bg-zinc-800">{statusLabel(it.status)}</span>
+          </span>
         </button>
       ))}
     </div>

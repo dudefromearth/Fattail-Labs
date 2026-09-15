@@ -220,14 +220,51 @@ def list_my_questions(request: Request) -> dict:
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """SELECT id, subject, body, category, status, closed_reason, page_context,
-                          screenshot_path, created_at, updated_at, answered_at
-                   FROM help_questions WHERE identity_id = %s
-                   ORDER BY updated_at DESC, id DESC LIMIT 100""",
+                """SELECT q.id, q.subject, q.body, q.category, q.status, q.closed_reason,
+                          q.page_context, q.screenshot_path, q.created_at, q.updated_at,
+                          q.answered_at, q.member_last_viewed_at,
+                          (SELECT MAX(m.created_at) FROM help_messages m
+                             WHERE m.question_id = q.id
+                               AND m.author_role = 'admin' AND m.visibility = 'public'
+                          ) AS last_team_reply_at
+                   FROM help_questions q WHERE q.identity_id = %s
+                   ORDER BY q.updated_at DESC, q.id DESC LIMIT 100""",
                 (iid,),
             )
             rows = cur.fetchall()
-    return {"questions": [_q_public(r) for r in rows]}
+    out = []
+    unread_count = 0
+    for r in rows:
+        q = _q_public(r)
+        ltr = r.get("last_team_reply_at")
+        mlv = r.get("member_last_viewed_at")
+        q["unread"] = bool(ltr is not None and (mlv is None or ltr > mlv))
+        if q["unread"]:
+            unread_count += 1
+        out.append(q)
+    return {"questions": out, "unread_count": unread_count}
+
+
+@router.get("/api/help/unread-count")
+def my_unread_count(request: Request) -> dict:
+    """Cheap poll for the Help launcher: how many of my tickets have an unread team reply."""
+    claims = require_session(request)
+    iid = int(claims["identity_id"])
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT COUNT(*) AS n FROM help_questions q
+                   WHERE q.identity_id = %s AND EXISTS (
+                     SELECT 1 FROM help_messages m
+                     WHERE m.question_id = q.id
+                       AND m.author_role = 'admin' AND m.visibility = 'public'
+                       AND (q.member_last_viewed_at IS NULL
+                            OR m.created_at > q.member_last_viewed_at)
+                   )""",
+                (iid,),
+            )
+            n = int(cur.fetchone()["n"])
+    return {"count": n}
 
 
 @router.get("/api/help/questions/{question_id}")

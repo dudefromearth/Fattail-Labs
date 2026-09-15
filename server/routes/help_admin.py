@@ -20,6 +20,17 @@ def _iso(dt) -> str | None:
     return dt.isoformat() + "Z" if dt is not None else None
 
 
+@router.get("/open-count")
+def open_ticket_count(request: Request) -> dict:
+    """Tickets awaiting a team reply — status='open' (new, or member re-opened)."""
+    require_admin(request)
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) AS n FROM help_questions WHERE status = 'open'")
+            n = int(cur.fetchone()["n"])
+    return {"count": n}
+
+
 @router.get("/questions")
 def list_questions(
     request: Request, status: str = "all", search: str = "", limit: int = 50, offset: int = 0
