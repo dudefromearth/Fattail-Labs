@@ -288,3 +288,46 @@ def email_member_answered(
     except Exception as exc:  # noqa: BLE001 — SMTP optional / may fail
         log.warning("help member email skipped/failed (q=%s): %s", question_id, exc)
         return "failed"
+
+
+def email_member_ticket_autoclosed(
+    *, member_email: str | None, question_id: int, subject: str, days: int = 7,
+) -> str:
+    """Notify the member their ticket was auto-closed after N days with no reply.
+
+    Sent by the daily help_autoclose job for tickets that stayed 'answered'
+    (our reply was the last word) past the window. Returns send status.
+    """
+    if not member_email:
+        return "skipped"
+    try:
+        import notify
+        origin = (notify._site_origin() or "").rstrip("/")
+        link = (origin + "/help") if origin else "/help"
+        body = (
+            "Hi,\n\n"
+            f'We haven\'t heard back on your support ticket "{subject}" for {days} days, '
+            "so we've closed it out.\n\n"
+            "If you still need a hand, just open a new ticket in FatTail Labs and we'll "
+            "pick it right back up:\n\n" + link + "\n\n- The FatTail Labs Team\n"
+        )
+        html = _help_email_html(
+            heading="Your support ticket has been closed",
+            intro_html=(
+                f"We haven’t heard back on your support ticket <strong>{_esc(subject)}</strong> "
+                f"for {days} days, so we’ve closed it out.<br><br>"
+                "If you still need a hand, just open a new ticket and we’ll pick it right back up."
+            ),
+            panel_text=None,
+            link=link,
+            cta_label="Open a new ticket",
+        )
+        notify._send_email(
+            member_email,
+            f"Your FatTail Labs support ticket has been closed (no reply in {days} days)",
+            body, html=html,
+        )
+        return "sent"
+    except Exception as exc:  # noqa: BLE001 — SMTP optional / may fail
+        log.warning("help auto-close email skipped/failed (q=%s): %s", question_id, exc)
+        return "failed"

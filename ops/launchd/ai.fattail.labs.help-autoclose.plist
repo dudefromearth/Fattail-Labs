@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Daily auto-close of answered help tickets with no member reply in 7 days.
+     Sends the member a "closed after no reply" email. RunAtLoad is FALSE so
+     loading the job does not blast the backlog; it fires daily at 15:30 local.
+     Install: copy to ~/Library/LaunchAgents/ then
+       launchctl bootstrap gui/501 ~/Library/LaunchAgents/ai.fattail.labs.help-autoclose.plist -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>ai.fattail.labs.help-autoclose</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/ernie/Fattail-Labs/server/help_autoclose_run.sh</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict><key>Hour</key><integer>15</integer><key>Minute</key><integer>30</integer></dict>
+  <key>RunAtLoad</key><false/>
+  <key>StandardOutPath</key><string>/tmp/labs-help-autoclose.log</string>
+  <key>StandardErrorPath</key><string>/tmp/labs-help-autoclose.err</string>
+</dict>
+</plist>
