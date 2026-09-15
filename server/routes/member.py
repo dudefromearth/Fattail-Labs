@@ -38,6 +38,15 @@ SESSION_IDLE_MIN_DEFAULT = 30
 SESSION_IDLE_MIN_LO = 15
 SESSION_IDLE_MIN_HI = 960  # up to 16h so a session can span a full pre→post-market trading day
 
+# Options Lab default "Contract" (front expiration): auto = current behavior
+# (unchanged for everyone), zero = prefer today's 0DTE, next = prefer next listed.
+DEFAULT_EXP_PREFS = ("auto", "zero", "next")
+
+
+def _clamp_expiration_pref(value: object) -> str:
+    v = str(value or "").strip().lower()
+    return v if v in DEFAULT_EXP_PREFS else "auto"
+
 # Home quick nav — journal is always first; optional chips from profile.
 HOME_QUICK_NAV_DEFAULT = ("journal",)
 HOME_QUICK_NAV_OPTIONAL = (
@@ -729,7 +738,7 @@ def _profile_row(cur, identity_id: int) -> dict | None:
     cur.execute(
         """SELECT identity_id, email, display_name, avatar_url, journey_visible,
                   journey_visible_at, share_reputation, share_personal_growth,
-                  share_attendance, session_idle_minutes,
+                  share_attendance, session_idle_minutes, default_expiration_pref,
                   retrospective_pnl_expanded, retro_cadence_days,
                   home_quick_nav_json, journey_ui_prefs_json, surface_inspect_json
            FROM identities WHERE identity_id = %s""",
@@ -769,6 +778,7 @@ def _profile_payload(row: dict, role: str) -> dict:
         "session_idle_minutes_min": SESSION_IDLE_MIN_LO,
         "session_idle_minutes_max": SESSION_IDLE_MIN_HI,
         "session_idle_minutes_default": SESSION_IDLE_MIN_DEFAULT,
+        "default_expiration_pref": _clamp_expiration_pref(row.get("default_expiration_pref")),
         "retrospective_pnl_expanded": bool(
             row.get("retrospective_pnl_expanded") or 0
         ),
@@ -860,6 +870,10 @@ async def patch_profile(request: Request) -> dict:
         idle = _clamp_idle_minutes(body["session_idle_minutes"])
         updates.append("session_idle_minutes = %s")
         params.append(idle)
+
+    if "default_expiration_pref" in body:
+        updates.append("default_expiration_pref = %s")
+        params.append(_clamp_expiration_pref(body["default_expiration_pref"]))
 
     if "retrospective_pnl_expanded" in body:
         exp = body["retrospective_pnl_expanded"]

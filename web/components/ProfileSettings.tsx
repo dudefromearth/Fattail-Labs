@@ -25,6 +25,7 @@ type Profile = {
   share_personal_growth: boolean;
   share_attendance: boolean;
   session_idle_minutes?: number;
+  default_expiration_pref?: string;
   home_quick_nav?: HomeQuickNavId[] | string[];
   role: string;
 };
@@ -59,6 +60,7 @@ export default function ProfileSettings() {
   const [shareGrowth, setShareGrowth] = useState(false);
   const [shareAtt, setShareAtt] = useState(true);
   const [idleMinutes, setIdleMinutes] = useState(30);
+  const [expPref, setExpPref] = useState("auto");
   const [quickNav, setQuickNav] = useState<HomeQuickNavId[]>([
     ...HOME_QUICK_NAV_DEFAULT,
   ]);
@@ -99,6 +101,7 @@ export default function ProfileSettings() {
     setShareAtt(p.share_attendance !== false);
     const idle = p.session_idle_minutes ?? 30;
     setIdleMinutes(Math.min(960, Math.max(15, idle)));
+    setExpPref(p.default_expiration_pref || "auto");
     setQuickNav(normalizeHomeQuickNav(p.home_quick_nav));
   }
 
@@ -147,6 +150,7 @@ export default function ProfileSettings() {
           share_personal_growth: shareGrowth,
           share_attendance: shareAtt,
           session_idle_minutes: idleMinutes,
+          default_expiration_pref: expPref,
           home_quick_nav: quickNav,
         }),
       });
@@ -526,6 +530,28 @@ export default function ProfileSettings() {
                   {idleLabel(m)}
                 </option>
               ))}
+            </select>
+          </label>
+        )}
+
+        {profile.role !== "administrator" && (
+          <label className="block">
+            <span className="text-sm font-medium">Default contract (Options Lab)</span>
+            <p className="mt-0.5 text-xs text-[var(--color-label-secondary)]">
+              Which expiration a new structure starts on in the Analyzer/Heatmap.
+              <strong> Auto</strong> keeps the current behavior (today once the
+              market is live, otherwise the next expiration). Choose
+              <strong> Today (0DTE)</strong> to always start on today's 0DTE when
+              it's available — including pre-market.
+            </p>
+            <select
+              value={expPref}
+              onChange={(e) => setExpPref(e.target.value)}
+              className="mt-1.5 w-full max-w-md rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-tint)]"
+            >
+              <option value="auto">Auto (default)</option>
+              <option value="zero">Today (0DTE) when available</option>
+              <option value="next">Next expiration</option>
             </select>
           </label>
         )}

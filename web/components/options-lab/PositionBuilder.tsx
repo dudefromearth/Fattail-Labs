@@ -246,16 +246,24 @@ export function pickDefaultFrontExpiration(
   listed: readonly string[],
   marketLive: boolean,
   now: Date = new Date(),
+  pref: "auto" | "zero" | "next" = "auto",
 ): string {
   if (!listed.length) return etYmd(now);
   const sorted = [...listed].filter(Boolean).sort();
   if (!sorted.length) return etYmd(now);
   const today = etYmd(now);
 
-  const todayStillValid =
-    marketLive &&
-    isSameDayExpirationValid(now) &&
-    sorted.includes(today);
+  const todayValidByClock =
+    isSameDayExpirationValid(now) && sorted.includes(today);
+  // Member preference overrides the market-live gate. Default "auto" is
+  // unchanged: today only once the market is live, otherwise roll to next.
+  if (pref === "zero" && todayValidByClock) return today;
+  if (pref === "next") {
+    const nx = sorted.find((e) => e > today);
+    if (nx) return nx;
+  }
+
+  const todayStillValid = marketLive && todayValidByClock;
 
   if (todayStillValid) return today;
 
@@ -431,9 +439,28 @@ export default function PositionBuilder({
       ? profile.strike_step
       : null);
   const hasExps = chain.expirations.length > 0;
+
+  // Member's default-contract preference (server profile). "auto" = unchanged.
+  const expirationPrefRef = useRef<"auto" | "zero" | "next">("auto");
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/me/profile", { credentials: "same-origin" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        const p = d && d.default_expiration_pref;
+        if (alive && (p === "zero" || p === "next" || p === "auto")) {
+          expirationPrefRef.current = p;
+        }
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const frontDefault =
     initial?.position.expiration ||
-    pickDefaultFrontExpiration(chain.expirations, marketLive) ||
+    pickDefaultFrontExpiration(chain.expirations, marketLive, undefined, expirationPrefRef.current) ||
     etYmd();
 
   const [draft, setDraft] = useState<AnalyzerPosition>(() =>
@@ -623,7 +650,7 @@ export default function PositionBuilder({
     chain.refresh();
     const front =
       (position.expiration || "").slice(0, 10) ||
-      pickDefaultFrontExpiration(chain.expirations, marketLive) ||
+      pickDefaultFrontExpiration(chain.expirations, marketLive, undefined, expirationPrefRef.current) ||
       (chain.expirations[0] || "").slice(0, 10);
     if (front) chain.ensureExpiration(front);
     for (const e of chain.expirations) chain.ensureExpiration(e);
@@ -901,7 +928,7 @@ export default function PositionBuilder({
       return;
     }
     const front =
-      pickDefaultFrontExpiration(chain.expirations, marketLive) ||
+      pickDefaultFrontExpiration(chain.expirations, marketLive, undefined, expirationPrefRef.current) ||
       chain.expirations[0] ||
       frontDefault;
     chain.ensureExpiration(front);
@@ -1034,7 +1061,7 @@ export default function PositionBuilder({
       // Front may have been a calendar guess before OPF exp list arrived
       if (!listed.length && chain.expirations.length) {
         front =
-          pickDefaultFrontExpiration(chain.expirations, marketLive) ||
+          pickDefaultFrontExpiration(chain.expirations, marketLive, undefined, expirationPrefRef.current) ||
           chain.expirations[0];
         listed = chain.getStrikes(front);
         if (listed.length) {
@@ -1064,7 +1091,7 @@ export default function PositionBuilder({
         return;
       }
       const front =
-        pickDefaultFrontExpiration(chain.expirations, marketLive) ||
+        pickDefaultFrontExpiration(chain.expirations, marketLive, undefined, expirationPrefRef.current) ||
         position.expiration ||
         frontDefault ||
         etYmd();
@@ -1315,7 +1342,7 @@ export default function PositionBuilder({
   const handleTemplate = (tmpl: TemplateType) => {
     const front =
       position.expiration ||
-      pickDefaultFrontExpiration(chain.expirations, marketLive) ||
+      pickDefaultFrontExpiration(chain.expirations, marketLive, undefined, expirationPrefRef.current) ||
       frontDefault ||
       etYmd();
     const listed = chain.getStrikes(front);
@@ -1515,7 +1542,7 @@ export default function PositionBuilder({
     let exp = position.expiration;
     if (!legs.length) {
       const front =
-        pickDefaultFrontExpiration(chain.expirations, marketLive) ||
+        pickDefaultFrontExpiration(chain.expirations, marketLive, undefined, expirationPrefRef.current) ||
         exp ||
         frontDefault ||
         etYmd();
