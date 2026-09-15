@@ -1,6 +1,6 @@
 # PPL3-G — W2 write integrity + kit confirm
 
-**Delta** · 2026-09-14 · StudioTwo · parent HEAD `186a74ff`  
+**Delta** · 2026-09-14 · StudioTwo · parent HEAD `186a74ff` · **landed** `9e7659e9` `origin/main`  
 **FIFO matcher:** not edited (`matching.py` diff empty).  
 **Inventory:** [`ppl3-close-writers.md`](./ppl3-close-writers.md) cited before AT-PPL-6 invert.
 
