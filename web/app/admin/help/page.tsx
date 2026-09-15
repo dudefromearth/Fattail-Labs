@@ -121,6 +121,21 @@ export default function AdminHelpPage() {
     } finally { setBusy(false); }
   }, [sel, reply, visibility, busy, open, load, status, search]);
 
+  const deleteMessage = useCallback(async (messageId: number) => {
+    if (!sel || busy) return;
+    if (!window.confirm(
+      "Delete this team reply from the thread?\n\nNote: if an email already went out, it can't be recalled — post the corrected reply after deleting.",
+    )) return;
+    setBusy(true);
+    try {
+      const r = await fetch(`/api/admin/help/questions/${sel}/messages/${messageId}`, {
+        method: "DELETE", credentials: "same-origin",
+      });
+      if (r.ok) { await open(sel); await load(status, search); }
+      else setError(await r.text());
+    } finally { setBusy(false); }
+  }, [sel, busy, open, load, status, search]);
+
   const setQStatus = useCallback(async (id: number, s: string) => {
     await fetch(`/api/admin/help/questions/${id}/status`, {
       method: "PATCH", credentials: "same-origin",
@@ -236,6 +251,13 @@ export default function AdminHelpPage() {
                             : m.email_status === "failed"
                               ? <Sig tone="red">⚠ email failed</Sig>
                               : <Sig tone="zinc">✉ not emailed</Sig>
+                        )}
+                        {m.author_role === "admin" && (
+                          <button onClick={() => deleteMessage(m.id)} disabled={busy}
+                            title="Delete this team reply from the thread"
+                            className="ml-auto rounded px-1.5 py-0.5 text-[10px] font-medium text-red-600 hover:bg-red-50 disabled:opacity-40 dark:text-red-400 dark:hover:bg-red-950/40">
+                            Delete
+                          </button>
                         )}
                       </div>
                       <div className="whitespace-pre-wrap">{m.body}</div>

@@ -221,6 +221,64 @@ async def answer_question(question_id: int, request: Request) -> dict:
     return {"ok": True}
 
 
+@router.delete("/questions/{question_id}/messages/{message_id}")
+def delete_message(question_id: int, message_id: int, request: Request) -> dict:
+    """Delete a team (admin-authored) reply or internal note from a thread.
+
+    Only admin-authored messages are deletable here — the member's original
+    question and their own replies are never removed by this. If the deleted
+    message was the last PUBLIC team reply, the ticket drops back to 'open' so
+    it returns to the queue (and the member's unread badge for it clears). Any
+    in-app "answered" notification tied to this reply is removed too.
+
+    Note: an email that already went out to the member cannot be recalled —
+    delete the wrong reply, then post the corrected one.
+    """
+    require_admin(request)
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT author_role, visibility FROM help_messages "
+                "WHERE id = %s AND question_id = %s",
+                (message_id, question_id),
+            )
+            m = cur.fetchone()
+            if not m:
+                raise HTTPException(status_code=404, detail="Message not found")
+            if m["author_role"] != "admin":
+                raise HTTPException(
+                    status_code=403, detail="Only team replies can be deleted here."
+                )
+            cur.execute("DELETE FROM help_messages WHERE id = %s", (message_id,))
+            # Clear the in-app 'answered' notification that pointed at this reply.
+            cur.execute(
+                "DELETE FROM member_notifications "
+                "WHERE kind = 'help.answered' AND period_key = %s",
+                (f"help-{question_id}-msg-{message_id}",),
+            )
+            # If no public team reply remains, the ticket is unanswered again.
+            cur.execute(
+                "SELECT COUNT(*) AS n FROM help_messages WHERE question_id = %s "
+                "AND author_role = 'admin' AND visibility = 'public'",
+                (question_id,),
+            )
+            remaining = int(cur.fetchone()["n"])
+            new_status = None
+            if remaining == 0:
+                cur.execute(
+                    "SELECT status FROM help_questions WHERE id = %s", (question_id,)
+                )
+                row = cur.fetchone()
+                if row and row["status"] == "answered":
+                    cur.execute(
+                        "UPDATE help_questions SET status = 'open', answered_at = NULL "
+                        "WHERE id = %s",
+                        (question_id,),
+                    )
+                    new_status = "open"
+    return {"ok": True, "team_replies_remaining": remaining, "status": new_status}
+
+
 @router.patch("/questions/{question_id}/status")
 async def set_status(question_id: int, request: Request) -> dict:
     require_admin(request)
