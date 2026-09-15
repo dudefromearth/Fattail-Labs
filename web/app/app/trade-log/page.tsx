@@ -806,7 +806,7 @@ function TradeLogBody() {
             setSheetOpen(true);
           }}
           onSelect={(t) => {
-            if (selected?.id === t.id && sheetOpen && sheetMode === "edit") {
+            if (selected?.id === t.id) {
               setSelected(null);
               setSheetOpen(false);
               return;
@@ -836,6 +836,7 @@ function TradeLogBody() {
         clipboardText={newTradeClipboard}
         onClose={() => {
           setSheetOpen(false);
+          setSelected(null);
           setNewTradeClipboard(null);
         }}
         onSaved={() => load()}
