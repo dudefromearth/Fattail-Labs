@@ -4,6 +4,18 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-14 — DL-703 Practice Position Lifecycle PPL3: close gates are API law
+
+**Decision.** Member `POST` / `PATCH` of a `TO_CLOSE` fill is gated in the API (four gates; 422 without an explicit payload override). `DELETE` of a TO_OPEN that still has a non-synthetic close slice is **409** and names the blocking close id. Kit `useConfirm` / `AlertDialog` replaces `window.confirm` on TradeSheet and blotter bulk trash. Import commit stays **OD-25** (not 422 on truncated-history orphans). Soft-trash stays **OD-19** (not this packet).
+
+**Why.** Sheet-only gates were skippable. Transformation (B1) must not be built from unguarded closes. Coach stamp PPL0-W0 already chose permanent delete + kit warning.
+
+**Does not.** Matcher FIFO. `AnalyzerPositionsList.tsx`. LIM / QFRIC / XS files. Import Manager restyle. PPL4 (OD-9 / OD-22 / FI-PPL-1 still open). B1 product code.
+
+**Cites:** Spec v0.1.1 §7.1–7.2 · Trade Log v1.1 §16.5/§16.7 honesty · Arch 15 §4.3 · board `agents/p-practice-position-lifecycle/` · inventory `gate-reports/ppl3-close-writers.md`.
+
+---
+
 ## 2026-09-14 — DL-702 Practice Position Lifecycle is GO · fourth tree alongside LIM, QFRIC, XS
 
 **Decision (Coach, 2026-09-14).** Two calls with no silent default:

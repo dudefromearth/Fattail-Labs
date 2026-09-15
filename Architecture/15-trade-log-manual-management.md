@@ -86,7 +86,11 @@ An open fill (majority `TO_OPEN`) with no paired close within the hold window
 - Sheet Actions block  
 - Bulk select (`Select opens`)  
 
-### 4.3 Close pairing gates (UI)
+### 4.3 Close pairing gates (UI + API)
+
+Sheet checkboxes remain. **PPL3 (DL-703)** also enforces the same four gates on
+`POST /api/me/trade-log/trades` and `PATCH /trades/{id}` that becomes / re-keys a
+close. 422 names the gate. Overrides are **payload flags**, never a cookie.
 
 | Gate | Why |
 |------|-----|
@@ -95,14 +99,15 @@ An open fill (majority `TO_OPEN`) with no paired close within the hold window
 | Unit qty equal | Full close default; partial only with confirm |
 | No drift | Legs advanced must not silently rekey structure |
 
-Overrides are **explicit checkboxes** — fail loud by default.
+Overrides are **explicit checkboxes** — fail loud by default. Import commit is
+**not** this gate (**OD-25**).
 
 ### 4.4 Delete order (locked)
 
 | Target | Effect |
 |--------|--------|
 | **TO CLOSE** | May `DELETE` anytime. Paired TO OPEN becomes unmatched again |
-| **TO OPEN with paired close** | **Blocked** — UI requires deleting the TO CLOSE first |
+| **TO OPEN with paired close** | **Blocked** — UI requires deleting the TO CLOSE first. **API 409** names the blocking close id (PPL3). |
 | **TO OPEN unmatched** | May `DELETE` (no close on book) |
 | Bulk opens | Only **unmatched** opens (never paired opens) |
 
@@ -211,9 +216,9 @@ Close drafts reverse BUY/SELL and set `TO_CLOSE`.
 |--------|------|-------|
 | GET | `/api/me/trade-log/trades` | **Paginated** by default (`limit`/`cursor`); `full=1` legacy full page; `entry_source` |
 | GET | `/api/me/trade-log/opens` | Unmatched opens only (server match; small payload) |
-| POST | `/api/me/trade-log/trades` | Manual create; `entry_source` default **manual** |
-| PATCH | `/api/me/trade-log/trades/{id}` | Edit |
-| DELETE | `/api/me/trade-log/trades/{id}` | Trash open or close |
+| POST | `/api/me/trade-log/trades` | Manual create; `entry_source` default **manual**. Close fills: four gates → 422 unless payload override |
+| PATCH | `/api/me/trade-log/trades/{id}` | Edit. Becoming / re-keying a close: same gates as POST |
+| DELETE | `/api/me/trade-log/trades/{id}` | Trash open or close. Paired/partial open → **409** |
 | POST | import commit | Forces **`import`** |
 | (future) Strategy Lab runtime writers | Must set **`automated`** | Not import path |
 | GET | analytics/* | Unchanged; uses domain match |
@@ -248,3 +253,4 @@ Close drafts reverse BUY/SELL and set `TO_CLOSE`.
 |------|------|
 | 2026-08-05 | v1.0 as-built — manual management design; pairs Spec §16 |
 | 2026-08-05 | v1.1 — `entry_source`: **manual · import · automated** (not machine); import ≠ automation |
+| 2026-09-14 | PPL3 — gates are API, not sheet-only; DELETE 409; kit confirm on sheet + blotter bulk (DL-703) |

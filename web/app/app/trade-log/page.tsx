@@ -18,6 +18,7 @@ import TradeSheet from "@/components/trade-log/TradeSheet";
 import ImportSheet from "@/components/trade-log/ImportSheet";
 import PositionsView from "@/components/capital/PositionsView";
 import PracticeSuiteChrome from "@/components/practice/PracticeSuiteChrome";
+import { useConfirm } from "@/components/ui";
 import type { Account, Catalog, Trade } from "@/lib/tradeLog";
 import {
   filtersActive,
@@ -86,6 +87,7 @@ function TradeLogBody() {
     campaigns: ctxCampaigns,
     refreshCampaigns,
   } = usePracticeContext();
+  const confirm = useConfirm();
 
   const [state, setState] = useState<LoadState>("loading");
   const [error, setError] = useState<string | null>(null);
@@ -649,13 +651,19 @@ function TradeLogBody() {
             disabled={bulkBusy}
             className="rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50"
             onClick={() => {
-              if (
-                !window.confirm(
-                  `Trash ${selectedIds.size} open position(s)? Cannot be undone.`,
-                )
-              )
-                return;
-              void trashIds([...selectedIds]);
+              void (async () => {
+                const n = selectedIds.size;
+                const ok = await confirm({
+                  title: `Trash ${n} open position${n === 1 ? "" : "s"}?`,
+                  message:
+                    "This permanently deletes the selected unmatched opens. Cannot be undone.",
+                  confirmLabel: "Delete",
+                  cancelLabel: "Cancel",
+                  destructive: true,
+                });
+                if (!ok) return;
+                void trashIds([...selectedIds]);
+              })();
             }}
           >
             {bulkBusy ? "Trashing…" : "Bulk trash"}

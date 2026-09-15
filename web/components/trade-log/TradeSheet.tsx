@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Account, Catalog, Leg, Trade } from "@/lib/tradeLog";
-import { Button } from "@/components/ui";
+import { Button, useConfirm } from "@/components/ui";
 import TosScriptWindow from "@/components/tos/TosScriptWindow";
 import {
   detectTosScript,
@@ -12,7 +12,6 @@ import {
 } from "@/lib/tradeLogTos";
 import type { ParsedTosTrade } from "@/lib/options-lab/tosParser";
 import {
-  TRASH_REASONS,
   buildCloseDraftFromOpen,
   buildStructureLegs,
   defaultNetSideForStrategy,
@@ -411,6 +410,7 @@ export default function TradeSheet({
   /** Jump to another fill (e.g. paired close that must be deleted first). */
   onOpenTrade?: (t: Trade) => void;
 }) {
+  const confirm = useConfirm();
   const [form, setForm] = useState<FormState>(() =>
     emptyForm(defaultAccountId ?? ""),
   );
@@ -433,10 +433,6 @@ export default function TradeSheet({
   const [practiceCampaignId, setPracticeCampaignId] = useState<
     number | ""
   >("");
-  /** Delete confirm lives only in this drawer (not on the blotter row). */
-  const [trashConfirm, setTrashConfirm] = useState(false);
-  const [trashIntent, setTrashIntent] = useState<"fill" | "entire">("fill");
-  const [trashReason, setTrashReason] = useState("");
   const [allowOrphanClose, setAllowOrphanClose] = useState(false);
   const [allowAccountMismatch, setAllowAccountMismatch] = useState(false);
   const [allowPartialUnits, setAllowPartialUnits] = useState(false);
@@ -554,9 +550,6 @@ export default function TradeSheet({
     if (mode !== "create") setTosParsed(null);
     setShowLegsAdvanced(true);
     setLegsTouched(false);
-    setTrashConfirm(false);
-    setTrashIntent("fill");
-    setTrashReason("");
     setAllowOrphanClose(false);
     setAllowAccountMismatch(false);
     setAllowPartialUnits(false);
@@ -955,14 +948,43 @@ export default function TradeSheet({
     setShowLegsAdvanced(true);
   }
 
+  async function apiErrorText(r: Response, fallback: string): Promise<string> {
+    const text = await r.text().catch(() => "");
+    try {
+      const j = JSON.parse(text);
+      const d = j.detail;
+      if (typeof d === "string" && d) return d;
+      if (d && typeof d === "object" && (d.message || d.detail)) {
+        return String(d.message || d.detail);
+      }
+    } catch {
+      /* raw */
+    }
+    return text || fallback;
+  }
+
+  async function confirmDelete(title: string, message: string): Promise<boolean> {
+    return confirm({
+      title,
+      message,
+      confirmLabel: "Delete",
+      cancelLabel: "Cancel",
+      destructive: true,
+    });
+  }
+
   async function trashOpen() {
     if (!trade || mode !== "edit") return;
     const gate = canDeleteTrade(trade, trades);
     if (!gate.ok) {
       setError(gate.reason || "Cannot delete this fill yet.");
-      setTrashConfirm(false);
       return;
     }
+    const ok = await confirmDelete(
+      `Delete open #${trade.id} permanently?`,
+      "No paired close — this open is removed from the book. Cannot be undone.",
+    );
+    if (!ok) return;
     setBusy(true);
     setError(null);
     const r = await fetch(`/api/me/trade-log/trades/${trade.id}`, {
@@ -971,11 +993,31 @@ export default function TradeSheet({
     });
     setBusy(false);
     if (!r.ok) {
-      setError(await r.text().catch(() => "Could not trash trade"));
-      setTrashConfirm(false);
+      setError(await apiErrorText(r, "Could not trash trade"));
       return;
     }
-    setTrashConfirm(false);
+    onTrashed();
+    onClose();
+  }
+
+  async function trashCloseFill() {
+    if (!trade || mode !== "edit") return;
+    const ok = await confirmDelete(
+      "Remove this closing trade?",
+      "The open stays on the book. Cannot be undone.",
+    );
+    if (!ok) return;
+    setBusy(true);
+    setError(null);
+    const r = await fetch(`/api/me/trade-log/trades/${trade.id}`, {
+      method: "DELETE",
+      credentials: "same-origin",
+    });
+    setBusy(false);
+    if (!r.ok) {
+      setError(await apiErrorText(r, "Could not delete the close fill"));
+      return;
+    }
     onTrashed();
     onClose();
   }
@@ -988,6 +1030,11 @@ export default function TradeSheet({
       setError("Need both fills to delete the whole position.");
       return;
     }
+    const ok = await confirmDelete(
+      "Delete the entire position?",
+      "Removes the open and this close. Cannot be undone.",
+    );
+    if (!ok) return;
     setBusy(true);
     setError(null);
     const closeR = await fetch(`/api/me/trade-log/trades/${closeFill.id}`, {
@@ -996,8 +1043,7 @@ export default function TradeSheet({
     });
     if (!closeR.ok) {
       setBusy(false);
-      setError(await closeR.text().catch(() => "Could not delete the close fill"));
-      setTrashConfirm(false);
+      setError(await apiErrorText(closeR, "Could not delete the close fill"));
       return;
     }
     const openR = await fetch(`/api/me/trade-log/trades/${openFill.id}`, {
@@ -1007,15 +1053,14 @@ export default function TradeSheet({
     setBusy(false);
     if (!openR.ok) {
       setError(
-        await openR.text().catch(
-          () => "Close fill removed; the open fill could not be deleted.",
+        await apiErrorText(
+          openR,
+          "Close fill removed; the open fill could not be deleted.",
         ),
       );
-      setTrashConfirm(false);
       onTrashed();
       return;
     }
-    setTrashConfirm(false);
     onTrashed();
     onClose();
   }
@@ -1149,6 +1194,13 @@ export default function TradeSheet({
         practiceCampaignId === "" ? null : practiceCampaignId,
       pnl_amount: form.pnl_amount === "" ? null : Number(form.pnl_amount),
       entry_source: "manual",
+      allow_orphan_close: allowOrphanClose,
+      allow_account_mismatch: allowAccountMismatch,
+      allow_partial_units: allowPartialUnits,
+      allow_structure_drift: allowDrift,
+      ...(mode === "close" && trade?.id
+        ? { intended_open_id: trade.id }
+        : {}),
       legs: legs.map((l, i) => ({
         leg_index: i,
         side: l.side,
@@ -1196,7 +1248,7 @@ export default function TradeSheet({
     });
     setBusy(false);
     if (!r.ok) {
-      setError(await r.text());
+      setError(await apiErrorText(r, "Could not save trade"));
       return;
     }
     onSaved();
@@ -1371,62 +1423,14 @@ export default function TradeSheet({
                         </button>
                       )}
                       {/* Unmatched open: delete allowed (close-first rule already satisfied) */}
-                      {!trashConfirm ? (
-                        <button
-                          type="button"
-                          onClick={() => setTrashConfirm(true)}
-                          className="rounded-full border border-red-300 px-4 py-2 text-xs font-medium text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950"
-                        >
-                          Delete this TO OPEN
-                        </button>
-                      ) : (
-                        <div className="rounded-lg border border-red-300 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950">
-                          <p className="text-xs font-semibold text-red-800 dark:text-red-200">
-                            Delete open #{trade.id} permanently?
-                          </p>
-                          <p className="mt-1 text-[11px] text-red-700 dark:text-red-300">
-                            No paired close — safe to remove this open. Cannot be
-                            undone.
-                          </p>
-                          <div className="mt-2 flex flex-wrap gap-1">
-                            {TRASH_REASONS.map((r) => (
-                              <button
-                                key={r.id}
-                                type="button"
-                                onClick={() => setTrashReason(r.id)}
-                                className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                                  trashReason === r.id
-                                    ? "bg-red-700 text-white"
-                                    : "bg-white/80 text-red-900 dark:bg-black/30 dark:text-red-100"
-                                }`}
-                              >
-                                {r.label}
-                              </button>
-                            ))}
-                          </div>
-                          <div className="mt-2 flex gap-2">
-                            <button
-                              type="button"
-                              disabled={busy}
-                              onClick={() => void trashOpen()}
-                              className="rounded-full bg-red-600 px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
-                            >
-                              {busy ? "Deleting…" : "Yes, delete open"}
-                            </button>
-                            <button
-                              type="button"
-                              disabled={busy}
-                              onClick={() => {
-                                setTrashConfirm(false);
-                                setTrashReason("");
-                              }}
-                              className="rounded-full px-3 py-1.5 text-xs text-[var(--color-label-secondary)]"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void trashOpen()}
+                        className="rounded-full border border-red-300 px-4 py-2 text-xs font-medium text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950 disabled:opacity-50"
+                      >
+                        Delete this TO OPEN
+                      </button>
                     </div>
                   </div>
                 )}
@@ -2325,61 +2329,26 @@ export default function TradeSheet({
                           <p className="text-[11px] font-medium text-[var(--color-label-secondary)]">
                             Position actions
                           </p>
-                          {!trashConfirm ? (
-                            <div className="flex flex-col gap-2">
+                          <div className="flex flex-col gap-2">
+                            <button
+                              type="button"
+                              disabled={busy}
+                              className="rounded-full border border-[var(--color-separator)] px-4 py-2 text-xs font-medium text-[var(--color-label)] disabled:opacity-50"
+                              onClick={() => void trashCloseFill()}
+                            >
+                              Remove the closing trade
+                            </button>
+                            {pairedOpen ? (
                               <button
                                 type="button"
-                                className="rounded-full border border-[var(--color-separator)] px-4 py-2 text-xs font-medium text-[var(--color-label)]"
-                                onClick={() => {
-                                  setTrashIntent("fill");
-                                  setTrashConfirm(true);
-                                }}
+                                disabled={busy}
+                                className="rounded-full border border-red-300 px-4 py-2 text-xs font-medium text-red-700 dark:border-red-800 dark:text-red-300 disabled:opacity-50"
+                                onClick={() => void trashEntirePosition()}
                               >
-                                Remove the closing trade
+                                Delete the entire position
                               </button>
-                              {pairedOpen ? (
-                                <button
-                                  type="button"
-                                  className="rounded-full border border-red-300 px-4 py-2 text-xs font-medium text-red-700 dark:border-red-800 dark:text-red-300"
-                                  onClick={() => {
-                                    setTrashIntent("entire");
-                                    setTrashConfirm(true);
-                                  }}
-                                >
-                                  Delete the entire position
-                                </button>
-                              ) : null}
-                            </div>
-                          ) : (
-                            <div className="space-y-2 rounded-lg border border-red-400 bg-red-50 p-3 dark:bg-red-950">
-                              <p className="text-xs font-semibold text-red-900 dark:text-red-100">
-                                {trashIntent === "entire"
-                                  ? "Delete the open and this close? Permanent."
-                                  : "Remove this closing trade? The open stays on the book."}
-                              </p>
-                              <div className="flex gap-2">
-                                <button
-                                  type="button"
-                                  disabled={busy}
-                                  className="rounded-full bg-red-600 px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
-                                  onClick={() =>
-                                    void (trashIntent === "entire"
-                                      ? trashEntirePosition()
-                                      : trashOpen())
-                                  }
-                                >
-                                  {busy ? "Deleting…" : "Yes, delete"}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="text-xs text-[var(--color-label-secondary)] underline"
-                                  onClick={() => setTrashConfirm(false)}
-                                >
-                                  Cancel
-                                </button>
-                              </div>
-                            </div>
-                          )}
+                            ) : null}
+                          </div>
                         </div>
                       )}
               </div>

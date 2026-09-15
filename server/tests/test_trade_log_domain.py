@@ -317,6 +317,97 @@ def test_stock_close_pairs_past_thirty_day_hold():
     assert matched[0]["close"]["id"] == 2000
 
 
+def test_close_gates_orphan_and_partial_draft():
+    """POST draft id=0 still pairs (partial 1-of-5 is not an orphan)."""
+    from trade_log_domain.close_gates import CloseGateError, assert_close_gates
+
+    open_t = _trade(
+        1,
+        10,
+        "2026-04-21T10:00:00",
+        "BUTTERFLY",
+        [
+            _leg("BUY", 5, "TO_OPEN", 7080),
+            _leg("SELL", 10, "TO_OPEN", 7075),
+            _leg("BUY", 5, "TO_OPEN", 7070),
+        ],
+        net_price=0.6,
+        net_side="DEBIT",
+    )
+    draft = _trade(
+        0,
+        10,
+        "2026-04-21T14:00:00",
+        "BUTTERFLY",
+        [
+            _leg("SELL", 1, "TO_CLOSE", 7080),
+            _leg("BUY", 2, "TO_CLOSE", 7075),
+            _leg("SELL", 1, "TO_CLOSE", 7070),
+        ],
+        net_price=0.2,
+        net_side="CREDIT",
+    )
+    try:
+        assert_close_gates([open_t], draft)
+        raise AssertionError("partial without override must 422")
+    except CloseGateError as exc:
+        assert exc.code == "partial_units"
+    assert_close_gates([open_t], draft, overrides={"allow_partial_units": True})
+
+    orphan = _trade(
+        0,
+        10,
+        "2026-04-21T14:00:00",
+        "BUTTERFLY",
+        [
+            _leg("SELL", 1, "TO_CLOSE", 6000),
+            _leg("BUY", 2, "TO_CLOSE", 5995),
+            _leg("SELL", 1, "TO_CLOSE", 5990),
+        ],
+        net_price=0.2,
+        net_side="CREDIT",
+    )
+    try:
+        assert_close_gates([open_t], orphan)
+        raise AssertionError("orphan without override must 422")
+    except CloseGateError as exc:
+        assert exc.code == "orphan_close"
+    assert_close_gates([open_t], orphan, overrides={"allow_orphan_close": True})
+
+
+def test_close_gates_int_strike_pairs_float_book():
+    """Request-body int strikes must pair with `_leg_row` float strikes."""
+    from trade_log_domain.close_gates import assert_close_gates
+
+    open_t = _trade(
+        1,
+        10,
+        "2026-04-21T10:00:00",
+        "BUTTERFLY",
+        [
+            _leg("BUY", 1, "TO_OPEN", 7080.0),
+            _leg("SELL", 2, "TO_OPEN", 7075.0),
+            _leg("BUY", 1, "TO_OPEN", 7070.0),
+        ],
+        net_price=0.6,
+        net_side="DEBIT",
+    )
+    close_t = _trade(
+        0,
+        10,
+        "2026-04-21T14:00:00",
+        "BUTTERFLY",
+        [
+            _leg("SELL", 1, "TO_CLOSE", 7080),
+            _leg("BUY", 2, "TO_CLOSE", 7075),
+            _leg("SELL", 1, "TO_CLOSE", 7070),
+        ],
+        net_price=0.2,
+        net_side="CREDIT",
+    )
+    assert_close_gates([open_t], close_t)
+
+
 def test_match_allows_short_multi_day_hold():
     open_t = _trade(
         1,

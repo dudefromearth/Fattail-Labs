@@ -18,8 +18,8 @@ PPL0 → PPL1 (characterization) → PPL2 (read models) → PPL3 (API + kit)
 | **PPL0** | Board · spec v0.1.1 · GO · AGENTS seating | **PASS** `PPL0-G.md` · **GO** `PPL0-W0.md` · **DL-702** |
 | **PPL1** | W0 characterization (lock the lies) | **PASS** `PPL1-G.md` · 44 passed · tests-only |
 | **PPL2** | W1 read models (slot SoR) | **PASS** `PPL2-G.md` · remaining_units 4 live · grain `partial_residual` |
-| **PPL3** | W2 POST+PATCH 422 · DELETE 409 · kit confirm | **ready** after PPL2-G — do not start until fired |
-| **PPL4** | W3 coverage window · states · declarations · hold | **blocked** on PPL3-G **and** OD-9 / 21 / 22 / FI-PPL-1 |
+| **PPL3** | W2 POST+PATCH 422 · DELETE 409 · kit confirm | **PASS** `PPL3-G.md` · inventory `ppl3-close-writers.md` |
+| **PPL4** | W3 coverage window · states · declarations · hold | **blocked** on OD-9 / 22 / FI-PPL-1 (OD-21 silent default already on token) |
 
 ### Gate protocol
 

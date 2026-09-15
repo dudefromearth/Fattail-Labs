@@ -385,6 +385,7 @@ def test_autofilter_each_listed_choice_retrieves_positions(client):
             net_price=1.0,
             net_side="CREDIT",
             adherence="unknown",
+            allow_orphan_close=True,
             legs=[_leg("DEAD", "TO_CLOSE")],
         )
 
@@ -1330,6 +1331,7 @@ def test_at_ppl_4_5_opens_and_delete_partial_open(client):
                 "asset_class": "equity_option",
                 "net_price": 0.20,
                 "net_side": "CREDIT",
+                "allow_partial_units": True,
                 "legs": _ppl_fly_legs(1, "TO_CLOSE"),
             },
         )
@@ -1344,15 +1346,17 @@ def test_at_ppl_4_5_opens_and_delete_partial_open(client):
         assert hit is not None  # still on the book
         assert int(hit.get("remaining_units") or 0) == 4  # AT-PPL-4
         assert hit.get("fully_unmatched") is False  # AT-PPL-5: not bulk-deletable
-        # PPL3: DELETE still 200 until 409. Do not invert AT-PPL-7 here.
+        blocked = client.delete(f"/api/me/trade-log/trades/{open_id}", cookies=ca)
+        assert blocked.status_code == 409, blocked.text
+        assert str(close_id) in blocked.text
     finally:
         _purge(a)
 
 
-def test_at_ppl_6_ungated_orphan_close_is_200(client):
-    """AT-PPL-6 — CURRENT LIE. Invert in PPL3: 422 without override.
+def test_at_ppl_6_ungated_orphan_close_is_422(client):
+    """AT-PPL-6 inverted (PPL3): orphan TO_CLOSE without override → 422.
 
-    POST a TO_CLOSE with no matching open (orphan), no override flag → 200.
+    Explicit allow_orphan_close still 200 (payload override, never ambient).
     """
     a = _id("zztest-ppl1-orphan-close@labs.test")
     try:
@@ -1378,17 +1382,30 @@ def test_at_ppl_6_ungated_orphan_close_is_200(client):
                 "legs": _ppl_fly_legs(1, "TO_CLOSE"),
             },
         )
-        assert r.status_code == 200, r.text
-        assert r.status_code != 422
+        assert r.status_code == 422, r.text
+        assert "orphan_close" in r.text
+
+        allowed = client.post(
+            "/api/me/trade-log/trades",
+            cookies=ca,
+            json={
+                "account_id": aid,
+                "exec_at": "2026-04-21T14:00:00",
+                "strategy": "BUTTERFLY",
+                "asset_class": "equity_option",
+                "net_price": 0.20,
+                "net_side": "CREDIT",
+                "allow_orphan_close": True,
+                "legs": _ppl_fly_legs(1, "TO_CLOSE"),
+            },
+        )
+        assert allowed.status_code == 200, allowed.text
     finally:
         _purge(a)
 
 
-def test_at_ppl_7_delete_fully_paired_open_is_200(client):
-    """AT-PPL-7 — CURRENT LIE. Invert in PPL3: DELETE paired open → 409.
-
-    Full 1-unit open + matching 1-unit close; delete the TO_OPEN first → 200.
-    """
+def test_at_ppl_7_delete_fully_paired_open_is_409(client):
+    """AT-PPL-7 inverted (PPL3): DELETE paired open → 409. Unmatched open still 200."""
     a = _id("zztest-ppl1-del-paired@labs.test")
     try:
         ca = cookie_for("activator", a)
@@ -1430,12 +1447,153 @@ def test_at_ppl_7_delete_fully_paired_open_is_200(client):
             },
         )
         assert close_r.status_code == 200, close_r.text
+        close_id = int(close_r.json()["id"])
 
         gone = client.delete(f"/api/me/trade-log/trades/{open_id}", cookies=ca)
-        assert gone.status_code == 200, gone.text
-        assert gone.status_code != 409
+        assert gone.status_code == 409, gone.text
+        assert str(close_id) in gone.text
+
+        # Close itself may still be deleted; then the open is unmatched.
+        drop_close = client.delete(
+            f"/api/me/trade-log/trades/{close_id}", cookies=ca
+        )
+        assert drop_close.status_code == 200, drop_close.text
+        drop_open = client.delete(
+            f"/api/me/trade-log/trades/{open_id}", cookies=ca
+        )
+        assert drop_open.status_code == 200, drop_open.text
     finally:
         _purge(a)
+
+
+def test_at_ppl_11_no_window_confirm_on_trade_log_surfaces():
+    """AT-PPL-11 — kit confirm: no window.confirm on sheet or blotter page."""
+    root = Path(__file__).resolve().parents[2]
+    for rel in (
+        "web/components/trade-log/TradeSheet.tsx",
+        "web/app/app/trade-log/page.tsx",
+    ):
+        text = (root / rel).read_text(encoding="utf-8")
+        assert "window.confirm" not in text, rel
+        assert "useConfirm" in text, rel
+
+
+def test_at_ppl_12_patch_rekey_close_is_422(client):
+    """AT-PPL-12 — PATCH that re-keys a close without override → 422."""
+    a = _id("zztest-ppl3-patch-rekey@labs.test")
+    try:
+        ca = cookie_for("activator", a)
+        acct = client.post(
+            "/api/me/trade-log/accounts",
+            cookies=ca,
+            json={"label": "PPL3-rekey", "broker": "fattail"},
+        )
+        assert acct.status_code == 200, acct.text
+        aid = int((acct.json().get("account") or acct.json())["id"])
+
+        open_r = client.post(
+            "/api/me/trade-log/trades",
+            cookies=ca,
+            json={
+                "account_id": aid,
+                "exec_at": "2026-04-21T10:00:00",
+                "strategy": "BUTTERFLY",
+                "asset_class": "equity_option",
+                "net_price": 0.60,
+                "net_side": "DEBIT",
+                "legs": _ppl_fly_legs(1, "TO_OPEN"),
+            },
+        )
+        assert open_r.status_code == 200, open_r.text
+
+        close_r = client.post(
+            "/api/me/trade-log/trades",
+            cookies=ca,
+            json={
+                "account_id": aid,
+                "exec_at": "2026-04-21T14:00:00",
+                "strategy": "BUTTERFLY",
+                "asset_class": "equity_option",
+                "net_price": 0.20,
+                "net_side": "CREDIT",
+                "legs": _ppl_fly_legs(1, "TO_CLOSE"),
+            },
+        )
+        assert close_r.status_code == 200, close_r.text
+        close_id = int(close_r.json()["id"])
+
+        drifted = _ppl_fly_legs(1, "TO_CLOSE", exp="2026-11-30")
+        bad = client.patch(
+            f"/api/me/trade-log/trades/{close_id}",
+            cookies=ca,
+            json={"legs": drifted},
+        )
+        assert bad.status_code == 422, bad.text
+        assert "structure_drift" in bad.text or "orphan_close" in bad.text
+
+        ok = client.patch(
+            f"/api/me/trade-log/trades/{close_id}",
+            cookies=ca,
+            json={
+                "legs": drifted,
+                "allow_structure_drift": True,
+                "allow_orphan_close": True,
+            },
+        )
+        assert ok.status_code == 200, ok.text
+    finally:
+        _purge(a)
+
+
+def test_ppl3_409_does_not_leak_other_identity(client):
+    """Mike: cross-member DELETE of a paired open is 404, never 409."""
+    a = _id("zztest-ppl3-iso-a@labs.test")
+    b = _id("zztest-ppl3-iso-b@labs.test")
+    try:
+        ca = cookie_for("activator", a)
+        cb = cookie_for("activator", b)
+        acct = client.post(
+            "/api/me/trade-log/accounts",
+            cookies=ca,
+            json={"label": "IsoA", "broker": "fattail"},
+        )
+        assert acct.status_code == 200, acct.text
+        aid = int((acct.json().get("account") or acct.json())["id"])
+        open_r = client.post(
+            "/api/me/trade-log/trades",
+            cookies=ca,
+            json={
+                "account_id": aid,
+                "exec_at": "2026-04-21T10:00:00",
+                "strategy": "BUTTERFLY",
+                "asset_class": "equity_option",
+                "net_price": 0.60,
+                "net_side": "DEBIT",
+                "legs": _ppl_fly_legs(1, "TO_OPEN"),
+            },
+        )
+        assert open_r.status_code == 200, open_r.text
+        open_id = int(open_r.json()["id"])
+        close_r = client.post(
+            "/api/me/trade-log/trades",
+            cookies=ca,
+            json={
+                "account_id": aid,
+                "exec_at": "2026-04-21T14:00:00",
+                "strategy": "BUTTERFLY",
+                "asset_class": "equity_option",
+                "net_price": 0.20,
+                "net_side": "CREDIT",
+                "legs": _ppl_fly_legs(1, "TO_CLOSE"),
+            },
+        )
+        assert close_r.status_code == 200, close_r.text
+        peer = client.delete(f"/api/me/trade-log/trades/{open_id}", cookies=cb)
+        assert peer.status_code == 404, peer.text
+        assert peer.status_code != 409
+    finally:
+        _purge(a)
+        _purge(b)
 
 
 def test_at_ppl_8_imports_have_no_coverage_window_columns():

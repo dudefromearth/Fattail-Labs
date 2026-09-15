@@ -273,6 +273,7 @@ def test_at_ppl_3_open_qty_overstates_partial_close_remainder(client):
                 "asset_class": "equity_option",
                 "net_price": 0.20,
                 "net_side": "CREDIT",
+                "allow_partial_units": True,
                 "legs": close_legs,
             },
         )

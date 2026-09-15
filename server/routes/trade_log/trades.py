@@ -7,6 +7,15 @@ from fastapi import APIRouter, HTTPException, Request
 import db
 import trade_log_catalog as cat
 from guards import require_session
+from trade_log_domain.close_gates import (
+    CloseGateError,
+    assert_close_gates,
+    blocking_close_for_open,
+    intended_open_id_from_body,
+    overrides_from_body,
+    paired_open_for_close,
+)
+from trade_log_domain.structure import trade_is_close_fill
 from routes.trade_log.common import (
     _TRADE_PAGE_DEFAULT,
     found_set_stats,
@@ -31,6 +40,31 @@ from routes.trade_log.common import (
 )
 
 router = APIRouter(tags=["trade-log"])
+
+
+def _close_gate_or_422(
+    book: list,
+    proposed: dict,
+    body: dict,
+    *,
+    intended_open: dict | None = None,
+) -> None:
+    try:
+        assert_close_gates(
+            book,
+            proposed,
+            intended_open=intended_open,
+            overrides=overrides_from_body(body),
+        )
+    except CloseGateError as exc:
+        raise HTTPException(status_code=422, detail=exc.detail) from exc
+
+
+def _intended_open_from_book(book: list, body: dict) -> dict | None:
+    oid = intended_open_id_from_body(body)
+    if oid is None:
+        return None
+    return next((t for t in book if int(t.get("id") or 0) == oid), None)
 
 @router.get("/api/me/trade-log")
 @router.get("/api/me/trade-log/trades")
@@ -456,6 +490,22 @@ async def create_trade(request: Request) -> dict:
             else:
                 acct = _ensure_default_account(cur, iid)
             account_id = int(acct["id"])
+            proposed = {
+                "id": 0,
+                "account_id": account_id,
+                "exec_at": exec_at,
+                "strategy": strategy,
+                "asset_class": asset_class,
+                "legs": legs,
+            }
+            if trade_is_close_fill(proposed):
+                book, _accts = _load_member_book(cur, iid)
+                _close_gate_or_422(
+                    book,
+                    proposed,
+                    body,
+                    intended_open=_intended_open_from_book(book, body),
+                )
             # First trade: provisional books become FatTail-canonical (not a broker).
             # Optional body.broker/venue may choose sim/paper; never required.
             chosen = (body.get("broker") or body.get("venue") or "").strip()
@@ -710,6 +760,30 @@ async def patch_trade(trade_id: int, request: Request) -> dict:
             strategy = refine_strategy_from_legs(strategy, legs_for_infer)
             if strategy not in cat.STRATEGY_CODES:
                 raise HTTPException(status_code=422, detail="unknown strategy")
+            if "legs" in body:
+                if not isinstance(body["legs"], list):
+                    raise HTTPException(status_code=422, detail="legs must be a list")
+                proposed_legs = body["legs"]
+            else:
+                proposed_legs = _load_legs(cur, trade_id, iid)
+            proposed = {
+                "id": trade_id,
+                "account_id": account_id,
+                "exec_at": exec_at,
+                "strategy": strategy,
+                "asset_class": asset_class,
+                "legs": proposed_legs,
+            }
+            if trade_is_close_fill(proposed):
+                book, _accts = _load_member_book(cur, iid)
+                existing_trade = _load_trade(cur, trade_id, iid)
+                intended = _intended_open_from_book(book, body)
+                if intended is None and trade_is_close_fill(existing_trade):
+                    intended = paired_open_for_close(book, existing_trade)
+                book_ex = [t for t in book if int(t["id"]) != int(trade_id)]
+                _close_gate_or_422(
+                    book_ex, proposed, body, intended_open=intended
+                )
             cur.execute(
                 """UPDATE member_trade_log_trades
                    SET account_id=%s, exec_at=%s, asset_class=%s, strategy=%s,
@@ -742,8 +816,6 @@ async def patch_trade(trade_id: int, request: Request) -> dict:
                 ),
             )
             if "legs" in body:
-                if not isinstance(body["legs"], list):
-                    raise HTTPException(status_code=422, detail="legs must be a list")
                 cur.execute(
                     "DELETE FROM member_trade_log_legs WHERE trade_id = %s AND identity_id = %s",
                     (trade_id, iid),
@@ -796,6 +868,21 @@ def delete_trade(trade_id: int, request: Request) -> dict:
     with db.transaction() as conn:
         with conn.cursor() as cur:
             iid = _storage_identity_id(cur, claims)
+            existing = None
+            try:
+                existing = _load_trade(cur, trade_id, iid)
+            except HTTPException:
+                existing = None
+            if existing and not trade_is_close_fill(existing):
+                book, _accts = _load_member_book(cur, iid)
+                blk = blocking_close_for_open(book, int(trade_id))
+                if blk is not None:
+                    raise HTTPException(
+                        status_code=409,
+                        detail=(
+                            f"Delete the TO CLOSE fill (#{blk.get('id')}) first."
+                        ),
+                    )
             cur.execute(
                 """DELETE FROM member_trade_log_trades
                    WHERE id = %s AND identity_id = %s""",

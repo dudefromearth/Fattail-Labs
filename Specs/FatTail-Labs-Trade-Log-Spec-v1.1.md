@@ -1,7 +1,7 @@
 # FatTail Labs — Trade Log Spec v1.1
 
-**Status:** AS-BUILT (v1.1 + harden appendix + **manual management** + **§17 campaign badge**) — product surface live  
-**Date:** 2026-07-28 · **As-built notes:** 2026-07-29 · **Manual management:** 2026-08-05 · **Campaign registry/badge:** 2026-08-09  
+**Status:** AS-BUILT (v1.1 + harden appendix + **manual management** + **§17 campaign badge** + **§16.5 API gates PPL3**) — product surface live  
+**Date:** 2026-07-28 · **As-built notes:** 2026-07-29 · **Manual management:** 2026-08-05 · **Campaign registry/badge:** 2026-08-09 · **PPL3 API gates:** 2026-09-14  
 **Route:** `/app/trade-log`  
 **Family:** B (member-private) · **Entitlement:** Observer trial / Navigator Practice gate (DL-193)  
 **Execution:** [`agents/p-trade-log/`](../agents/p-trade-log/) · harden [`agents/p-practice-harden/`](../agents/p-practice-harden/) · campaign chrome co-owned with [`agents/p-campaign-structured-practice/`](../agents/p-campaign-structured-practice/)  
@@ -687,16 +687,18 @@ right, width, strategy, units (browser only; not export SoR).
 
 ### 16.5 Close save gates (fail loud)
 
-Before `POST` close fill:
+Before `POST` close fill **and** before `PATCH` that becomes or re-keys a close, the **API enforces** the four gates (PPL3 · **DL-703**). The sheet still fails loud first; omitting the sheet cannot skip a gated path.
 
-| Gate | Default | Override |
+| Gate | Default | Override (payload, never cookie) |
 |------|---------|----------|
-| Structure pairs intended open | Required | “Allow orphan / unexpected pair” |
-| Same `account_id` as open | Required | “Allow different account” |
-| Unit qty (GCD) equals open | Required | “Allow unit size ≠ open” |
-| No structure drift vs open | Required | “Allow structure drift” |
+| Structure pairs intended open | Required | `allow_orphan_close` |
+| Same `account_id` as open | Required | `allow_account_mismatch` |
+| Unit qty (GCD) equals open | Required | `allow_partial_units` |
+| No structure drift vs open | Required | `allow_structure_drift` |
 
-UI shows **“Will pair with open #…”** from `findOpenForCloseDraft` before save.
+Without the named override: **422** naming the failed gate. UI shows **“Will pair with open #…”** from `findOpenForCloseDraft` before save.
+
+**Import commit** is **not** gated this round (**OD-25**). Truncated-history orphans stay representable; coverage window is PPL4 / OD-9.
 
 ### 16.6 Partial close
 
@@ -711,7 +713,7 @@ explicit confirm. Domain FIFO still pairs one open to one close by structure key
 | Create | Accepts `entry_source` (default `manual`; allow `automated` only from trusted automation callers later) |
 | Import commit | Forces `entry_source=import` |
 | Strategy Lab / automation writers | **Must** set `entry_source=automated` |
-| Delete | `DELETE /api/me/trade-log/trades/{id}` — identity-scoped; legs CASCADE |
+| Delete | `DELETE /api/me/trade-log/trades/{id}` — identity-scoped; legs CASCADE. **PPL3:** TO_OPEN with a non-synthetic paired/partial close → **409** naming the blocking close id. Unmatched open or any close → **200**. Wrong identity → **404** (never 409). |
 
 ### 16.8 Client modules (as-built)
 
@@ -833,6 +835,7 @@ Trade Log does **not** own a parallel badge table. It **mounts** the registry vi
 
 | Version | Notes |
 |---------|--------|
+| **v1.1 + §16.5 API** | Close gates are API-enforced on POST/PATCH (422 + payload overrides). DELETE of a paired/partial open is 409. Import commit still OD-25. Kit `useConfirm` on sheet + blotter bulk (2026-09-14 · PPL3 · DL-703) |
 | **v1.1 + new-trade chooser** | New Trade drawer: close opens first (list scrolls after 3); ToS script window only when clipboard is a valid script; tap opens trade form; Create a new opening trade is a HIG button, not a link (2026-08-15) |
 | **v1.1 + import chip** | Import badge under Exec time; dark gray / light gray; tooltip `Import #<id>`; click opens Manage imports via `?import=` (not header). Companion: Import Batches Spec §7 (2026-08-15) |
 | **v1.1 + §17** | Campaign registry & badge passive-participant amend; forever wear; dispense list; chip host. Companion: Member Campaign Spec v1.3 §2.1 / §9 (2026-08-09) |
