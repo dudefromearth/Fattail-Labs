@@ -230,8 +230,14 @@ def build_reports_book(
     pnls: list[float] = []
     has_pnl_data = False
 
-    first_day = (sorted_t[0].get("exec_at") or "")[:10] if sorted_t else ""
-    last_day = (sorted_t[-1].get("exec_at") or "")[:10] if sorted_t else ""
+    # Span = the actual trading window: first → last REAL execution. Synthetic
+    # expired-worthless closes are dated on the option expiry, so counting them
+    # here stretched "days" out to the latest expiration instead of the last
+    # trade. Skip them for the span only — the equity curve, net P&L and
+    # win/loss still realize the expiry as designed.
+    real_fills = [t for t in sorted_t if not t.get("synthetic")]
+    first_day = (real_fills[0].get("exec_at") or "")[:10] if real_fills else ""
+    last_day = (real_fills[-1].get("exec_at") or "")[:10] if real_fills else ""
     span_days = 0
     if first_day and last_day and len(first_day) == 10 and len(last_day) == 10:
         try:
