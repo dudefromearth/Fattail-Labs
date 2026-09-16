@@ -101,28 +101,133 @@ def build_reports_book(
             f"Account {aid}",
         )
 
-    matched = match_open_close(filtered)
+    # PPL fix must match on the ORIGINAL fills, then read realized P&L from the
+    # enriched copies by id. enrich_trades_with_synthetic_pnl already appends
+    # synthetic expired-worthless closes carrying P&L; re-matching the *enriched*
+    # list would regenerate those synthetics without P&L and lose it. Synthetic
+    # ids are deterministic (-open_id), so a by-id P&L map bridges the two.
+    if account_filter == "all" or account_filter is None:
+        orig_filtered = trades
+    else:
+        _aid = int(account_filter)
+        orig_filtered = [t for t in trades if int(t.get("account_id") or 0) == _aid]
+
+    pnl_by_id: dict[int, float] = {}
+    for t in filtered:
+        p = realized_pnl(t)
+        if p is None:
+            continue
+        tid = t.get("id")
+        if tid is None:
+            continue
+        try:
+            pnl_by_id[int(tid)] = p
+        except (TypeError, ValueError):
+            pass
+
+    matched = match_open_close(orig_filtered)
     open_count = sum(1 for m in matched if m["close"] is None)
+
+    # --- Per-position outcomes (partial closes net into ONE result) --------
+    # An "outcome" is a *closed position* — an open together with every close
+    # (partial or full) that consumed it, their realized P&L summed. The old
+    # code scored every close fill separately, so a trade closed in two partial
+    # fills counted as two wins/losses and the win/loss tally no longer
+    # reconciled with the trade count (e.g. 46 opens → 58 outcomes). Grouping by
+    # the open fixes that. Books with no partials are unaffected: one open → one
+    # close → one outcome, identical to before.
+    matched_close_ids: set[int] = set()
+    outcomes: list[dict[str, Any]] = []  # {"close_day", "order_id", "net"}
+    for m in matched:
+        net = 0.0
+        has = False
+        close_day = str(m.get("close_day") or "")
+        try:
+            order_id = int((m.get("open") or {}).get("id") or 0)
+        except (TypeError, ValueError):
+            order_id = 0
+        for sl in m.get("closes") or []:
+            cid = (sl.get("close") or {}).get("id")
+            if cid is None:
+                continue
+            try:
+                cid_i = int(cid)
+            except (TypeError, ValueError):
+                continue
+            matched_close_ids.add(cid_i)
+            p = pnl_by_id.get(cid_i)
+            if p is not None:
+                net += p
+                has = True
+                d = str(sl.get("close_day") or "")
+                if d and d > close_day:
+                    close_day = d
+        if has:
+            outcomes.append(
+                {"close_day": close_day, "order_id": order_id, "net": net}
+            )
+
+    # Orphan closes: real (non-synthetic) close fills carrying P&L that never
+    # matched an open — a data-entry gap. Counted separately and never scored as
+    # a win or loss, so they cannot inflate the outcome count.
+    orphan_close_count = 0
+    for t in filtered:
+        if t.get("synthetic"):
+            continue
+        if not trade_is_close_fill(t) or realized_pnl(t) is None:
+            continue
+        tid = t.get("id")
+        try:
+            tid_i = int(tid) if tid is not None else 0
+        except (TypeError, ValueError):
+            tid_i = 0
+        if tid_i not in matched_close_ids:
+            orphan_close_count += 1
+
+    # Chronological by realization (last close) day, then open id for stability.
+    outcomes.sort(key=lambda o: (o["close_day"], o["order_id"]))
 
     sorted_t = sorted(
         filtered,
         key=lambda t: (t.get("exec_at") or "", int(t.get("id") or 0)),
     )
 
-    # Running capital path: start → + each realized P&L (same as series equity).
+    # --- Per-position stats (counts & ratios only) -------------------------
+    # winners / losers / averages / gross / outcome_pnls are derived from the
+    # per-position outcomes so they reconcile with the trade count. Money totals
+    # (net profit, equity curve, drawdown, Sharpe) are computed per realized cash
+    # event below and are therefore unchanged — no one's P&L or curve shifts;
+    # only the per-trade stats move to the reconciled per-position basis.
+    winners = 0
+    losers = 0
+    sum_win = 0.0
+    sum_loss = 0.0
+    gross_profit = 0.0
+    gross_loss = 0.0
+    largest_win = 0.0
+    largest_loss = 0.0
+    outcome_pnls: list[float] = []
+    for o in outcomes:
+        pnl = o["net"]
+        outcome_pnls.append(pnl)
+        if pnl > 0:
+            winners += 1
+            sum_win += pnl
+            gross_profit += pnl
+            largest_win = max(largest_win, pnl)
+        elif pnl < 0:
+            losers += 1
+            sum_loss += -pnl
+            gross_loss += -pnl
+            largest_loss = min(largest_loss, pnl)
+
+    # Running capital path: start → + each realized P&L (every cash event), so
+    # net profit and the equity/drawdown curve are conserved exactly as before.
     cap = float(starting_capital)
     cum = 0.0
     peak = cap
     max_dd_pct = 0.0
     pnls: list[float] = []
-    gross_profit = 0.0
-    gross_loss = 0.0
-    winners = 0
-    losers = 0
-    sum_win = 0.0
-    sum_loss = 0.0
-    largest_win = 0.0
-    largest_loss = 0.0
     has_pnl_data = False
 
     first_day = (sorted_t[0].get("exec_at") or "")[:10] if sorted_t else ""
@@ -153,16 +258,6 @@ def build_reports_book(
             has_pnl_data = True
             cum += pnl
             pnls.append(pnl)
-            if pnl > 0:
-                winners += 1
-                sum_win += pnl
-                gross_profit += pnl
-                largest_win = max(largest_win, pnl)
-            elif pnl < 0:
-                losers += 1
-                sum_loss += -pnl
-                gross_loss += -pnl
-                largest_loss = min(largest_loss, pnl)
         trade_index += 1
         # running capital at this fill
         equity = cap + cum
@@ -237,6 +332,8 @@ def build_reports_book(
         "end_balance": end_balance,
         "max_drawdown_pct": max_dd_pct,
         "open_count": open_count,
+        "closed_positions": len(outcomes),
+        "orphan_close_count": orphan_close_count,
         "winners": winners,
         "losers": losers,
         "avg_win": avg_win,
@@ -259,6 +356,6 @@ def build_reports_book(
             "avg_entry_r2r": avg_r2r,
             "entry_r2r_sample_size": r2r_n,
         },
-        "outcome_pnls": pnls,
+        "outcome_pnls": outcome_pnls,
         "strategy_counts": strategy_counts,
     }
