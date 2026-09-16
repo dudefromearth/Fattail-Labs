@@ -5,6 +5,7 @@
 
 import type { LegInput } from "./positionTypes";
 import { normalizeStrike } from "./listedStrikes";
+import { gcdAll } from "./positionQty";
 import { sessionEodMs } from "./whatIfClocks";
 
 export type AlgoSide = "near" | "far";
@@ -107,8 +108,16 @@ export function inferLongFly(
   const n0 = net(strikes[0]);
   const n1 = net(strikes[1]);
   const n2 = net(strikes[2]);
-  const longFly = n0 === 1 && n1 === -2 && n2 === 1;
-  const shortFly = n0 === -1 && n1 === 2 && n2 === -1;
+  // Normalize by the contract multiple so a scaled fly (2/-4/2, 3/-6/3, …) is
+  // recognized as the same 1/-2/1 ratio — a butterfly is a butterfly whether
+  // it's one contract or several. Without this, adding a second contract made
+  // the Algo alert reject the position as "not an OTM debit fly."
+  const g = gcdAll([n0, n1, n2]);
+  const r0 = n0 / g;
+  const r1 = n1 / g;
+  const r2 = n2 / g;
+  const longFly = r0 === 1 && r1 === -2 && r2 === 1;
+  const shortFly = r0 === -1 && r1 === 2 && r2 === -1;
   if (!longFly && !shortFly) return null;
   return {
     body: strikes[1],
