@@ -677,8 +677,13 @@ export function applyEditPatch(
   if (overrides?.entryAt !== undefined) {
     patched.entryAt = overrides.entryAt ?? undefined;
   }
-  // Do not carry existing.priceSide — it outranks direction (blotterTheme).
-  patched.priceSide = packageSideFromStructure(patched);
+  // Unlocked: restamp debit/credit from the new structure (buy/sell).
+  // Locked: the member owns debit/credit independently of BUY/SELL.
+  if (existing.lock.mode === "locked") {
+    patched.priceSide = existing.priceSide;
+  } else {
+    patched.priceSide = packageSideFromStructure(patched);
+  }
   // CHECK PRICE compares against the submitted lock so a draft unlock/relock
   // is not overwritten by existing.lock when structure is unchanged.
   const before =
@@ -701,6 +706,8 @@ export function withCheckPriceIfLocked(
   after: AnalyzerPosition,
 ): AnalyzerPosition {
   if (before.lock.mode !== "locked") return after;
+  // Pointer rebind (expiration) unlocks explicitly so OPF can re-quote.
+  if (after.lock.mode === "unlocked") return after;
   if (structureKey(before) === structureKey(after)) {
     return { ...after, lock: before.lock };
   }
@@ -872,6 +879,9 @@ export function applyPackageQuote(
   }
 
   if (!interestOk) {
+    if (pos.lock.mode === "locked") {
+      return finish({ ...pos, liveState: "budget_refused" });
+    }
     return finish({
       ...pos,
       liveState: "budget_refused",
@@ -881,6 +891,14 @@ export function applyPackageQuote(
   }
 
   if (quote.skew_fail || quote.epoch_quality === "skewed_fail") {
+    if (pos.lock.mode === "locked") {
+      return finish({
+        ...pos,
+        liveState: "skewed",
+        maxSkewMs: quote.max_skew_ms ?? null,
+        epochQuality: quote.epoch_quality ?? "skewed",
+      });
+    }
     return finish({
       ...pos,
       liveState: "skewed",
@@ -927,13 +945,22 @@ export function applyPackageQuote(
       : "live";
 
   if (pos.lock.mode === "locked") {
+    // Live package marks apply only while unlocked. Lock froze D* + side;
+    // the member owns the definition from here.
     const dStar = pos.lock.packageDebitPerShare;
+    const side =
+      pos.priceSide === "debit" || pos.priceSide === "credit"
+        ? pos.priceSide
+        : dStar > 0
+          ? "debit"
+          : dStar < 0
+            ? "credit"
+            : pos.priceSide;
     return finish({
       ...pos,
-      lastNatSigned: nat,
       definedDebitPerShare: dStar,
       livePackagePerShare: Math.abs(dStar),
-      priceSide: dStar > 0 ? "debit" : dStar < 0 ? "credit" : pos.priceSide,
+      priceSide: side,
       liveState,
       displayAsOf: asOf,
       contentHashes: hashes,
@@ -941,7 +968,6 @@ export function applyPackageQuote(
       epochQuality: quote.epoch_quality ?? null,
       markMode,
       markDisclaimer,
-      // Successful OPF package implies bindable at quote time
       bind: pos.bind
         ? { ...pos.bind, bindable: true, failedCount: 0, summary: "bound" }
         : pos.bind,
@@ -987,26 +1013,30 @@ export function lockNatural(pos: AnalyzerPosition): AnalyzerPosition {
     lock: {
       mode: "locked",
       lockedAt: new Date().toISOString(),
-      packageDebitPerShare: pos.lastNatSigned,
+      packageDebitPerShare: nat,
       lockSource: "natural_mid",
       freezeIv: false,
       freezeMarks: false,
       generationHashesAtLock: { ...pos.contentHashes },
     },
-    livePackagePerShare: Math.abs(pos.lastNatSigned),
-    definedDebitPerShare: pos.lastNatSigned,
-    priceSide:
-      pos.lastNatSigned > 0
-        ? "debit"
-        : pos.lastNatSigned < 0
-          ? "credit"
-          : null,
+    livePackagePerShare: Math.abs(nat),
+    definedDebitPerShare: nat,
+    priceSide: nat > 0 ? "debit" : nat < 0 ? "credit" : null,
     position: {
       ...pos.position,
       net_debit_override: null,
     },
     updatedAt: Date.now(),
   };
+}
+
+/** Typed package price: sign is debit (+) / credit (−). Unicode minuses allowed. */
+export function parseSignedPackagePrice(
+  raw: string,
+): { mag: number; isCredit: boolean } | null {
+  const n = parseFloat(String(raw).replace(/[−–—]/g, "-").replace(/,/g, "").trim());
+  if (!Number.isFinite(n) || n === 0) return null;
+  return { mag: Math.abs(n), isCredit: n < 0 };
 }
 
 /** limitMagnitude > 0; isCredit true → negative D* */
@@ -1035,10 +1065,26 @@ export function lockLimit(
     position: {
       ...pos.position,
       net_debit_override: mag,
-      direction: isCredit ? "sell" : "buy",
     },
     updatedAt: Date.now(),
   };
+}
+
+/** Debit/credit while locked (or lock now). Does not flip BUY/SELL. */
+export function setPackagePriceSide(
+  pos: AnalyzerPosition,
+  side: "debit" | "credit",
+): AnalyzerPosition {
+  const mag =
+    pos.lock.mode === "locked"
+      ? Math.abs(pos.lock.packageDebitPerShare)
+      : pos.livePackagePerShare != null && Number.isFinite(pos.livePackagePerShare)
+        ? Math.abs(pos.livePackagePerShare)
+        : pos.lastNatSigned != null && Number.isFinite(pos.lastNatSigned)
+          ? Math.abs(pos.lastNatSigned)
+          : 0.05;
+  const next = mag > 0 ? mag : 0.05;
+  return lockLimit(pos, next, side === "credit");
 }
 
 export function unlockCard(pos: AnalyzerPosition): AnalyzerPosition {
@@ -1082,11 +1128,16 @@ export function flipCardDirection(pos: AnalyzerPosition): AnalyzerPosition {
   };
   const lastNatSigned =
     pos.lastNatSigned == null ? null : -pos.lastNatSigned;
-  let lock = pos.lock;
-  if (lock.mode === "locked") {
-    lock = {
-      ...lock,
-      packageDebitPerShare: -lock.packageDebitPerShare,
+  if (pos.lock.mode === "locked") {
+    return {
+      ...pos,
+      position,
+      label: buildLabel(position.underlying, legs, position.expiration),
+      notation: buildNotation(legs),
+      lastNatSigned,
+      livePackagePerShare: pos.livePackagePerShare,
+      lock: pos.lock,
+      updatedAt: Date.now(),
     };
   }
   return {
@@ -1098,9 +1149,8 @@ export function flipCardDirection(pos: AnalyzerPosition): AnalyzerPosition {
     lastNatSigned,
     definedDebitPerShare:
       pos.definedDebitPerShare == null ? null : -pos.definedDebitPerShare,
-    // magnitude unchanged; side flipped
     livePackagePerShare: pos.livePackagePerShare,
-    lock,
+    lock: pos.lock,
     updatedAt: Date.now(),
   };
 }
@@ -1189,24 +1239,24 @@ export function setCardExpiration(
    *  - set not_live until atomic package resolve settles once
    * UI shows UPDATING then a single final state (price / NOT TRADED / …).
    */
-  return withCheckPriceIfLocked(pos, {
+  return {
     ...pos,
     position,
     label: buildLabel(position.underlying, legs, newE),
     notation: buildNotation(legs),
     lock: { mode: "unlocked" },
-    lastNatSigned: pos.lastNatSigned,
-    definedDebitPerShare: pos.definedDebitPerShare,
-    livePackagePerShare: pos.livePackagePerShare,
-    priceSide: pos.priceSide,
-    liveState: pos.liveState,
-    displayAsOf: pos.displayAsOf,
-    contentHashes: pos.contentHashes,
-    maxSkewMs: pos.maxSkewMs,
-    epochQuality: pos.epochQuality,
+    lastNatSigned: null,
+    definedDebitPerShare: null,
+    livePackagePerShare: null,
+    priceSide: packageSideFromStructure({ position }),
+    liveState: "not_live",
+    displayAsOf: null,
+    contentHashes: {},
+    maxSkewMs: null,
+    epochQuality: null,
     bind: null,
     updatedAt: Date.now(),
-  });
+  };
 }
 
 /**

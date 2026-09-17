@@ -36,6 +36,7 @@ import {
 import {
   lockLimit,
   lockNatural,
+  parseSignedPackagePrice,
   positionFromInput,
   unlockCard,
   type AnalyzerPosition,
@@ -470,6 +471,9 @@ export default function PositionBuilder({
       }
       const dirFlipped =
         (rec.position.direction ?? "buy") !== (nextPos.direction ?? "buy");
+      if (rec.lock.mode === "locked") {
+        return next;
+      }
       return {
         ...next,
         priceSide: packageSideFromStructure(next),
@@ -1573,7 +1577,10 @@ export default function PositionBuilder({
     };
     const label = buildLabel(nextPos.underlying, nextPos.legs, nextPos.expiration);
     const notation = buildNotation(nextPos.legs);
-    const priceSide = packageSideFromStructure({ position: nextPos });
+    const priceSide =
+      mode === "edit" && record.lock.mode === "locked"
+        ? record.priceSide
+        : packageSideFromStructure({ position: nextPos });
     // Create always mints a new book id. The dialog is long-lived; reusing
     // the previous Analyze draft id prepends a twin of the first card.
     const nextRecord: AnalyzerPosition =
@@ -1660,14 +1667,16 @@ export default function PositionBuilder({
     } catch {
       next = mag;
     }
-    const isCredit = resolvePackageSide(record) === "credit";
+    const isCredit =
+      record.lock.mode === "locked"
+        ? record.lock.packageDebitPerShare < 0
+        : record.priceSide === "credit";
     setDraft((d) => lockLimit(d, next, isCredit));
   };
   const commitDebit = (raw: string) => {
-    const mag = Math.abs(parseFloat(String(raw).replace(/[−–—]/g, "-")));
-    if (!Number.isFinite(mag) || mag <= 0) return;
-    const isCredit = resolvePackageSide(record) === "credit";
-    setDraft((d) => lockLimit(d, mag, isCredit));
+    const parsed = parseSignedPackagePrice(raw);
+    if (!parsed) return;
+    setDraft((d) => lockLimit(d, parsed.mag, parsed.isCredit));
   };
   const scalePos = (n: number) => {
     const next = Math.max(1, Math.round(n));
@@ -2183,15 +2192,19 @@ export default function PositionBuilder({
                             data-field="debit"
                             data-value-field="1"
                             inputMode="decimal"
-                            aria-label="Package debit"
+                            aria-label="Package debit or credit"
                             defaultValue={
                               debitShown != null && Number.isFinite(debitShown)
-                                ? debitShown.toFixed(2)
+                                ? (record.lock.mode === "locked"
+                                    ? record.lock.packageDebitPerShare < 0
+                                    : record.priceSide === "credit")
+                                  ? `-${debitShown.toFixed(2)}`
+                                  : debitShown.toFixed(2)
                                 : ""
                             }
                             key={
                               lockActive
-                                ? `l-${lockedMagnitude}`
+                                ? `l-${record.lock.mode === "locked" ? record.lock.packageDebitPerShare : lockedMagnitude}`
                                 : `u-${debitShown ?? "x"}`
                             }
                             onBlur={(e) => commitDebit(e.target.value)}

@@ -94,7 +94,7 @@ test("AT-PC-48 Buy/Sell invert moves CHECK PRICE", () => {
   }
 });
 
-test("AT-PC-51 ToS always @LMT; pending CHECK PRICE script uses live mid", () => {
+test("AT-PC-51 ToS always @LMT; locked script uses D* even during CHECK PRICE", () => {
   const unlocked = fly();
   const scriptLive = generateTosScript({
     symbol: "XSP",
@@ -119,8 +119,8 @@ test("AT-PC-51 ToS always @LMT; pending CHECK PRICE script uses live mid", () =>
     legs: [{ strike: 770, expiration: "2026-09-11", right: "call", quantity: 1 }],
     costBasis: tosScriptPrice(pending),
   });
-  assert.match(scriptPending, /@0\.55 LMT/);
-  assert.doesNotMatch(scriptPending, /@1\.20 LMT/);
+  // Locked definition is the script basis — live mid is not applied while locked.
+  assert.match(scriptPending, /@1\.20 LMT/);
 
   const kept = keepCheckPrice(pending);
   const scriptKept = generateTosScript({
