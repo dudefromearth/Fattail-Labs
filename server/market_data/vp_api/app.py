@@ -1,4 +1,4 @@
-"""Contract v1.0 HTTP. Computing consumers only. 403 members even in dev."""
+"""Contract v1.1 HTTP. Computing consumers only. 403 members even in dev."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 import auth
 from config import get_config
 from guards import require_session
-from market_data.vp_api.range_gate import refuse_below_floor
+from market_data.vp_api.range_gate import range_decision
 from market_data.vp_engine.coverage import VP_ROW, ceiling_of, floor_of, load_coverage
 from market_data.vp_engine.rebuild import histogram_path
 from market_data.vp_ingest.store import archive_root, in_rth
@@ -39,6 +39,15 @@ def _computing(request: Request) -> JSONResponse | dict:
             status_code=403, content={"error": "computing_consumers_only"}
         )
     return claims
+
+
+def _coverage_pair(source: str) -> dict[str, str | None]:
+    fl = floor_of(_root(), source)
+    cl = ceiling_of(_root(), source)
+    return {
+        "floor_session": fl.isoformat() if fl else None,
+        "ceiling_session": cl.isoformat() if cl else None,
+    }
 
 
 def _envelope(hist: dict[str, Any], *, target: str, source: str) -> dict[str, Any]:
@@ -70,6 +79,7 @@ def _envelope(hist: dict[str, Any], *, target: str, source: str) -> dict[str, An
         "mapping": mapping,
         "vp_row": hist.get("vp_row") or VP_ROW.get(source, 0.25),
         "bins": hist.get("bins") or [],
+        "coverage": _coverage_pair(source),
     }
 
 
@@ -87,14 +97,22 @@ def health(request: Request):
         return gate
     cov = load_coverage(_root())
     collectors = {}
+    coverage = {}
     for src in ("SPY", "ES", "MES"):
         row = cov.get(src) or {}
         collectors[src] = {
             "live": bool(row.get("ceiling")),
             "last_print_ns": 0,
         }
+        binned = list(row.get("sessions_binned") or [])
+        coverage[src] = {
+            "floor_session": row.get("floor"),
+            "ceiling_session": row.get("ceiling"),
+            "sessions_binned": len(binned),
+        }
     return {
         "collectors": collectors,
+        "coverage": coverage,
         "gap_report": [],
         "mapping_fit": {},
         "backup_watch": "OK",
@@ -111,6 +129,7 @@ def profile_range(
     price_hi: float | None = Query(default=None),
     row: float | None = Query(default=None),
     source: str | None = Query(default=None),
+    allow_partial: bool = Query(default=False),
 ):
     gate = _computing(request)
     if isinstance(gate, JSONResponse):
@@ -126,11 +145,18 @@ def profile_range(
         b = date.fromisoformat(to)
     except ValueError:
         return JSONResponse(status_code=422, content={"error": "bad_range"})
-    refused = refuse_below_floor(
-        from_d=a, to_d=b, floor=floor_of(_root(), src), ceiling=ceiling_of(_root(), src)
+    kind, extra = range_decision(
+        from_d=a,
+        to_d=b,
+        floor=floor_of(_root(), src),
+        ceiling=ceiling_of(_root(), src),
+        allow_partial=allow_partial,
     )
-    if refused:
-        return JSONResponse(status_code=422, content=refused)
+    if kind == "422":
+        return JSONResponse(status_code=422, content=extra)
+    if kind == "partial" and extra:
+        a = date.fromisoformat(str(extra["served_from"]))
+        b = date.fromisoformat(str(extra["served_to"]))
     # Sum session histograms in [from, to] in source space (single-session
     # today: one day). Futures multi-session /range in target space is VPS3.
     days = load_coverage(_root()).get(src, {}).get("sessions_binned") or []
@@ -163,6 +189,8 @@ def profile_range(
     body["gaps"] = gaps
     body["vp_row"] = vp_row
     body["status"] = "GAPPED" if gaps else "COMPLETE"
+    if kind == "partial" and extra:
+        body["coverage"] = {**(body.get("coverage") or {}), **extra}
     return body
 
 

@@ -44,7 +44,7 @@ Everything not on this line is **parked** or **serves it**. Touched only when th
 |-------|--------|
 | **Step 1 download** | ES+MES **LIVE** StudioTwo. Backfill **newest-first** from yesterday; REST/flat-files **HOLD until 16:00 ET** (CP-1). Tranche 1 tonight after migration. |
 | **Step 2 bins** | **Bin as you land** on StudioTwo local store. Composite **fenced**. StudioOne Engine install tonight iff VPS1-G GO. |
-| **Step 3 API** | Dev sidecar **:4010** over binned store (Contract v1.0, 403 even in dev). Does not replace Labs `:4000`. |
+| **Step 3 API** | Dev sidecar — APPS reads [`DEV-API.md`](DEV-API.md) (never scan ports). Contract **v1.1**. `/v1/health` coverage is the flip signal. |
 | **SADEV*** | APPS-owned · `SA-DEV-W0` **STAMPED** **DL-723**. Cites authored v0.4 (**DL-731**); still NOT BUILD. |
 | **Tonight** | VPS1-G carry → VPS2 ACT 3 (GO only) → VPSB ACT B → backfill tranche 1 |
 

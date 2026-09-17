@@ -18,7 +18,8 @@
 | **SA Spec v0.4 (authored)** | [`Specs/Structural-Analysis-Service-Spec-v0_4.md`](../../Specs/Structural-Analysis-Service-Spec-v0_4.md) · **DL-731** · sha1 `d68060cc5221b83170d39aeace5e8fb8b7470c51` · 540 · 22 `## `. Supersedes v0.3.1. Pointer **CLOSED**. NOT BUILD. |
 | **SA Spec v0.3.1 (Advisor r2 object)** | [`Specs/Structural-Analysis-Service-Spec-v0_3_1.md`](../../Specs/Structural-Analysis-Service-Spec-v0_3_1.md) · **DL-730** · sha1 `8298b572f10784c9e43848c93da50b6a630e3321`. Round 2 proceeds against this file; verdicts → v0.4.1 via Coach. |
 | **AZ-VP-9-A1** | [`Specs/amendments/AZ-VP-9-A1.md`](../../Specs/amendments/AZ-VP-9-A1.md) · **DL-730** · sha1 `53bf74daa8a2b67ac3073d6fdb92bfed9b297ab0` |
-| **API contract v1.0** | [`Specs/VP-API-Contract-v1_0.md`](../../Specs/VP-API-Contract-v1_0.md) · **DL-726** frozen sha1 `b403937a…` |
+| **API contract v1.1** | [`Specs/VP-API-Contract-v1_1.md`](../../Specs/VP-API-Contract-v1_1.md) · **DL-733** sha1 `d01b3dd9bfbac3bbcafb34110ef7d06cd6650915` |
+| **Dev sidecar record** | [`DEV-API.md`](DEV-API.md) — APPS reads this; never scan ports |
 
 **Not this board:** `p-volume-profile-histogram` (Labs dual-store) · `p-session-volume-profile` (heatmap SVP).
 

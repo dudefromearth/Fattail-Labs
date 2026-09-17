@@ -34,13 +34,29 @@ def test_refuse_range_below_floor():
     ceil = date(2026, 9, 17)
     assert refuse_below_floor(
         from_d=date(2026, 9, 1), to_d=date(2026, 9, 17), floor=floor, ceiling=ceil
-    ) == {"error": "range_below_coverage"}
+    ) == {"error": "range_below_coverage", "coverage_floor": "2026-09-17"}
     assert (
         refuse_below_floor(
             from_d=date(2026, 9, 17), to_d=date(2026, 9, 17), floor=floor, ceiling=ceil
         )
         is None
     )
+
+
+def test_allow_partial_is_truncated_slice():
+    from market_data.vp_api.range_gate import range_decision
+
+    kind, extra = range_decision(
+        from_d=date(2026, 1, 1),
+        to_d=date(2026, 9, 17),
+        floor=date(2026, 9, 17),
+        ceiling=date(2026, 9, 17),
+        allow_partial=True,
+    )
+    assert kind == "partial"
+    assert extra is not None
+    assert extra["truncated"] is True
+    assert extra["served_from"] == "2026-09-17"
 
 
 def test_rebuild_marks_coverage(tmp_path):

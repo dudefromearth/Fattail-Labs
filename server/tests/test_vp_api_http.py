@@ -33,3 +33,12 @@ def test_composite_404(vp_client):
     admin = cookie_for("administrator", identity_id=0)
     r = vp_client.get("/v1/profile/SPX/composite", cookies=admin)
     assert r.status_code == 404
+
+
+def test_health_coverage_block(vp_client):
+    admin = cookie_for("administrator", identity_id=0)
+    r = vp_client.get("/v1/health", cookies=admin)
+    assert r.status_code == 200, r.text
+    cov = r.json()["coverage"]
+    assert "ES" in cov and "floor_session" in cov["ES"]
+    assert "sessions_binned" in cov["ES"]

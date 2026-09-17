@@ -4,6 +4,22 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-17 — DL-733 VP API Contract v1.1 · coverage block · DEV-API.md
+
+**Decision.** [`Specs/VP-API-Contract-v1_1.md`](../Specs/VP-API-Contract-v1_1.md) is frozen (India MATCH 59 · sha1 `d01b3dd9bfbac3bbcafb34110ef7d06cd6650915` · 3 `## ` · last `## Unchanged from v1.0`). Supersedes v1.0 `b403937a…`. Sole change: `coverage` on /profile, /range, and **/v1/health** (the flip signal); `/range` below floor is 422 `{error, coverage_floor}` or 200 truncated when `allow_partial=true`.
+
+**Board:** [`agents/p-volume-profile-service/DEV-API.md`](../agents/p-volume-profile-service/DEV-API.md) is the authoritative sidecar record. APPS reads that file — never scans ports or guesses paths. Sidecar is launchd `ai.fattail.labs.vp-api`.
+
+**Store (stated once):** StudioTwo engine/ingest is **`/Users/ernie/fattail-market-data`**. FatTail2TB is unmounted here; do not path-guess.
+
+**Does not.** Silent partial `/range`. Stop `:3000`/`:4000`. Invent coverage fields beyond v1.1.
+
+**Cites:** **DL-732** · **DL-726**.
+
+---
+
+---
+
 ## 2026-09-17 — DL-732 Newest-first backfill · bin-as-you-land · coverage floor · API today
 
 **Decision (Coach, 2026-09-17).** INFRA executes:
