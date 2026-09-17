@@ -30,7 +30,7 @@ Everything not on this line is **parked** or **serves it**. Touched only when th
 
 **Working spec (data end):** VP **v0.6.1** sha1 `7e3bbedc58e1cbadc2ce96bb820bf93059f8806d` (427) · **DL-730**. v0.6 remains on disk as baseline.  
 **API contract (frozen):** [`Specs/VP-API-Contract-v1_0.md`](../../Specs/VP-API-Contract-v1_0.md) · 85 · sha1 `b403937af18140eb7900ccfa72437e7f3e9bc5aa` · parent = **v0.6.1 landed** · **DL-726** / **DL-730**.  
-**App end:** SA **v0.3.1** sha1 `8298b572f10784c9e43848c93da50b6a630e3321` (367) · **DL-730**. `Specs/Structural-Analysis-Service-Spec-v0_4.md` is a **DIRECTIVE POINTER** (SA-L11) — **not BUILD** · **DL-728**.  
+**App end:** SA **v0.4 authored** sha1 `d68060cc5221b83170d39aeace5e8fb8b7470c51` (540 · 22 `## `) · **DL-731**. Supersedes v0.3.1. **DL-728 pointer CLOSED.** NOT BUILD. Advisor round 2 vs **v0_3_1**; dispositions → **v0.4.1 via Coach**.  
 **AZ-VP-9-A1:** [`Specs/amendments/AZ-VP-9-A1.md`](../../Specs/amendments/AZ-VP-9-A1.md) sha1 `53bf74daa8a2b67ac3073d6fdb92bfed9b297ab0` (41) · **MATCH**.  
 **Git:** `vp/seated-law-v0.6` · **DL-724**.  
 **Law:** **CP-1** · **DL-707**  
@@ -43,7 +43,7 @@ Everything not on this line is **parked** or **serves it**. Touched only when th
 | **Step 1 download** | ES+MES **LIVE** on StudioTwo (`ai.fattail.labs.vp-futures`). SPY ingest **installed** on StudioOne (VPS1-G mechanics). Migration + backfill **tonight**. Gap defect **fix today** before migration. |
 | **Step 2 bins** | VPS2 Engine goldens on StudioTwo (F1/F2/F3-corrected/F5/F7). Composite **fenced**. StudioOne install **tonight iff VPS1-G full-RTH GO**. |
 | **Step 3 API** | Contract **frozen**. Build starts StudioTwo against v1.0; **install gated** on Engine goldens. |
-| **SADEV*** | APPS-owned · `SA-DEV-W0` **STAMPED** **DL-723**. Does not build against the v0.4 pointer. |
+| **SADEV*** | APPS-owned · `SA-DEV-W0` **STAMPED** **DL-723**. Cites authored v0.4 (**DL-731**); still NOT BUILD. |
 | **Tonight** | VPS1-G carry → VPS2 ACT 3 (GO only) → VPSB ACT B → backfill tranche 1 |
 
 ### Do not

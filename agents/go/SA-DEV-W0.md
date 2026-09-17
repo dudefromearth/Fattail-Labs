@@ -9,7 +9,7 @@ execute or modify this work. Cross-instance conflict → STOP, report to Coach.
 
 **Status:** **STAMPED GO** — 2026-09-17. Chat is not a stamp (**DL-328**). **DL-723.**
 
-**Law:** VP Service **v0.6** sha1 `a438f9d636e40d4c95feb87874daf8c603344aac` · SA Service **v0.3** detection baseline sha1 `4638ce958a81e24980ed6fd2e7618aaec51f4cfd` · **DL-721**. **SA-L11** is a Coach **directive** (**DL-725** / **DL-728**) — `Specs/Structural-Analysis-Service-Spec-v0_4.md` is a **POINTER**, not BUILD; **nothing builds against it**. Frozen API: Contract v1.0 (**DL-726**). Coach Decision 1 verbatim: "Raw bins stay on StudioOne the collector, bins are available through an API"
+**Law:** VP Service **v0.6.1** sha1 `7e3bbedc58e1cbadc2ce96bb820bf93059f8806d` · **DL-730**. SA Service **v0.4 authored** sha1 `d68060cc5221b83170d39aeace5e8fb8b7470c51` · **DL-731** (supersedes v0.3.1; **DL-728 pointer CLOSED**). Spec remains **NOT BUILD**. Frozen API: Contract v1.0 (**DL-726**). Coach Decision 1 verbatim: "Raw bins stay on StudioOne the collector, bins are available through an API"
 
 **Resource rule:** on StudioTwo contention, the **COLLECTOR wins**; this track **throttles**.
 

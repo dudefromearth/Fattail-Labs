@@ -4,6 +4,26 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-17 — DL-731 Authored SA spec v0.4 seated · pointer closed
+
+**Decision (Coach, 2026-09-17).** [`Specs/Structural-Analysis-Service-Spec-v0_4.md`](../Specs/Structural-Analysis-Service-Spec-v0_4.md) is the **authored** SA spec. India pre-flight StudioTwo **MATCH**:
+
+| File | Lines | sha1 | `## ` | Last heading |
+|------|------:|------|------:|--------------|
+| `Specs/Structural-Analysis-Service-Spec-v0_4.md` | 540 | `d68060cc5221b83170d39aeace5e8fb8b7470c51` | 22 | `## 14. Round log` |
+
+**Supersedes** SA **v0.3.1** (`8298b572…`, **DL-730**) as working app-end text (v0_3_1 remains on disk). **DL-728 pointer row CLOSED** — the file is no longer a directive pointer; nothing built against that pointer (standing rule). Spec header remains **NOT BUILD**.
+
+**Advisor routing:** round 2 **proceeds against v0_3_1 as queued**. Verdict dispositions land in **v0.4.1 via Coach** — never silently dropped, never applied as a silent edit to these 540 bytes.
+
+**Does not.** BUILD GO for SA / `SADEV*` product surface. Edit v0.4 bytes this packet. Reopen the pointer. INFRA executing `SADEV*`.
+
+**Cites:** India `gate-reports/India-preflight-2026-09-17-sa-v0_4.md` · **DL-728** · **DL-730** · **DL-725** SA-L11.
+
+---
+
+---
+
 ## 2026-09-17 — DL-730 Advisor courier MATCH · VP v0.6.1 + SA v0.3.1 + AZ-VP-9-A1
 
 **Decision.** The three clipped couriers are on disk. India pre-flight StudioTwo 2026-09-17 **MATCH** all three. Contract v1.0 parent is no longer MISSING.

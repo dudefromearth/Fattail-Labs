@@ -1,21 +1,33 @@
-# DIRECTIVE POINTER — not seated law, not BUILD, nothing builds against this file
+# Structural Analysis Service — Spec v0.4
 
-**Classification (Coach, 2026-09-17 · DL-728):** this file is a
-**DIRECTIVE POINTER** for **SA-L11** plus Coach scope / VPB-Q2 ticks.
-It was not authored through the review loop. The authored SA spec
-**v0.4** arrives via Coach after Advisor round-2 and **supersedes
-v0_3_1**. Until that file lands, app-end detection/surface law stays
-**v0.3 / v0_3_1**; SA-L11 is a standing directive, not a spec to cite
-as BUILD.
-
----
-
-# Structural Analysis Service — Spec v0.4 (pointer)
-
-**Status:** **DIRECTIVE POINTER** — not BUILD. Not on the VP service's
-critical path. **SA-L11 ticks below remain Coach's directive.**
+**Status:** DRAFT — contract close for review. NOT BUILD. Not on the VP
+service's critical path (VPS2/VPSB proceed independently). This is the
+AUTHORED v0.4: it replaces the directive pointer previously on the
+board (DL-728); nothing builds against a pointer.
 **Date:** 2026-09-17
-**Does not supersede:** Structural-Analysis-Service-Spec-v0_3.md (or v0_3_1).
+**Supersedes:** Structural-Analysis-Service-Spec-v0_3_1.md
+**Note on Advisor round 2:** in flight against v0.3.1 at cut time; its
+findings will be dispositioned into v0.4.1 or confirmed absorbed —
+never silently dropped.
+**Product name:** spec and API remain "Structural Analysis"; a
+member-facing retitle (e.g. "Market Structure") is an open Coach word,
+recorded when given.
+
+## Change table (v0.3.1 → v0.4)
+
+| Source | Change | Where |
+|---|---|---|
+| Coach directive (verbatim intent in DL): future scope must never be lost; the current app must make the full breadth apparent | **SA-L11 — the map shows the whole territory**: all future views are first-class navigation in honest IN-DEVELOPMENT states with doctrine text; no fake data, no empty widgets, no hiding | §2, §8 |
+| Walk-and-talk audit G1 | Fourth-leg positioning in Purpose | §1 |
+| G2 | §1a Doctrine: inventory-defense persistence story; Market Profile lineage critique; why nodes form; **SA-L12 no day-typing / no session attribution** | §1a, §2 |
+| G3 | Ontology: child node, appendage/temporary shelf, promotion; no-line-until-promoted; SA-Q8 (promotion criteria), SA-Q9 (hysteresis) | §3, §8, §10 |
+| G4 | §8a Phase roadmap: Exploration, Replay/TPO, Footprint & Market Delta (with the quotes-capture data note), GEX side-by-side (fusion alert stays dead), Characterization | §8a |
+| G5 | §8b Characterization stage: behavior distributions, not a confidence score; provenance as input (SA-Q12); schema-reserved, unserved until §12a populates | §8b, §13 |
+| G6 | Research agenda: Mandelbrot, Chung & Bellotti, Garzarelli as adjacent evidence; currencies proving ground; node birth | §11 |
+| G7 | Session markers from the Sessions tool; four-class location legend in neutral encoding; corpus scale (dozens, across regimes); beats-eye asymmetry rule; Runner named as consumer | §8, §9, §12a, header |
+| Coach tick: VPB-Q2 = BOTH | XSP dual-source (SPY and MES), source-tagged; presentation of dual-source XSP = SA-Q10 | §5a, §10 |
+| C-1 (open) | Member click-drag pane: objects-only summary per current law, or a narrow bins exception — Coach's word, carried as SA-Q11 | §8a, §10 |
+
 **Parent contract:** Volume-Profile-Service-Spec-v0_6 — this service is a
 **computing consumer** of `/v1/profile` and `/v1/profile/.../range`. It
 never touches Ingest or raw prints; the histogram is its only input.
@@ -23,12 +35,16 @@ never touches Ingest or raw prints; the histogram is its only input.
 stack; this service is the **app end** — the member-facing product.
 **Host:** compute on Dude two (farm plan); the member surface ships
 inside FatTail Labs (Options Lab), consuming this service's API.
+**Consumers:** Options Lab canvas, heatmap overlay, Analyzer overlay,
+**Runner**, Strategy Lab, IKI templates.
 
-## Change table (v0.3 → v0.4)
+## Change table (v0.2 → v0.3)
 
 | Source | Change | Where |
 |---|---|---|
-| Coach directive (2026-09-17), verbatim intent: "the future scope of the structure app must never be lost — the current app must make the full breadth apparent" | **SA-L11** ("the map shows the whole territory"): Replay, Footprint / Market Delta, GEX Overlay, Characterization, and Exploration are first-class navigation entries in honest **IN-DEVELOPMENT** named state with doctrine text — no fake data, no empty widgets, no hiding; schema fields reserved unserved; Help/Wiki seed carries the whole arc from first publish. Binding on all surface work now | §2, §8, §11, §13 |
+| Coach Decision 1 (2026-09-17, verbatim in DL): "Raw bins stay on StudioOne the collector, bins are available through an API" | Decision 1 CLOSED: Options Lab is the product's home; the member surface renders this service's objects; raw bins are an API contract of the VP data end (VP-L18), never a member rendering. Resolves the v1.2-draft's §1/§15.1-vs-§8 presentation collision and its §12 API-exposure defect in this spec's favor | §0, §8 |
+| v1.2-draft keepers (structure-levels review, 2026-09-17) | Heavy-tick edge pricing made explicit (§4.2); generation retirement recording added — an object absent from the next generation is recorded RETIRED, never silently gone (§13); pinned-band discipline confirmed already covered by SA-L1/L3 + §7 (no floating-membership object exists here) | §4.2, §13 |
+| Draft retirement | The v1.2-draft joins its parent voice-session document under Specs/sources; its noun-freeze concern is satisfied by §1's served-noun law (support/resistance forbidden), its color concern by SA-L10 | §11 |
 
 ## 0. Position in the stack
 
@@ -42,7 +58,10 @@ re-derive (inherits the VP-L2 pattern).
 
 ## 1. Purpose
 
-The service publishes **where traded volume changes significantly** — the
+**Volume structure is the fourth leg of market structure.** GEX plus
+volatility, time and price are incomplete without it — structure is as
+influential on price development as the three D's of options. This
+service publishes **where traded volume changes significantly** — the
 long edges of volume nodes, and the crevasses between and within them —
 grouped into the working sets a trader's strategy actually needs, as
 terrain context for positioning defined-risk structures. It is the
@@ -57,6 +76,34 @@ base, floor, contrast, width, grouping, uncharted, session, source,
 basis, gap. Forbidden: POC, value area, VAH, VAL, VWAP, HVN, LVN,
 rotation, break, magnet, target, support, resistance, bounce, hold,
 fail, or any verb assigning future behavior to a level (SA-L5).
+
+## 1a. Doctrine (normative; the Help/Wiki seed)
+
+- **Why levels persist — the causal story.** Persistence is not
+  primarily trader memory. Market makers and institutions carry
+  long-lived inventory and positions at these prices, which must be
+  defended or unwound there; psychology and physiology are secondary.
+  Positions outlive sentiment — which is why structure can hold for
+  weeks, months, years, even decades. This is doctrine and internal
+  thesis; it never becomes served vocabulary (SA-L5 governs the wire).
+- **The lineage critique.** Volume profile inherited its lexicon
+  wholesale from Market Profile (Steidlmayer's time-price-opportunity
+  work). Those concepts describe a *time* distribution; nobody
+  re-examined whether they mean anything for a *volume* distribution —
+  they were assumed across. POC is not actionable: it marks where the
+  market already agreed, not where it battles. The 70% value area is a
+  decades-old convention, not something the market said. What survives
+  the filter: market delta — bid/ask-classified volume, genuinely
+  measuring aggression (§8a, Footprint phase).
+- **Why nodes form.** Price moving between nodes is searching out
+  value; the most logical place to find it is another node, not the
+  well. Failing that, price may decide it has found value intranode,
+  or create a brand-new node at fresh highs.
+- **No day-typing (SA-L12).** Session shapes are never classified
+  (normal day, trend day, …), never used to infer future sessions, and
+  levels are never attributed to the session that built them. Sessions
+  exist in this system for practical access reasons only.
+
 
 ## 2. Founding laws
 
@@ -104,15 +151,20 @@ fail, or any verb assigning future behavior to a level (SA-L5).
   class are encoded by position, line weight, and a legend. No
   notifications or contact alerts in any phase of this service; alerting
   is a separate product under Analyzer alert law.
-- **SA-L11 The map shows the whole territory.** The future scope of the
-  structure app must never be lost — the current app must make the full
-  breadth apparent. Replay, Footprint / Market Delta, GEX Overlay,
-  Characterization, and Exploration are **first-class navigation
-  entries** from first publish, each in an honest **IN-DEVELOPMENT**
-  named state with doctrine text. No fake data, no empty widgets, no
-  hiding those entries. Schema fields for unshipped views are
-  **reserved unserved**. Help and Wiki seed the whole arc from first
-  publish. Binding on all surface work now (including DEV-ONLY canvases).
+- **SA-L11 The map shows the whole territory.** Every phase of the app
+  renders the full product arc as first-class, visible surface:
+  navigation names Exploration (click-drag), Replay (TPO/market
+  profile), Footprint & Market Delta, GEX Overlay, and
+  Characterization from day one, each in an honest named state —
+  IN DEVELOPMENT, with one line of doctrine on what it will be — never
+  hidden, never fake data, never an empty widget. Schema reserves
+  future fields unserved. The Help/Wiki seed carries the entire
+  doctrine and arc from first publish. Removing or hiding a future
+  entry is a spec violation, not a simplification.
+- **SA-L12 No day-typing.** Per §1a: session shapes are never
+  classified or predictive; levels are never attributed to the session
+  that built them; session markers are vertical time context only and
+  never a detection input.
 
 ## 3. Ontology
 
@@ -133,6 +185,14 @@ rows → shelves → **nodes / edges / crevasses** → **groupings**
   retrieval for a 0DTE strategy. Crevasse severity is the dividing
   principle at both scales — ordinary crevasses divide nodes within a
   grouping; boundary-class voids divide groupings (grading: SA-Q2).
+- **Child node** — a smaller node forming *adjacent* to (not inside) an
+  established parent, as price finds new value and fills it in.
+- **Appendage / temporary shelf** — a forming feature not yet
+  established enough to count as a node. **Provisional features get no
+  line treatment** until promoted. Promotion criteria — how
+  established, how often revisited, how big, whether it served as a
+  stepping stone — are quantified from the §9 corpus (SA-Q8); whether
+  provisional features additionally need on/off hysteresis is SA-Q9.
 - **Uncharted region** — per SA-L7.
 
 ## 4. Detection procedure (DRAFT — carried verified from VP round 3)
@@ -175,6 +235,18 @@ from the archive and published as node metadata. **Open (SA-Q3):**
 whether volume decays or annotates by age when price revisits year-old
 structure — decided together with SA-Q7 when a fixture forces them.
 
+## 5a. Symbol emphasis and dual-source XSP (Coach tick, VPB-Q2 = BOTH)
+
+**ES→SPX is the primary pair** — the flagship terrain for the house
+0DTE instrument. **XSP is dual-source:** SPY→XSP (cash-market RTH
+evidence) and MES→XSP (futures-family Globex coverage) are BOTH
+analyzed, as separate source-tagged level sets, never silently merged.
+Independent appearance of a level in both sources is corroboration —
+two different crowds leaving the same footprint — and a natural future
+characterization input (§8b). Presentation of dual-source XSP
+(source-tagged sets, a corroborated union view, or a member default
+with toggle) is **SA-Q10**, settled with fixtures.
+
 ## 6. Incremental operation
 
 Analysis state is global and maintained incrementally as VP publishes new
@@ -200,7 +272,9 @@ in affected rows, not by requests.
 ## 8. Member surface (the app) — per Q10 = (b), DL-714, and Coach
 Decision 1 (2026-09-17)
 
-This section is the surface law AZ-VP-9's amendment binds to.
+This section is the surface law **AZ-VP-9-A1**
+(Specs/amendments/AZ-VP-9-A1.md, sha in the DL) binds to; no surface
+work may cite AZ-VP-9 without that amendment.
 
 - **Decision 1, closed:** Options Lab is the product's home. The member
   volume profile surface renders this service's objects over the price
@@ -208,16 +282,24 @@ This section is the surface law AZ-VP-9's amendment binds to.
   only through the VP service's API to entitled computing consumers
   (VP-L18) — availability is an API contract; member visibility is this
   surface law, and no member surface renders raw bins.
-- Rendered objects (Structure view, shipping): edges (primary, by line
-  weight from contrast), crevasse spans, node spans as shaded context,
-  grouping boundaries, uncharted regions labeled as such. Caps and
-  z-order fixed with fixtures; when GEX Overlay ships, structure sits
-  beneath it (composition law, not a license to paint a fake overlay
-  now); no shared color semantics with GEX; encoding per SA-L10.
-- Viewport per §7 is the default Structure view — the grouping
-  containing spot, cropped by the member's active strategy profile; a
-  wider look is a deliberate action, still served from precomputed
-  structure.
+- Rendered objects: edges (primary, by line weight from contrast),
+  crevasse spans, node spans as shaded context, grouping boundaries,
+  uncharted regions labeled as such. **Location legend (neutral, per
+  SA-L10):** four classes carry the structure by themselves even on a
+  5-minute chart — node floor (thick), node ceiling (thick),
+  internodal crevasse/cliff (thin), intranode crevasse/cliff (thin) —
+  distinguished by weight and legend position, hues non-directional,
+  mechanism never encoded. Caps and z-order fixed with fixtures;
+  beneath GEX overlays; no shared color semantics with GEX.
+- **Session markers:** vertical time context (morning / afternoon /
+  close) sourced from the **Sessions tool** in FatTail Labs Resources
+  — the single source of session boundaries. Never an attribution of
+  which session built a level, never a detection input (SA-L12).
+- **Full-scope navigation (SA-L11):** the canvas names every §8a phase
+  from day one, IN-DEVELOPMENT entries with one doctrine line each.
+- Viewport per §7 is the default view — the grouping containing spot,
+  cropped by the member's active strategy profile; a wider look is a
+  deliberate action, still served from precomputed structure.
 - Provenance passthrough: source instrument, mapping age/STALE badge,
   approximation and gap flags from VP payloads render on every surface.
   Caption, verbatim and only this:
@@ -226,36 +308,63 @@ This section is the surface law AZ-VP-9's amendment binds to.
 - States in the VP §7 style (status + flags); a gapped or stale upstream
   names itself on the canvas — no blank panes, no silent staleness.
 
-### 8.1 Navigation map (SA-L11)
+## 8a. Phase roadmap (normative; rendered per SA-L11)
 
-The current app makes the full breadth apparent. Every entry below is a
-**first-class navigation entry** — always present, never hidden, never
-replaced by an empty widget or invented marks.
+- **Phase 1 — Lines.** Detection, structure API, the Options Lab
+  canvas per §8, Strategy Lab consumer. Ships behind SA-L9's gate.
+- **Phase 2 — Exploration.** Click-and-drag over price/date translates
+  to VP `/range` queries surfaced through this service. **Pane content
+  is SA-Q11 (Coach C-1):** objects-only summary per current law
+  (VP-L18), or a narrow, member-visible slice-histogram exception —
+  undecided; the law stands as objects-only until Coach's word.
+- **Phase 3 — Replay.** TPO / market-profile replay views of how a
+  session unfolded — useful precisely because a volume profile
+  flattens time away; never day-typing (SA-L12). Data requirement
+  already satisfied: prints stored with timestamps.
+- **Phase 4 — Footprint & Market Delta.** The Market Profile survivor:
+  bid/ask-classified volume per price per bar, measuring aggression.
+  **Data note:** delta requires bid/ask context at print time; the
+  current futures capture stores trades only, so this phase adds a
+  quotes/NBBO capture beside the trades collector (an Ingest
+  extension, planned for — raw prints with timestamps already kept —
+  never a redesign).
+- **GEX Overlay.** GEX (fast layer, repositioning daily) rendered
+  side by side with structure (slow layer, built over months) — the
+  honeybees and the honeycomb. Side-by-side legibility only; a
+  disagreement alert is a forecast and a third product — permanently
+  out of scope here.
+- **Characterization** — §8b, served only after §12a populates it.
 
-| Entry | State | Doctrine (shown with the named state; not a ship) |
-|-------|--------|---------------------------------------------------|
-| **Structure** | Shipping (this spec's §7–§8 objects) | Nodes, edges, crevasses, groupings, uncharted — terrain context for defined-risk structures. |
-| **Replay** | **IN-DEVELOPMENT** | How a session unfolded in time — a volume profile flattens that away. Market-profile / TPO-style replay. Not live until capture time-resolution is confirmed to support brackets. |
-| **Footprint / Market Delta** | **IN-DEVELOPMENT** | Bid/ask-classified volume at each price inside a time-sliced bar. The Market Profile lineage that survives the doctrine filter (aggression, not a named shape). No fabricated delta. |
-| **GEX Overlay** | **IN-DEVELOPMENT** | GEX (fast, daily) beside structure (slow) for legibility. A disagreement *alert* would be a forecast and a third product — out of scope (SA-L5 / SA-L10). |
-| **Characterization** | **IN-DEVELOPMENT** | Distributions over published objects (provenance, recency, test-history). Build the view; let the data speak. No forecast language (SA-L5). |
-| **Exploration** | **IN-DEVELOPMENT** | Click-and-drag over price/date translates to VP `/range` queries surfaced through this service; objects-first, this service's summary, not raw bins (VP-L18). (Absorbs v0.3 §8 "Phase 2 — bounded exploration.") |
+## 8b. Characterization stage (post-study; schema-reserved, unserved)
 
-**IN-DEVELOPMENT** is an honest named state: the entry is reachable, the
-doctrine text is readable, and **no data is invented** to fill the
-pane. Schema keys for these views exist as **reserved unserved** (§13).
-Hiding an entry "until it is ready" is a SA-L11 violation. Filling it
-with placeholder charts or empty frames is a SA-L11 violation. Binding
-on production Options Lab **and** DEV-ONLY canvases (SA-DEV Act 3).
+Each level will carry a **probability distribution** over behavior at
+it — where price tends to stop, how far through it runs, how often it
+fails. Explicitly **not a confidence score**: a single number implies
+calibration the evidence does not support and invites members to trade
+it as such. Candidate inputs: geometric strength (contrast, sharpness);
+test history; age and survival; **provenance** — a node built by one
+capitulation day vs thirty quiet days of accumulation should behave
+differently on retest (weighting: SA-Q12; the §11 literature informs
+it); dual-source corroboration (§5a). Measuring touch/fail/through
+requires price action, which detection forbids — characterization is a
+separate downstream measurement stage, never a detection input. Fields
+are defined in the schema and **absent from payloads until the §12a
+study populates them**; consumers rendering empty slots would be
+theater.
 
 ## 9. Calibration corpus (protocol)
 
 - Coach marks levels on reference charts (format: symbol, date,
   price/span, his term for the object, one-line reasoning), stored under
-  the board as the calibration corpus.
+  the board as the calibration corpus. **Scale: dozens of marked
+  profiles across regimes** (trending, balanced, post-gap) — a handful
+  is explicitly not enough.
 - Corpus use: tune vocabulary mapping and the missed-level review; seed
-  SA-Q1/SA-Q2 thresholds. Corpus never substitutes for SA-L9's baseline
-  test — ship/no-ship is the pre-registered baseline study alone.
+  SA-Q1/SA-Q2/SA-Q8 thresholds. Corpus never substitutes for SA-L9's
+  baseline test — ship/no-ship is the pre-registered baseline study
+  alone. **Asymmetry rule:** beats the eye but not the baselines —
+  does not ship; beats the baselines but misses the eye — ships, with
+  the divergence reviewed and documented.
 - The 2026-09-16 chart set (§11) forms the corpus's first three entries.
 
 ## 10. Open questions
@@ -277,8 +386,20 @@ on production Options Lab **and** DEV-ONLY canvases (SA-DEV Act 3).
   futures→options migration — display raw contracts, notional-normalized,
   or era-relative weight? Capture stays raw contracts regardless
   (VP-L14); this is display-time only. Decided with SA-Q3.
+- **SA-Q8** Child-node promotion criteria — quantified from the corpus
+  (established / revisited / size / stepping-stone), thresholds
+  versioned.
+- **SA-Q9** Provisional-feature hysteresis: is no-line-until-promoted
+  sufficient, or do forming features need a sticky on/off rule?
+- **SA-Q10** Dual-source XSP presentation (§5a): source-tagged sets,
+  corroborated union, or default-with-toggle — fixtures decide.
+- **SA-Q11 (Coach C-1, open)** Exploration pane content: objects-only
+  summary per VP-L18, or a narrow member-visible slice-histogram
+  exception. Law stands as objects-only until Coach's word.
+- **SA-Q12** Provenance weighting in characterization (§8b) — informed
+  by the §11 literature and the study data.
 - *Resolved:* SA-Q5 — by Q10 = (b) (DL-714) and Coach Decision 1; the
-  surface law is §8 of this document.
+  surface law is §8 of this document. VPB-Q2 — BOTH (§5a).
 
 ## 11. Reference material
 
@@ -290,22 +411,28 @@ widest view: resolution smearing, the recency question, and uncharted
 terrain above ~7750. Worked example: the 0DTE viewport pipeline in §7.
 Source documents (reclassified):
 Specs/sources/Structure-Doctrine-Voice-Session-2026-09-16.md (DL-712)
-and its v1.2-draft revision (this round) — keepers absorbed; strikes
-recorded there and carried as SA-L10 and the §1 forbidden list; the
-draft's basis/mapping delivery gate aligns with VP-L10/L17 and lives as
-a VP fixture concern. v1.2-draft §13 Phase 2 (replay, footprint / market
-delta, GEX fusion) and §10 characterization are the **doctrine seed**
-for SA-L11's IN-DEVELOPMENT entries — not a license to ship those views
-from this round.
+and its v1.2-draft revision — keepers absorbed; strikes recorded there
+and carried as SA-L10 and the §1 forbidden list; the draft's
+basis/mapping delivery gate aligns with VP-L10/L17 and lives as a VP
+fixture concern.
 
-**Help / Wiki seed (SA-L11, from first publish).** Help and Wiki carry
-the whole arc, not only the shipping Structure view: Structure (live
-terrain) · Replay · Footprint / Market Delta · GEX Overlay ·
-Characterization · Exploration. Each unshipped entry is documented as
-**IN-DEVELOPMENT** with the doctrine sentence in §8.1 — never omitted,
-never described as if live. Sierra / Help Watch: the structure-app Help
-packet seeds this map; Wiki Follow inherits it. A Help page that only
-describes today's canvas is incomplete.
+**Research agenda (adjacent evidence, never validation; feeds §8b and
+Help/Wiki):** Mandelbrot — long-range dependence, Hurst, fractal
+market structure (*The (Mis)Behavior of Markets*) — relevant to why
+structure compounds; long memory is not a license for any no-mapping
+shortcut. Chung & Bellotti (arXiv 2101.07410) — S/R levels reverse
+trends with statistical significance; more prior bounces → more likely
+to bounce; memory decays slowly in stock markets. Garzarelli et al.
+(Sci. Rep. 4:4487) — re-bounce exceeds crossing; self-fulfilling
+dynamics complementing (not replacing) the §1a inventory mechanism.
+Both study price-defined S/R, not volume-prominence structure —
+supportive context, validating no detector here. To pursue:
+provenance literature (concentrated vs dispersed accumulation and
+retest behavior, → SA-Q12); currencies as the persistence proving
+ground (bounded ranges revisit the same levels for decades); time ×
+price correlation (no asserted direction); **node birth** — how a
+level that looks like ordinary price action on the day it forms
+persists for years — a learning tool and content angle.
 
 ## 12. Fixtures
 
@@ -322,10 +449,51 @@ reproduces every interior object byte-identically.
 **Owed:** F3 grouping/severity (blocked by SA-Q2) · F4 attribution +
 first-touch over a two-session archive slice · F5 viewport snap
 (strategy bound inside a void → outward boundary) · F6 uncharted region ·
-F7 the SA-Q4 total-order cases · F8 baseline-study protocol
-pre-registration (SA-L9) · F9 (new) retirement: an edge present in
-generation G and absent in G+1 appears in the generation diff as
-RETIRED with both generation ids.
+F7 the SA-Q4 total-order cases · F8 = the §12a protocol, committed as
+JSON · F9 retirement: an edge present in generation G and absent in
+G+1 appears in the generation diff as RETIRED with both generation ids.
+
+## 12a. F8 — Baseline ship-gate protocol (SA-L9, written per SA-A1)
+
+All values below are versioned DRAFT parameters; they are settled and
+then **frozen at registration** — after registration nothing in this
+protocol may change for that study.
+
+- **Level sets compared.** SA = this service's published edges (and
+  inter-node crevasse floors) for the session, generation as of 09:30
+  ET. Baseline-R = round numbers on the target scale (SPX multiples of
+  25, with 50/100 as a sub-set; XSP ÷10). Baseline-P = prior RTH
+  session's high, low, and close. Baselines are computed by fixed
+  formula, no tuning.
+- **Touch.** First trade within ± `f8.touch_tol = 1 × vp_row` of a
+  level, per level, per session; subsequent touches of the same level
+  ignored for that session.
+- **Reaction metric.** For each touch, over the following
+  `f8.window = 30 min`: MFE = max excursion away from the level on the
+  approach's opposing side; MAE = max excursion through the level.
+  Score per touch = MFE / max(MAE, 1 row). Session score per level
+  set = median of touch scores. No served vocabulary is derived from
+  this metric; it exists only inside the study (SA-L5 governs labels,
+  not validation math).
+- **Holdout.** A NAMED date range of RTH sessions, written into the
+  registration before any evaluation run, disjoint from: every session
+  used in parameter calibration, every session in the §9 corpus, and
+  every session any fixture was cut from. DRAFT shape: two blocks —
+  one historical (from backfill, ≥ 40 sessions) and one forward (the
+  next `f8.forward_sessions = 20` RTH sessions after registration).
+- **Ship rule.** SA ships only if its holdout score exceeds BOTH
+  baselines by ≥ `f8.margin = 15%`, with a bootstrap 95% confidence
+  interval on the difference excluding zero, on each holdout block
+  separately. Anything less is NO-SHIP regardless of how the corpus
+  review reads.
+- **Registered-at mechanics.** The protocol instance (all parameters,
+  the named holdout dates, the SA parameter-set hash under test) is
+  committed as JSON under the board, its sha logged in the DL, BEFORE
+  the first evaluation run. Runs cite the registration sha. A change
+  to any value = a new registration and a fresh forward block.
+- **Misses recorded regardless.** Every touch, score, and per-level
+  outcome lands in the study record whether the gate passes or fails;
+  the corpus review (§9) reads the misses — it never edits the gate.
 
 ## 13. API sketch (v1, to firm up in review)
 
@@ -337,39 +505,36 @@ GET /v1/health
 ```
 
 Objects: groupings[] {span, boundary_voids}, nodes[] {span, attributed
-volume, first_touch, median}, edges[] {price, direction, contrast, span},
-crevasses[] {span, floor, flanks, tag}, uncharted[] {span}, plus identity
-block, provenance passthrough from VP payloads, and status + flags in
-the VP §7 style. **Retirement recording:** each generation publishes a
-diff against its predecessor; objects no longer detected are recorded
-RETIRED with both generation ids — structure never silently disappears,
-and /generations serves the record. Caps and ordering set with fixtures.
-No verbs in labels. No alert or notification endpoints exist in this
-service (SA-L10).
-
-**Reserved unserved (SA-L11).** The v1 payload schema reserves, and does
-not serve, keys for the unshipped views: `replay`, `footprint` /
-`market_delta`, `gex_overlay`, `characterization`, `exploration`.
-Presence in the schema is the reservation; values are omitted or named
-`UNSERVED` until a later spec versions them live. A client must not
-invent bytes for a reserved key. Serving fake series into these keys is
-a SA-L11 violation.
+volume, first_touch, median, source_tag}, edges[] {price, direction,
+location_class, contrast, span}, crevasses[] {span, floor, flanks,
+tag}, uncharted[] {span}, plus identity block, provenance passthrough
+from VP payloads, and status + flags in the VP §7 style.
+`location_class` ∈ node-floor | node-ceiling | internodal | intranode
+(the §8 legend taxonomy). **Characterization fields (§8b) are defined
+in the schema and absent from payloads until §12a populates them.**
+**Retirement recording:** each generation publishes a diff against its
+predecessor; objects no longer detected are recorded RETIRED with both
+generation ids — structure never silently disappears, and /generations
+serves the record. Caps and ordering set with fixtures. No verbs in
+labels. No alert or notification endpoints exist in this service
+(SA-L10).
 
 ## 14. Round log
 
 - Seeded from VP spec rounds 3–10; v0.1 landed DL-711; R2 voice-session
   reclassified (DL-712), lineage corrected (DL-713), Q10 ticked
   (DL-714); v0.2 — app-end positioning, §8 surface law, SA-L9/L10,
-  corpus protocol, SA-Q7.
-- v0.3 — Decision 1 closed by Coach's architecture sentence (bins on
-  the data end via API; member surfaces render these objects);
-  heavy-tick edge pricing explicit; generation retirement recording
-  (§13, F9); v1.2-draft retired to sources with dispositions.
-- v0.4 — this document: **SA-L11** (Coach, 2026-09-17) — the map shows
-  the whole territory; future views are first-class **IN-DEVELOPMENT**
-  navigation with doctrine text; reserved unserved schema; Help/Wiki
-  seed of the whole arc from first publish. Binding on all surface work
-  now. Detection procedure unchanged from v0.3. Next: Grok review
-  (triple pre-flight per house rule), Coach calibrations SA-Q1, SA-Q2;
-  on review PASS, Juliet authors the SA bench plan (the app build
-  board), UNSTAMPED.
+  corpus protocol, SA-Q7; v0.3 — Decision 1 closed, heavy-tick edges,
+  retirement recording; v0.3.1 — Advisor round-1 fixes (§12a protocol,
+  AZ-VP-9-A1 binding).
+- v0.4 — this document, the AUTHORED version replacing the board's
+  directive pointer (DL-728): SA-L11 map-shows-whole-territory;
+  SA-L12 no day-typing; §1a doctrine (inventory persistence, lineage
+  critique); child/appendage/promotion ontology (SA-Q8/Q9); §5a
+  dual-source XSP (VPB-Q2 = BOTH; SA-Q10); §8 legend + Sessions-tool
+  markers; §8a phase roadmap (Exploration with SA-Q11 open, Replay,
+  Footprint + quotes-capture note, GEX side-by-side, Characterization);
+  §8b characterization stage (SA-Q12); §11 research agenda; corpus
+  scale + asymmetry rule; Runner named. Advisor round 2 (in flight vs
+  v0.3.1) dispositions into v0.4.1 or is confirmed absorbed. Open
+  Coach words: SA-Q11 (C-1) and the member-facing product name.
