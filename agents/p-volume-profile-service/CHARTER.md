@@ -15,13 +15,14 @@
 | **Plan v1.2** | [`docs/Volume-Profile-Service-Full-Agent-Bench-Plan-v1.2.md`](../../docs/Volume-Profile-Service-Full-Agent-Bench-Plan-v1.2.md) |
 | **Working spec v0.6** | [`Specs/Volume-Profile-Service-Spec-v0_6.md`](../../Specs/Volume-Profile-Service-Spec-v0_6.md) · **DL-722** · sha1 `a438f9d636e40d4c95feb87874daf8c603344aac` |
 | **SA Spec v0.3** | [`Specs/Structural-Analysis-Service-Spec-v0_3.md`](../../Specs/Structural-Analysis-Service-Spec-v0_3.md) · **DL-721** · sha1 `4638ce958a81e24980ed6fd2e7618aaec51f4cfd` · detection baseline |
-| **SA Spec v0.4** | [`Specs/Structural-Analysis-Service-Spec-v0_4.md`](../../Specs/Structural-Analysis-Service-Spec-v0_4.md) · **DL-725** · **SA-L11** surface law; APPS/`SADEV*` |
+| **SA Spec v0.4 (pointer)** | [`Specs/Structural-Analysis-Service-Spec-v0_4.md`](../../Specs/Structural-Analysis-Service-Spec-v0_4.md) · **DL-728** **DIRECTIVE POINTER** (SA-L11). Not BUILD. Authored v0.4 awaits Coach after Advisor round-2. |
+| **API contract v1.0** | [`Specs/VP-API-Contract-v1_0.md`](../../Specs/VP-API-Contract-v1_0.md) · **DL-726** frozen sha1 `b403937a…` |
 
 **Not this board:** `p-volume-profile-histogram` (Labs dual-store) · `p-session-volume-profile` (heatmap SVP).
 
 ## Mission
 
-Capture and serve **volume at price at the finest honest resolution**. Three parts: Ingest, Engine, API. Stage A: SPY → XSP. No analysis (POC/VA/HVN/LVN are part four).
+**Singular drive (DL-727):** (1) DOWNLOAD the data needed to create the bins (2) CREATE the bins (3) CREATE the API to get the bins. Capture and serve **volume at price at the finest honest resolution**. Composite fenced on VPS2. No analysis vocabulary (POC/VA/HVN/LVN).
 
 ## Invariants
 

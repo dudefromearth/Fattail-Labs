@@ -1,10 +1,21 @@
-# Structural Analysis Service — Spec v0.4
+# DIRECTIVE POINTER — not seated law, not BUILD, nothing builds against this file
 
-**Status:** DRAFT — contract close for review. NOT BUILD. Not on the VP
-service's critical path (VPS2/VPSB proceed independently). **SA-L11 is
-binding on all surface work now** (including APPS Act 3 / the dev canvas).
+**Classification (Coach, 2026-09-17 · DL-728):** this file is a
+**DIRECTIVE POINTER** for **SA-L11** plus Coach scope / VPB-Q2 ticks.
+It was not authored through the review loop. The authored SA spec
+**v0.4** arrives via Coach after Advisor round-2 and **supersedes
+v0_3_1**. Until that file lands, app-end detection/surface law stays
+**v0.3 / v0_3_1**; SA-L11 is a standing directive, not a spec to cite
+as BUILD.
+
+---
+
+# Structural Analysis Service — Spec v0.4 (pointer)
+
+**Status:** **DIRECTIVE POINTER** — not BUILD. Not on the VP service's
+critical path. **SA-L11 ticks below remain Coach's directive.**
 **Date:** 2026-09-17
-**Supersedes:** Structural-Analysis-Service-Spec-v0_3.md
+**Does not supersede:** Structural-Analysis-Service-Spec-v0_3.md (or v0_3_1).
 **Parent contract:** Volume-Profile-Service-Spec-v0_6 — this service is a
 **computing consumer** of `/v1/profile` and `/v1/profile/.../range`. It
 never touches Ingest or raw prints; the histogram is its only input.

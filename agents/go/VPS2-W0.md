@@ -35,7 +35,9 @@ today's tape completes at the close.
 
 ## Coach ticks
 
-- [x] Q5 = EXCLUDE (DL-715) · Q6 = (c) (DL-706) — sessions + developing ship first; composite built, not gated
+- [x] Q5 = EXCLUDE (DL-715) · Q6 = (c) (DL-706) — sessions + developing ship first
+- [x] **Composite fenced** (Coach 2026-09-17 · singular drive / contract v1.0): Engine publishes `session` and `developing` only. `kind=composite` is rejected. Fence lifts only with a later GO.
+- [x] **F3 golden = v0.6.1:** bins are source-space and **byte-identical across offset republish**. Consumers apply `ratio` / `offset_published`. Must be green BEFORE tonight's install byte-match.
 - [x] ACT 2 build authorized immediately on StudioTwo
 - [x] ACT 3 (StudioOne) gated on: tonight's clock window AND the VPS1-G full-RTH report reading GO — produced in the SAME evening activation
 - [x] Q4: still-ambiguous ids EXCLUDED-and-flagged; tonight's proposal refines, build does not block on it
@@ -53,4 +55,4 @@ StudioTwo clock **after 16:00 ET** (tonight). Else HOLD with observed time. Not 
 
 ## What this does not
 
-API · mapping (VPS3) · consumers · analysis vocabulary (VP-L1) · MiniTwo/DudeTwo
+API install (VPS4 build may proceed on StudioTwo against Contract v1.0; install is gated) · mapping (VPS3) as a separate token · consumers · analysis vocabulary (VP-L1) · MiniTwo/DudeTwo · **composite publish**

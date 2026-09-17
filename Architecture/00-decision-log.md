@@ -4,6 +4,63 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-17 — DL-729 Print-absence gap defect · mixed units
+
+**Decision.** Live futures `print_absence` was firing on every print (~11k open/close pairs per product). Cause: `maybe_absence` compared wall `time.time_ns()` to vendor `t` stored as **milliseconds**, scaled only from `now_t`. Law: **one** gap opens after ≥ `vp.gap_min_seconds` = 300 of print silence inside a **SCHEDULED-OPEN** segment, closes at the next eligible print. Compare each timestamp in **seconds**, classified independently (ns / µs / ms / s). Feed-liveness gaps untouched. Today's print-absence files are **regenerated from raw prints** (SoR). Fix the StudioTwo writer **before** tonight's migration; migrate only the corrected job.
+
+**Does not.** Stop `:3000`/`:4000`. Touch `chain_feed`. Rewrite prints.
+
+**Cites:** `VPSB-W0` · `futures_capture.maybe_absence` · **DL-718** raw UTC timestamps.
+
+---
+
+## 2026-09-17 — DL-728 SA v0.4 on disk is a DIRECTIVE POINTER
+
+**Decision (Coach, 2026-09-17).** Board citation “SA v0.4 surface (SA-L11)” is reconciled: [`Specs/Structural-Analysis-Service-Spec-v0_4.md`](../Specs/Structural-Analysis-Service-Spec-v0_4.md) exists (364 lines · sha1 before pointer banner `88c112d45c7c2e5e39cace8df99c322fdd775e7b`) and was **not** authored through the review loop. It is re-marked a **DIRECTIVE POINTER** (SA-L11 + Coach scope / VPB-Q2 ticks) awaiting the **authored v0.4**, which supersedes **v0_3_1** and arrives via Coach after Advisor round-2. **Nothing builds against the pointer.** Detection/surface law remains SA v0.3 (and v0_3_1 when that courier lands).
+
+**Does not.** Delete Coach's SA-L11 text. Treat the pointer as BUILD. Execute `SADEV*` against it.
+
+**Cites:** **DL-725** · **DL-721**.
+
+---
+
+## 2026-09-17 — DL-727 INFRA singular drive: download → bins → API
+
+**Decision (Coach, 2026-09-17).** INFRA's mission order is singular:
+
+1. DOWNLOAD the data needed to create the bins
+2. CREATE the bins
+3. CREATE the API to get the bins
+
+Mapping (no token churn): Step 1 = tonight's collector migration **plus backfill promoted** (SPY equities floor; ES 2017-04; MES 2019-05) after migration, disk-checked, resumable, integrity vs vendor manifests; VPB-Q1 rides along and does **not** block source-space binning. Step 2 = VPS2 as tokened (session + developing; composite fenced) extended over backfilled history. Step 3 = VPS4 pulled forward: API **build** on StudioTwo **now** against frozen Contract v1.0 (auth classes + 403 F6); install behind its gate once Engine goldens are green. Everything else is parked or serves this line. Evening report: tranche progress, bins coverage, API status.
+
+**Does not.** Change CP-1. Two writers. Silent contract drift.
+
+**Cites:** **DL-726** · `VPS2-W0` · `VPSB-W0`.
+
+---
+
+## 2026-09-17 — DL-726 VP API Contract v1.0 frozen · delivery pre-flight
+
+**Decision.** [`Specs/VP-API-Contract-v1_0.md`](../Specs/VP-API-Contract-v1_0.md) is the **frozen** API contract both tracks build against. India pre-flight StudioTwo 2026-09-17:
+
+| File | Lines | sha1 | `## ` | Last heading | Verdict |
+|------|------:|------|------:|--------------|---------|
+| `Specs/VP-API-Contract-v1_0.md` | 85 | `b403937af18140eb7900ccfa72437e7f3e9bc5aa` | 5 | `## Mock fidelity requirement` | **MATCH** |
+| `Specs/Volume-Profile-Service-Spec-v0_6_1.md` | 427 expected | `7e3bbedc58e1cbadc2ce96bb820bf93059f8806d` | — | — | **MISSING** (not invented) |
+| `Specs/Structural-Analysis-Service-Spec-v0_3_1.md` | 367 expected | `8298b572f10784c9e43848c93da50b6a630e3321` | — | — | **MISSING** (not invented) |
+| `Specs/amendments/AZ-VP-9-A1.md` | 41 expected | `53bf74daa8a2b67ac3073d6fdb92bfed9b297ab0` | — | — | **MISSING** (not invented) |
+
+Any API change is **Contract v1.1 through Coach**, never silent drift. Composite remains fenced in the contract (`kind ∈ session \| developing`). F3 golden for VPS2: bins byte-identical across offset republish (v0.6.1 correction; implemented against that stated invariant while the spec file is missing).
+
+**Does not.** Invent missing courier bytes. Lift the composite fence. Member-class `/v1/profile*` (403 F6).
+
+**Cites:** India `gate-reports/India-preflight-2026-09-17-delivery.md` · **DL-727**.
+
+---
+
+---
+
 ## 2026-09-17 — DL-725 SA-L11 · the map shows the whole territory (SA spec v0.4)
 
 **Decision (Coach, 2026-09-17), verbatim intent:** "the future scope of the structure app must never be lost — the current app must make the full breadth apparent."

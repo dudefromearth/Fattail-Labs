@@ -9,7 +9,7 @@ execute or modify this work. Cross-instance conflict → STOP, report to Coach.
 
 **Status:** **STAMPED GO** — 2026-09-17. Chat is not a stamp (**DL-328**). **DL-723.**
 
-**Law:** VP Service **v0.6** sha1 `a438f9d636e40d4c95feb87874daf8c603344aac` · SA Service **v0.3** detection baseline sha1 `4638ce958a81e24980ed6fd2e7618aaec51f4cfd` · **DL-721**. Surface law: SA spec **v0.4** **SA-L11** (**DL-725**) binds Act 3 now — the map shows the whole territory; IN-DEVELOPMENT named state; no fake data, no empty widgets, no hiding. Coach Decision 1 verbatim: "Raw bins stay on StudioOne the collector, bins are available through an API"
+**Law:** VP Service **v0.6** sha1 `a438f9d636e40d4c95feb87874daf8c603344aac` · SA Service **v0.3** detection baseline sha1 `4638ce958a81e24980ed6fd2e7618aaec51f4cfd` · **DL-721**. **SA-L11** is a Coach **directive** (**DL-725** / **DL-728**) — `Specs/Structural-Analysis-Service-Spec-v0_4.md` is a **POINTER**, not BUILD; **nothing builds against it**. Frozen API: Contract v1.0 (**DL-726**). Coach Decision 1 verbatim: "Raw bins stay on StudioOne the collector, bins are available through an API"
 
 **Resource rule:** on StudioTwo contention, the **COLLECTOR wins**; this track **throttles**.
 
@@ -24,8 +24,8 @@ execute or modify this work. Cross-instance conflict → STOP, report to Coach.
 
 ## Acts (APPS executes after stamp — own pre-flight)
 
-1. **Dev API** over the **local** store (`/Users/ernie/fattail-market-data` on StudioTwo — INFRA collector path). Read histograms / prints as the VP data end exposes them locally; do not invent a second ingest. **READ-ONLY.**
-2. **SA detection prototype** per SA v0.3 detection procedure (DRAFT) — computing consumer of histograms, never raw-print SoR.
+1. **Dev API / mock-first (amended 2026-09-17).** VP Profile API **Contract v1.0** (`Specs/VP-API-Contract-v1_0.md`, sha1 `b403937af18140eb7900ccfa72437e7f3e9bc5aa`) is frozen. Act 1 builds a **fixture-faithful mock** of that contract (F1, F2, F5, F8; GAPPED; mapping-STALE; member **403** `{"error":"computing_consumers_only"}`). SA prototype and canvas develop against the mock via `LABS_SA_DEV_VP_API_BASE` (default `mock://`). Flip the base URL to the live dev API when real bins serve — **zero rework**. Client never works around the contract; mismatch is a report to Coach, not a shim. Local collector store remains **READ-ONLY** and is not the mock's SoR.
+2. **SA detection prototype** per SA v0.3 detection procedure (DRAFT) — computing consumer of contract histograms, never raw-print SoR.
 3. **Dev canvas** — DEV-ONLY member-surface prototype: SA objects only (Q10=(b) / VP-L18). No raw bins as the member rendering. **Member deny even in dev.** **SA-L11 (DL-725):** first-class nav for Replay, Footprint / Market Delta, GEX Overlay, Characterization, Exploration in honest **IN-DEVELOPMENT** with doctrine text; no fake data, no empty widgets, no hiding.
 
 ## Does not
