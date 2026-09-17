@@ -4,6 +4,260 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-17 — DL-723 SA-DEV-W0 STAMPED GO · APPS owns Acts 1–3
+
+**Decision (Coach, 2026-09-17).** Stamp [`agents/go/SA-DEV-W0.md`](../agents/go/SA-DEV-W0.md). All ticks as written, plus **member deny even in dev**. **`SADEV*` = APPS-owned** (**DL-720**). APPS executes Acts 1–3 on its **own** pre-flight. INFRA does not execute this token.
+
+| Tick | Law |
+|------|-----|
+| v0.6 / v0.3 seated | **DL-721** |
+| DEV-ONLY | no production Options Lab surface, no StudioOne jobs |
+| ingest READ-ONLY | APPS never writes `{LABS_MARKET_DATA_ROOT}/vp/ingest/` |
+| collector wins | StudioTwo disk/CPU/ports — this track throttles |
+| Acts 1–3 for APPS | (1) dev API over local store READ-ONLY (2) SA detection prototype (3) dev canvas, SA objects only |
+| Member deny even in dev | Q10=(b) / VP-L18 holds on the **dev** canvas; members do not see raw bins there |
+
+**Does not.** INFRA executing `SADEV*`. Write ingest. Production Options Lab surface. Self-review (ADVISOR).
+
+**Cites:** **DL-720** · **DL-721** · **DL-714** Q10=(b) · token `SA-DEV-W0`.
+
+---
+
+## 2026-09-17 — DL-722 VP Service v0.6 is the working spec
+
+**Decision (Coach, 2026-09-17).** [`Specs/Volume-Profile-Service-Spec-v0_6.md`](../Specs/Volume-Profile-Service-Spec-v0_6.md) is the **working spec** for the VP **data end** (INFRA · `VPS*` / `VPSB*`). Bytes unchanged: sha1 `a438f9d636e40d4c95feb87874daf8c603344aac` (373 lines · **DL-721** triple). Header still reads DRAFT; **this DL is the stamp** that INFRA builds against it. No spec-body rewrite this packet (ADVISOR still owns review). SA v0.3 remains the app-end spec for `SADEV*` (APPS).
+
+**Does not.** Change sha1. Execute `SADEV*`. Self-review.
+
+**Cites:** **DL-721** · board `agents/p-volume-profile-service/`.
+
+---
+
+## 2026-09-17 — DL-721 VP Service v0.6 + SA Service v0.3 seated (supersede v0.5 / SA v0.1)
+
+**Decision.** Seated law for the two-end stack:
+
+| File | Lines | sha1 | `## ` | Last heading |
+|------|------:|------|------:|--------------|
+| `Specs/Volume-Profile-Service-Spec-v0_6.md` | 373 | `a438f9d636e40d4c95feb87874daf8c603344aac` | 16 | `## 14. Round log` |
+| `Specs/Structural-Analysis-Service-Spec-v0_3.md` | 311 | `4638ce958a81e24980ed6fd2e7618aaec51f4cfd` | 16 | `## 14. Round log` |
+
+India pre-flight 2026-09-17 StudioTwo: **MATCH** both triples. **Supersedes** VP Service **v0.5** (`a487a702…`, **DL-705**) and SA **v0.1** (`d6ae0e68…`, **DL-711**) as working text (those files remain on disk as baselines).
+
+**Coach Decision 1 (verbatim, 2026-09-17):** "Raw bins stay on StudioOne the collector, bins are available through an API"
+
+**Retired:** `Specs/Volume-Profile-Spec-v1_2-draft.md` → `Specs/sources/Volume-Profile-Spec-v1_2-draft.md` (sha1 before banner `25d4dbcf3d84ee52c7d256a63f893347b0d7e5d5`). SOURCE DOCUMENT, not law. Dispositions of the v1.2 review (source-tick bins, pinned band + generation id, heavy-tick edge, N as detector parameter, generations/retirement, characterization split, baseline ship-gate, click-drag own pane, GEX fusion alert cut, paper claims softened, “everything else decided” struck) are **accepted as recorded in that draft’s §15**; remaining open items (Decision 2, 3 mapping fixture, 4 color, 5 lexicon) live in SA v0.3 / VP v0.6 §12, not in the retired draft.
+
+**Does not.** BUILD GO for SA. INFRA executing `SADEV*`. Spec self-review (ADVISOR).
+
+**Cites:** **DL-714** Q10=(b) · **DL-720** instances · token `SA-DEV-W0` (APPS).
+
+---
+
+## 2026-09-17 — DL-720 Instance split: INFRA · APPS · ADVISOR
+
+**Decision (Coach, 2026-09-17).** Three instances. Shared law unchanged: **CP-1**, courier triples, **DL as the single record**. Cross-instance conflicts: **STOP and report to Coach** — never negotiate instance-to-instance. StudioTwo contention (disk guard, CPU, ports): the **COLLECTOR wins**; apps throttle.
+
+| Instance | Owns | Does not |
+|----------|------|----------|
+| **GROK BUILD — INFRA** (this instance) | `VPS*` / `VPSB*` token namespace; VP **data end** (collectors, Engine, mapping, API); **all StudioOne acts**; tonight’s chain (**VPS2 ACT 3 → futures migration**) | `SADEV*` work; spec self-review |
+| **GROK BUILD — APPS** | `SADEV*` namespace (dev API instance, SA prototype, dev canvas) | Write the collector store (READ-ONLY of INFRA store only); VPS/VPSB tokens; StudioOne VP jobs |
+| **GROK ADVISOR** | Reviews | Build. Queued **VP v0.6** and **SA v0.3** reviews route **here** — INFRA no longer self-reviews specs |
+
+**Does not.** Change CP-1. Merge instance roles. Let APPS write `{LABS_MARKET_DATA_ROOT}/vp/ingest/`.
+
+**Cites:** board `agents/p-volume-profile-service/` · tokens `VPS*` `VPSB*`.
+
+---
+
+## 2026-09-17 — DL-719 VPSB collect on StudioTwo today; capacity guard
+
+**Decision (Coach, 2026-09-17).** Collect **today** on StudioTwo (`ai.fattail.labs.vp-futures`); migrate to StudioOne tonight after 16:00 ET (prefer CME 17:00–18:00 CT halt). **Capacity before launch:** `df` + `du`; estimate low single-digit GB/day; require **≥ 20× estimate and ≥ 10% volume free**. Store path recorded; must not starve `:3000`/`:4000`. Running guard: every 15 min, stop writing below **5 GB** free with gap **`DISK_GUARD`**. Never two collectors on one store.
+
+**Does not.** Launch if headroom fails. Touch `chain_feed` / `sym_feed`.
+
+**Cites:** `VPSB-W0` · **DL-717** · **DL-718**.
+
+---
+
+## 2026-09-17 — DL-718 VPSB-W0 amendments (docs-verified)
+
+**Decision (Coach, 2026-09-17).** Recorded on `VPSB-W0`: (1) Futures Advanced **full access** is fact — **no tier/entitlement check** this packet; WS refuse = report line. (2) API family `/futures/v1/*` + futures WS; timestamps **UTC ns stored raw**. (3) Session key = vendor **`session_end_date`**, not local-clock math. (4) Active contracts from `GET /futures/v1/contracts` daily. (5) Scheduled halt from `GET /futures/v1/schedules` is **never a gap**; status via `GET /futures/v1/market-status`. (6) Mandatory print fields: price, size, exchange timestamp, contract ticker, `session_end_date`; conditions only if the stream emits them; CME fixture **after** tonight's capture.
+
+**Cites:** `VPSB-W0` · **DL-717**.
+
+---
+
+## 2026-09-17 — DL-717 Q1 SECURED · Massive Futures Advanced · VPSB collector GO
+
+**Decision (Coach, 2026-09-17).** **Q1 SECURED:** Massive **Futures Advanced** is active. Stamp `agents/go/VPSB-W0.md`: collector **only** — ES and MES trades on **one futures WebSocket** (separate cluster from stocks `T.SPY`). Sibling launchd `ai.fattail.labs.vp-futures`. Contract symbol mandatory (VP-L17). Install **after 16:00 ET** today, not pre-open. Backfill / VPB-Q1 / Stage B **not** this packet.
+
+**Does not.** Touch `chain_feed` or `sym_feed`. Retry futures entitlement on the stocks socket. Engine/API.
+
+**Cites:** `VPSB-W0` · VP spec v0.5 Q1 · CP-1 **DL-707**.
+
+---
+
+## 2026-09-17 — DL-716 VPS2-W0 STAMPED · sequencing correction
+
+**Decision (Coach, 2026-09-17).** Stamp `agents/go/VPS2-W0.md`. **Sequencing correction (verbatim):** the prior packet over-serialized — the VPS1-G full-RTH report gates only StudioOne install and live runs (ACT 3), never StudioTwo build (ACT 2). Build proceeds today in parallel with capture. Only physics waits: today's tape completes at the close.
+
+Q5=EXCLUDE (**DL-715**) · Q6=(c) (**DL-706**) sessions+developing first · Q4 ambiguous EXCLUDED-and-flagged (proposal tonight, not a build block) · Engine kill switch does not touch Ingest/`chain_feed` · first live-RTH developing run is **2026-09-18** monitored.
+
+**Does not.** VPS3. API. Spec body edits. ACT 3 before 16:00 ET.
+
+**Cites:** plan v1.2 · `VPS2-W0`.
+
+---
+
+## 2026-09-16 — DL-715 Q5 = EXCLUDE odd lots from Engine eligibility
+
+**Decision (Coach, 2026-09-16).** **Q5 = EXCLUDE** odd lots from **member-facing Engine eligibility**. `vp.include_oddlots` remains one config from include. **Capture stores odd lots always.** Reviewer lean, Coach-stamped here.
+
+**Does not.** Change capture. Create `VPS2-W0`. Spec body edits this packet.
+
+**Cites:** `VPS1-W0` · spec v0.5 §4 · **DL-709**.
+
+---
+
+## 2026-09-16 — DL-714 Q10 = (b) SA objects only; bins internal
+
+**Decision (Coach, 2026-09-16).** **Q10 = (b):** member-facing surfaces show **SA objects only**; raw bins are **internal** to computing consumers. Recorded per Coach doctrine (“only show what the trader requires”); settles the Stage B licensing hedge. **AZ-VP-9 amendment** + **SA-Q5** surface-law ownership land in the **next authoring rounds** (VP v0.6 pointer, SA v0.2). **No spec edits in this packet.**
+
+**Does not.** Rewrite AZ-VP-9 or SA v0.1 tonight. Treat lean as already amended in Specs/.
+
+**Cites:** VP spec §12 Q10 · SA-Q5 · board `p-volume-profile-service`.
+
+---
+
+## 2026-09-16 — DL-713 Structure-levels review was against the v0.2 line
+
+**Decision.** The structure-levels review was written against the **v0.2** line. Seated law is **`Specs/Volume-Profile-Service-Spec-v0_5.md`** (**DL-705**, sha1 `a487a702dff7de45f3a0d4ba0ca09199bd2586dd`) with **VPS1-W0 stamped** (**DL-709**). The split that review recommends now exists on disk as **two spec lines**: VP Service v0.5 (bins/ingest) and Structural Analysis Service v0.1 (**DL-711**). The review is **not binding**. Its substantive strikes stand and are recorded in **DL-712**. Its findings on detection procedure, determinism, and named states are already owed items in SA v0.1 (**SA-Q4**, **SA-L6**, §8).
+
+**Does not.** Re-open VP v0.2 as law. Treat the review as a GO.
+
+---
+
+## 2026-09-16 — DL-712 Voice-session "v1.0-draft" is a SOURCE DOCUMENT, not a spec
+
+**Decision.** `Specs/Volume Profile — Full Specification v1.0-draft.md` is moved to [`Specs/sources/Structure-Doctrine-Voice-Session-2026-09-16.md`](../Specs/sources/Structure-Doctrine-Voice-Session-2026-09-16.md) (pre-banner sha1 `8309dfa33beda8a8eeca39e587228c3f9ccf9ae2`, 259 lines). **SOURCE DOCUMENT**, not a spec. **"v1.0" is void.** Never a review or build object. It is a voice-session retelling of the doctrine now seated in **Structural-Analysis-Service-Spec-v0_1** (**DL-711**). Where they conflict, **the spec is law**.
+
+**Strikes — do not re-import:**
+
+| Voice-session claim | Why it is struck |
+|---------------------|------------------|
+| "predictive support and resistance" + hit notifications + green/red floor-ceiling | Violate **VP-L1** / **SA-L5** |
+| "basis immaterial" | Refuted by **VP-L10** / **VP-L17** roll coherence |
+| "penny bins on ES" | Refuted by **VP-L12** `vp_row` |
+| floating ±2.5σ band whose membership rewrites levels | Refuted by **SA-L1/L2/L3** and SA §7 snap-outward viewport |
+
+**Keepers — MINE-FOR-SA-v0.2:**
+
+- Baseline ship-gate: detected structure must beat round numbers and prior highs/lows on a **pre-registered** test; baselines decide shipping; Coach's marks tune vocabulary
+- Corpus protocol for Coach's level marks
+- Click-and-drag as a bounded `/range` query (Phase 2)
+- Vocabulary merges: cliff→edge, crevice→crevasse, well = alias of crevasse
+
+**Does not.** Edit SA v0.1 or VP v0.5 body this packet.
+
+---
+
+## 2026-09-16 — DL-711 Structural Analysis Service Spec v0.1 is the part-four spec line
+
+**Decision.** The **only** part-four spec line is [`Specs/Structural-Analysis-Service-Spec-v0_1.md`](../Specs/Structural-Analysis-Service-Spec-v0_1.md).
+
+India pre-flight 2026-09-16 StudioTwo — **MATCH:**
+
+| | Expected | Observed |
+|--|----------|----------|
+| Lines | 224 | 224 |
+| sha1 | `d6ae0e682cde2cb4057e6dda0fa83bc6430f239d` | `d6ae0e682cde2cb4057e6dda0fa83bc6430f239d` |
+| `## ` headings | 13 | 13 |
+| Last heading | `## 12. Round log` | `## 12. Round log` |
+
+**Does not.** BUILD GO for SA. Authoring revisions. Treat any other file as part-four law.
+
+---
+
+## 2026-09-16 — DL-710 Coach overrule · Massive tier is bookkeeping (DL-709 thread)
+
+**Decision (Coach, 2026-09-16), recorded with reasoning (doctrine).** The Massive dashboard tier observation is reclassified from **blocking condition** to **bookkeeping**. The stamped acceptance already covered both tiers (Individual → proceed at 0 spare stocks-WS headroom via multiplexing; Business → headroom 2), so no decision rode on the answer. The CP-1-relevant fact stands independently: `chain_feed` is REST-only; the WS allowance is a separate budget; `T.SPY` is the first and only stocks WS. Account is verified and in good standing per Coach. If any future packet needs a **second** stocks WS, tier gets read then — as a real decision, not tonight.
+
+**Does not.** Change CP-1. Create `VPS2-W0`. Touch `chain_feed`.
+
+**Cites:** `VPS1-W0` · **DL-709**.
+
+---
+
+## 2026-09-16 — DL-709 VPS1-W0 STAMPED · EXTEND + Q4 capture ambiguity
+
+**Decision (Coach, 2026-09-16).** Stamp `agents/go/VPS1-W0.md`: Q2 quotes-only · ingest **EXTEND** `sym_feed` (`LABS_VP_SPY_TRADES=1`, T.SPY WS, quote path unchanged) · connection budget **accepted with condition** (tier from Massive dashboard before first connect; Individual 0-spare accepted because subscriptions multiplex on one stocks WS) · Q4 fixture **accepted for CAPTURE** with known ambiguity (Engine: ambiguous/id 0 **EXCLUDED-and-flagged** until a resolution pass with Q5, never silent volume) · odd lots stored always · auction=true · install outside RTH + CP-1 + rollback of **sym_feed only**.
+
+**Lineage:** **DL-706** (VPS0 stamp) · **DL-707** (CP-1) · **DL-708** (token filed).
+
+**Does not.** `VPS2-W0`. Engine publish. MiniTwo/DudeTwo. chain_feed changes.
+
+**Cites:** `VPS1-W0` · `gate-reports/VPS-Q2.md` · `server/fixtures/vp_q4_stock_trade_conditions.json`.
+
+---
+
+## 2026-09-16 — DL-708 VPS1-W0 filed · EXTEND sym_feed (awaiting stamp)
+
+**Decision (filed, not installed).** Q2 (`gate-reports/VPS-Q2.md`) = **quotes-only**. Ingest design = **EXTEND** `sym_feed`: add Massive stocks **T.SPY** WebSocket in the same process; 5 s quote poll and `mb:sym:SPY` stay the quote contract. Odd lots stored always; Q5 still deferred (Engine). Q4 fixture at `server/fixtures/vp_q4_stock_trade_conditions.json` (Massive 40-row table; volume eligibility **AMBIGUOUS** except id=2 documented). **ACT 3 StudioOne install waits on Coach stamp of `VPS1-W0` + clock gate + CP-1.** No `VPS2-W0`.
+
+**Does not.** Connect Massive from StudioTwo. Install on StudioOne this packet. Engine.
+
+**Cites:** `agents/go/VPS1-W0.md` · plan v1.2 · CP-1 **DL-707**.
+
+---
+
+## 2026-09-16 — DL-707 CP-1 Chain primacy (standing law)
+
+**Decision (Coach, 2026-09-16).** Standing law **CP-1**, recorded verbatim:
+
+> **CP-1 — CHAIN PRIMACY.** The chain-snapshot collection on StudioOne (chain_feed and its supporting jobs) is never disrupted by Volume Profile Service work. If any test, install, invocation, backfill, or migration step could disrupt it — including indirectly via shared Massive account connection/rate limits, disk I/O or CPU contention, port conflicts, or launchd changes — the step is either redesigned to remove the risk or HELD until after the RTH close (16:00 ET). "Could disrupt" is judged pessimistically; when uncertain, hold. Every StudioOne packet must (a) carry CP-1 verbatim in its GO, (b) state its expected resource footprint (connections, disk, CPU) against chain_feed's needs, (c) capture chain_feed process status and last-snapshot freshness BEFORE and AFTER execution as evidence, and (d) include a rollback line: the single command or action that removes the change. A packet whose AFTER check shows chain_feed degraded is a FAIL regardless of its own success, and its rollback executes immediately.
+
+**Why.** Volume Profile must not starve or restart the chain collector. Pessimistic hold.
+
+**Does not.** Change chain_feed. Authorize VPS1. Reopen Histogram/SVP. MiniTwo/DudeTwo.
+
+**Cites:** plan v1.2 · token `VPS-Q2-W0` (must carry CP-1) · `VPS0-W0` STAMPED **DL-706** · spec v0.5 **DL-705**.
+
+---
+
+## 2026-09-16 — DL-706 VPS0-W0 STAMPED · VPS0 CLOSED
+
+**Decision (Coach, 2026-09-16).** Stamp `agents/go/VPS0-W0.md` with these ticks only: completeness MATCH · **DL-705** sha1s (truncated `ebdc633d…` CORRUPT) · §13 present · **Q6 = (c)** all-history running totals · **Q7 = (a)** source-space bins + mapping block · **Q5 DEFERRED to VPS2-W0** (blocks first publish) · isolation FAIL list stands · StudioOne-by-named-packet only. **Q8 / Q10 remain OPEN** and do not block. **VPS0 is CLOSED.**
+
+**Why.** GATE 0 documents are complete (plan v1.1, restore sha1s). Build still waits on Q2 (own GO, StudioOne, outside RTH) then `VPS1-W0`.
+
+**Does not.** Ingest / Engine / API. StudioOne SSH in VPS0. MiniTwo / DudeTwo. Histogram dual-store / SVP. Q5 value (still deferred). Part four.
+
+**Cites:** `VPS0-W0` · plan v1.1 · spec v0.5 sha1 `a487a702dff7de45f3a0d4ba0ca09199bd2586dd` · **DL-705**.
+
+---
+
+## 2026-09-16 — DL-705 Volume Profile Service spec restore (review objects)
+
+**Decision.** The **review objects** for Volume Profile Service are the underscore files in `Specs/`:
+
+| File | Lines | sha1 | `## ` headings | Last heading |
+|------|------:|------|----------------:|--------------|
+| `Specs/Volume-Profile-Service-Spec-v0_5.md` | 358 | `a487a702dff7de45f3a0d4ba0ca09199bd2586dd` | 16 | `## 14. Round log` |
+| `Specs/Volume-Profile-Service-Spec-v0_4.md` | 245 | `9b4a56e0dceaa2a4a1f25430dc8cf6356b4b5cd8` | 16 | `## 14. Round log` |
+
+Pre-flight 2026-09-16 StudioTwo: `wc -l`, `shasum -a 1`, `grep -c '^## '`, last `^## ` heading — **exact match**. Nothing binds to a truncated cut.
+
+**CORRUPT ARTIFACT (do not cite as law):** `Specs/Volume Profile Service — Spec v0.5.md` (spaces + em dash) · 155 lines · sha1 `ebdc633d2dd8191f7d01e35f1548347566781168` · ended mid-§6. **Superseded by the restore** `Volume-Profile-Service-Spec-v0_5.md`. Same-class truncated v0.2 spaces file remains on disk as history, not BUILD.
+
+**Filename mapping:** Coach-delivered names are **underscore** (`Volume-Profile-Service-Spec-v0_5.md`). Earlier planning cited the **spaces/em-dash** convention (`Volume Profile Service — Spec v0.5.md`). Canonical land path for v0.5 law is the underscore file above. Plan v1.1 cites that path.
+
+**Does not.** BUILD GO. Q5/Q6/Q7 ticks (those are `VPS0-W0`). Ingest/Engine/API. StudioOne SSH. Histogram dual-store / SVP reopen.
+
+**Cites:** plan `docs/Volume-Profile-Service-Full-Agent-Bench-Plan-v1.1.md` · token `agents/go/VPS0-W0.md` · board `agents/p-volume-profile-service/`.
+
+---
+
 ## 2026-09-14 — DL-703 Practice Position Lifecycle PPL3: close gates are API law
 
 **Decision.** Member `POST` / `PATCH` of a `TO_CLOSE` fill is gated in the API (four gates; 422 without an explicit payload override). `DELETE` of a TO_OPEN that still has a non-synthetic close slice is **409** and names the blocking close id. Kit `useConfirm` / `AlertDialog` replaces `window.confirm` on TradeSheet and blotter bulk trash. Import commit stays **OD-25** (not 422 on truncated-history orphans). Soft-trash stays **OD-19** (not this packet).
