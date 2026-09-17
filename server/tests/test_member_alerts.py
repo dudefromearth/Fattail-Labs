@@ -161,6 +161,31 @@ def test_stream_is_not_market_socket(client):
         _purge(iid)
 
 
+def test_delete_alert(client):
+    _on()
+    iid = _iid("zztest-alm-del@labs.test")
+    try:
+        r = client.post(
+            "/api/me/alerts",
+            json=_draft(),
+            cookies=cookie_for("navigator", iid),
+        )
+        assert r.status_code == 200, r.text
+        aid = r.json()["alert_id"]
+        gone = client.delete(
+            f"/api/me/alerts/{aid}",
+            cookies=cookie_for("navigator", iid),
+        )
+        assert gone.status_code == 200, gone.text
+        listed = client.get(
+            "/api/me/alerts",
+            cookies=cookie_for("navigator", iid),
+        )
+        assert listed.json()["alerts"] == []
+    finally:
+        _purge(iid)
+
+
 def test_stats_no_pnl(client):
     _on()
     iid = _iid("zztest-alm-st@labs.test")

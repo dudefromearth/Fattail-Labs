@@ -1470,11 +1470,19 @@ export function shiftCardStrikesBySteps(
 export function loadAlerts(): AnalyzerThresholdAlert[] {
   if (typeof window === "undefined") return [];
   try {
-    const s = sessionStorage.getItem(ALERT_KEY);
-    if (!s) return [];
-    const arr = JSON.parse(s) as AnalyzerThresholdAlert[];
+    const sess = sessionStorage.getItem(ALERT_KEY);
+    let raw = sess || localStorage.getItem(ALERT_KEY);
+    if (!sess && raw) {
+      try {
+        sessionStorage.setItem(ALERT_KEY, raw);
+      } catch {
+        /* quota / private */
+      }
+    }
+    if (!raw) return [];
+    const arr = JSON.parse(raw) as AnalyzerThresholdAlert[];
     if (!Array.isArray(arr)) return [];
-    return arr.map((a) => {
+    const loaded = arr.map((a) => {
       const runState = normalizeAlertRunState(
         a.runState,
         a.enabled,
@@ -1487,6 +1495,14 @@ export function loadAlerts(): AnalyzerThresholdAlert[] {
         enabled: alertIsArmed(runState),
       };
     });
+    try {
+      const json = JSON.stringify(loaded);
+      sessionStorage.setItem(ALERT_KEY, json);
+      localStorage.setItem(ALERT_KEY, json);
+    } catch {
+      /* quota */
+    }
+    return loaded;
   } catch {
     return [];
   }
@@ -1500,10 +1516,13 @@ export function durableAlerts(
 
 export function saveAlerts(alerts: AnalyzerThresholdAlert[]): void {
   if (typeof window === "undefined") return;
-  sessionStorage.setItem(
-    ALERT_KEY,
-    JSON.stringify(durableAlerts(alerts)),
-  );
+  const json = JSON.stringify(durableAlerts(alerts));
+  sessionStorage.setItem(ALERT_KEY, json);
+  try {
+    localStorage.setItem(ALERT_KEY, json);
+  } catch {
+    /* quota / private mode */
+  }
 }
 
 export function alertVerb(type: ThresholdAlertType): string {

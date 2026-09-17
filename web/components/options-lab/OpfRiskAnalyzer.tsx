@@ -145,7 +145,11 @@ import AlertBuilderDialog, {
 } from "@/components/options-lab/AlertBuilderDialog";
 
 import type { AlertsManagerDraft } from "@/lib/alerts/analyzerAlertsAdapter";
-import { alertUnbound } from "@/lib/alerts/analyzerAlertsAdapter";
+import {
+  alertUnbound,
+  hydrateAlertsFromManager,
+  syncAlertsToManager,
+} from "@/lib/alerts/analyzerAlertsAdapter";
 import {
   algoEntryDebit,
   isOtmDebitButterfly,
@@ -356,6 +360,7 @@ export default function OpfRiskAnalyzer() {
   const [alerts, setAlerts] = useState<AnalyzerThresholdAlert[]>(
     () => loadAlerts(),
   );
+  const [alertsReady, setAlertsReady] = useState(false);
   const [posture, setPosture] = useState<SessionPosture>("Held");
   const [gexEnabled, setGexEnabled] = useState(true);
   const [gexValueMode, setGexValueMode] = useState<ValueModeId>(
@@ -680,9 +685,21 @@ export default function OpfRiskAnalyzer() {
     savePositions(positions);
   }, [positions, bookHydrated]);
   useEffect(() => {
-    if (!bookHydrated) return;
+    let alive = true;
+    void hydrateAlertsFromManager(loadAlerts()).then((remote) => {
+      if (!alive) return;
+      if (remote) setAlerts(remote);
+      setAlertsReady(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  useEffect(() => {
+    if (!bookHydrated || !alertsReady) return;
     saveAlerts(alerts);
-  }, [alerts, bookHydrated]);
+    void syncAlertsToManager(alerts);
+  }, [alerts, bookHydrated, alertsReady]);
 
   useEffect(() => {
     if (!bookHydrated) return;

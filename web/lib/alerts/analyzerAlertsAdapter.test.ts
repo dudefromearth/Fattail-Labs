@@ -7,6 +7,8 @@ import {
   ALERTS_SOURCE_SYSTEM,
   ALERTS_SUITE,
   alertUnbound,
+  fromManagerRecord,
+  toManagerDraft,
 } from "./analyzerAlertsAdapter";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -138,5 +140,16 @@ assert(algoSeed.trailFloorPct === 20, "algo keeps floor %");
 assert(algoSeed.overlay === true, "algo keeps overlay");
 assert(algoSeed.demo === true, "algo keeps demo");
 assert(algoSeed.trailStopReason === "give it back", "algo keeps reason");
+
+const round = fromManagerRecord({
+  ...toManagerDraft(price),
+  id: price.id,
+  enabled: true,
+  created_at: price.createdAt,
+});
+assert(round.id === price.id, "round-trip id");
+assert(round.type === "price_above", "round-trip type");
+assert(round.symbol === "SPX", "round-trip symbol");
+assert(round.targetPrice === 6700, "round-trip target");
 
 console.log("  adapter constants + unbound + run-state ok");

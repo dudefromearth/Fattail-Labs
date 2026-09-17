@@ -204,6 +204,28 @@ def upsert_alert(request: Request, body: dict = Body(...)) -> dict:
     return _row(row)
 
 
+@router.delete("/api/me/alerts/{alert_id}")
+def delete_alert(request: Request, alert_id: str) -> dict:
+    """Remove a member alert. Required so a delete on one machine does not
+    resurrect from the DB on the next sign-in."""
+    claims = require_session(request)
+    _require_manager()
+    iid = _iid(claims)
+    aid = (alert_id or "").strip()
+    if not aid:
+        raise HTTPException(status_code=400, detail="alert_id required")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM member_alerts WHERE alert_id = %s AND identity_id = %s",
+                (aid, iid),
+            )
+            n = cur.rowcount
+    if not n:
+        raise HTTPException(status_code=404, detail="alert not found")
+    return {"ok": True, "alert_id": aid}
+
+
 @router.get("/api/me/alerts/stats")
 def stats(request: Request) -> dict:
     claims = require_session(request)
