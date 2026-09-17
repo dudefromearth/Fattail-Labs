@@ -70,7 +70,7 @@ export type TosLeg = {
   quantity: number;
 };
 
-/** Current price for the script (PC-TOS-2). Pending CHECK PRICE → live mid. */
+/** Current price for the script. Locked cards use D* — live mid only when unlocked. */
 export function tosScriptPrice(pos: {
   lastNatSigned: number | null;
   livePackagePerShare: number | null;
@@ -82,10 +82,6 @@ export function tosScriptPrice(pos: {
         checkPrice?: true;
       };
 }): number {
-  if (pos.lock.mode === "locked" && pos.lock.checkPrice) {
-    const live = pos.lastNatSigned ?? pos.livePackagePerShare;
-    return live != null && Number.isFinite(live) ? live : pos.lock.packageDebitPerShare;
-  }
   if (pos.lock.mode === "locked") return pos.lock.packageDebitPerShare;
   const live = pos.lastNatSigned ?? pos.livePackagePerShare;
   return live != null && Number.isFinite(live) ? live : 0;

@@ -20,6 +20,7 @@ import {
   calendarDteOf,
   definedDebitSigned,
   isOptionPointerExpired,
+  parseSignedPackagePrice,
   type AnalyzerPosition,
 } from "@/lib/options-lab/analyzerBook";
 import { boundSelectValue, dteFromClock } from "@/lib/options-lab/chainControls";
@@ -112,11 +113,18 @@ function fmtStrike(n: number): string {
  * Locked: click to edit D*. Tab / Enter / Return (or blur) commits;
  * the card stays locked and the canvas re-renders at the new basis.
  */
+function formatSignedPrice(price: number | null, isCredit: boolean): string {
+  if (price == null || !Number.isFinite(price)) return "";
+  const mag = Math.abs(price).toFixed(2);
+  return isCredit ? `-${mag}` : mag;
+}
+
 function PackagePriceField({
   id,
   locked,
   price,
   priceLabel,
+  isCredit,
   textMain,
   onCommit,
   onLockForEdit,
@@ -125,17 +133,16 @@ function PackagePriceField({
   locked: boolean;
   price: number | null;
   priceLabel: string;
+  isCredit: boolean;
   textMain: string;
-  onCommit: (magnitude: number) => void;
+  onCommit: (magnitude: number, isCredit: boolean) => void;
   onLockForEdit: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const committedRef = useRef(false);
   const stayEditingRef = useRef(false);
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(() =>
-    price != null && Number.isFinite(price) ? price.toFixed(2) : "",
-  );
+  const [draft, setDraft] = useState(() => formatSignedPrice(price, isCredit));
 
   useEffect(() => {
     if (locked) {
@@ -151,8 +158,8 @@ function PackagePriceField({
 
   useEffect(() => {
     if (editing) return;
-    setDraft(price != null && Number.isFinite(price) ? price.toFixed(2) : "");
-  }, [price, editing]);
+    setDraft(formatSignedPrice(price, isCredit));
+  }, [price, isCredit, editing]);
 
   useEffect(() => {
     if (!editing) return;
@@ -166,7 +173,7 @@ function PackagePriceField({
 
   const beginEdit = () => {
     committedRef.current = false;
-    setDraft(price != null && Number.isFinite(price) ? price.toFixed(2) : "");
+    setDraft(formatSignedPrice(price, isCredit));
     if (!locked) {
       stayEditingRef.current = true;
       onLockForEdit();
@@ -176,15 +183,15 @@ function PackagePriceField({
 
   const commit = () => {
     if (committedRef.current) return;
-    const mag = Math.abs(parseFloat(String(draft).replace(/[−–—]/g, "-")));
-    if (!Number.isFinite(mag) || mag <= 0) {
-      if (price != null && Number.isFinite(price)) setDraft(price.toFixed(2));
+    const parsed = parseSignedPackagePrice(draft);
+    if (!parsed) {
+      setDraft(formatSignedPrice(price, isCredit));
       setEditing(false);
       return;
     }
     committedRef.current = true;
     setEditing(false);
-    onCommit(mag);
+    onCommit(parsed.mag, parsed.isCredit);
   };
 
   if (!editing) {
@@ -214,7 +221,7 @@ function PackagePriceField({
       aria-label="Package debit or credit per position"
       data-testid={`analyzer-pos-price-edit-${id}`}
       className={
-        "w-[4.5rem] rounded bg-black/25 px-1 py-0 text-right font-mono " +
+        "w-[5.5rem] rounded bg-black/25 px-1 py-0 text-right font-mono " +
         `${DATA} font-normal tabular-nums outline-none ring-1 ring-white/40 ` +
         FIELD_FILL +
         " " +
@@ -323,11 +330,11 @@ export type AnalyzerPositionsListProps = {
   /** Close transaction — stamps the clock; not a pre-set time. */
   onClosePosition: (id: string) => void;
   onLockNatural: (id: string) => void;
-  /** Commit a per-position debit/credit magnitude and lock it. */
-  onLockLimit: (id: string, magnitude: number) => void;
+  /** Commit a per-position debit/credit magnitude and lock it. Sign via isCredit. */
+  onLockLimit: (id: string, magnitude: number, isCredit?: boolean) => void;
   onUnlock: (id: string) => void;
   onKeepCheckPrice?: (id: string) => void;
-  /** ToS-style structure BUY/SELL flip (debit↔credit). */
+  /** Structure BUY/SELL. Does not rewrite debit/credit while locked. */
   onSetDirection: (id: string, direction: "buy" | "sell") => void;
   /** ToS-style expiration roll from listed chain expirations. */
   onSetExpiration: (id: string, expiration: string) => void;
@@ -630,18 +637,30 @@ export default function AnalyzerPositionsList({
                 display.kind === "price" &&
                 pos.livePackagePerShare != null &&
                 Number.isFinite(pos.livePackagePerShare);
+              const lockedDebit =
+                locked && pos.lock.mode === "locked"
+                  ? pos.lock.packageDebitPerShare
+                  : null;
               const price =
                 display.kind === "expired"
                   ? definedDebit != null
                     ? Math.abs(definedDebit)
                     : null
-                  : pos.livePackagePerShare;
+                  : lockedDebit != null
+                    ? Math.abs(lockedDebit)
+                    : pos.livePackagePerShare;
               const priceSideShown =
                 display.kind === "expired"
                   ? definedDebit != null && definedDebit < 0
                     ? "credit"
                     : "debit"
-                  : side;
+                  : lockedDebit != null
+                    ? lockedDebit < 0
+                      ? "credit"
+                      : lockedDebit > 0
+                        ? "debit"
+                        : side
+                    : side;
               const priceLabel =
                 price != null && Number.isFinite(price)
                   ? (priceSideShown === "credit" ? "−" : "") + price.toFixed(2)
@@ -691,6 +710,7 @@ export default function AnalyzerPositionsList({
                   unitScale={unitScale}
                   price={price}
                   priceLabel={priceLabel}
+                  priceSideShown={priceSideShown}
                   liveMark={!!liveMark}
                   livenessChip={livenessChip}
                   expired={expired}
@@ -793,6 +813,7 @@ function PosBlock({
   unitScale,
   price,
   priceLabel,
+  priceSideShown,
   liveMark,
   livenessChip,
   expired,
@@ -847,6 +868,7 @@ function PosBlock({
   unitScale: number;
   price: number | null;
   priceLabel: string;
+  priceSideShown: "debit" | "credit" | null;
   liveMark: boolean;
   livenessChip: string;
   expired: boolean;
@@ -873,7 +895,7 @@ function PosBlock({
   onSetEntryAt: (id: string, entryAt: number) => void;
   onClosePosition: (id: string) => void;
   onLockNatural: (id: string) => void;
-  onLockLimit: (id: string, magnitude: number) => void;
+  onLockLimit: (id: string, magnitude: number, isCredit?: boolean) => void;
   onUnlock: (id: string) => void;
   onKeepCheckPrice?: (id: string) => void;
   onSetDirection: (id: string, direction: "buy" | "sell") => void;
@@ -890,8 +912,6 @@ function PosBlock({
   expChoices: string[];
 }) {
   const nLegs = orderedLegs.length;
-  const pkgSide =
-    side === "credit" ? "CREDIT" : side === "debit" ? "DEBIT" : "—";
   const rowExtra = CARD_EXTRA_Y / Math.max(1, nLegs);
   const padY = TD_PAD_Y + rowExtra / 2;
 
@@ -1416,6 +1436,7 @@ function PosBlock({
                         id={pos.id}
                         locked={locked}
                         price={price}
+                        isCredit={priceSideShown === "credit"}
                         priceLabel={
                           display.kind === "updating" && price == null
                             ? "—"
@@ -1426,7 +1447,9 @@ function PosBlock({
                             ? "text-amber-200 line-through decoration-amber-200/80"
                             : textMain
                         }
-                        onCommit={(mag) => onLockLimit(pos.id, mag)}
+                        onCommit={(mag, credit) =>
+                          onLockLimit(pos.id, mag, credit)
+                        }
                         onLockForEdit={() => onLockNatural(pos.id)}
                       />
                       <TosStepper surface="card"
@@ -1512,9 +1535,7 @@ function PosBlock({
                 <span
                   className={`${DATA} font-normal uppercase ${textMain}`}
                   data-testid={`analyzer-pos-pkg-side-${pos.id}`}
-                >
-                  {pkgSide}
-                </span>
+                />
               ) : (() => {
                   const legExp = (leg.expiration || front).slice(0, 10);
                   const br = pos.bind?.legs?.find(

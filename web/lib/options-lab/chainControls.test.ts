@@ -180,7 +180,7 @@ test("D-PC-7 Edit dialog price path reads CardLockState (PC8)", () => {
     join(here, "../../components/options-lab/PositionBuilder.tsx"),
     "utf8",
   );
-  assert.match(src, /cardLock\?\.mode === "locked"/);
+  assert.match(src, /record\.lock\.mode === "locked"/);
   assert.match(src, /packageDebitPerShare/);
   assert.match(src, /builder-live-package-price/);
 });

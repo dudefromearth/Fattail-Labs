@@ -323,11 +323,11 @@ test("unlock after market moved shows live nat, not locked D*", () => {
   );
   assert(pos.lock.mode === "locked", "still locked");
   assert(pos.livePackagePerShare === 2.05, "display stays D*");
-  assert(pos.lastNatSigned === 1.5, "nat tracks market while locked");
+  assert(pos.lastNatSigned === 2.05, "live quotes do not rewrite a locked card");
   pos = unlockCard(pos);
   assert(pos.lock.mode === "unlocked", "unlocked");
-  assert(pos.livePackagePerShare === 1.5, "card field is live mid");
-  assert(pos.definedDebitPerShare === 1.5, "basis is live");
+  assert(pos.livePackagePerShare === 2.05, "unlock still holds last frozen nat until a live quote");
+  assert(pos.definedDebitPerShare === 2.05, "basis stays frozen until live quote on unlocked");
 });
 
 console.log(`\n${passed} tests passed`);

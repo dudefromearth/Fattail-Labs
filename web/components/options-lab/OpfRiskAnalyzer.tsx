@@ -1896,14 +1896,23 @@ export default function OpfRiskAnalyzer() {
       );
       risk.refresh();
     },
-    onLockLimit: (id: string, magnitude: number) => {
+    onLockLimit: (
+      id: string,
+      magnitude: number,
+      isCredit?: boolean,
+    ) => {
       const pos = positionsRef.current.find((p) => p.id === id);
       if (!pos) return;
       const mag = Math.abs(magnitude);
       if (!Number.isFinite(mag) || mag <= 0) return;
-      const isCredit = pos.priceSide === "credit";
+      const credit =
+        isCredit !== undefined
+          ? isCredit
+          : pos.lock.mode === "locked"
+            ? pos.lock.packageDebitPerShare < 0
+            : pos.priceSide === "credit";
       commitBook("lock", (prev) =>
-        prev.map((p) => (p.id === id ? lockLimit(p, mag, isCredit) : p)),
+        prev.map((p) => (p.id === id ? lockLimit(p, mag, credit) : p)),
       );
       risk.refresh();
     },
