@@ -4,6 +4,22 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-17 — DL-724 Seated VP/SA law git identity `e1cdaf2a`
+
+**Decision.** Seated law (VP Service **v0.6** sha1 `a438f9d636e40d4c95feb87874daf8c603344aac` · SA Service **v0.3** sha1 `4638ce958a81e24980ed6fd2e7618aaec51f4cfd` · tokens `VPS*` / `VPSB*` / `SA-DEV-W0` · board `agents/p-volume-profile-service/`) has durable git identity:
+
+- **commit:** `e1cdaf2a21a2fc3bfe670e84c64c9bb293190616`
+- **branch:** `vp/seated-law-v0.6` (from `origin/main` `80cca977`)
+- **not** `hw/hw1-trade-log-help`
+
+Named files only. Never `git add -A`. `Specs/amendments/` (v0_6_1 / v0_3_1 / AZ-VP-9-A1) was **not in hand** at this commit.
+
+**Does not.** Merge to `main` this packet. Commit Help Watch files. Commit VP product code (`vp_engine` / `vp_ingest`).
+
+**Cites:** **DL-721** · **DL-722** · **DL-723**.
+
+---
+
 ## 2026-09-17 — DL-723 SA-DEV-W0 STAMPED GO · APPS owns Acts 1–3
 
 **Decision (Coach, 2026-09-17).** Stamp [`agents/go/SA-DEV-W0.md`](../agents/go/SA-DEV-W0.md). All ticks as written, plus **member deny even in dev**. **`SADEV*` = APPS-owned** (**DL-720**). APPS executes Acts 1–3 on its **own** pre-flight. INFRA does not execute this token.
