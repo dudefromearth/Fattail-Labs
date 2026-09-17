@@ -1519,12 +1519,7 @@ function PosBlock({
                   </>
                 ) : (
                   <span
-                    className={
-                      `${CHROME} font-normal uppercase ` +
-                      (display.kind === "updating"
-                        ? textMuted
-                        : "text-amber-200")
-                    }
+                    className={`${CHROME} font-normal uppercase text-amber-200`}
                     data-testid={`analyzer-pos-state-${pos.id}`}
                     data-state={display.kind}
                   >
