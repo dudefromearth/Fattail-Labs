@@ -1,7 +1,8 @@
 # SADEV-3 — Dev canvas
 
 **Namespace:** `SADEV*` · **Owner:** GROK BUILD — APPS  
-**Depends:** SADEV-2. **INFRA:** do not execute.
+**Depends:** SADEV-2. **INFRA:** do not execute.  
+**SA-L11 (DL-725):** first-class nav for Replay, Footprint / Market Delta, GEX Overlay, Characterization, Exploration in honest **IN-DEVELOPMENT**; no fake data, no empty widgets, no hiding.
 
 ## Intent
 

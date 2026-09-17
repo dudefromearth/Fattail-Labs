@@ -2,7 +2,7 @@
 
 Juliet board. **Instance:** **GROK BUILD — INFRA** (**DL-720**).
 
-**Seated law:** VP Service **v0.6** (data end) + SA Service **v0.3** (app end) · **DL-721**. Working spec for INFRA: v0.6 · **DL-722**.
+**Seated law:** VP Service **v0.6** (data end) · **DL-721/722**. SA **v0.3** detection baseline · **DL-721**. SA **v0.4** surface law **SA-L11** · **DL-725**. Working spec for INFRA: v0.6.
 
 | Instance | Owns |
 |----------|------|
@@ -14,7 +14,8 @@ Juliet board. **Instance:** **GROK BUILD — INFRA** (**DL-720**).
 |----------|------|
 | Plan v1.2 | [`docs/Volume-Profile-Service-Full-Agent-Bench-Plan-v1.2.md`](../../docs/Volume-Profile-Service-Full-Agent-Bench-Plan-v1.2.md) |
 | Working spec v0.6 | [`Specs/Volume-Profile-Service-Spec-v0_6.md`](../../Specs/Volume-Profile-Service-Spec-v0_6.md) sha1 `a438f9d636e40d4c95feb87874daf8c603344aac` |
-| SA spec v0.3 | [`Specs/Structural-Analysis-Service-Spec-v0_3.md`](../../Specs/Structural-Analysis-Service-Spec-v0_3.md) sha1 `4638ce958a81e24980ed6fd2e7618aaec51f4cfd` |
+| SA spec v0.3 | [`Specs/Structural-Analysis-Service-Spec-v0_3.md`](../../Specs/Structural-Analysis-Service-Spec-v0_3.md) sha1 `4638ce958a81e24980ed6fd2e7618aaec51f4cfd` · detection baseline |
+| SA spec v0.4 | [`Specs/Structural-Analysis-Service-Spec-v0_4.md`](../../Specs/Structural-Analysis-Service-Spec-v0_4.md) · **SA-L11** · **DL-725** |
 | INFRA token | [`agents/go/VPS0-W0.md`](../go/VPS0-W0.md) **STAMPED** **DL-706** |
 | APPS token | [`agents/go/SA-DEV-W0.md`](../go/SA-DEV-W0.md) **STAMPED GO** **DL-723** |
 

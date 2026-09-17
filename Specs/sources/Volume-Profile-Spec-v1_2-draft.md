@@ -1,7 +1,7 @@
 # SOURCE DOCUMENT — retired draft (not seated law)
 
 **Classification:** v1.2-draft, retired 2026-09-17 to `Specs/sources/`. **Not BUILD. Not a review object after this date.**  
-**Seated law:** [`Specs/Volume-Profile-Service-Spec-v0_6.md`](../Volume-Profile-Service-Spec-v0_6.md) (data end) · [`Specs/Structural-Analysis-Service-Spec-v0_3.md`](../Structural-Analysis-Service-Spec-v0_3.md) (app end).  
+**Seated law:** [`Specs/Volume-Profile-Service-Spec-v0_6.md`](../Volume-Profile-Service-Spec-v0_6.md) (data end) · [`Specs/Structural-Analysis-Service-Spec-v0_3.md`](../Structural-Analysis-Service-Spec-v0_3.md) (app-end detection baseline) · [`Specs/Structural-Analysis-Service-Spec-v0_4.md`](../Structural-Analysis-Service-Spec-v0_4.md) (app-end surface law · **SA-L11** · **DL-725**).  
 **Coach Decision 1 (verbatim, 2026-09-17):** "Raw bins stay on StudioOne the collector, bins are available through an API"  
 **Dispositions:** structure-levels review closes are in **DL-721**; where this draft conflicts with v0.6 / v0.3, **those specs are law**.
 

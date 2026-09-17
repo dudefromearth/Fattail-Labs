@@ -9,7 +9,7 @@
 **Juliet** runs this board. Specialists only via seeds. Gates via **Delta** ternary.
 
 **Working spec (INFRA):** [`Specs/Volume-Profile-Service-Spec-v0_6.md`](../../Specs/Volume-Profile-Service-Spec-v0_6.md) **v0.6** sha1 `a438f9d636e40d4c95feb87874daf8c603344aac` · **DL-722** (bytes **DL-721**). Git identity **DL-724** `e1cdaf2a` on `vp/seated-law-v0.6`.  
-**App-end spec (APPS):** SA Service **v0.3** sha1 `4638ce958a81e24980ed6fd2e7618aaec51f4cfd` · **DL-721**.  
+**App-end spec (APPS):** SA Service **v0.4** **SA-L11** · **DL-725** (detection baseline remains v0.3 sha1 `4638ce958a81e24980ed6fd2e7618aaec51f4cfd` · **DL-721**).  
 **Plan:** [`docs/Volume-Profile-Service-Full-Agent-Bench-Plan-v1.2.md`](../../docs/Volume-Profile-Service-Full-Agent-Bench-Plan-v1.2.md) **v1.2** (INFRA execution plan; spec pair is v0.6/v0.3).  
 **Token:** [`agents/go/VPS0-W0.md`](../go/VPS0-W0.md) **STAMPED GO** · **DL-706** · VPS0 **CLOSED**  
 **Law:** **CP-1** Chain primacy · **DL-707**  

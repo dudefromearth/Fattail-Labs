@@ -4,6 +4,29 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-17 — DL-725 SA-L11 · the map shows the whole territory (SA spec v0.4)
+
+**Decision (Coach, 2026-09-17), verbatim intent:** "the future scope of the structure app must never be lost — the current app must make the full breadth apparent."
+
+Lands as **SA-L11** in [`Specs/Structural-Analysis-Service-Spec-v0_4.md`](../Specs/Structural-Analysis-Service-Spec-v0_4.md) (364 lines · sha1 `88c112d45c7c2e5e39cace8df99c322fdd775e7b` · `grep -c '^## '` = 16 · last `## 14. Round log`) ("the map shows the whole territory"):
+
+- All future views — **Replay**, **Footprint / Market Delta**, **GEX Overlay**, **Characterization**, **Exploration** — are **first-class navigation entries**
+- Honest **IN-DEVELOPMENT** named state with doctrine text
+- No fake data, no empty widgets, no hiding
+- Schema fields **reserved unserved**
+- Help/Wiki seed carries the whole arc from first publish
+- **Binding on all surface work now** (including APPS Act 3 / DEV-ONLY canvas)
+
+v0.3 remains the detection-procedure baseline (bytes unchanged). v0.4 is the app-end **surface** working spec for SA-L11. Detection procedure is not rewritten this packet. ADVISOR still owns spec review. INFRA does not execute `SADEV*`.
+
+**Does not.** Ship Replay / Footprint / GEX Overlay / Characterization / Exploration as live views. Invent marks to fill IN-DEVELOPMENT panes. Hide nav "until ready." Rewrite AZ-VP-9 in this packet. Self-review.
+
+**Cites:** **DL-721** · **DL-723** · **DL-714** Q10=(b) · SA v0.3 §8 Phase 2 text absorbed into Exploration · v1.2-draft §13 as doctrine seed, not law.
+
+---
+
+---
+
 ## 2026-09-17 — DL-724 Seated VP/SA law git identity `e1cdaf2a`
 
 **Decision.** Seated law (VP Service **v0.6** sha1 `a438f9d636e40d4c95feb87874daf8c603344aac` · SA Service **v0.3** sha1 `4638ce958a81e24980ed6fd2e7618aaec51f4cfd` · tokens `VPS*` / `VPSB*` / `SA-DEV-W0` · board `agents/p-volume-profile-service/`) has durable git identity:
