@@ -24,7 +24,9 @@ Everything not on this line is **parked** or **serves it**. Touched only when th
 
 **Report cadence:** one screen per evening window — tranche progress, bins coverage (sessions binned per symbol), API status.
 
-**Tonight (unchanged order):** VPS1-G SPY full-RTH check → VPS2 ACT 3 (**only on GO**) → VPSB ACT B migration → backfill tranche 1.
+**Tonight (unchanged order):** VPS1-G SPY full-RTH check → VPS2 ACT 3 (**only on GO**) → VPSB ACT B migration → **tranche 1 = most recent uncaptured sessions, descending**.
+
+**Backfill law (DL-732):** newest first, contiguous **[floor … now]**, no holes. **Bin as you land.** Coverage floor published per source. `/range` below floor = **422 refuse** (Contract v1.1 candidate for an explicit floor field — do not improvise).
 
 ---
 
@@ -40,9 +42,9 @@ Everything not on this line is **parked** or **serves it**. Touched only when th
 
 | Phase | State |
 |-------|--------|
-| **Step 1 download** | ES+MES **LIVE** on StudioTwo (`ai.fattail.labs.vp-futures`). SPY ingest **installed** on StudioOne (VPS1-G mechanics). Migration + backfill **tonight**. Gap defect **fix today** before migration. |
-| **Step 2 bins** | VPS2 Engine goldens on StudioTwo (F1/F2/F3-corrected/F5/F7). Composite **fenced**. StudioOne install **tonight iff VPS1-G full-RTH GO**. |
-| **Step 3 API** | Contract **frozen**. Build starts StudioTwo against v1.0; **install gated** on Engine goldens. |
+| **Step 1 download** | ES+MES **LIVE** StudioTwo. Backfill **newest-first** from yesterday; REST/flat-files **HOLD until 16:00 ET** (CP-1). Tranche 1 tonight after migration. |
+| **Step 2 bins** | **Bin as you land** on StudioTwo local store. Composite **fenced**. StudioOne Engine install tonight iff VPS1-G GO. |
+| **Step 3 API** | Dev sidecar **:4010** over binned store (Contract v1.0, 403 even in dev). Does not replace Labs `:4000`. |
 | **SADEV*** | APPS-owned · `SA-DEV-W0` **STAMPED** **DL-723**. Cites authored v0.4 (**DL-731**); still NOT BUILD. |
 | **Tonight** | VPS1-G carry → VPS2 ACT 3 (GO only) → VPSB ACT B → backfill tranche 1 |
 

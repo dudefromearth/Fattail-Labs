@@ -4,6 +4,25 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-17 — DL-732 Newest-first backfill · bin-as-you-land · coverage floor · API today
+
+**Decision (Coach, 2026-09-17).** INFRA executes:
+
+1. **Backfill order = newest first.** Tranches are strictly contiguous descending session order from yesterday backward (ES/MES flat files; SPY equities tier). No out-of-order tranches. Archive coverage is always one solid interval **[floor … now]**. Publish the coverage floor per source.
+2. **Bin as you land.** Engine session-bins each verified tranche immediately (StudioTwo today on the local store; StudioOne after tonight's install). Report sessions-binned per source with tranche progress.
+3. **API testing starts today.** Dev API on StudioTwo over whatever is binned (Contract v1.0; source-space; **403 deny even in dev**). `/range` that extends below the coverage floor is **refused** (422 `range_below_coverage`) — never a silently partial sum.
+4. Tonight's chain unchanged. **Tranche 1** = the most recent uncaptured sessions, descending. Massive historical REST/flat-files **HOLD during RTH** (CP-1 shared account).
+
+**Contract v1.1 candidate (report, do not improvise):** v1.0 has no `coverage_floor` field on health or the range envelope, so truncate-with-explicit-coverage cannot be expressed honestly. Refuse until Coach versions a floor field.
+
+**Does not.** Two writers. Out-of-order days. Silent partial `/range`. New contract keys. Stop `:3000`/`:4000`. StudioOne before tonight's CP-1 window.
+
+**Cites:** **DL-727** · **DL-726** · **DL-707** · VP v0.6.1 §4 retention.
+
+---
+
+---
+
 ## 2026-09-17 — DL-731 Authored SA spec v0.4 seated · pointer closed
 
 **Decision (Coach, 2026-09-17).** [`Specs/Structural-Analysis-Service-Spec-v0_4.md`](../Specs/Structural-Analysis-Service-Spec-v0_4.md) is the **authored** SA spec. India pre-flight StudioTwo **MATCH**:

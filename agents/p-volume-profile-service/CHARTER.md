@@ -24,7 +24,7 @@
 
 ## Mission
 
-**Singular drive (DL-727):** (1) DOWNLOAD the data needed to create the bins (2) CREATE the bins (3) CREATE the API to get the bins. Capture and serve **volume at price at the finest honest resolution**. Composite fenced on VPS2. No analysis vocabulary (POC/VA/HVN/LVN).
+**Singular drive (DL-727 / DL-732):** (1) DOWNLOAD newest-first, contiguous [floor … now] (2) CREATE bins as each tranche lands (3) API over whatever is binned. Composite fenced. Coverage floor published. `/range` below floor = 422 refuse.
 
 ## Invariants
 
