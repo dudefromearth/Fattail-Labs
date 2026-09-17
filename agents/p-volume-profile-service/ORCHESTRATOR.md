@@ -28,10 +28,10 @@ Everything not on this line is **parked** or **serves it**. Touched only when th
 
 ---
 
-**Working spec (data end):** VP **v0.6** sha1 `a438f9d6…` · **DL-722**. **v0.6.1 courier MISSING** (India 2026-09-17).  
-**API contract (frozen):** [`Specs/VP-API-Contract-v1_0.md`](../../Specs/VP-API-Contract-v1_0.md) · 85 · sha1 `b403937af18140eb7900ccfa72437e7f3e9bc5aa` · **MATCH** · **DL-726**.  
-**App end:** SA **v0.3** detection baseline · **DL-721**. **v0.3.1 courier MISSING**. `Specs/Structural-Analysis-Service-Spec-v0_4.md` is a **DIRECTIVE POINTER** (SA-L11) — **not BUILD** · **DL-728**.  
-**AZ-VP-9-A1:** courier **MISSING**.  
+**Working spec (data end):** VP **v0.6.1** sha1 `7e3bbedc58e1cbadc2ce96bb820bf93059f8806d` (427) · **DL-730**. v0.6 remains on disk as baseline.  
+**API contract (frozen):** [`Specs/VP-API-Contract-v1_0.md`](../../Specs/VP-API-Contract-v1_0.md) · 85 · sha1 `b403937af18140eb7900ccfa72437e7f3e9bc5aa` · parent = **v0.6.1 landed** · **DL-726** / **DL-730**.  
+**App end:** SA **v0.3.1** sha1 `8298b572f10784c9e43848c93da50b6a630e3321` (367) · **DL-730**. `Specs/Structural-Analysis-Service-Spec-v0_4.md` is a **DIRECTIVE POINTER** (SA-L11) — **not BUILD** · **DL-728**.  
+**AZ-VP-9-A1:** [`Specs/amendments/AZ-VP-9-A1.md`](../../Specs/amendments/AZ-VP-9-A1.md) sha1 `53bf74daa8a2b67ac3073d6fdb92bfed9b297ab0` (41) · **MATCH**.  
 **Git:** `vp/seated-law-v0.6` · **DL-724**.  
 **Law:** **CP-1** · **DL-707**  
 **Token:** `VPS0-W0` STAMPED **DL-706** · VPS0 **CLOSED**

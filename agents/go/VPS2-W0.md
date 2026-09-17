@@ -36,8 +36,8 @@ today's tape completes at the close.
 ## Coach ticks
 
 - [x] Q5 = EXCLUDE (DL-715) · Q6 = (c) (DL-706) — sessions + developing ship first
-- [x] **Composite fenced** (Coach 2026-09-17 · singular drive / contract v1.0): Engine publishes `session` and `developing` only. `kind=composite` is rejected. Fence lifts only with a later GO.
-- [x] **F3 golden = v0.6.1:** bins are source-space and **byte-identical across offset republish**. Consumers apply `ratio` / `offset_published`. Must be green BEFORE tonight's install byte-match.
+- [x] **Composite fenced** (Coach 2026-09-17 · VP v0.6.1 §5.3 / Contract v1.0): Engine publishes `session` and `developing` only. `kind=composite` is rejected. Fence lifts only with a later GO. Recorded on this token.
+- [x] **F3 golden = v0.6.1:** bins source-space and **byte-identical across offset republish**; only `offset_published` + `generation_id` change. Must be green BEFORE tonight's install byte-match.
 - [x] ACT 2 build authorized immediately on StudioTwo
 - [x] ACT 3 (StudioOne) gated on: tonight's clock window AND the VPS1-G full-RTH report reading GO — produced in the SAME evening activation
 - [x] Q4: still-ambiguous ids EXCLUDED-and-flagged; tonight's proposal refines, build does not block on it

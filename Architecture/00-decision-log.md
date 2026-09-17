@@ -4,6 +4,28 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-17 — DL-730 Advisor courier MATCH · VP v0.6.1 + SA v0.3.1 + AZ-VP-9-A1
+
+**Decision.** The three clipped couriers are on disk. India pre-flight StudioTwo 2026-09-17 **MATCH** all three. Contract v1.0 parent is no longer MISSING.
+
+| File | Lines | sha1 | `## ` | Last heading |
+|------|------:|------|------:|--------------|
+| `Specs/Volume-Profile-Service-Spec-v0_6_1.md` | 427 | `7e3bbedc58e1cbadc2ce96bb820bf93059f8806d` | 17 | `## 14. Round log` |
+| `Specs/Structural-Analysis-Service-Spec-v0_3_1.md` | 367 | `8298b572f10784c9e43848c93da50b6a630e3321` | 18 | `## 14. Round log` |
+| `Specs/amendments/AZ-VP-9-A1.md` | 41 | `53bf74daa8a2b67ac3073d6fdb92bfed9b297ab0` | 4 | `## Standing` |
+
+**Contract parent (DL-726):** [`Specs/VP-API-Contract-v1_0.md`](../Specs/VP-API-Contract-v1_0.md) remains frozen sha1 `b403937af18140eb7900ccfa72437e7f3e9bc5aa`. Extracted from VP **v0.6.1** §7–§8 — that spec is now **landed** at the triple above. Contract bytes **not** edited (a parent-sha note inside the contract file would be v1.1).
+
+**F3 (v0.6.1):** bins stay source-space; offset republish changes only `offset_published` + `generation_id`. Green before tonight's install byte-match. **Composite fence** remains on `VPS2-W0` (v0.6.1 §5.3).
+
+**Does not.** Rewrite Contract v1.0. Lift the composite fence. Treat SA v0.4 pointer as BUILD (**DL-728** stands).
+
+**Cites:** India `gate-reports/India-preflight-2026-09-17-delivery.md` · **DL-726** · **DL-714** · AZ-VP-9-A1.
+
+---
+
+---
+
 ## 2026-09-17 — DL-729 Print-absence gap defect · mixed units
 
 **Decision.** Live futures `print_absence` was firing on every print (~11k open/close pairs per product). Cause: `maybe_absence` compared wall `time.time_ns()` to vendor `t` stored as **milliseconds**, scaled only from `now_t`. Law: **one** gap opens after ≥ `vp.gap_min_seconds` = 300 of print silence inside a **SCHEDULED-OPEN** segment, closes at the next eligible print. Compare each timestamp in **seconds**, classified independently (ns / µs / ms / s). Feed-liveness gaps untouched. Today's print-absence files are **regenerated from raw prints** (SoR). Fix the StudioTwo writer **before** tonight's migration; migrate only the corrected job.

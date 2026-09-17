@@ -11,6 +11,7 @@ from market_data.vp_engine.histogram import (
     build_histogram,
     canonical_bytes,
     developing_maybe_republish,
+    mapping_offset_republish,
 )
 from market_data.vp_engine.labels import lint
 from market_data.vp_engine.rows import row_price
@@ -90,27 +91,26 @@ def test_f5_gap_excludes_and_prior_complete():
 
 
 def test_f3_offset_republish_bins_byte_identical():
-    """v0.6.1 F3: bins stay source-space; offset republish does not rewrite them."""
+    """v0.6.1 F3: sub-threshold identical; breach changes only offset_published + generation id."""
     h = build_histogram(_f1_tape()[:6], vp_row=0.10, session_date="f3")
-    a = {
+    h = {
         **h,
-        "mapping": {
-            "ratio": 1,
-            "offset_published": 2.48,
-            "offset_fit": 2.52,
-        },
+        "mapping": {"ratio": 1, "offset_published": 2.48, "offset_fit": 2.48},
     }
-    b = {
-        **h,
-        "mapping": {
-            "ratio": 1,
-            "offset_published": 2.60,
-            "offset_fit": 2.60,
-        },
-    }
-    assert bins_canonical_bytes(a) == bins_canonical_bytes(b)
-    assert bins_canonical_bytes(a) == bins_canonical_bytes(h)
-    assert a["bins"] == h["bins"]
+    drift = mapping_offset_republish(h, offset_fit=2.52)
+    assert drift is h
+    assert drift["generation_id"] == h["generation_id"]
+    assert canonical_bytes(drift) == canonical_bytes(h)
+
+    breach = mapping_offset_republish(h, offset_fit=2.60)
+    assert bins_canonical_bytes(breach) == bins_canonical_bytes(h)
+    assert breach["bins"] == h["bins"]
+    assert breach["mapping"]["offset_published"] == 2.60
+    assert breach["generation_id"] != h["generation_id"]
+    assert breach["generation_id"]
+    # bins prices/volumes untouched
+    assert [b["price"] for b in breach["bins"]] == [b["price"] for b in h["bins"]]
+    assert [b["volume"] for b in breach["bins"]] == [b["volume"] for b in h["bins"]]
 
 
 def test_composite_is_fenced():

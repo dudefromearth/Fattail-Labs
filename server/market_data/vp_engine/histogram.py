@@ -128,6 +128,32 @@ def bins_canonical_bytes(payload: dict[str, Any]) -> bytes:
     )
 
 
+OFFSET_FREEZE = 0.10
+
+
+def mapping_offset_republish(
+    payload: dict[str, Any], *, offset_fit: float, freeze: float = OFFSET_FREEZE
+) -> dict[str, Any]:
+    """v0.6.1 F3: source-space bins never move.
+
+    |Δ| < freeze → entire payload byte-identical (same generation id).
+    |Δ| ≥ freeze → only `offset_published` and `generation_id` change.
+    """
+    mapping = dict(payload.get("mapping") or {})
+    published = float(mapping.get("offset_published", offset_fit))
+    if abs(float(offset_fit) - published) < freeze:
+        return payload
+    out = json.loads(json.dumps(payload))
+    mmap = dict(out.get("mapping") or {})
+    mmap["offset_published"] = float(offset_fit)
+    mmap["offset_fit"] = float(offset_fit)
+    out["mapping"] = mmap
+    out["generation_id"] = parameter_hash(
+        {"prior": payload.get("generation_id"), "offset_published": float(offset_fit)}
+    )
+    return out
+
+
 def developing_maybe_republish(
     previous: dict[str, Any] | None, current: dict[str, Any]
 ) -> dict[str, Any]:
