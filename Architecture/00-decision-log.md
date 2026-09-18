@@ -4,6 +4,22 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-18 — DL-739 AZ-VP-9-A8 Layer Architecture
+
+**Decision.** [`Specs/amendments/AZ-VP-9-A8.md`](../Specs/amendments/AZ-VP-9-A8.md) is **layer-architecture law** consolidating **A2–A7** (India MATCH 45 · sha1 `7c30e2d3a906c7acc87262a680a0263ba30bd7fc` · 2 `## ` · last `## Standing`). Nothing in A2–A7 is struck; the canvas is independent layers on one familiar backdrop.
+
+**Layers (back to front):** L0 BACKDROP (A4 / A5 / A7) · L1 PRICE CHART line/candle/bar (A6, default ON) · L2 VOLUME PROFILE (A2 / A3, default ON, identity) · L3 STRUCTURAL ANALYSIS (A3, default OFF) · L4+ future canvas-native phases as layers when their gates open — **Footprint** first named; **GEX overlay** likewise. **Replay** remains a **view**. SA-L11 navigation still shows every phase honestly.
+
+**Independence / coherence:** each layer toggles without affecting the others; visibility, format, and settings persist per user; one instrument, one x-window. Layer additions follow A7 clause 4. No layer ships pre-enabled that the law says defaults off.
+
+**Help Watch:** member mental model is **"one chart, layers you switch on."** Footprint and GEX arrive as **layers**; Replay as a **view**. Documentation language follows that shape.
+
+**Does not.** MiniTwo. Stop StudioTwo `:3000`/`:4000`. `git add -A`. Invent A3–A5 courier files.
+
+**Cites:** **DL-738** · AZ-VP-9-A2…A7 · SA spec v0.4 §8a.
+
+---
+
 ## 2026-09-18 — DL-738 AZ-VP-9-A7 Charting Scope Boundary
 
 **Decision.** [`Specs/amendments/AZ-VP-9-A7.md`](../Specs/amendments/AZ-VP-9-A7.md) is **scope-boundary law** over **A2–A6** (India MATCH 40 · sha1 `efcaa297c80e8e4410a24bbbeb8aec68987e3e6c` · 2 `## ` · last `## Standing`). Nothing in A2–A6 is struck; this bounds them.
