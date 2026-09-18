@@ -4,6 +4,20 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-18 — DL-760 VP Data Delivery Spec v1.0 (D1–D5 / S1–S3)
+
+**Decision.** [`Specs/VP-Data-Delivery-Spec-v1_0.md`](../Specs/VP-Data-Delivery-Spec-v1_0.md) is **BINDING** (India MATCH 73 · sha1 `ce2064af71f72883dc0e3cc91a60ac1c5ffc5392` · 5 `## ` · last `## 5. Round log`). Consolidates backfill, hot-tier, and streaming into a testable delivery contract. Supersedes no law.
+
+**D1** 3 months (~63 RTH sessions) per served ticker is the FLOOR of acceptable. **D2** 6 months stable; primaries to vendor floors. **D3** vendor fetch is real code. **S1** overnight 16:05→08:30 ET hard stop (CP-1). **S2** continuous tranches, not a fixed small batch; 5 sessions was a floor, the window is the budget. **S3** every window report states floors vs D1/D2, sessions/hour, ETA with evidence. **D4/D5** live stream required (Contract v1.3); item C is REQUIRED tonight.
+
+**ADVISOR watch 20:** window reports judged against D1–D5 / S1–S3 from tonight. A 5-session batch presented as the overnight deliverable is a **finding**.
+
+**Does not.** Stop StudioTwo `:3000`/`:4000`. `git add -A`. Daytime vendor REST.
+
+**Cites:** **DL-759** · **DL-756** · CP-1 · Contract v1.3.
+
+---
+
 ## 2026-09-18 — DL-759 VP vendor day fetch + autorun continues + horizon 126
 
 **Decision (Coach).** Historical pull is real date-addressed REST day files (SPY `/v3/trades`, ES/MES `/futures/v1/trades?session_end_date=`), land→bin→coverage, resumable via manifest. Flat-file S3 named **blocked**: no `MASSIVE_S3_ACCESS_KEY_ID`. Dry-run 2026-09-17: **SPY count 564764 = 564764** (delta 0; first print `p=759.36 t=1789632000015` matches live gzip). ES/MES REST is a superset of the incomplete local 09-17 Globex day.

@@ -1,11 +1,11 @@
 {
-  "stamped": "2026-09-18T15:35:00-04:00",
-  "note": "Coach evening window. A failed/held item reports and autorun CONTINUES to items whose depends_on does not include it. A blocks only deeper floors (nothing else tonight depends on A). F closes the window.",
+  "stamped": "2026-09-18T16:10:00-04:00",
+  "note": "VP-Data-Delivery-Spec-v1.0 BINDING. A = overnight 16:05–08:30 toward D1=63 sessions all three sources (5 sessions was a floor, the window is the budget). C streamer REQUIRED. Failed items report; autorun continues independents.",
   "items": [
     {
-      "id": "A-BACKFILL-5",
+      "id": "A-OVERNIGHT-D1",
       "depends_on": [],
-      "cmd": "cd server && .venv/bin/python -m market_data.vp_ingest.backfill --five"
+      "cmd": "cd server && .venv/bin/python -m market_data.vp_ops.packets overnight_d1"
     },
     {
       "id": "B-HOT-126-STABLE",

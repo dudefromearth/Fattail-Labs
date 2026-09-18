@@ -60,6 +60,33 @@ def tranche1() -> int:
     return 0
 
 
+def overnight_d1() -> int:
+    """S1 window: SSH StudioOne, run backfill --overnight until 08:30 or D1."""
+    import subprocess
+
+    rsync = subprocess.run(
+        [
+            "rsync", "-az",
+            "-e", "ssh -i /Users/ernie/.ssh/id_studioone -o IdentitiesOnly=yes -o BatchMode=yes",
+            str(REPO / "server/market_data/vp_ingest") + "/",
+            "ernie@192.168.1.111:/Users/ernie/Fattail-Labs/server/market_data/vp_ingest/",
+        ]
+    )
+    if rsync.returncode != 0:
+        print("overnight_d1: rsync failed", flush=True)
+        return rsync.returncode
+    proc = subprocess.run(
+        [
+            "ssh", "-i", "/Users/ernie/.ssh/id_studioone",
+            "-o", "IdentitiesOnly=yes", "-o", "BatchMode=yes",
+            "ernie@192.168.1.111",
+            "cd /Users/ernie/Fattail-Labs/server && nohup .venv/bin/python -m market_data.vp_ingest.backfill --overnight >> /Users/ernie/Library/Logs/fattail-labs/vp-overnight.log 2>&1 & echo started:$!",
+        ]
+    )
+    print(f"overnight_d1 ssh exit={proc.returncode}", flush=True)
+    return proc.returncode
+
+
 def backfill5() -> int:
     import subprocess
 
@@ -106,6 +133,7 @@ def tonight_hot126() -> int:
 
 
 def tonight_streamer() -> int:
+    import subprocess
     from market_data.vp_api.app import app as vp_app
 
     routes = {getattr(r, "path", "") for r in vp_app.routes}
@@ -113,7 +141,36 @@ def tonight_streamer() -> int:
         print(f"tonight_streamer: FAIL no stream route in {sorted(routes)[:12]}", flush=True)
         return 2
     print("tonight_streamer: GET /v1/stream seated (Contract v1.3)", flush=True)
-    return 0
+    if not after_close_et():
+        return 0
+    subprocess.run(
+        [
+            "rsync", "-az",
+            "-e", "ssh -i /Users/ernie/.ssh/id_studioone -o IdentitiesOnly=yes -o BatchMode=yes",
+            str(REPO / "server/market_data/vp_stream.py"),
+            str(REPO / "server/market_data/vp_api/app.py"),
+            "ernie@192.168.1.111:/Users/ernie/Fattail-Labs/server/market_data/",
+        ]
+    )
+    # app.py destination dir is market_data/ — put app.py in vp_api/
+    subprocess.run(
+        [
+            "rsync", "-az",
+            "-e", "ssh -i /Users/ernie/.ssh/id_studioone -o IdentitiesOnly=yes -o BatchMode=yes",
+            str(REPO / "server/market_data/vp_api/app.py"),
+            "ernie@192.168.1.111:/Users/ernie/Fattail-Labs/server/market_data/vp_api/app.py",
+        ]
+    )
+    proc = subprocess.run(
+        [
+            "ssh", "-i", "/Users/ernie/.ssh/id_studioone",
+            "-o", "IdentitiesOnly=yes", "-o", "BatchMode=yes",
+            "ernie@192.168.1.111",
+            "launchctl kickstart -k gui/503/ai.fattail.labs.vp-api",
+        ]
+    )
+    print(f"tonight_streamer vp-api kickstart exit={proc.returncode}", flush=True)
+    return proc.returncode
 
 
 def tonight_capture() -> int:
@@ -125,7 +182,28 @@ def tonight_capture() -> int:
         print(f"tonight_capture: FAIL subscribe={params}", flush=True)
         return 2
     print(f"tonight_capture: registry subscribe {params} n={len(syms)}", flush=True)
-    return 0
+    if not after_close_et():
+        return 0
+    import subprocess
+
+    subprocess.run(
+        [
+            "rsync", "-az",
+            "-e", "ssh -i /Users/ernie/.ssh/id_studioone -o IdentitiesOnly=yes -o BatchMode=yes",
+            str(REPO / "server/market_data/vp_ingest") + "/",
+            "ernie@192.168.1.111:/Users/ernie/Fattail-Labs/server/market_data/vp_ingest/",
+        ]
+    )
+    proc = subprocess.run(
+        [
+            "ssh", "-i", "/Users/ernie/.ssh/id_studioone",
+            "-o", "IdentitiesOnly=yes", "-o", "BatchMode=yes",
+            "ernie@192.168.1.111",
+            "launchctl kickstart -k gui/503/ai.fattail.labs.sym-feed",
+        ]
+    )
+    print(f"tonight_capture sym-feed kickstart exit={proc.returncode} (chain_feed untouched)", flush=True)
+    return proc.returncode
 
 
 def tonight_minitwo_sa() -> int:
@@ -179,7 +257,7 @@ def main(argv: list[str] | None = None) -> int:
     if not argv:
         print(
             "usage: packets vps2_act3|vpsb_act_b|tranche1|"
-            "backfill5|tonight_hot126|tonight_streamer|"
+            "overnight_d1|backfill5|tonight_hot126|tonight_streamer|"
             "tonight_capture|tonight_minitwo_sa|tonight_help_watch",
             file=sys.stderr,
         )
@@ -188,6 +266,7 @@ def main(argv: list[str] | None = None) -> int:
         "vps2_act3": vps2_act3,
         "vpsb_act_b": vpsb_act_b,
         "tranche1": tranche1,
+        "overnight_d1": overnight_d1,
         "backfill5": backfill5,
         "tonight_hot126": tonight_hot126,
         "tonight_streamer": tonight_streamer,

@@ -62,6 +62,27 @@ def test_write_day_prints_manifest(tmp_path: Path):
     assert (tmp_path / "vp/ingest/SPY/trades/day=2026-09-17/manifest.json").is_file()
 
 
+def test_d1_target_is_63_weekdays_including_today():
+    from datetime import date
+    from market_data.vp_ingest.backfill import D1_SESSIONS, d1_target_floor, in_overnight_window
+
+    t = d1_target_floor(date(2026, 9, 18))
+    n = 0
+    d = date(2026, 9, 18)
+    while d >= t:
+        if d.weekday() < 5:
+            n += 1
+        d -= __import__("datetime").timedelta(days=1)
+    assert n == D1_SESSIONS
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    ET = ZoneInfo("America/New_York")
+    assert in_overnight_window(datetime(2026, 9, 18, 16, 5, tzinfo=ET)) is True
+    assert in_overnight_window(datetime(2026, 9, 19, 8, 29, tzinfo=ET)) is True
+    assert in_overnight_window(datetime(2026, 9, 19, 8, 30, tzinfo=ET)) is False
+    assert in_overnight_window(datetime(2026, 9, 18, 15, 59, tzinfo=ET)) is False
+
+
 def test_autorun_continues_when_a_fails(tmp_path: Path, monkeypatch):
     q = {
         "items": [

@@ -34,6 +34,7 @@
 | **AZ-VP-9-A21** | [`Specs/amendments/AZ-VP-9-A21.md`](../../Specs/amendments/AZ-VP-9-A21.md) · **DL-754** · sha1 `4cf98d2153279846e64d16e7952e57e8127bad72` · defaults in every dialog |
 | **AZ-VP-9-A22** | [`Specs/amendments/AZ-VP-9-A22.md`](../../Specs/amendments/AZ-VP-9-A22.md) · **DL-755** · sha1 `fde8890db6f6e6534bec78eeb52c2abf65ccde30` · settings survive everything · profile-store gap filed |
 | **API contract v1.3** | [`Specs/VP-API-Contract-v1_3.md`](../../Specs/VP-API-Contract-v1_3.md) · **DL-756** sha1 `d57dc51ef52c6e6ec1fa0c20be5544cac6c2cb82` · live stream SSE · supersedes v1.2.1 |
+| **Data Delivery v1.0** | [`Specs/VP-Data-Delivery-Spec-v1_0.md`](../../Specs/VP-Data-Delivery-Spec-v1_0.md) · **DL-760** sha1 `ce2064af71f72883dc0e3cc91a60ac1c5ffc5392` · D1 3 months floor · S1 16:05–08:30 |
 | **API contract v1.1** | [`Specs/VP-API-Contract-v1_1.md`](../../Specs/VP-API-Contract-v1_1.md) · **DL-733** sha1 `d01b3dd9bfbac3bbcafb34110ef7d06cd6650915` |
 | **Dev sidecar record** | [`DEV-API.md`](DEV-API.md) — APPS reads this; never scan ports. Canonical LAN `http://192.168.1.111:4010` (**DL-743**); never `studioone.local` |
 | **OPS-DASH** | [`OPS-DASH.md`](OPS-DASH.md) · **LIVE** `http://studioone.local:5055` · StudioTwo `:5056` retired (**DL-734** · **DL-737**) |

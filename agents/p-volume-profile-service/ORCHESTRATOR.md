@@ -32,7 +32,7 @@ Everything not on this line is **parked** or **serves it**. Touched only when th
 
 **Governance:** **EVENING AUTORUN** (**DL-735**). launchd `ai.fattail.labs.autorun` **16:05 ET** weekdays. Human trigger for the evening chain is a **NO-GO**. Timer executes only `evening-queue.json`, in order; packet clock gates + CP-1 still enforce. Empty queue = one-line no-work. **Exactly one** autonomous trigger.
 
-**Tonight's queue (16:05 ET autorun):** stamped 2026-09-18 15:05 ET in [`evening-queue.json`](evening-queue.json) order **A–F**: 5-session backfill (fails loud if vendor fetch missing) → hot-tier 126 + stable chunks → streamer v1.3 → full-stable capture subscribe → MiniTwo `sa_surface` migration → commit+Help Watch notice. Engine/API/futures already on StudioOne (**DL-736**).
+**Tonight's queue:** [`evening-queue.json`](evening-queue.json) **rebound 16:10 ET** to **VP-Data-Delivery-Spec-v1.0** (**DL-760**). **A** = overnight 16:05→08:30 hard stop toward **D1 = 63 sessions** all three sources (5 sessions was a floor; the window is the budget) on **StudioOne**. **C streamer REQUIRED**. Engine/API/futures already on StudioOne (**DL-736**).
 
 **Backfill law (DL-732):** newest first, contiguous **[floor … now]**, no holes. **Bin as you land.** Coverage floor published per source. `/range` below floor = **422 refuse** (Contract v1.1 candidate for an explicit floor field — do not improvise).
 
@@ -40,6 +40,7 @@ Everything not on this line is **parked** or **serves it**. Touched only when th
 
 **Working spec (data end):** VP **v0.6.1** sha1 `7e3bbedc58e1cbadc2ce96bb820bf93059f8806d` (427) · **DL-730**. v0.6 remains on disk as baseline.  
 **API contract (frozen):** [`Specs/VP-API-Contract-v1_3.md`](../../Specs/VP-API-Contract-v1_3.md) · 51 · sha1 `d57dc51ef52c6e6ec1fa0c20be5544cac6c2cb82` · **MATCH** · **DL-756**. Live stream SSE. Supersedes v1.2.1. v1.0/v1.1 remain on disk as baseline.  
+**Data Delivery v1.0:** [`Specs/VP-Data-Delivery-Spec-v1_0.md`](../../Specs/VP-Data-Delivery-Spec-v1_0.md) · 73 · sha1 `ce2064af71f72883dc0e3cc91a60ac1c5ffc5392` · **MATCH** · **DL-760**. D1–D5 / S1–S3. ADVISOR watch 20.  
 **App end:** SA **v0.4 authored** sha1 `d68060cc5221b83170d39aeace5e8fb8b7470c51` (540 · 22 `## `) · **DL-731**. Supersedes v0.3.1. **DL-728 pointer CLOSED.** NOT BUILD. Advisor round 2 vs **v0_3_1**; dispositions → **v0.4.1 via Coach**.  
 **AZ-VP-9-A1:** [`Specs/amendments/AZ-VP-9-A1.md`](../../Specs/amendments/AZ-VP-9-A1.md) sha1 `53bf74daa8a2b67ac3073d6fdb92bfed9b297ab0` (41) · **MATCH**.  
 **AZ-VP-9-A7:** [`Specs/amendments/AZ-VP-9-A7.md`](../../Specs/amendments/AZ-VP-9-A7.md) sha1 `efcaa297c80e8e4410a24bbbeb8aec68987e3e6c` (40 · 2 `## ` · last `## Standing`) · **MATCH** · **DL-738**. Scope boundary over A2–A6.  

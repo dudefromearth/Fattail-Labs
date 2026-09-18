@@ -10,10 +10,11 @@ from __future__ import annotations
 import gzip
 import json
 import sys
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
-from market_data.vp_engine.coverage import SOURCES, next_backfill_session
+from market_data.vp_engine.coverage import SOURCES, floor_of, next_backfill_session
 from market_data.vp_engine.rebuild import rebuild_session
 from market_data.vp_ingest.store import archive_root, in_rth, prints_path
 from market_data.vp_ingest.vendor_day import (
@@ -24,7 +25,36 @@ from market_data.vp_ingest.vendor_day import (
     write_day_prints,
 )
 
+ET = ZoneInfo("America/New_York")
 FIVE_SESSION_FLOOR_TARGET = date(2026, 9, 14)
+D1_SESSIONS = 63  # ~3 months RTH. Floor of acceptable (Data Delivery v1.0).
+HARD_STOP_MINUTES = 8 * 60 + 30  # 08:30 ET
+
+
+def d1_target_floor(today: date | None = None) -> date:
+    """Oldest session of a 63-session trailing window ending today."""
+    d = today or date.today()
+    n = 0
+    while n < D1_SESSIONS - 1:
+        d -= timedelta(days=1)
+        if d.weekday() < 5:
+            n += 1
+    return d
+
+
+def in_overnight_window(now: datetime | None = None) -> bool:
+    """S1: 16:00 ET → 08:30 ET next calendar morning. Hard stop."""
+    dt = now or datetime.now(ET)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=ET)
+    dt = dt.astimezone(ET)
+    hm = dt.hour * 60 + dt.minute
+    wd = dt.weekday()
+    if wd == 5:
+        return hm < HARD_STOP_MINUTES
+    if wd >= 5:
+        return False
+    return hm >= 16 * 60 or hm < HARD_STOP_MINUTES
 
 
 def plan(root: Path | None = None, *, today: date | None = None) -> dict[str, str | None]:
@@ -88,6 +118,69 @@ def pull_five(*, root: Path | None = None, today: date | None = None, target: da
                 break
             report[src].append(land_session(src, nxt, root=ar))
     return {"hold": None, "flat_files_blocker": flat_files_blocker(), "report": report}
+
+
+def pull_overnight(
+    *,
+    root: Path | None = None,
+    today: date | None = None,
+    target_sessions: int = D1_SESSIONS,
+) -> dict:
+    """S2: run tranches continuously until 08:30 hard stop or D1 met."""
+    ar = root or archive_root()
+    today = today or date.today()
+    target = d1_target_floor(today)
+    started = datetime.now(ET)
+    landed = 0
+    report: dict[str, list] = {s: [] for s in SOURCES}
+    print(
+        f"overnight start {started.isoformat()} d1_floor_target={target.isoformat()} "
+        f"sessions={target_sessions} stop=08:30 ET",
+        flush=True,
+    )
+    print(f"flat_files_blocker={flat_files_blocker()}", flush=True)
+    if not in_overnight_window(started):
+        print("overnight HOLD: outside 16:00–08:30 ET window (CP-1 / S1)", flush=True)
+        return {"hold": "outside_window", "target": target.isoformat(), "landed": 0, "report": report}
+    while in_overnight_window():
+        progressed = False
+        for src in SOURCES:
+            if not in_overnight_window():
+                break
+            fl = floor_of(ar, src)
+            if fl is not None and fl <= target:
+                continue
+            nxt = next_backfill_session(ar, src, today=today)
+            if nxt is None or nxt < target:
+                continue
+            man = land_session(src, nxt, root=ar)
+            report[src].append(man)
+            landed += 0 if man.get("skipped") else 1
+            progressed = True
+            elapsed_h = max((datetime.now(ET) - started).total_seconds() / 3600.0, 1e-6)
+            print(
+                f"overnight rate landed={landed} sessions/hour={landed / elapsed_h:.2f} "
+                f"floors={{ {', '.join(f'{s}:{floor_of(ar,s)}' for s in SOURCES)} }}",
+                flush=True,
+            )
+        if not progressed:
+            print("overnight idle: D1 met or no next session", flush=True)
+            break
+    stopped = datetime.now(ET)
+    elapsed_h = max((stopped - started).total_seconds() / 3600.0, 1e-6)
+    out = {
+        "hold": None,
+        "target": target.isoformat(),
+        "landed": landed,
+        "sessions_per_hour": round(landed / elapsed_h, 2),
+        "started": started.isoformat(),
+        "stopped": stopped.isoformat(),
+        "floors": {s: (floor_of(ar, s).isoformat() if floor_of(ar, s) else None) for s in SOURCES},
+        "report": {s: [{"session": x.get("session"), "count": x.get("count"), "skipped": x.get("skipped")} for x in report[s]] for s in SOURCES},
+        "flat_files_blocker": flat_files_blocker(),
+    }
+    print(f"overnight stop {json.dumps({k: out[k] for k in out if k != 'report'})}", flush=True)
+    return out
 
 
 def count_gz(path: Path) -> int:
@@ -166,6 +259,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if argv[:1] == ["--five"]:
         pull_five(today=today)
+        return 0
+    if argv[:1] == ["--overnight"]:
+        pull_overnight(today=today)
         return 0
     nxt = planned
     for src, iso in nxt.items():
