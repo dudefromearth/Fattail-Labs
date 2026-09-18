@@ -4,7 +4,7 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
-## 2026-09-18 — DL-752 VP Phase B L2 guest + A18–A22 + canvas settings
+## 2026-09-18 — DL-757 VP Phase B L2 guest + A18–A22 + canvas settings
 
 **Decision (Coach).** Phase A stock LWC stands. **Phase B released:** one custom
 series is the Volume Profile layer (L2). Layers **add, never override**.
@@ -31,7 +31,8 @@ poll (`GET /api/help/guides`) — no Wiki page write, no poller edit (L9).
 **Does not.** Phase C structure price-lines (gated). Member residual
 `VolumeProfileChart` kill. MiniTwo. Stop `:3000`/`:4000`. `git add -A`.
 
-**Cites:** A2 · A8 · A10 · A12 · A17 · A18–A22 · **DL-751** · **DL-741** · **DL-739**.
+**Cites:** A2 · A8 · A10 · A12 · A17 · A18–A22 · **DL-756** · **DL-755** · **DL-751** · **DL-741** · **DL-739**.
+Main already used **DL-752–756** for the A18–A22 / v1.3 spec landings; this packet is **DL-757**.
 
 ---
 
