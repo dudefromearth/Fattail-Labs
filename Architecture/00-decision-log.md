@@ -4,6 +4,20 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-18 — DL-743 VP `row=` is display rebin (loud) · pin StudioOne IP, not `.local`
+
+**Decision.** Two A12 follow-ups, neither a surface-build block, both before member traffic:
+
+1. **`row=` is applied, or refused.** Contract v1.0/v1.1 `row=<override>` is a **display-resolution** override (SA-L8 render-only). Echoing `vp_row` while returning native bins is a silent conformance gap and is forbidden. Server-side rebin: integer multiple of substrate, volume conserved, `flags.approximation=display_rebin` + `substrate_vp_row`. Finer than substrate → **422** `row_below_substrate`. Non-multiple → **422** `row_not_multiple_of_substrate`. Detection store unchanged. Evidence: DEV sidecar `row=1` 501→126 bins, volume 1 216 154 conserved; `row=0.1` 422.
+
+2. **Canonical VP base is a pinned IP.** `studioone.local` mDNS returns extra A/AAAA (`192.168.68.57` + IPv6); urllib/http.client stall **~1.2 s/request** (300× vs on-box). **LAN pin:** `http://192.168.1.111:4010` (new-conn p50 4.1 ms · keep-alive 1.8 ms). **Tailscale / MiniTwo:** `http://100.74.220.38:4010` (`studioone` MagicDNS, not `.local`). `sa_dev.vp_client` uses HTTP/1.1 keep-alive. Recorded in [`DEV-API.md`](../agents/p-volume-profile-service/DEV-API.md).
+
+**Does not.** Bounce StudioOne `vp-api` during RTH (install per footprint). Stop StudioTwo `:3000`/`:4000`. `git add -A`. Contract v1.3 (existing `row=` param, now honored).
+
+**Cites:** **DL-742** · Contract v1.1 · SA-L8 · A12.7.
+
+---
+
 ## 2026-09-18 — DL-742 AZ-VP-9-A12 Full-History Profile · COMPOSITE FENCE LIFTED · VPS2b
 
 **Decision.** [`Specs/amendments/AZ-VP-9-A12.md`](../Specs/amendments/AZ-VP-9-A12.md) is **full-history profile display law** (India MATCH 55 · sha1 `417dc65af3960593cbda2c06d5dd36c00f31b247` · 2 `## ` · last `## Standing`). Supersedes A4 clause 4 **for the profile only**: the profile no longer aggregates over the visible time window. A4 x-range now governs the **price layer's** span. Everything else in A2–A11 stands.
