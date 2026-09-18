@@ -173,6 +173,12 @@ def create_app() -> FastAPI:
     app.include_router(market_session_router)
     app.include_router(volume_profile_member_router)
     app.include_router(volume_profile_admin_router)
+    if cfg.env == "dev":
+        from routes.sa_dev import router as sa_dev_router
+        from routes.vp_contract_mock import router as vp_contract_mock_router
+
+        app.include_router(vp_contract_mock_router)
+        app.include_router(sa_dev_router)
     app.include_router(pricing_router)
     app.include_router(hard_router)
     app.include_router(options_lab_session_router)

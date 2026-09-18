@@ -91,6 +91,12 @@ const CARDS: { href: string; title: string; body: string; testId: string }[] = [
     body: "Edit courses, hub, and live on production URLs — the learner page is the editor.",
     testId: "admin-card-inplace",
   },
+  {
+    href: "/admin/sa-dev",
+    title: "SA dev canvas (DEV-ONLY)",
+    body: "Structural Analysis prototype — SA objects only. Not a member surface. StudioTwo.",
+    testId: "admin-card-sa-dev",
+  },
 ];
 
 export default function AdminPage() {
