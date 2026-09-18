@@ -4,6 +4,22 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-18 — DL-751 VP hot serving tier: 63-session OHLC chunks + warmer
+
+**Decision (Coach).** ~3 months (~63 trading sessions) resident in VP Redis as **per-session gzip chunks** × five timeframes (1m/5m/15m/1h/1d) × ES/MES/SPY, plus developing keys. `GET /v1/ohlc/{source}/{tf}?from=&to=` **assembles chunks only** — print gzip is the warmer's job, never the member request.
+
+**Footprint (before enabling, still the cap):** measured ES 2026-09-18 1m chunk **8569 B gzip** (759 bars). ×63 sessions ×3 sources × (1m-dominant mix) ≈ **2.5–8 MiB** at full horizon. **64 MiB cap is enough — do not raise.** DB **2** only; no CONFIG SET on chain Redis.
+
+**Warmer:** `market_data.vp_warmer` on session close / 60 s loop / API sidecar `LABS_VP_WARMER=1`. Horizon advances; keys beyond 63 expire. Same warmer on StudioTwo sidecar.
+
+**Depth now:** **2 sessions** (2026-09-17…18). Hot grows with nightly backfill. VPS2b remains full-history `/range` depth.
+
+**Does not.** Scan prints on `/v1/ohlc`. Touch chain_feed. Raise 64 MiB silently. Stop `:3000`/`:4000`.
+
+**Cites:** **DL-750** · Contract v1.2 OHLC · A6 TFs · CP-1.
+
+---
+
 ## 2026-09-18 — DL-750 VP serving hot path: pin + ETag + Redis db2
 
 **Decision (Coach: chart fill too slow).** Three layers, in order:

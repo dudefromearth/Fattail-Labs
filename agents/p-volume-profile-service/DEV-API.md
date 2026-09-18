@@ -14,7 +14,8 @@
 | **Launchd** | `ai.fattail.labs.vp-api` KeepAlive |
 | **Client** | `sa_dev.vp_client` HTTP/1.1 keep-alive pool. Pin the canonical IP above. |
 | **A14.6 cache** | ETag = `profile_generation_id`. Session/range: `private, max-age=31536000, immutable`. Developing: `private, max-age=0, must-revalidate`. If-None-Match → 304. Labs hop `/api/vp/v1/*`. |
-| **Hot Redis** | **DB 2** `redis://127.0.0.1:6379/2` · cap 64 MiB · keys `vp:hot:*` · never db0 / `mb:*` |
+| **Hot Redis** | **DB 2** · 64 MiB cap (enough for 63×3×5 TFs ≈ 8 MiB — **do not raise**) · `vp:hot:ohlc:{src}:{tf}:{session}` gzip chunks |
+| **OHLC** | `GET /v1/ohlc/{ES\|MES\|SPY}/{1m\|5m\|15m\|1h\|1d}?from=&to=` assembles chunks; warmer owns print gzip |
 | **Last verified** | **2026-09-18 10:50 ET** — `/range` LAN IP keep-alive first **25.5 ms** rest p50 **7.2 ms** ETag on. `.local` first still **1168 ms**. Member-route cold **1048 ms** / warm **38 ms**. |
 | **Store** | `/Volumes/FatTail2TB/fattail-market-data` |
 | **Ops pane (single)** | **`http://studioone.local:5055`** — Chain Snapshot + VP pipeline. `GET /api/vp-ops`. No second dashboard. |

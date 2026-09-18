@@ -10,6 +10,10 @@ import uvicorn
 def main() -> int:
     port = int(os.environ.get("LABS_VP_API_PORT") or "4010")
     host = (os.environ.get("LABS_VP_API_HOST") or "127.0.0.1").strip()
+    os.environ.setdefault("LABS_VP_WARMER", "1")
+    from market_data.vp_warmer import start_background
+
+    start_background()
     uvicorn.run(
         "market_data.vp_api.app:app",
         host=host,

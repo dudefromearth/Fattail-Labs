@@ -209,89 +209,8 @@ def range_for(
     }
 
 
+from market_data.vp_ohlc import bar_invariant, bars_from_prints, dominant_contract  # noqa: F401
 _TF_SECONDS = {"1m": 60, "5m": 300, "15m": 900, "1h": 3600, "1d": 86400}
-
-
-def bar_invariant(bar: dict[str, Any]) -> bool:
-    """l ≤ min(o,c) ≤ max(o,c) ≤ h. Wicks are that bar's own range."""
-    try:
-        o = float(bar["o"])
-        h = float(bar["h"])
-        l = float(bar["l"])
-        c = float(bar["c"])
-    except (KeyError, TypeError, ValueError):
-        return False
-    return l <= min(o, c) <= max(o, c) <= h
-
-
-def dominant_contract(rows: list[dict[str, Any]]) -> str | None:
-    """Lead ticker only. Prefer select_lead_contract (calendar + volume)."""
-    from market_data.vp_ingest.lead_contract import volume_leader
-
-    return volume_leader(rows)
-
-
-def bars_from_prints(
-    rows: list[dict[str, Any]],
-    *,
-    tf: str = "5m",
-    product: str | None = None,
-    contracts: list[dict[str, Any]] | None = None,
-    as_of: date | None = None,
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]], str | None, str]:
-    """Aggregate SOURCE-space prints into OHLC. One lead contract. Drop illegal bars."""
-    from market_data.vp_ingest.lead_contract import select_lead_contract
-    from market_data.vp_ingest.store import vendor_ts_to_seconds
-
-    contract, lead_rule = select_lead_contract(
-        rows, product=product, contracts=contracts, as_of=as_of
-    )
-    if contract:
-        rows = [
-            r
-            for r in rows
-            if str(r.get("contract") or "").strip().upper() == contract
-        ]
-    step = _TF_SECONDS.get(tf, 300)
-    buckets: dict[int, dict[str, Any]] = {}
-    for rec in rows:
-        try:
-            px = float(rec.get("p") if rec.get("p") is not None else rec.get("price"))
-            ts = vendor_ts_to_seconds(rec.get("t") or 0)
-        except (TypeError, ValueError):
-            continue
-        if px <= 0 or ts <= 0:
-            continue
-        bucket = int(ts // step) * step
-        vol = rec.get("s") if rec.get("s") is not None else rec.get("size") or 0
-        try:
-            vol_n = float(vol)
-        except (TypeError, ValueError):
-            vol_n = 0
-        bar = buckets.get(bucket)
-        if bar is None:
-            buckets[bucket] = {
-                "t": bucket * 1000,
-                "o": px,
-                "h": px,
-                "l": px,
-                "c": px,
-                "v": vol_n,
-            }
-        else:
-            bar["h"] = max(bar["h"], px)
-            bar["l"] = min(bar["l"], px)
-            bar["c"] = px
-            bar["v"] = (bar.get("v") or 0) + vol_n
-    honest: list[dict[str, Any]] = []
-    gaps: list[dict[str, Any]] = []
-    for k in sorted(buckets):
-        bar = buckets[k]
-        if bar_invariant(bar):
-            honest.append(bar)
-        else:
-            gaps.append({"t": bar["t"], "reason": "invariant"})
-    return honest, gaps, contract, lead_rule
 
 
 def ohlc_for_source(
@@ -301,7 +220,7 @@ def ohlc_for_source(
     lookback_days: int = 5,
 ) -> dict[str, Any]:
     """Admin-dev SOURCE-space OHLC from the VP print store (A12.4 / A8.4)."""
-    from sa_dev.store_read import list_source_days, load_prints, store_ok
+    from sa_dev.store_read import list_source_days, store_ok
 
     src = (source or "").upper()
     ok, detail = store_ok()
@@ -318,39 +237,22 @@ def ohlc_for_source(
     days = list_source_days(src)
     if lookback_days > 0:
         days = days[-int(lookback_days) :]
-    from market_data.vp_hot import hot
-    from market_data.vp_ingest.store import prints_path
+    from market_data.vp_chunks import assemble_bars
+    from market_data.vp_warmer import load_chunks
 
-    stamp_parts: list[str] = []
-    root = None
-    try:
-        from sa_dev.store_read import store_root
-
-        root = store_root()
-    except Exception:
-        root = None
-    if root is not None:
-        for iso in days:
-            p = prints_path(root, src, date.fromisoformat(iso))
-            if p.is_file():
-                st = p.stat()
-                stamp_parts.append(f"{iso}:{int(st.st_mtime)}:{st.st_size}")
-    stamp = f"{src}:{tf}:{lookback_days}:" + "|".join(stamp_parts)
-    ck = f"ohlc:{src}:{tf}:{lookback_days}"
-    layer = hot()
-    if layer.enabled and stamp_parts:
-        cached = layer.get(ck)
-        if cached and isinstance(cached.get("body"), dict) and layer.gen_matches(cached, stamp):
-            return cached["body"]
-    rows: list[dict[str, Any]] = []
-    for iso in days:
-        rows.extend(load_prints(src, date.fromisoformat(iso)))
-    bars, gaps, contract, lead_rule = bars_from_prints(
-        rows, tf=tf, product=src
+    chunks = load_chunks(src, tf, days)
+    served_iso = {str(c.get("session") or "") for c in chunks}
+    missing = [d for d in days if d not in served_iso]
+    # Request path does not scan print gzip. Missing days wait on the warmer.
+    bars, served, contract, lead_rule = assemble_bars(
+        chunks,
+        from_d=date.fromisoformat(days[0]) if days else None,
+        to_d=date.fromisoformat(days[-1]) if days else None,
     )
     last_t = bars[-1]["t"] if bars else 0
     gid = f"{src}:{tf}:{contract or ''}:{last_t}:{len(bars)}"
-    out = {
+    status = "COMPLETE" if not missing else ("WARMING" if not bars else "GAPPED")
+    return {
         "ok": True,
         "source": src,
         "space": "source",
@@ -358,15 +260,14 @@ def ohlc_for_source(
         "lookback_days": lookback_days,
         "bars": bars,
         "bar_count": len(bars),
-        "gaps": gaps,
+        "gaps": [{"session": d, "cause": "WARMING"} for d in missing],
         "contract": contract,
         "lead_rule": lead_rule,
         "store": detail,
+        "status": status,
         "profile_generation_id": gid,
+        "missing": missing,
     }
-    if layer.enabled and stamp_parts:
-        layer.set(ck, out, gen=stamp)
-    return out
 
 
 def _coverage_block(body: dict[str, Any]) -> dict[str, Any]:

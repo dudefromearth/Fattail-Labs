@@ -17,9 +17,11 @@ from market_data.vp_api.range_gate import range_decision
 from market_data.vp_engine.coverage import VP_ROW, ceiling_of, floor_of, load_coverage
 from market_data.vp_engine.display_rebin import display_rebin
 from market_data.vp_engine.rebuild import histogram_path
+from market_data.vp_chunks import TFS, assemble_bars, ns_bars, parse_bound
 from market_data.vp_hot import hot
 from market_data.vp_http_cache import HEALTH, payload_response
 from market_data.vp_ingest.store import archive_root, in_rth
+from market_data.vp_warmer import load_chunks
 
 app = FastAPI(title="VP Profile API", docs_url=None, redoc_url=None)
 
@@ -359,3 +361,71 @@ def profile(
         list(body.get("bins") or []), body, native_row=native, requested=row
     )
     return payload_response(request, applied, kind="session", live=False)
+
+
+@app.get("/v1/ohlc/{source_symbol}/{timeframe}")
+def ohlc_window(
+    request: Request,
+    source_symbol: str,
+    timeframe: str,
+    from_: str | None = Query(default=None, alias="from"),
+    to: str | None = Query(default=None),
+):
+    """Assemble from warmed session chunks. No print-gzip on this path."""
+    gate = _computing(request)
+    if isinstance(gate, JSONResponse):
+        return gate
+    src = source_symbol.upper()
+    if src not in ("SPY", "ES", "MES"):
+        return JSONResponse(status_code=404, content={"error": "unknown_target"})
+    tf = timeframe.lower()
+    if tf not in TFS:
+        return JSONResponse(status_code=422, content={"error": "bad_range"})
+    a = parse_bound(from_)
+    b = parse_bound(to)
+    if from_ and a is None:
+        return JSONResponse(status_code=422, content={"error": "bad_range"})
+    if to and b is None:
+        return JSONResponse(status_code=422, content={"error": "bad_range"})
+    if a and b and a > b:
+        return JSONResponse(status_code=422, content={"error": "bad_range"})
+    days: list[str] = []
+    if a and b:
+        d = a
+        while d <= b:
+            days.append(d.isoformat())
+            d = date.fromordinal(d.toordinal() + 1)
+    else:
+        from market_data.vp_warmer import _session_days
+
+        days = [x.isoformat() for x in _session_days(_root(), src)]
+        if a:
+            days = [x for x in days if x >= a.isoformat()]
+        if b:
+            days = [x for x in days if x <= b.isoformat()]
+    chunks = load_chunks(src, tf, days)
+    bars, served, contract, rule = assemble_bars(chunks, from_d=a, to_d=b)
+    missing = [d for d in days if d not in served]
+    if not served:
+        return JSONResponse(
+            status_code=503,
+            content={"error": "UNAVAILABLE", "status": "WARMING", "missing": missing[:14]},
+        )
+    live = in_rth() and (b is None or b >= date.today())
+    body = {
+        "source": src,
+        "timeframe": tf,
+        "kind": "ohlc",
+        "status": "GAPPED" if missing else "COMPLETE",
+        "contract": contract,
+        "lead_rule": rule,
+        "bars": ns_bars(bars),
+        "gaps": [{"session": d, "cause": "WARMING"} for d in missing],
+        "coverage": {
+            "floor_session": served[0] if served else None,
+            "ceiling_session": served[-1] if served else None,
+        },
+        "profile_generation_id": f"{src}:{tf}:{served[0]}:{served[-1]}:{len(bars)}",
+        "flags": {"mapping": "FAILED", "approximation": "none"},
+    }
+    return payload_response(request, body, kind="ohlc", live=live)

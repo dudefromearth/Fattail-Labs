@@ -116,6 +116,61 @@ class Hot:
             return False
         return str(cached.get("gen") or "") == str(gen)
 
+    def get_raw(self, key: str) -> bytes | None:
+        if self._r is None:
+            return None
+        raw = self._r.get(PREFIX + key)
+        return bytes(raw) if raw else None
+
+    def set_raw(self, key: str, blob: bytes) -> bool:
+        """Store gzip (or other) bytes under the app cap. False if refused."""
+        if self._r is None:
+            return False
+        full = PREFIX + key
+        old = self._r.get(full)
+        old_n = len(old) if old else 0
+        delta = len(blob) - old_n
+        used = int(self._r.get(BYTES_KEY) or 0)
+        if used + delta > self._max:
+            return False
+        pipe = self._r.pipeline()
+        pipe.set(full, blob)
+        pipe.incrby(BYTES_KEY, delta)
+        pipe.execute()
+        return True
+
+    def delete(self, key: str) -> None:
+        if self._r is None:
+            return
+        full = PREFIX + key
+        old = self._r.get(full)
+        pipe = self._r.pipeline()
+        pipe.delete(full)
+        if old:
+            pipe.incrby(BYTES_KEY, -len(old))
+        pipe.execute()
+
+    def scan_keys(self, match: str) -> list[str]:
+        if self._r is None:
+            return []
+        out: list[str] = []
+        for k in self._r.scan_iter(match=PREFIX + match, count=200):
+            s = k.decode() if isinstance(k, bytes) else str(k)
+            if s.startswith(PREFIX):
+                s = s[len(PREFIX) :]
+            out.append(s)
+        return out
+
+    @property
+    def used_bytes(self) -> int:
+        if self._r is None:
+            return 0
+        return int(self._r.get(BYTES_KEY) or 0)
+
+    @property
+    def cap_bytes(self) -> int:
+        return self._max
+
 
 _hot: Hot | None = None
 
