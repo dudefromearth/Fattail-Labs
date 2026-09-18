@@ -34,7 +34,7 @@ SURFACE_INSPECT_KEYS = frozenset({"defaults", "default_view_id", "views"})
 SURFACE_VIEW_MAX = 12
 
 # Idle timeout preference (minutes) — all roles except administrator
-SESSION_IDLE_MIN_DEFAULT = 30
+SESSION_IDLE_MIN_DEFAULT = 960  # 16h — spans a full pre->post-market trading day
 SESSION_IDLE_MIN_LO = 15
 SESSION_IDLE_MIN_HI = 960  # up to 16h so a session can span a full pre→post-market trading day
 
