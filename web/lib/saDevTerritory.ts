@@ -1,4 +1,4 @@
-/** SA-L11 §8.1 — the map shows the whole territory. Doctrine verbatim. */
+/** SA-L11 — the map shows the whole territory. Doctrine from SA v0.4 §8a / §1. */
 
 export type TerritoryStatus = "shipping" | "in-development";
 
@@ -15,14 +15,14 @@ export const SA_DEV_TERRITORY: TerritoryEntry[] = [
     label: "Structure",
     status: "shipping",
     doctrine:
-      "Nodes, edges, crevasses, groupings, uncharted — terrain context for defined-risk structures.",
+      "Nodes, edges, crevasses, groupings, uncharted — terrain context for positioning defined-risk structures (SA spec §1).",
   },
   {
     id: "replay",
     label: "Replay",
     status: "in-development",
     doctrine:
-      "How a session unfolded in time — a volume profile flattens that away. Market-profile / TPO-style replay. Not live until capture time-resolution is confirmed to support brackets.",
+      "TPO / market-profile replay of how a session unfolded — useful because a volume profile flattens time away; never day-typing (SA-L12). Data requirement already satisfied: prints stored with timestamps.",
   },
   {
     id: "footprint",
@@ -43,14 +43,14 @@ export const SA_DEV_TERRITORY: TerritoryEntry[] = [
     label: "Characterization",
     status: "in-development",
     doctrine:
-      "Distributions over published objects (provenance, recency, test-history). Build the view; let the data speak. No forecast language (SA-L5).",
+      "Distributions over published objects (provenance, recency, test-history). Served only after the §12a validation study populates it. No forecast language (SA-L5).",
   },
   {
     id: "exploration",
     label: "Exploration",
     status: "in-development",
     doctrine:
-      "Click-and-drag over price/date translates to VP /range queries surfaced through this service; objects-first, this service's summary, not raw bins (VP-L18).",
+      "Click-and-drag over price/date translates to VP /range queries surfaced through this service. Pane content is undecided (SA-Q11, Coach); objects-only is the standing law until his word (VP-L18).",
   },
 ];
 
