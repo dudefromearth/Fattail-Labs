@@ -4,6 +4,20 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-18 — DL-753 AZ-VP-9-A19 Axis labeling hierarchy
+
+**Decision.** [`Specs/amendments/AZ-VP-9-A19.md`](../Specs/amendments/AZ-VP-9-A19.md) is **axis labeling law** (India MATCH 46 · sha1 `0c824a543407c315c8bb8dc3e9de3e68e2cb0667` · 2 `## ` · last `## Standing`). **FINAL** — supersedes any earlier A19 triple in flight. Extends A15.3/A15.5, A16, A17. Nothing struck.
+
+**Law:** Time axis labels the largest calendar unit that changes (TV convention); collapse drops the smallest unit first. Price axis follows the served tick ladder; never an awkward decimal, never off-grid. Gridlines follow labels. Engine-native first (A17). Custom formatters only where the default deviates, enumerated citing this law.
+
+**A19 (ADVISOR watch 16):** off-ladder labels, crowding/overlap, or orphan gridlines are **findings**.
+
+**Does not.** MiniTwo. Stop StudioTwo `:3000`/`:4000`. `git add -A`.
+
+**Cites:** **DL-752** · **DL-749** · **DL-746** · A15 · A16 · A17.
+
+---
+
 ## 2026-09-18 — DL-752 AZ-VP-9-A18 One design, every ticker
 
 **Decision.** [`Specs/amendments/AZ-VP-9-A18.md`](../Specs/amendments/AZ-VP-9-A18.md) is **uniformity law** (India MATCH 31 · sha1 `60778d811d4fc802f3998e05a6725373b3a582fb` · 2 `## ` · last `## Standing`). Extends A2–A17, the stable-extension directive, and Contract v1.2.1/v1.3. Nothing struck.
