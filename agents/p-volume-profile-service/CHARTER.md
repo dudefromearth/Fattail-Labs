@@ -19,6 +19,7 @@
 | **SA Spec v0.3.1 (Advisor r2 object)** | [`Specs/Structural-Analysis-Service-Spec-v0_3_1.md`](../../Specs/Structural-Analysis-Service-Spec-v0_3_1.md) · **DL-730** · sha1 `8298b572f10784c9e43848c93da50b6a630e3321`. Round 2 proceeds against this file; verdicts → v0.4.1 via Coach. |
 | **AZ-VP-9-A1** | [`Specs/amendments/AZ-VP-9-A1.md`](../../Specs/amendments/AZ-VP-9-A1.md) · **DL-730** · sha1 `53bf74daa8a2b67ac3073d6fdb92bfed9b297ab0` |
 | **AZ-VP-9-A7** | [`Specs/amendments/AZ-VP-9-A7.md`](../../Specs/amendments/AZ-VP-9-A7.md) · **DL-738** · sha1 `efcaa297c80e8e4410a24bbbeb8aec68987e3e6c` · scope boundary over A2–A6 |
+| **AZ-VP-9-A8** | [`Specs/amendments/AZ-VP-9-A8.md`](../../Specs/amendments/AZ-VP-9-A8.md) · **DL-739** · sha1 `7c30e2d3a906c7acc87262a680a0263ba30bd7fc` · layer architecture consolidating A2–A7 |
 | **API contract v1.1** | [`Specs/VP-API-Contract-v1_1.md`](../../Specs/VP-API-Contract-v1_1.md) · **DL-733** sha1 `d01b3dd9bfbac3bbcafb34110ef7d06cd6650915` |
 | **Dev sidecar record** | [`DEV-API.md`](DEV-API.md) — APPS reads this; never scan ports |
 | **OPS-DASH** | [`OPS-DASH.md`](OPS-DASH.md) · **LIVE** `http://studioone.local:5055` · StudioTwo `:5056` retired (**DL-734** · **DL-737**) |
