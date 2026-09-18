@@ -8,6 +8,8 @@
 
 **GBH disambiguation (DL-747):** the Heatmap **gex-cal** template is **not** this program's future "heatmap overlay" (SA-edges). Distinct products. Separate Labs routes (volume-profile vs heatmap).
 
+**Roll week (DL-748):** OHLC uses derived lead-contract (volume + Contracts calendar). Session/developing bins still mix front+next until Coach answers `Q-roll-week-bin-eligibility.md`. No silent profile payload change.
+
 **Contention:** collector wins on StudioTwo. Cross-instance conflict → **STOP, report to Coach** — never INFRA↔APPS↔GBH.
 
 ---
