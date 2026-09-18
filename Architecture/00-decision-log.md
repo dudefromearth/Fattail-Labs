@@ -4,6 +4,18 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-18 — DL-740 AZ-VP-9-A10 Universal Settings Dialogs, One at a Time
+
+**Decision.** [`Specs/amendments/AZ-VP-9-A10.md`](../Specs/amendments/AZ-VP-9-A10.md) is **display law** (India MATCH 36 · sha1 `3d29f050d19983392262c005131163ed9a4ec983` · 2 `## ` · last `## Standing`). Extends A9: the dialog pattern becomes universal; per-layer scope is widened; nothing struck.
+
+**Law:** every configurable canvas part (layers per A9 **and** axes, grid/backdrop, range presets, legend, utility-bar chips) opens the **same** floating dialog — non-modal, draggable, dismissible, position remembered, identical visual shape. **Singleton:** only one dialog active; invoking any dialog closes the open one. One reusable component; new parts inherit by construction. Per-user persistence covers values and last position (A8.2 / A9.5).
+
+**Does not.** MiniTwo. Stop StudioTwo `:3000`/`:4000`. `git add -A`. Invent A9 courier bytes.
+
+**Cites:** **DL-739** · AZ-VP-9-A8 · AZ-VP-9-A9 · A7.
+
+---
+
 ## 2026-09-18 — DL-739 AZ-VP-9-A8 Layer Architecture
 
 **Decision.** [`Specs/amendments/AZ-VP-9-A8.md`](../Specs/amendments/AZ-VP-9-A8.md) is **layer-architecture law** consolidating **A2–A7** (India MATCH 45 · sha1 `7c30e2d3a906c7acc87262a680a0263ba30bd7fc` · 2 `## ` · last `## Standing`). Nothing in A2–A7 is struck; the canvas is independent layers on one familiar backdrop.
