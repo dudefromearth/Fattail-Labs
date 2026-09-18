@@ -41,10 +41,11 @@ def _dotenv_base() -> str:
 
 
 def api_base() -> str:
-    raw = (os.environ.get("LABS_SA_DEV_VP_API_BASE") or "").strip()
-    if not raw:
-        raw = _dotenv_base()
-    return raw or DEFAULT_BASE
+    env = (os.environ.get("LABS_SA_DEV_VP_API_BASE") or "").strip()
+    # Tests pin mock://. Otherwise .env is the flip switch (no :4000 recycle).
+    if env.startswith("mock:"):
+        return env
+    return _dotenv_base() or env or DEFAULT_BASE
 
 
 def _use_mock(base: str) -> bool:
@@ -112,32 +113,62 @@ def is_coverage_response(body: dict[str, Any]) -> bool:
     return False
 
 
-def _http_json(url: str, headers: dict[str, str] | None = None) -> tuple[int, dict[str, Any]]:
-    import json
-    import urllib.error
-    import urllib.request
+_POOL: dict[tuple[str, int], Any] = {}
 
-    req = urllib.request.Request(url, method="GET", headers=headers or {})
-    try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            raw = resp.read().decode("utf-8")
-            status = int(resp.status)
-    except urllib.error.HTTPError as exc:
-        raw = exc.read().decode("utf-8") if exc.fp else ""
-        status = int(exc.code)
+
+def _http_json(url: str, headers: dict[str, str] | None = None) -> tuple[int, dict[str, Any]]:
+    """GET with HTTP/1.1 keep-alive. Pin a stable host — never studioone.local."""
+    import http.client
+    import json
+    from urllib.parse import urlsplit
+
+    parts = urlsplit(url)
+    if parts.scheme not in ("http", ""):
+        raise ContractMismatch(f"unsupported URL scheme: {parts.scheme!r}")
+    host = parts.hostname or ""
+    port = parts.port or 80
+    path = parts.path or "/"
+    if parts.query:
+        path = f"{path}?{parts.query}"
+    key = (host, port)
+    conn = _POOL.get(key)
+    hdrs = dict(headers or {})
+    hdrs.setdefault("Connection", "keep-alive")
+    hdrs.setdefault("Accept", "application/json")
+
+    def _once(c: http.client.HTTPConnection) -> tuple[int, bytes]:
+        c.request("GET", path, headers=hdrs)
+        resp = c.getresponse()
+        raw = resp.read()
+        return int(resp.status), raw
+
+    last_exc: Exception | None = None
+    for attempt in range(2):
         try:
-            body = json.loads(raw) if raw else {"error": "http_error"}
-        except json.JSONDecodeError as je:
-            raise ContractMismatch(f"HTTP {status} non-JSON: {raw[:180]}") from je
-        if not isinstance(body, dict):
-            raise ContractMismatch(f"HTTP {status} body is not an object")
-        return status, body
+            if conn is None:
+                conn = http.client.HTTPConnection(host, port, timeout=10)
+                _POOL[key] = conn
+            status, raw_b = _once(conn)
+            break
+        except (http.client.RemoteDisconnected, ConnectionError, OSError) as exc:
+            last_exc = exc
+            try:
+                conn.close()
+            except Exception:
+                pass
+            _POOL.pop(key, None)
+            conn = None
+            if attempt == 1:
+                raise ContractMismatch(f"HTTP connect failed: {exc}") from exc
+    else:
+        raise ContractMismatch(f"HTTP connect failed: {last_exc}")
+    raw = raw_b.decode("utf-8") if raw_b else ""
     try:
         body = json.loads(raw) if raw else {}
     except json.JSONDecodeError as je:
-        raise ContractMismatch(f"HTTP {status} non-JSON") from je
+        raise ContractMismatch(f"HTTP {status} non-JSON: {raw[:180]}") from je
     if not isinstance(body, dict):
-        raise ContractMismatch("response is not an object")
+        raise ContractMismatch(f"HTTP {status} body is not an object")
     return status, body
 
 

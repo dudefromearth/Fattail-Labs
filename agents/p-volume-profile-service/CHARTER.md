@@ -24,7 +24,7 @@
 | **AZ-VP-9-A11** | [`Specs/amendments/AZ-VP-9-A11.md`](../../Specs/amendments/AZ-VP-9-A11.md) · **DL-741** · sha1 `20984fe478152c7f8424bc1c652657265f346380` · purpose law · three uses · L-POSITION named |
 | **AZ-VP-9-A12** | [`Specs/amendments/AZ-VP-9-A12.md`](../../Specs/amendments/AZ-VP-9-A12.md) · **DL-742** · sha1 `417dc65af3960593cbda2c06d5dd36c00f31b247` · full-history profile · VPS2b Q6=(c) |
 | **API contract v1.1** | [`Specs/VP-API-Contract-v1_1.md`](../../Specs/VP-API-Contract-v1_1.md) · **DL-733** sha1 `d01b3dd9bfbac3bbcafb34110ef7d06cd6650915` |
-| **Dev sidecar record** | [`DEV-API.md`](DEV-API.md) — APPS reads this; never scan ports |
+| **Dev sidecar record** | [`DEV-API.md`](DEV-API.md) — APPS reads this; never scan ports. Canonical LAN `http://192.168.1.111:4010` (**DL-743**); never `studioone.local` |
 | **OPS-DASH** | [`OPS-DASH.md`](OPS-DASH.md) · **LIVE** `http://studioone.local:5055` · StudioTwo `:5056` retired (**DL-734** · **DL-737**) |
 | **VPS2b** | [`VPS2b.md`](VPS2b.md) · **DL-742** · Q6=(c) running totals · dev first · `kind=composite` publish still fenced |
 
