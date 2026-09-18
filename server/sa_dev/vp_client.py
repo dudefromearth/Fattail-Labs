@@ -116,7 +116,30 @@ def is_coverage_response(body: dict[str, Any]) -> bool:
 _POOL: dict[tuple[str, int], Any] = {}
 
 
+def fetch_v1(
+    path: str,
+    *,
+    query: dict[str, str] | None = None,
+    headers: dict[str, str] | None = None,
+    base: str | None = None,
+) -> tuple[int, dict[str, Any], dict[str, str]]:
+    """GET contract path. Returns status, body, response headers (A14.6)."""
+    import urllib.parse
+
+    use = (base or api_base()).rstrip("/")
+    qs = ("?" + urllib.parse.urlencode(query)) if query else ""
+    status, body, hdrs = _http_json_full(f"{use}{path}{qs}", headers=headers)
+    return status, body, hdrs
+
+
 def _http_json(url: str, headers: dict[str, str] | None = None) -> tuple[int, dict[str, Any]]:
+    status, body, _hdrs = _http_json_full(url, headers=headers)
+    return status, body
+
+
+def _http_json_full(
+    url: str, headers: dict[str, str] | None = None
+) -> tuple[int, dict[str, Any], dict[str, str]]:
     """GET with HTTP/1.1 keep-alive. Pin a stable host — never studioone.local."""
     import http.client
     import json
@@ -136,19 +159,23 @@ def _http_json(url: str, headers: dict[str, str] | None = None) -> tuple[int, di
     hdrs.setdefault("Connection", "keep-alive")
     hdrs.setdefault("Accept", "application/json")
 
-    def _once(c: http.client.HTTPConnection) -> tuple[int, bytes]:
+    def _once(c: http.client.HTTPConnection) -> tuple[int, bytes, dict[str, str]]:
         c.request("GET", path, headers=hdrs)
         resp = c.getresponse()
         raw = resp.read()
-        return int(resp.status), raw
+        rh = {k.lower(): v for k, v in resp.getheaders()}
+        return int(resp.status), raw, rh
 
     last_exc: Exception | None = None
+    raw_b = b""
+    rh: dict[str, str] = {}
+    status = 0
     for attempt in range(2):
         try:
             if conn is None:
                 conn = http.client.HTTPConnection(host, port, timeout=10)
                 _POOL[key] = conn
-            status, raw_b = _once(conn)
+            status, raw_b, rh = _once(conn)
             break
         except (http.client.RemoteDisconnected, ConnectionError, OSError) as exc:
             last_exc = exc
@@ -162,14 +189,18 @@ def _http_json(url: str, headers: dict[str, str] | None = None) -> tuple[int, di
                 raise ContractMismatch(f"HTTP connect failed: {exc}") from exc
     else:
         raise ContractMismatch(f"HTTP connect failed: {last_exc}")
+    if status == 304:
+        return 304, {}, rh
     raw = raw_b.decode("utf-8") if raw_b else ""
+    if not raw:
+        return status, {}, rh
     try:
         body = json.loads(raw) if raw else {}
     except json.JSONDecodeError as je:
         raise ContractMismatch(f"HTTP {status} non-JSON: {raw[:180]}") from je
     if not isinstance(body, dict):
         raise ContractMismatch(f"HTTP {status} body is not an object")
-    return status, body
+    return status, body, rh
 
 
 def _validate_body(body: dict[str, Any]) -> dict[str, Any]:
