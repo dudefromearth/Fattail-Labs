@@ -11,5 +11,7 @@ INFRA does not self-review specs. Findings route here.
 | 9 | **Full-history profile (AZ-VP-9-A12 · DL-742)** | Profile that re-aggregates on visible time (VRVP); silent truncation of the coverage floor; shipping `kind=composite` before a proposed endpoint; treating `/range` below floor as a silent partial. |
 | 10 | **TV look parity (AZ-VP-9-A13 · DL-744)** | Profile not flush to the axis; muted/hollow candles as the default; missing last-price tag; light chrome inside the app frame; a look that would fail Coach's eye against the filed ES1! 2026-09-18 screenshots. |
 | 11 | **Local-feel (AZ-VP-9-A14 · DL-745)** | Spinner-first pan/zoom; fabricated bars for speed; generation-keyed payload without ETag; developing served as `immutable`. |
+| 12 | **Round-2 look (AZ-VP-9-A15 · DL-746)** | Axis type smaller than the annotated TV shots; un-bordered candles; fixed sparse time labels; y-void beyond ~75 px padding; labels like `7687.11`. |
+| 13 | **Instrument tick (AZ-VP-9-A16 · DL-746)** | Hardcoded 0.25 or any client-side per-symbol tick table; ES→SPX without re-deriving the scale from metadata. |
 
-Surface seeds must carry standing checks **5**–**11**. A hit is a **finding**, not initiative.
+Surface seeds must carry standing checks **5**–**13**. A hit is a **finding**, not initiative.

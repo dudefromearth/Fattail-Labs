@@ -44,7 +44,9 @@ Everything not on this line is **parked** or **serves it**. Touched only when th
 **AZ-VP-9-A11:** [`Specs/amendments/AZ-VP-9-A11.md`](../../Specs/amendments/AZ-VP-9-A11.md) sha1 `20984fe478152c7f8424bc1c652657265f346380` (59 · 5 `## ` · last `## Standing`) · **MATCH** · **DL-741**. Purpose law: morning routine / trade entry / trade management. **L-POSITION** named. Morning Routine preset = Coach's show configuration.  
 **AZ-VP-9-A12:** [`Specs/amendments/AZ-VP-9-A12.md`](../../Specs/amendments/AZ-VP-9-A12.md) sha1 `417dc65af3960593cbda2c06d5dd36c00f31b247` (55 · 2 `## ` · last `## Standing`) · **MATCH** · **DL-742**. Full-history profile. **VPS2b** Q6=(c) running totals authorized. Until it serves, `/range` full covered span.  
 **AZ-VP-9-A13:** [`Specs/amendments/AZ-VP-9-A13.md`](../../Specs/amendments/AZ-VP-9-A13.md) sha1 `292a711a94fd6d31cc18750da86f7f1fa3f35d15` (51 · 3 `## ` · last `## Standing`) · **MATCH** · **DL-744**. TV look parity. Benchmark: [`benchmarks/a13-tv-look-2026-09-18/`](benchmarks/a13-tv-look-2026-09-18/). Coach's eye is the gate.  
-**AZ-VP-9-A14:** [`Specs/amendments/AZ-VP-9-A14.md`](../../Specs/amendments/AZ-VP-9-A14.md) sha1 `4489d35bd98115c9b8b5a5d255a2db4d938a68a7` (55 · 4 `## ` · last `## Standing`) · **MATCH** · **DL-745**. Local-feel. ETag = generation id (transport).
+**AZ-VP-9-A14:** [`Specs/amendments/AZ-VP-9-A14.md`](../../Specs/amendments/AZ-VP-9-A14.md) sha1 `4489d35bd98115c9b8b5a5d255a2db4d938a68a7` (55 · 4 `## ` · last `## Standing`) · **MATCH** · **DL-745**. Local-feel. ETag = generation id (transport).  
+**AZ-VP-9-A15:** [`Specs/amendments/AZ-VP-9-A15.md`](../../Specs/amendments/AZ-VP-9-A15.md) sha1 `671e11365d95032353b923abfbf4403d0477b56a` (39 · 2 `## `) · **MATCH** · **DL-746**. Round-2 look. Benchmark: [`benchmarks/a15-tv-look-round2-2026-09-18/`](benchmarks/a15-tv-look-round2-2026-09-18/).  
+**AZ-VP-9-A16:** [`Specs/amendments/AZ-VP-9-A16.md`](../../Specs/amendments/AZ-VP-9-A16.md) sha1 `156577a1d3fea9d4d33e6ac8c6606afc2841a008` (26 · 2 `## `) · **MATCH** · **DL-746**. Per-instrument tick. No surface tick table.
 
 **Governance — surface seeds (standing checks):**  
 5. Specified VP feature wins over chart generality. Scope creep toward a general charting platform is a **finding**, not initiative. (**AZ-VP-9-A7** · **DL-738**)  
@@ -54,6 +56,8 @@ Everything not on this line is **parked** or **serves it**. Touched only when th
 9. Primary profile is full-history / x-invariant. Visible-time aggregation is a finding (VRVP). (**AZ-VP-9-A12** · **DL-742**)  
 10. Look is judged against the filed TV screenshots. Muted/hollow candles as the default is a finding. (**AZ-VP-9-A13** · **DL-744**)  
 11. Spinner-first pan/zoom is a finding. Invented bars to look fast is a finding. Missing ETag on a generation-keyed payload is a finding. (**AZ-VP-9-A14** · **DL-745**)  
+12. Axis figures smaller than the round-2 TV shots, hollow un-bordered candles as default, dead y-void beyond 75 px padding, or labels like `7687.11` are findings. (**AZ-VP-9-A15** · **DL-746**)  
+13. A hardcoded 0.25 (or any per-symbol tick table) in surface code is a finding. (**AZ-VP-9-A16** · **DL-746**)  
 **Git:** `vp/seated-law-v0.6` · **DL-724**.  
 **Law:** **CP-1** · **DL-707**  
 **Token:** `VPS0-W0` STAMPED **DL-706** · VPS0 **CLOSED**
