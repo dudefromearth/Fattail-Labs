@@ -8,5 +8,6 @@ INFRA does not self-review specs. Findings route here.
 | 6 | **Layer architecture (AZ-VP-9-A8 · DL-739)** | Mixed spans on one canvas; a layer pre-enabled that the law defaults off; Footprint or GEX treated as a view; Replay treated as a layer; Help/docs that drop "one chart, layers you switch on." |
 | 7 | **Dialog singleton (AZ-VP-9-A10 · DL-740)** | Stacked or modal settings dialogs; a canvas part with a one-off settings chrome; a new part that does not inherit the shared dialog by construction. |
 | 8 | **Purpose / L-POSITION (AZ-VP-9-A11 · DL-741)** | A feature that serves none of morning routine / trade entry / trade management; Morning Routine preset treated as anything other than Coach's show configuration; L-POSITION shipped as a view or in structure colors; Help that is not organized by the three uses. |
+| 9 | **Full-history profile (AZ-VP-9-A12 · DL-742)** | Profile that re-aggregates on visible time (VRVP); silent truncation of the coverage floor; shipping `kind=composite` before a proposed endpoint; treating `/range` below floor as a silent partial. |
 
-Surface seeds must carry standing checks **5**, **6**, **7**, and **8**. A hit is a **finding**, not initiative.
+Surface seeds must carry standing checks **5**–**9**. A hit is a **finding**, not initiative.

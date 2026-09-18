@@ -21,7 +21,7 @@ Everything not on this line is **parked** or **serves it**. Touched only when th
 | Step | Maps onto | When |
 |------|-----------|------|
 | **1** | Tonight’s collector **migration PLUS backfill PROMOTED** | After 16:00 ET: VPSB ACT B (stop StudioTwo writer **before** StudioOne starts; prefer 17:00–18:00 CT halt), then vendor-floor backfill tranches: SPY equities floor · ES **2017-04** · MES **2019-05**. Disk-checked, resumable, integrity vs vendor manifests. **VPB-Q1** (historical mark source) evidence rides along — **does not block binning in source space**. |
-| **2** | **VPS2** as tokened | Session + developing Engine; **composite fenced**. F3 golden = v0.6.1 (bins byte-identical across offset republish) **before** tonight’s install byte-match. Extend over backfilled history as tranches land. |
+| **2** | **VPS2** as tokened | Session + developing Engine. F3 golden = v0.6.1 (bins byte-identical across offset republish). **VPS2b (DL-742):** Q6=(c) all-history running per-row totals — fence lifted for this backing store only; `kind=composite` publish still fenced. Dev first; prod per footprint. |
 | **3** | **VPS4 pulled forward** | API **build** on StudioTwo **NOW** against frozen **Contract v1.0**. Install behind its gate once Engine goldens are green. Auth classes + 403 fixture F6 included. Any contract change = **v1.1 through Coach**, never silent drift. |
 
 **Report cadence:** one screen per evening window — tranche progress, bins coverage (sessions binned per symbol), API status.
@@ -41,13 +41,15 @@ Everything not on this line is **parked** or **serves it**. Touched only when th
 **AZ-VP-9-A7:** [`Specs/amendments/AZ-VP-9-A7.md`](../../Specs/amendments/AZ-VP-9-A7.md) sha1 `efcaa297c80e8e4410a24bbbeb8aec68987e3e6c` (40 · 2 `## ` · last `## Standing`) · **MATCH** · **DL-738**. Scope boundary over A2–A6.  
 **AZ-VP-9-A8:** [`Specs/amendments/AZ-VP-9-A8.md`](../../Specs/amendments/AZ-VP-9-A8.md) sha1 `7c30e2d3a906c7acc87262a680a0263ba30bd7fc` (45 · 2 `## ` · last `## Standing`) · **MATCH** · **DL-739**. Layer architecture consolidating A2–A7. Footprint/GEX = layers; Replay = view.  
 **AZ-VP-9-A10:** [`Specs/amendments/AZ-VP-9-A10.md`](../../Specs/amendments/AZ-VP-9-A10.md) sha1 `3d29f050d19983392262c005131163ed9a4ec983` (36 · 2 `## ` · last `## Standing`) · **MATCH** · **DL-740**. Universal settings dialogs, one at a time.  
-**AZ-VP-9-A11:** [`Specs/amendments/AZ-VP-9-A11.md`](../../Specs/amendments/AZ-VP-9-A11.md) sha1 `20984fe478152c7f8424bc1c652657265f346380` (59 · 5 `## ` · last `## Standing`) · **MATCH** · **DL-741**. Purpose law: morning routine / trade entry / trade management. **L-POSITION** named. Morning Routine preset = Coach's show configuration.
+**AZ-VP-9-A11:** [`Specs/amendments/AZ-VP-9-A11.md`](../../Specs/amendments/AZ-VP-9-A11.md) sha1 `20984fe478152c7f8424bc1c652657265f346380` (59 · 5 `## ` · last `## Standing`) · **MATCH** · **DL-741**. Purpose law: morning routine / trade entry / trade management. **L-POSITION** named. Morning Routine preset = Coach's show configuration.  
+**AZ-VP-9-A12:** [`Specs/amendments/AZ-VP-9-A12.md`](../../Specs/amendments/AZ-VP-9-A12.md) sha1 `417dc65af3960593cbda2c06d5dd36c00f31b247` (55 · 2 `## ` · last `## Standing`) · **MATCH** · **DL-742**. Full-history profile. **VPS2b** Q6=(c) running totals authorized. Until it serves, `/range` full covered span.
 
 **Governance — surface seeds (standing checks):**  
 5. Specified VP feature wins over chart generality. Scope creep toward a general charting platform is a **finding**, not initiative. (**AZ-VP-9-A7** · **DL-738**)  
 6. One canvas, independent layers. Do not mix spans. Do not pre-enable a layer the law defaults off. Do not treat Replay as a layer or Footprint/GEX as views. (**AZ-VP-9-A8** · **DL-739**)  
 7. Settings dialogs are one reusable floating singleton — never stacked. (**AZ-VP-9-A10** · **DL-740**)  
 8. A feature serving none of the three uses fails A7. L-POSITION is a named future layer, not a view. Morning Routine house default is Coach's show chart. (**AZ-VP-9-A11** · **DL-741**)  
+9. Primary profile is full-history / x-invariant. Visible-time aggregation is a finding (VRVP). (**AZ-VP-9-A12** · **DL-742**)  
 **Git:** `vp/seated-law-v0.6` · **DL-724**.  
 **Law:** **CP-1** · **DL-707**  
 **Token:** `VPS0-W0` STAMPED **DL-706** · VPS0 **CLOSED**
@@ -57,7 +59,7 @@ Everything not on this line is **parked** or **serves it**. Touched only when th
 | Phase | State |
 |-------|--------|
 | **Step 1 download** | ES+MES **LIVE** StudioTwo. Backfill **newest-first** from yesterday; REST/flat-files **HOLD until 16:00 ET** (CP-1). Tranche 1 tonight after migration. |
-| **Step 2 bins** | **Bin as you land** on StudioTwo local store. Composite **fenced**. StudioOne Engine install tonight iff VPS1-G GO. |
+| **Step 2 bins** | Session + developing **LIVE** StudioOne. **VPS2b** authorized (dev first) for Q6=(c) running totals. `kind=composite` publish still fenced. |
 | **Step 3 API** | Dev sidecar — APPS reads [`DEV-API.md`](DEV-API.md) (never scan ports). Contract **v1.1**. `/v1/health` coverage is the flip signal. |
 | **SADEV*** | APPS-owned · `SA-DEV-W0` **STAMPED** **DL-723**. Cites authored v0.4 (**DL-731**); still NOT BUILD. |
 | **Tonight** | VPS1-G carry → VPS2 ACT 3 (GO only) → VPSB ACT B → backfill tranche 1 |
@@ -67,6 +69,6 @@ Everything not on this line is **parked** or **serves it**. Touched only when th
 - SSH StudioOne / MiniTwo / DudeTwo **outside** a named CP-1 window.  
 - Two writers on one store.  
 - Stop `:3000` / `:4000`.  
-- Publish composite.  
+- Publish `kind=composite` (backing store is VPS2b; route stays fenced).  
 - Invent missing courier specs to force a sha1.  
 - Drift Contract v1.0.

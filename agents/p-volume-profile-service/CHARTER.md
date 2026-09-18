@@ -22,15 +22,17 @@
 | **AZ-VP-9-A8** | [`Specs/amendments/AZ-VP-9-A8.md`](../../Specs/amendments/AZ-VP-9-A8.md) · **DL-739** · sha1 `7c30e2d3a906c7acc87262a680a0263ba30bd7fc` · layer architecture consolidating A2–A7 |
 | **AZ-VP-9-A10** | [`Specs/amendments/AZ-VP-9-A10.md`](../../Specs/amendments/AZ-VP-9-A10.md) · **DL-740** · sha1 `3d29f050d19983392262c005131163ed9a4ec983` · universal settings dialogs, one at a time |
 | **AZ-VP-9-A11** | [`Specs/amendments/AZ-VP-9-A11.md`](../../Specs/amendments/AZ-VP-9-A11.md) · **DL-741** · sha1 `20984fe478152c7f8424bc1c652657265f346380` · purpose law · three uses · L-POSITION named |
+| **AZ-VP-9-A12** | [`Specs/amendments/AZ-VP-9-A12.md`](../../Specs/amendments/AZ-VP-9-A12.md) · **DL-742** · sha1 `417dc65af3960593cbda2c06d5dd36c00f31b247` · full-history profile · VPS2b Q6=(c) |
 | **API contract v1.1** | [`Specs/VP-API-Contract-v1_1.md`](../../Specs/VP-API-Contract-v1_1.md) · **DL-733** sha1 `d01b3dd9bfbac3bbcafb34110ef7d06cd6650915` |
 | **Dev sidecar record** | [`DEV-API.md`](DEV-API.md) — APPS reads this; never scan ports |
 | **OPS-DASH** | [`OPS-DASH.md`](OPS-DASH.md) · **LIVE** `http://studioone.local:5055` · StudioTwo `:5056` retired (**DL-734** · **DL-737**) |
+| **VPS2b** | [`VPS2b.md`](VPS2b.md) · **DL-742** · Q6=(c) running totals · dev first · `kind=composite` publish still fenced |
 
 **Not this board:** `p-volume-profile-histogram` (Labs dual-store) · `p-session-volume-profile` (heatmap SVP).
 
 ## Mission
 
-**Singular drive (DL-727 / DL-732):** (1) DOWNLOAD newest-first, contiguous [floor … now] (2) CREATE bins as each tranche lands (3) API over whatever is binned. Composite fenced. Coverage floor published. `/range` below floor = 422 refuse.
+**Singular drive (DL-727 / DL-732):** (1) DOWNLOAD newest-first, contiguous [floor … now] (2) CREATE bins as each tranche lands (3) API over whatever is binned. **VPS2b** (DL-742) builds Q6=(c) running totals; `kind=composite` publish stays fenced. Coverage floor published. `/range` below floor = 422 refuse.
 
 ## Invariants
 
