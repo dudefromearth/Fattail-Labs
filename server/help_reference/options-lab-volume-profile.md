@@ -1,43 +1,80 @@
 # Options Lab — Volume Profile
 
-Member-facing guide to the **Volume Profile** chart in Options Lab
-(`/app/options-lab/volume-profile`). It shows how much trading volume happened
-at each price level. Teaching and inspection only — it does not tell you what to
-trade and never promises a profit.
+Member-facing guide to **Volume Profile** in Options Lab
+(`/app/options-lab/volume-profile`). It shows how much trading volume
+happened at each **price**. Teaching and inspection only — it does not
+tell you what to trade and never promises a profit.
 
 ## What this chart is showing you
-Volume Profile is a **volume-by-price histogram**. On a normal chart, volume is
-drawn along the bottom (volume over *time*). Here it's turned on its side and
-drawn **at each price**: every horizontal bar is a **price bin**, and the
-**longer the bar, the more volume traded at that price** over the selected
-period. It answers "which prices has the market done the most business at?" —
-heavy bars are prices the market kept trading around; thin bars are prices it
-passed through quickly.
 
-The bar at the **current price** is highlighted, so you can see where price sits
-within the volume distribution. Hover any bar to see its exact price range and
-volume (shown as `low–high vol N`), and each bin is labelled with its mid price.
+Volume Profile is a **volume-by-price histogram**. On a normal chart,
+volume is drawn along the bottom (volume over *time*). Here it is turned
+on its side: every horizontal bar is a **price row**, and the **longer
+the bar, the more volume traded at that price**.
+
+The product chart is **one canvas with layers you switch on**:
+
+- **Price** (candles / bars / line) — the market tape
+- **Volume Profile** — the blue side-anchored histogram (default on)
+- **Analysis** — structural overlay, **off until you switch it on**
+- **Footprint** and **Position** — named future layers, not on yet
+
+It is **not** a separate “view” for each tool. Footprint and GEX arrive
+later as **layers** on this same chart. Replay, when it arrives, is a
+**view** (a different experience), not a layer.
+
+The profile is **full history**: each visible price row is all volume
+ever transacted in that row since the coverage floor, not “only what is
+on screen in time.” Panning time moves the candles; it does not rewrite
+the profile. The span chip reads **Full history · since &lt;date&gt;**
+and says so if coverage is truncated.
+
+## Three uses
+
+The same chart is meant for three jobs. Modes (Morning / Entry / Manage)
+are one-click presets of layers and timeframe — Morning is Coach’s show
+configuration, so you can match his chart in one click.
+
+| Use | Job |
+|-----|-----|
+| **Morning routine** | Read the terrain before the open |
+| **Trade entry** | Place the structure against the levels |
+| **Trade management** | Hold / adjust / exit against the levels |
 
 ## Controls
-- **Bar period** — the timeframe the profile is built from (the aggregation
-  used to bin volume by price). It's labelled *"OHLC estimate — not tick
-  measurement"* — see the honesty note below.
-- **Scale text size** — Small / Medium / Larger / X Large for the price labels.
-  Appearance only; saved per browser.
 
-## Honesty — this chart is an estimate (for now)
-The current Volume Profile builds its bins from **OHLC bars, not tick-by-tick
-trades**, so it is an **approximation** of where volume traded — read it for
-**shape and context**, not exact numbers. A tick-measured version (a true
-volume-by-price histogram from trade data) is in development. If the price
-series being used is a proxy, the chart says so.
+- **Source** — the served instrument list (not a hardcoded menu). Switching
+  rebinds data, tick size, and provenance; the layout stays the same.
+- **Interval** — 1m / 5m / 15m / 1h / 1D for the **price** layer only.
+- **Layers** — L0 canvas, L1 price, L2 profile, L3 analysis. Click a
+  layer chip to open its settings.
+- **Right-click** — opens the settings dialog for that part of the
+  chart: canvas (background, grid, fonts, crosshair, margins), price
+  candles (body / border / wick colors), profile (anchor, width,
+  opacity), or the price scale (side, last-price line, high/low
+  highlights).
+- **Defaults** — every settings dialog has Save as default / Reset to
+  default / Reset to house default. House values are Coach-tuned; your
+  saves do not overwrite them.
+- **Your settings persist on your account.** Clearing the browser does
+  not lose them; sign in on another machine and the same surface comes
+  back.
 
-## What it is not
-It is **not** Market Profile / TPO, and it does **not** draw a Point of Control
-(POC) or value-area bands — it's a straight volume-by-price histogram. It is not
-personalised advice and not a buy/sell signal — context and inspection only.
+## Honesty
+
+- **Admin / StudioTwo today:** the layered chart above is what you see
+  (tick-measured profile from the Volume Profile service, full-history
+  `/range`).
+- **Members today:** the Volume Profile tab still shows the **residual
+  OHLC-window estimate** (labelled as an approximation, not tick
+  measurement). That residual dies when the layered chart ships to
+  members. Until then, read the member chart for **shape**, not exact
+  bin counts.
+- The profile is **not** Market Profile / TPO and does **not** draw a
+  Point of Control or value-area band unless you turn Analysis on.
+- It is not personalised advice and not a buy/sell signal.
 
 ## How to open
+
 Apps → Options Lab → **Volume Profile** (`/app/options-lab/volume-profile`).
-Pick your symbol and choose the **Bar period**. Volume Profile is its own tab,
-separate from Analyzer, Heatmap, and Surface.
+It is its own tab, separate from Analyzer, Heatmap, and Surface.

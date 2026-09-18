@@ -4,6 +4,37 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-18 — DL-752 VP Phase B L2 guest + A18–A22 + canvas settings
+
+**Decision (Coach).** Phase A stock LWC stands. **Phase B released:** one custom
+series is the Volume Profile layer (L2). Layers **add, never override**.
+`createChart` options stay enumerated (A17). Y-pan/zoom re-slices a loaded
+`/range` band locally; refetch only when the view leaves the band. X-invariant
+(A12). Flush left/right, translucent blue, visible-max scale.
+
+**A18–A22 law landed** (`Specs/AZ-VP-9-A18.md` … `A22.md` + `Specs/amendments/`):
+one design every ticker; axis collapse (engine-native first); A10 dialog
+defaults dropdown; settings home of record is `identities.sa_surface_json`
+(`GET`/`PUT /api/me/sa-surface`, schema `1`, debounce write-through, server
+wins). Browser storage is a rehydration cache only.
+
+**Canvas / price / scale dialogs (Coach, from TV examples):** L0 fonts, grid
+on/off, crosshair, margins; L1 body/border/wick colors; axis last-price +
+high/low highlights. Out (A7): Alerts, Trading, Events, watermark, bid/ask,
+session/timezone, nav buttons.
+
+**Help.** `server/help_reference/options-lab-volume-profile.md` + App areas
+**Volume Profile** rewritten to the layered chart and the member residual
+honesty. File present = published. **Wiki Follow** is the existing S1 Help
+poll (`GET /api/help/guides`) — no Wiki page write, no poller edit (L9).
+
+**Does not.** Phase C structure price-lines (gated). Member residual
+`VolumeProfileChart` kill. MiniTwo. Stop `:3000`/`:4000`. `git add -A`.
+
+**Cites:** A2 · A8 · A10 · A12 · A17 · A18–A22 · **DL-751** · **DL-741** · **DL-739**.
+
+---
+
 ## 2026-09-18 — DL-751 VP hot serving tier: 63-session OHLC chunks + warmer
 
 **Decision (Coach).** ~3 months (~63 trading sessions) resident in VP Redis as **per-session gzip chunks** × five timeframes (1m/5m/15m/1h/1d) × ES/MES/SPY, plus developing keys. `GET /v1/ohlc/{source}/{tf}?from=&to=` **assembles chunks only** — print gzip is the warmer's job, never the member request.

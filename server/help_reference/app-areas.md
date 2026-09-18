@@ -199,23 +199,24 @@ disciplined decisions — it does **not** predict profit, give trade signals, or
 what to buy.
 
 ## Volume Profile
-A study tool in Options Lab (`/app/options-lab/volume-profile`) that shows a sideways
-histogram of how much volume has traded at each price. Price runs up the side; a longer
-horizontal bar means more volume traded there — so you can see where a symbol has "done
-most of its business." A live-price marker highlights the bar at the current mid, and you
-choose the symbol, a bar period (1d / 4h / 1h / 30m), and text size.
+A study tool in Options Lab (`/app/options-lab/volume-profile`): **one chart, layers
+you switch on.** Price candles sit behind a blue side-anchored volume-by-price
+histogram (how much volume traded at each price, full history since the coverage
+floor). Analysis overlay is off until you turn it on. Footprint and Position are
+named future layers, not on yet.
 
-**How to read it:** pick your symbol and period, then scan for the longest bars — the
-busiest, most-accepted prices — note the thin bars where price moved through quickly, and
-watch where the live marker sits.
+**How to read it:** Morning / Entry / Manage are one-click presets (Morning = Coach’s
+show chart). Right-click the canvas, candles, profile, or scale for settings
+(background, grid, fonts, candle colors, high/low lines). Your settings live on
+your account, not only in the browser.
 
-**Why it matters:** high-volume prices tend to be reference levels traders revisit, so it
-helps you frame where activity has concentrated when studying a name.
+**Why it matters:** high-volume prices tend to be reference levels traders revisit,
+so it helps you frame where activity has concentrated when studying a name.
 
-**Good to know:** it's a study tool, not a signal. The member chart *estimates*
-volume-by-price from OHLC bars (it's labelled "From OHLC window — not measured tick VP"),
-so it's an approximation, not exact tick data; it covers regular-hours equity/ETF data and
-doesn't show Point of Control or value areas.
+**Good to know:** study tool, not a signal. The **member** tab still shows the
+residual OHLC-window *estimate* until the layered chart ships to members; admin
+already sees the tick-measured full-history profile. It is not Market Profile / TPO
+and does not draw a Point of Control unless Analysis is on.
 
 ## Playbook
 Your personal scrapbook for how you trade under risk — your rules, setups, regimes, and

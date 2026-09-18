@@ -8,6 +8,8 @@ import type { NextConfig } from "next";
 // Public SEO namespaces (canonical from day one — no legacy redirects):
 //   /course, /campaign, /resource, /app
 const nextConfig: NextConfig = {
+  // Browser is http://studiotwo:3000 (LAN/Tailscale), not localhost.
+  allowedDevOrigins: ["studiotwo", "studiotwo.local"],
   async rewrites() {
     const api = process.env.NEXT_PUBLIC_LABS_API_URL;
     if (!api) throw new Error("NEXT_PUBLIC_LABS_API_URL is not set");
