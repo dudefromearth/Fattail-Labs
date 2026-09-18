@@ -4,6 +4,20 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-18 — DL-754 AZ-VP-9-A21 Defaults in every dialog
+
+**Decision.** [`Specs/amendments/AZ-VP-9-A21.md`](../Specs/amendments/AZ-VP-9-A21.md) is **defaults-dropdown law** (India MATCH 32 · sha1 `4cf98d2153279846e64d16e7952e57e8127bad72` · 2 `## ` · last `## Standing`). Extends A9/A10/A20 (universal dialog) and A11 (presets). Nothing struck.
+
+**Law:** Every settings dialog carries a uniform footer dropdown: Save as default (user object default) · Reset to default (user, else house) · Reset to house default. Scope is per object per user, persisted with surface state. House defaults remain Coach-tuned versioned config. Future dialogs inherit by construction (A10.4).
+
+**A21 (ADVISOR watch 17):** a settings dialog without the defaults dropdown is a **finding**.
+
+**Does not.** MiniTwo. Stop StudioTwo `:3000`/`:4000`. `git add -A`.
+
+**Cites:** **DL-753** · **DL-740** · **DL-741** · A10 · A11.
+
+---
+
 ## 2026-09-18 — DL-753 AZ-VP-9-A19 Axis labeling hierarchy
 
 **Decision.** [`Specs/amendments/AZ-VP-9-A19.md`](../Specs/amendments/AZ-VP-9-A19.md) is **axis labeling law** (India MATCH 46 · sha1 `0c824a543407c315c8bb8dc3e9de3e68e2cb0667` · 2 `## ` · last `## Standing`). **FINAL** — supersedes any earlier A19 triple in flight. Extends A15.3/A15.5, A16, A17. Nothing struck.

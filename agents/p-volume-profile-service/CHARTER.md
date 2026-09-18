@@ -30,6 +30,7 @@
 | **AZ-VP-9-A17** | [`Specs/amendments/AZ-VP-9-A17.md`](../../Specs/amendments/AZ-VP-9-A17.md) · **DL-749** · sha1 `99d135b3b9fb2fec3917f8c91b34908e172058bd` · behavioral parity default · A4/A11 x-window default struck |
 | **AZ-VP-9-A18** | [`Specs/amendments/AZ-VP-9-A18.md`](../../Specs/amendments/AZ-VP-9-A18.md) · **DL-752** · sha1 `60778d811d4fc802f3998e05a6725373b3a582fb` · one design every ticker · A18.4 per-symbol surface code is a finding |
 | **AZ-VP-9-A19** | [`Specs/amendments/AZ-VP-9-A19.md`](../../Specs/amendments/AZ-VP-9-A19.md) · **DL-753** · sha1 `0c824a543407c315c8bb8dc3e9de3e68e2cb0667` · axis labeling hierarchy · FINAL |
+| **AZ-VP-9-A21** | [`Specs/amendments/AZ-VP-9-A21.md`](../../Specs/amendments/AZ-VP-9-A21.md) · **DL-754** · sha1 `4cf98d2153279846e64d16e7952e57e8127bad72` · defaults in every dialog |
 | **API contract v1.1** | [`Specs/VP-API-Contract-v1_1.md`](../../Specs/VP-API-Contract-v1_1.md) · **DL-733** sha1 `d01b3dd9bfbac3bbcafb34110ef7d06cd6650915` |
 | **Dev sidecar record** | [`DEV-API.md`](DEV-API.md) — APPS reads this; never scan ports. Canonical LAN `http://192.168.1.111:4010` (**DL-743**); never `studioone.local` |
 | **OPS-DASH** | [`OPS-DASH.md`](OPS-DASH.md) · **LIVE** `http://studioone.local:5055` · StudioTwo `:5056` retired (**DL-734** · **DL-737**) |

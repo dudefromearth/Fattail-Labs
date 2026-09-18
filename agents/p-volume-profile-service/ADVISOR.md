@@ -16,5 +16,6 @@ INFRA does not self-review specs. Findings route here.
 | 14 | **Parity attestation (AZ-VP-9-A17.5 · DL-749)** | Any look/behavior report reaching Coach without a side-by-side checklist attestation vs the TV benchmark, plus numbered-law deviations. Blank-future default x-window. TV-standard behavior treated as needing Coach dictation. |
 | 15 | **One design every ticker (AZ-VP-9-A18.4 · DL-752)** | Per-symbol code paths in surface work; bespoke chrome for primary pairs; a symbol switch that changes layout or behavior. |
 | 16 | **Axis labeling (AZ-VP-9-A19 · DL-753)** | Off-ladder / awkward-decimal price labels; time labels that skip the largest changing unit; crowding/overlap; orphan gridlines without labels. |
+| 17 | **Defaults dropdown (AZ-VP-9-A21 · DL-754)** | A settings dialog without Save as default / Reset to default / Reset to house default in the A10 footer. |
 
-Surface seeds must carry standing checks **5**–**16**. A hit is a **finding**, not initiative.
+Surface seeds must carry standing checks **5**–**17**. A hit is a **finding**, not initiative.
