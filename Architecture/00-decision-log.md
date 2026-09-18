@@ -4,6 +4,22 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-18 — DL-748 Lead-contract OHLC rule · roll-week bin eligibility question
+
+**Decision.**
+
+1. **OHLC lead-contract rule is implemented** (`market_data.vp_ingest.lead_contract`). Derived from vendor Contracts `last_trade_date` + volume leadership in the roll window (`ROLL_DAYS=8`). Never a hardcoded ticker. `ohlc_for_source` / `bars_from_prints` filter to that lead so every OHLC consumer inherits it. Payload carries `contract` + `lead_rule`.
+
+2. **Profile bins (session/developing) currently sum BOTH contracts.** Today's ESU6-expiry tape: StudioOne ES histogram span 7625.25–7739.25 covers ESU6 (7625–7670) and ESZ6 (7687–7739). Spec v0.6.1 §4 captures both (ingest); §5.2 eligibility is conditions not contract; §6/VP-L17 is target-space cross-session. **Underspecified** for source-space session histograms. Courier: [`Q-roll-week-bin-eligibility.md`](../agents/p-volume-profile-service/gate-reports/Q-roll-week-bin-eligibility.md). Candidate: session bins per contract; published series follows the lead rule.
+
+3. **No silent change to served `/v1/profile*` payloads** until Coach answers. Known-mixed state stays honest.
+
+**Does not.** Filter Engine bins this packet. Hardcode ESU6/ESZ6. Stop `:3000`/`:4000`. `git add -A`. Bounce StudioOne collectors.
+
+**Cites:** v0.6.1 §4 · §6 · VP-L17 · APPS candle root-cause.
+
+---
+
 ## 2026-09-18 — DL-747 Third build instance: GROK BUILD — HEATMAP (GBH)
 
 **Decision (Coach).** A **third build instance** joins the DL-720 split. Shared law unchanged: **CP-1**, collectors win StudioTwo contention, conflicts **STOP and report to Coach** — never instance-to-instance. Shared Labs components change only through Coach.
