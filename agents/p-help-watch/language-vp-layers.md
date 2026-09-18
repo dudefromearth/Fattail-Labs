@@ -11,4 +11,6 @@
 
 Documentation language follows that shape. Do not call Footprint or GEX a "view." Do not call Replay a "layer." SA-L11 navigation still names every phase honestly, IN-DEVELOPMENT included.
 
+Also: documentation organizes by the three uses (morning routine / trade entry / trade management). Morning Routine preset = Coach's show configuration. See [`language-vp-purpose.md`](language-vp-purpose.md) · **DL-741**.
+
 **Cite:** `Specs/amendments/AZ-VP-9-A8.md` · **DL-739**.

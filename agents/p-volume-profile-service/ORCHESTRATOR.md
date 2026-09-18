@@ -40,12 +40,14 @@ Everything not on this line is **parked** or **serves it**. Touched only when th
 **AZ-VP-9-A1:** [`Specs/amendments/AZ-VP-9-A1.md`](../../Specs/amendments/AZ-VP-9-A1.md) sha1 `53bf74daa8a2b67ac3073d6fdb92bfed9b297ab0` (41) · **MATCH**.  
 **AZ-VP-9-A7:** [`Specs/amendments/AZ-VP-9-A7.md`](../../Specs/amendments/AZ-VP-9-A7.md) sha1 `efcaa297c80e8e4410a24bbbeb8aec68987e3e6c` (40 · 2 `## ` · last `## Standing`) · **MATCH** · **DL-738**. Scope boundary over A2–A6.  
 **AZ-VP-9-A8:** [`Specs/amendments/AZ-VP-9-A8.md`](../../Specs/amendments/AZ-VP-9-A8.md) sha1 `7c30e2d3a906c7acc87262a680a0263ba30bd7fc` (45 · 2 `## ` · last `## Standing`) · **MATCH** · **DL-739**. Layer architecture consolidating A2–A7. Footprint/GEX = layers; Replay = view.  
-**AZ-VP-9-A10:** [`Specs/amendments/AZ-VP-9-A10.md`](../../Specs/amendments/AZ-VP-9-A10.md) sha1 `3d29f050d19983392262c005131163ed9a4ec983` (36 · 2 `## ` · last `## Standing`) · **MATCH** · **DL-740**. Universal settings dialogs, one at a time.
+**AZ-VP-9-A10:** [`Specs/amendments/AZ-VP-9-A10.md`](../../Specs/amendments/AZ-VP-9-A10.md) sha1 `3d29f050d19983392262c005131163ed9a4ec983` (36 · 2 `## ` · last `## Standing`) · **MATCH** · **DL-740**. Universal settings dialogs, one at a time.  
+**AZ-VP-9-A11:** [`Specs/amendments/AZ-VP-9-A11.md`](../../Specs/amendments/AZ-VP-9-A11.md) sha1 `20984fe478152c7f8424bc1c652657265f346380` (59 · 5 `## ` · last `## Standing`) · **MATCH** · **DL-741**. Purpose law: morning routine / trade entry / trade management. **L-POSITION** named. Morning Routine preset = Coach's show configuration.
 
 **Governance — surface seeds (standing checks):**  
 5. Specified VP feature wins over chart generality. Scope creep toward a general charting platform is a **finding**, not initiative. (**AZ-VP-9-A7** · **DL-738**)  
 6. One canvas, independent layers. Do not mix spans. Do not pre-enable a layer the law defaults off. Do not treat Replay as a layer or Footprint/GEX as views. (**AZ-VP-9-A8** · **DL-739**)  
 7. Settings dialogs are one reusable floating singleton — never stacked. (**AZ-VP-9-A10** · **DL-740**)  
+8. A feature serving none of the three uses fails A7. L-POSITION is a named future layer, not a view. Morning Routine house default is Coach's show chart. (**AZ-VP-9-A11** · **DL-741**)  
 **Git:** `vp/seated-law-v0.6` · **DL-724**.  
 **Law:** **CP-1** · **DL-707**  
 **Token:** `VPS0-W0` STAMPED **DL-706** · VPS0 **CLOSED**
