@@ -4,6 +4,26 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-18 — DL-741 AZ-VP-9-A11 Purpose, Workflow Modes, and the Position Layer
+
+**Decision.** [`Specs/amendments/AZ-VP-9-A11.md`](../Specs/amendments/AZ-VP-9-A11.md) is **purpose law** (India MATCH 59 · sha1 `20984fe478152c7f8424bc1c652657265f346380` · 5 `## ` · last `## Standing`). Extends A2–A10. Nothing struck.
+
+**Three uses govern the design:** MORNING ROUTINE (read the terrain before the open) · TRADE ENTRY (place the structure against the levels) · TRADE MANAGEMENT (hold/adjust/exit against the levels). A feature serving none of them fails A7 by definition.
+
+**Workflow modes:** three named one-click presets of layers / opacity / analysis / timeframe / span. House defaults are Coach-tuned from the screen. **The Morning Routine preset is Coach's show configuration by definition**, so members can match his chart in one click. Member adjustments save per mode; reset-to-house-default is one action. First run opens Morning Routine with a one-time pointer to the analysis toggle; thereafter A2 default-off governs.
+
+**Reading instruments:** span chip (honest aggregation/coverage; A10 x-range target) · crosshair readout (bin volume; nearest structural line + class when overlay on) · palette separation (structure owns saturated green/red; candles muted/hollow so they never collide with node boundaries).
+
+**L-POSITION** is a named future layer (A8 L4+ family): the member's active defined-risk structure against the terrain, from position/Analyzer services when its gate opens. Until then SA-L11 honest IN-DEVELOPMENT. Dedicated encoding amendment later; never borrows structure's colors.
+
+**Help Watch:** member documentation organizes by the three uses. Morning Routine preset = Coach's show configuration.
+
+**Does not.** MiniTwo. Stop StudioTwo `:3000`/`:4000`. `git add -A`. Invent A9 courier bytes.
+
+**Cites:** **DL-740** · **DL-739** · **DL-738** · AZ-VP-9-A2…A10 · SA-L11.
+
+---
+
 ## 2026-09-18 — DL-740 AZ-VP-9-A10 Universal Settings Dialogs, One at a Time
 
 **Decision.** [`Specs/amendments/AZ-VP-9-A10.md`](../Specs/amendments/AZ-VP-9-A10.md) is **display law** (India MATCH 36 · sha1 `3d29f050d19983392262c005131163ed9a4ec983` · 2 `## ` · last `## Standing`). Extends A9: the dialog pattern becomes universal; per-layer scope is widened; nothing struck.
