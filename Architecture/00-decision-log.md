@@ -4,6 +4,24 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-18 — DL-742 AZ-VP-9-A12 Full-History Profile · COMPOSITE FENCE LIFTED · VPS2b
+
+**Decision.** [`Specs/amendments/AZ-VP-9-A12.md`](../Specs/amendments/AZ-VP-9-A12.md) is **full-history profile display law** (India MATCH 55 · sha1 `417dc65af3960593cbda2c06d5dd36c00f31b247` · 2 `## ` · last `## Standing`). Supersedes A4 clause 4 **for the profile only**: the profile no longer aggregates over the visible time window. A4 x-range now governs the **price layer's** span. Everything else in A2–A11 stands.
+
+**Profile:** left/right anchored · **x-invariant full-history attribution** (coverage floor → now) · price-constrained to the visible y-window · in sync with the price axis · viewport-scaled to visible-row max · span chip "Full history · since &lt;floor&gt;" (Contract v1.1, never silent truncation). Unlike VRVP, panning time never rewrites the terrain.
+
+**COMPOSITE FENCE LIFTED per A12.7** under new work item **VPS2b** (does not un-stamp VPS2-W0's session/developing fence for `kind=composite` publish). VPS2b **builds** the all-history running per-row totals — **Q6 = (c)**: incremental, deterministic, parameter-hashed, rebuildable; grows with each backfill tranche. **Dev first** on StudioTwo; **prod** per standing footprint (RTH-safe or tonight's autorun). `kind=composite` remains unpublished; a dedicated composite endpoint is a later optimization, proposed not improvised.
+
+**Until VPS2b serves:** `/range` over the **full covered span** backs the display (coverage-honest).
+
+**/range full-span at current depth (2026-09-18, 2 sessions, coverage floor=ceiling 2026-09-17…18):** computing-class `GET /v1/profile/{SPX|XSP}/range?from=floor&to=ceiling`. Payload ~18 KB, ~500 bins at `vp_row=0.25`, status GAPPED. **DEV** (`127.0.0.1:4010`) p50 **3.1–3.6 ms**. **StudioOne localhost** p50 **3.8–3.9 ms**. **StudioTwo → studioone.local:4010** p50 **1.14–1.37 s** (health itself 1.76 s on that path — LAN/auth, not bin-sum). `row=1` **does not rebin** (same 501 bins; only echoes `vp_row`). **Do not ship server-side `row=` display rebinning as the default path at this depth** — the on-box sum is already ~4 ms. Revisit as backfill depth grows (naive `/range` reads one histogram file per session). VPS2b running totals are the scale path, not a coarser `row=`.
+
+**Does not.** MiniTwo. Stop StudioTwo `:3000`/`:4000`. `git add -A`. Ship a new `/composite` route in this packet. Install Engine writers on StudioOne during RTH.
+
+**Cites:** **DL-741** · **DL-738** · VPS2-W0 composite fence · Q6=(c) **DL-706** · Contract v1.1 · SA-L2.
+
+---
+
 ## 2026-09-18 — DL-741 AZ-VP-9-A11 Purpose, Workflow Modes, and the Position Layer
 
 **Decision.** [`Specs/amendments/AZ-VP-9-A11.md`](../Specs/amendments/AZ-VP-9-A11.md) is **purpose law** (India MATCH 59 · sha1 `20984fe478152c7f8424bc1c652657265f346380` · 5 `## ` · last `## Standing`). Extends A2–A10. Nothing struck.
