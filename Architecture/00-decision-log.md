@@ -4,6 +4,22 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-18 — DL-744 AZ-VP-9-A13 TradingView look parity · VPS3 after VPS2b
+
+**Decision.** [`Specs/amendments/AZ-VP-9-A13.md`](../Specs/amendments/AZ-VP-9-A13.md) is **look law** (India MATCH 51 · sha1 `292a711a94fd6d31cc18750da86f7f1fa3f35d15` · 3 `## ` · last `## Standing`). Supersedes A11 clause 6's muted/hollow candle **default** only — candles default to TV-standard green/red; separation survives via 4 px structure heavies and Coach-tuned shades. Everything else in A2–A12 stands.
+
+**Benchmark:** Coach's 2026-09-18 ES1! VRVP screenshots, filed at [`agents/p-volume-profile-service/benchmarks/a13-tv-look-2026-09-18/`](../agents/p-volume-profile-service/benchmarks/a13-tv-look-2026-09-18/). "Does it look like the benchmark" is the acceptance test, judged by Coach's eye.
+
+**Parity (each is law):** profile flush to the chosen axis · long translucent bars (~35–50%, substantial width) · prominent green/red candles · y-range auto-fit on open · last-price line + axis label on by default · edge-to-edge dark inside the app frame · axis/grid per the screenshots · structure overlay (when on) uses A3 weights.
+
+**VPS3 (Coach, same day):** fitted-offset mapping is the **top data-end priority after VPS2b**. Until mapping serves `flags.mapping=OK`, the surface is **source-space only** — no SPX-scale prices. Envelope today hardcodes `FAILED`. `VPS3-W0` is **not stamped**. Engine F3 republish (`mapping_offset_republish`) exists; live fit + API wiring + AT-VPS-8…10 do not. **ETA:** StudioTwo build can start the hour `VPS3-W0` is stamped (RTH-safe, no extra Massive). Member-useful OK mapping on StudioOne: **tonight 16:05 ET 2026-09-18 autorun** if the token is stamped today and VPS2b does not consume the whole window; otherwise **next weekday autorun 2026-09-19 16:05 ET**. Blocked until stamp.
+
+**Does not.** MiniTwo. Stop StudioTwo `:3000`/`:4000`. `git add -A`. Stamp `VPS3-W0` in this packet.
+
+**Cites:** **DL-743** · **DL-742** · A11.6 · A3 · A4 · A12.1 · Q7(a) **DL-706**.
+
+---
+
 ## 2026-09-18 — DL-743 VP `row=` is display rebin (loud) · pin StudioOne IP, not `.local`
 
 **Decision.** Two A12 follow-ups, neither a surface-build block, both before member traffic:
