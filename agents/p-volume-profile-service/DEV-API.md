@@ -13,6 +13,7 @@
 | **Contract** | **v1.1** sha1 `d01b3dd9bfbac3bbcafb34110ef7d06cd6650915` (`row=` is a **display-resolution override**, SA-L8 render-only; finer than substrate → 422) |
 | **Launchd** | `ai.fattail.labs.vp-api` KeepAlive |
 | **Client** | `sa_dev.vp_client` HTTP/1.1 keep-alive pool. Pin the canonical IP above. |
+| **A14.6 cache** | ETag = `profile_generation_id`. Session/range: `private, max-age=31536000, immutable`. Developing: `private, max-age=0, must-revalidate`. If-None-Match → 304. Labs hop `/api/vp/v1/*`. |
 | **Last verified** | **2026-09-18 07:55 ET** — hop: `.local` p50 **1227 ms** vs LAN IP p50 **4.1 ms** (new conn) / **2.8 ms** (keep-alive). Tailscale `100.74.220.38` p50 **8.5 ms**. |
 | **Store** | `/Volumes/FatTail2TB/fattail-market-data` |
 | **Ops pane (single)** | **`http://studioone.local:5055`** — Chain Snapshot + VP pipeline. `GET /api/vp-ops`. No second dashboard. |

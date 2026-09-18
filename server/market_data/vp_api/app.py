@@ -17,6 +17,7 @@ from market_data.vp_api.range_gate import range_decision
 from market_data.vp_engine.coverage import VP_ROW, ceiling_of, floor_of, load_coverage
 from market_data.vp_engine.display_rebin import display_rebin
 from market_data.vp_engine.rebuild import histogram_path
+from market_data.vp_http_cache import HEALTH, payload_response
 from market_data.vp_ingest.store import archive_root, in_rth
 
 app = FastAPI(title="VP Profile API", docs_url=None, redoc_url=None)
@@ -165,13 +166,16 @@ def health(request: Request):
             "ceiling_session": row.get("ceiling"),
             "sessions_binned": len(binned),
         }
-    return {
-        "collectors": collectors,
-        "coverage": coverage,
-        "gap_report": [],
-        "mapping_fit": {},
-        "backup_watch": "OK",
-    }
+    return JSONResponse(
+        content={
+            "collectors": collectors,
+            "coverage": coverage,
+            "gap_report": [],
+            "mapping_fit": {},
+            "backup_watch": "OK",
+        },
+        headers={"Cache-Control": HEALTH},
+    )
 
 
 @app.get("/v1/profile/{target_symbol}/range")
@@ -246,7 +250,8 @@ def profile_range(
     if kind == "partial" and extra:
         body["coverage"] = {**(body.get("coverage") or {}), **extra}
     applied = _apply_display_row(bins, body, native_row=native_row, requested=row)
-    return applied
+    live = in_rth() and b >= date.today()
+    return payload_response(request, applied, kind=body.get("kind") if isinstance(applied, dict) else "range", live=live)
 
 
 @app.get("/v1/profile/{target_symbol}/{kind}")
@@ -280,7 +285,10 @@ def profile(
             )
         body = _envelope(hist, target=target, source=src)
         native = float(hist.get("vp_row") or VP_ROW.get(src, 0.25))
-        return _apply_display_row(list(body.get("bins") or []), body, native_row=native, requested=row)
+        applied = _apply_display_row(
+            list(body.get("bins") or []), body, native_row=native, requested=row
+        )
+        return payload_response(request, applied, kind="developing", live=True)
     if not session_date:
         return JSONResponse(status_code=422, content={"error": "bad_range"})
     day = date.fromisoformat(session_date)
@@ -295,4 +303,7 @@ def profile(
         )
     body = _envelope(hist, target=target, source=src)
     native = float(hist.get("vp_row") or VP_ROW.get(src, 0.25))
-    return _apply_display_row(list(body.get("bins") or []), body, native_row=native, requested=row)
+    applied = _apply_display_row(
+        list(body.get("bins") or []), body, native_row=native, requested=row
+    )
+    return payload_response(request, applied, kind="session", live=False)

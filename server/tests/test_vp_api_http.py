@@ -100,6 +100,62 @@ def test_range_row_below_substrate_422(tmp_path, monkeypatch):
     assert r.json()["error"] == "row_below_substrate"
 
 
+def test_session_etag_304(tmp_path, monkeypatch):
+    monkeypatch.setenv("LABS_MARKET_DATA_ROOT", str(tmp_path))
+    _es_session(tmp_path)
+    client = LabsTestClient(app)
+    admin = cookie_for("administrator", identity_id=0)
+    r = client.get(
+        "/v1/profile/SPX/session?session_date=2026-09-17", cookies=admin
+    )
+    assert r.status_code == 200, r.text
+    etag = r.headers.get("etag")
+    assert etag == '"g-test"'
+    assert "immutable" in (r.headers.get("cache-control") or "")
+    hit = client.get(
+        "/v1/profile/SPX/session?session_date=2026-09-17",
+        cookies=admin,
+        headers={"If-None-Match": etag},
+    )
+    assert hit.status_code == 304
+    assert hit.headers.get("etag") == etag
+    assert hit.content in (b"", b"null")
+
+
+def test_developing_revalidate_header(tmp_path, monkeypatch):
+    import json
+    from datetime import date
+
+    from market_data.vp_engine.rebuild import histogram_path
+
+    monkeypatch.setenv("LABS_MARKET_DATA_ROOT", str(tmp_path))
+    path = histogram_path(tmp_path, "ES", date.today(), "developing")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "kind": "developing",
+                "generation_id": "g-dev",
+                "parameter_hash": "p-dev",
+                "status": "COMPLETE",
+                "flags": {"mapping": "FAILED", "approximation": "none"},
+                "gaps": [],
+                "vp_row": 0.25,
+                "bins": [{"price": 7700.00, "volume": 1}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    client = LabsTestClient(app)
+    admin = cookie_for("administrator", identity_id=0)
+    r = client.get("/v1/profile/SPX/developing", cookies=admin)
+    assert r.status_code == 200, r.text
+    cc = r.headers.get("cache-control") or ""
+    assert "must-revalidate" in cc
+    assert "immutable" not in cc
+    assert r.headers.get("etag") == '"g-dev"'
+
+
 def test_health_coverage_block(vp_client):
     admin = cookie_for("administrator", identity_id=0)
     r = vp_client.get("/v1/health", cookies=admin)

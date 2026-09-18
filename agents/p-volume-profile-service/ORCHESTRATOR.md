@@ -43,7 +43,8 @@ Everything not on this line is **parked** or **serves it**. Touched only when th
 **AZ-VP-9-A10:** [`Specs/amendments/AZ-VP-9-A10.md`](../../Specs/amendments/AZ-VP-9-A10.md) sha1 `3d29f050d19983392262c005131163ed9a4ec983` (36 · 2 `## ` · last `## Standing`) · **MATCH** · **DL-740**. Universal settings dialogs, one at a time.  
 **AZ-VP-9-A11:** [`Specs/amendments/AZ-VP-9-A11.md`](../../Specs/amendments/AZ-VP-9-A11.md) sha1 `20984fe478152c7f8424bc1c652657265f346380` (59 · 5 `## ` · last `## Standing`) · **MATCH** · **DL-741**. Purpose law: morning routine / trade entry / trade management. **L-POSITION** named. Morning Routine preset = Coach's show configuration.  
 **AZ-VP-9-A12:** [`Specs/amendments/AZ-VP-9-A12.md`](../../Specs/amendments/AZ-VP-9-A12.md) sha1 `417dc65af3960593cbda2c06d5dd36c00f31b247` (55 · 2 `## ` · last `## Standing`) · **MATCH** · **DL-742**. Full-history profile. **VPS2b** Q6=(c) running totals authorized. Until it serves, `/range` full covered span.  
-**AZ-VP-9-A13:** [`Specs/amendments/AZ-VP-9-A13.md`](../../Specs/amendments/AZ-VP-9-A13.md) sha1 `292a711a94fd6d31cc18750da86f7f1fa3f35d15` (51 · 3 `## ` · last `## Standing`) · **MATCH** · **DL-744**. TV look parity. Benchmark: [`benchmarks/a13-tv-look-2026-09-18/`](benchmarks/a13-tv-look-2026-09-18/). Coach's eye is the gate.
+**AZ-VP-9-A13:** [`Specs/amendments/AZ-VP-9-A13.md`](../../Specs/amendments/AZ-VP-9-A13.md) sha1 `292a711a94fd6d31cc18750da86f7f1fa3f35d15` (51 · 3 `## ` · last `## Standing`) · **MATCH** · **DL-744**. TV look parity. Benchmark: [`benchmarks/a13-tv-look-2026-09-18/`](benchmarks/a13-tv-look-2026-09-18/). Coach's eye is the gate.  
+**AZ-VP-9-A14:** [`Specs/amendments/AZ-VP-9-A14.md`](../../Specs/amendments/AZ-VP-9-A14.md) sha1 `4489d35bd98115c9b8b5a5d255a2db4d938a68a7` (55 · 4 `## ` · last `## Standing`) · **MATCH** · **DL-745**. Local-feel. ETag = generation id (transport).
 
 **Governance — surface seeds (standing checks):**  
 5. Specified VP feature wins over chart generality. Scope creep toward a general charting platform is a **finding**, not initiative. (**AZ-VP-9-A7** · **DL-738**)  
@@ -52,6 +53,7 @@ Everything not on this line is **parked** or **serves it**. Touched only when th
 8. A feature serving none of the three uses fails A7. L-POSITION is a named future layer, not a view. Morning Routine house default is Coach's show chart. (**AZ-VP-9-A11** · **DL-741**)  
 9. Primary profile is full-history / x-invariant. Visible-time aggregation is a finding (VRVP). (**AZ-VP-9-A12** · **DL-742**)  
 10. Look is judged against the filed TV screenshots. Muted/hollow candles as the default is a finding. (**AZ-VP-9-A13** · **DL-744**)  
+11. Spinner-first pan/zoom is a finding. Invented bars to look fast is a finding. Missing ETag on a generation-keyed payload is a finding. (**AZ-VP-9-A14** · **DL-745**)  
 **Git:** `vp/seated-law-v0.6` · **DL-724**.  
 **Law:** **CP-1** · **DL-707**  
 **Token:** `VPS0-W0` STAMPED **DL-706** · VPS0 **CLOSED**

@@ -4,6 +4,18 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-18 — DL-745 AZ-VP-9-A14 fonts/controls/local-feel · ETag transport
+
+**Decision.** [`Specs/amendments/AZ-VP-9-A14.md`](../Specs/amendments/AZ-VP-9-A14.md) is **fonts, control homes, and local-feel performance law** (India MATCH 55 · sha1 `4489d35bd98115c9b8b5a5d255a2db4d938a68a7` · 4 `## ` · last `## Standing`). Extends A2, A4, A6, A10, A13. Nothing struck.
+
+**A14.6 transport (this packet):** ETag = `profile_generation_id` on `/v1/profile*` payload responses. Immutable kinds (`session`, closed `range`): `Cache-Control: private, max-age=31536000, immutable`. Developing (and range that includes the live session): `private, max-age=0, must-revalidate`. If-None-Match → **304**. Health: `private, no-cache`. **No contract schema change.** Labs hop `/api/vp/v1/*` (MiniTwo backend proxy) copies ETag / Cache-Control and forwards If-None-Match. Computing-class only (F6).
+
+**Does not.** Client prefetch (A14.7) this packet. Optimistic UI (A14.8). Bounce StudioOne `vp-api` during RTH. Stop StudioTwo `:3000`/`:4000`. `git add -A`.
+
+**Cites:** **DL-744** · Contract v1.1 · F6 · A14.6.
+
+---
+
 ## 2026-09-18 — DL-744 AZ-VP-9-A13 TradingView look parity · VPS3 after VPS2b
 
 **Decision.** [`Specs/amendments/AZ-VP-9-A13.md`](../Specs/amendments/AZ-VP-9-A13.md) is **look law** (India MATCH 51 · sha1 `292a711a94fd6d31cc18750da86f7f1fa3f35d15` · 3 `## ` · last `## Standing`). Supersedes A11 clause 6's muted/hollow candle **default** only — candles default to TV-standard green/red; separation survives via 4 px structure heavies and Coach-tuned shades. Everything else in A2–A12 stands.
