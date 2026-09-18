@@ -2,7 +2,7 @@
 
 **Board:** `agents/p-volume-profile-service/`  
 **Instance:** **GROK BUILD — INFRA** (**DL-720**) — `VPS*` / `VPSB*` · collectors · Engine · mapping · API · StudioOne  
-**Not this instance:** `SADEV*` (APPS) · spec reviews (ADVISOR)  
+**Not this instance:** `SADEV*` (APPS) · `HM*` / `OD-GC*` (GBH) · spec reviews (ADVISOR)  
 **Orchestrator:** Juliet  
 **Authority:** Coach  
 **Token:** [`agents/go/VPS0-W0.md`](../go/VPS0-W0.md) **STAMPED GO** · **DL-706**  

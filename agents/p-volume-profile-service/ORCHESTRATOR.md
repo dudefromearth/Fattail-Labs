@@ -4,9 +4,11 @@
 
 **OPS-DASH (DL-734 / DL-737):** **CONSOLIDATED · LIVE** at **`http://studioone.local:5055`**. One pane. StudioTwo `:5056` **retired**. Board [`OPS-DASH.md`](OPS-DASH.md).
 
-**Does not execute:** `SADEV*` (APPS · ingest READ-ONLY). **Does not self-review specs** (ADVISOR).
+**Does not execute:** `SADEV*` (APPS · ingest READ-ONLY). **`HM*` / `OD-GC*`** (GBH · Heatmap gex-cal). **Does not self-review specs** (ADVISOR).
 
-**Contention:** collector wins on StudioTwo. Cross-instance conflict → **STOP, report to Coach**.
+**GBH disambiguation (DL-747):** the Heatmap **gex-cal** template is **not** this program's future "heatmap overlay" (SA-edges). Distinct products. Separate Labs routes (volume-profile vs heatmap).
+
+**Contention:** collector wins on StudioTwo. Cross-instance conflict → **STOP, report to Coach** — never INFRA↔APPS↔GBH.
 
 ---
 
