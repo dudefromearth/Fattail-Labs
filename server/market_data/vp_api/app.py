@@ -17,6 +17,7 @@ from market_data.vp_api.range_gate import range_decision
 from market_data.vp_engine.coverage import VP_ROW, ceiling_of, floor_of, load_coverage
 from market_data.vp_engine.display_rebin import display_rebin
 from market_data.vp_engine.rebuild import histogram_path
+from market_data.vp_hot import hot
 from market_data.vp_http_cache import HEALTH, payload_response
 from market_data.vp_ingest.store import archive_root, in_rth
 
@@ -85,8 +86,11 @@ def _envelope(hist: dict[str, Any], *, target: str, source: str) -> dict[str, An
     }
 
 
-def _last_print_t(source: str) -> int:
-    """Raw vendor t of the last landed print, or 0."""
+_LAST_PRINT: dict[str, tuple[float, int, int]] = {}
+_LAST_PRINT_SCANNING: set[str] = set()
+
+
+def _scan_last_print(source: str) -> int:
     import gzip
 
     trades = _root() / "vp" / "ingest" / source.upper() / "trades"
@@ -96,6 +100,13 @@ def _last_print_t(source: str) -> int:
     if not days:
         return 0
     path = days[-1] / "prints.jsonl.gz"
+    try:
+        st = path.stat()
+    except OSError:
+        return 0
+    hit = _LAST_PRINT.get(source)
+    if hit and hit[0] == st.st_mtime and hit[1] == st.st_size:
+        return hit[2]
     last = None
     try:
         with gzip.open(path, "rt", encoding="utf-8") as fh:
@@ -104,13 +115,35 @@ def _last_print_t(source: str) -> int:
                     last = line
     except OSError:
         return 0
-    if not last:
-        return 0
-    try:
-        rec = json.loads(last)
-        return int(rec.get("t") or 0)
-    except (json.JSONDecodeError, TypeError, ValueError):
-        return 0
+    val = 0
+    if last:
+        try:
+            rec = json.loads(last)
+            val = int(rec.get("t") or 0)
+        except (json.JSONDecodeError, TypeError, ValueError):
+            val = 0
+    _LAST_PRINT[source] = (st.st_mtime, st.st_size, val)
+    return val
+
+
+def _last_print_t(source: str) -> int:
+    """Cached last vendor t. Miss returns 0 and scans in the background (health must not take seconds)."""
+    import threading
+
+    hit = _LAST_PRINT.get(source)
+    if hit:
+        return hit[2]
+    if source not in _LAST_PRINT_SCANNING:
+        _LAST_PRINT_SCANNING.add(source)
+
+        def _run() -> None:
+            try:
+                _scan_last_print(source)
+            finally:
+                _LAST_PRINT_SCANNING.discard(source)
+
+        threading.Thread(target=_run, daemon=True, name=f"vp-lastprint-{source}").start()
+    return 0
 
 
 def _load_hist(source: str, kind: str, session_date: date) -> dict[str, Any] | None:
@@ -216,9 +249,18 @@ def profile_range(
     if kind == "partial" and extra:
         a = date.fromisoformat(str(extra["served_from"]))
         b = date.fromisoformat(str(extra["served_to"]))
-    # Sum session histograms in [from, to] in source space (single-session
-    # today: one day). Futures multi-session /range in target space is VPS3.
     days = load_coverage(_root()).get(src, {}).get("sessions_binned") or []
+    live = in_rth() and b >= date.today()
+    cov_gen = ",".join(iso for iso in days if a <= date.fromisoformat(iso) <= b)
+    ck = f"range:{src}:{a.isoformat()}:{b.isoformat()}:{price_lo}:{price_hi}:{row}"
+    layer = hot()
+    if layer.enabled and cov_gen:
+        cached = layer.get(ck)
+        if cached and isinstance(cached.get("body"), dict) and (
+            (not live and layer.gen_matches(cached, cov_gen))
+            or (live and layer.gen_matches(cached, cov_gen))
+        ):
+            return payload_response(request, cached["body"], kind="range", live=live)
     acc: dict[float, int] = {}
     gaps: list[Any] = []
     last = None
@@ -250,8 +292,9 @@ def profile_range(
     if kind == "partial" and extra:
         body["coverage"] = {**(body.get("coverage") or {}), **extra}
     applied = _apply_display_row(bins, body, native_row=native_row, requested=row)
-    live = in_rth() and b >= date.today()
-    return payload_response(request, applied, kind=body.get("kind") if isinstance(applied, dict) else "range", live=live)
+    if layer.enabled and isinstance(applied, dict):
+        layer.set(ck, applied, gen=cov_gen)
+    return payload_response(request, applied, kind="range", live=live)
 
 
 @app.get("/v1/profile/{target_symbol}/{kind}")
@@ -283,11 +326,20 @@ def profile(
             return JSONResponse(
                 status_code=503, content={"error": "UNAVAILABLE", "status": "UNAVAILABLE"}
             )
+        gid = str(hist.get("generation_id") or "")
+        ck = f"dev:{src}:{row}"
+        layer = hot()
+        if layer.enabled and gid:
+            cached = layer.get(ck)
+            if cached and isinstance(cached.get("body"), dict) and layer.gen_matches(cached, gid):
+                return payload_response(request, cached["body"], kind="developing", live=True)
         body = _envelope(hist, target=target, source=src)
         native = float(hist.get("vp_row") or VP_ROW.get(src, 0.25))
         applied = _apply_display_row(
             list(body.get("bins") or []), body, native_row=native, requested=row
         )
+        if layer.enabled and isinstance(applied, dict) and gid:
+            layer.set(ck, applied, gen=gid)
         return payload_response(request, applied, kind="developing", live=True)
     if not session_date:
         return JSONResponse(status_code=422, content={"error": "bad_range"})

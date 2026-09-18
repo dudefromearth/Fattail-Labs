@@ -40,12 +40,34 @@ def _dotenv_base() -> str:
     return ""
 
 
+_PIN_HOSTS = {
+    "studioone.local": "192.168.1.111",
+}
+
+
+def _pin_url(url: str) -> str:
+    """mDNS extra A/AAAA on studioone.local stalls ~1.2s. Pin LAN IP."""
+    from urllib.parse import urlsplit, urlunsplit
+
+    u = urlsplit(url)
+    host = (u.hostname or "").lower()
+    if host not in _PIN_HOSTS:
+        return url
+    netloc = _PIN_HOSTS[host]
+    if u.port:
+        netloc = f"{netloc}:{u.port}"
+    return urlunsplit((u.scheme, netloc, u.path, u.query, u.fragment))
+
+
 def api_base() -> str:
     env = (os.environ.get("LABS_SA_DEV_VP_API_BASE") or "").strip()
     # Tests pin mock://. Otherwise .env is the flip switch (no :4000 recycle).
     if env.startswith("mock:"):
         return env
-    return _dotenv_base() or env or DEFAULT_BASE
+    raw = _dotenv_base() or env or DEFAULT_BASE
+    if raw.startswith("mock:"):
+        return raw
+    return _pin_url(raw)
 
 
 def _use_mock(base: str) -> bool:
