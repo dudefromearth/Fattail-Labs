@@ -4,6 +4,18 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-18 — DL-756 VP-API-Contract v1.3 live stream
+
+**Decision.** [`Specs/VP-API-Contract-v1_3.md`](../Specs/VP-API-Contract-v1_3.md) is **FROZEN** (India MATCH 51 · sha1 `d57dc51ef52c6e6ec1fa0c20be5544cac6c2cb82` · 3 `## ` · last `## Unchanged from v1.2.1`). Supersedes v1.2.1 (`08f036c8…`). Sole change: live stream `GET /v1/stream/{source_symbol}` (SSE) — tick / bar / gen / hb.
+
+**Law:** Streamed ticks/bars are display updates; served payloads remain authoritative (A14.8). Stream tails the ingest store; collectors untouched (CP-1). Computing-class; Labs backend relays one upstream SSE per backend. Every registry symbol streams by construction (VP-L3).
+
+**Does not.** MiniTwo. Stop StudioTwo `:3000`/`:4000`. `git add -A`. Touch chain_feed.
+
+**Cites:** **DL-755** · Contract v1.2.1 · A14.8 · CP-1 · VP-L3.
+
+---
+
 ## 2026-09-18 — DL-755 AZ-VP-9-A22 Settings survive everything
 
 **Decision.** [`Specs/amendments/AZ-VP-9-A22.md`](../Specs/amendments/AZ-VP-9-A22.md) is **persistence law** (India MATCH 33 · sha1 `fde8890db6f6e6534bec78eeb52c2abf65ccde30` · 2 `## ` · last `## Standing`). Extends A8.2/A9.5/A11.2/A21.2 — pins WHERE persistence lives. Nothing struck.
