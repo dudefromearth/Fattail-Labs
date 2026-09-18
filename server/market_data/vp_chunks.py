@@ -39,8 +39,12 @@ def assemble_bars(
     *,
     from_d: date | None,
     to_d: date | None,
+    adjust: dict[str, float] | None = None,
 ) -> tuple[list[dict[str, Any]], list[str], str | None, str]:
-    """Concat session chunks. Missing sessions are omitted (honest)."""
+    """Concat session chunks. Missing sessions are omitted (honest).
+
+    ``adjust`` is D6 back-adjust per session (current era = 0).
+    """
     bars: list[dict[str, Any]] = []
     served: list[str] = []
     contract = None
@@ -54,8 +58,16 @@ def assemble_bars(
         served.append(iso)
         contract = ch.get("contract") or contract
         rule = str(ch.get("lead_rule") or rule)
+        delta = float((adjust or {}).get(iso) or 0.0)
         for b in ch.get("bars") or []:
-            bars.append(b)
+            if not delta:
+                bars.append(b)
+                continue
+            item = dict(b)
+            for k in ("o", "h", "l", "c"):
+                if k in item and item[k] is not None:
+                    item[k] = float(item[k]) + delta
+            bars.append(item)
     bars.sort(key=lambda b: int(b.get("t") or 0))
     return bars, served, contract, rule
 

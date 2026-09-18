@@ -19,6 +19,6 @@ INFRA does not self-review specs. Findings route here.
 | 17 | **Defaults dropdown (AZ-VP-9-A21 · DL-754)** | A settings dialog without Save as default / Reset to default / Reset to house default in the A10 footer. |
 | 18 | **Settings survive (AZ-VP-9-A22 · DL-755)** | Browser storage treated as the home of record for VP/SA settings; a layout change that silently discards member state; a browser-only workaround for missing profile-store persistence. |
 | 19 | **Right-click settings (AZ-VP-9-A20 · DL-758)** | A canvas object whose right-click (or long-press) does not open that object's A10 dialog; browser context menu on the chart surface. |
-| 20 | **Data delivery (VP-Data-Delivery-Spec-v1.0 · DL-760)** | Window reports that omit D1–D5 / S1–S3 (floors vs targets, sessions/hour, D1 ETA, named vendor limits). A 5-session batch presented as the overnight deliverable. Streamer treated as best-effort. |
+| 20 | **Data delivery (VP-Data-Delivery-Spec-v1.1 · DL-761)** | Window reports that omit D1–D6 / S1–S3 / T5. A 5-session batch presented as the overnight deliverable. Streamer treated as best-effort. A mixed-era cliff on the published ES/MES series (raw ESU6+ESZ6 bands). |
 
 Surface seeds must carry standing checks **5**–**20**. A hit is a **finding**, not initiative.

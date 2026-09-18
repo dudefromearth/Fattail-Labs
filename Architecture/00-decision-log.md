@@ -4,6 +4,20 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-18 — DL-761 VP Data Delivery Spec v1.1 D6 continuous series
+
+**Decision.** [`Specs/VP-Data-Delivery-Spec-v1_1.md`](../Specs/VP-Data-Delivery-Spec-v1_1.md) is **BINDING** (India MATCH 57 · sha1 `5955d88d36495846e7f28180738de7f4c38900ae` · 3 `## ` · last `## Round log`). **Supersedes** v1.0's delivery row as the current spec; [`VP-Data-Delivery-Spec-v1_0.md`](../Specs/VP-Data-Delivery-Spec-v1_0.md) stays on disk.
+
+**D6:** futures "ES"/"MES" means the back-adjusted continuous contract (TV ES1! B-ADJ). Splice at lead-rule rolls; additive back-adjust; one series on OHLC, /range, hot tier, stream. Per-contract prints remain SoR. Version `back-adjust-v1`. Provenance `continuous: {adjusted, method, rolls}`. SPX/XSP mapping unchanged (VPS3).
+
+**T5 (StudioOne 2026-09-18 16:40 ET):** ES roll table `ESU6→ESZ6` session `2026-09-14` gap **67.75**. /range 09-16…18 continuous span **164.25** vs raw mixed **230.0**. OHLC 5m 09-17 last **7702.25** → 09-18 first **7701.25** (seam **1.0**). Provenance rolls=1.
+
+**Does not.** Stop `:3000`/`:4000`. `git add -A`. Destroy raw prints.
+
+**Cites:** **DL-760** · **DL-748** · A8.4 · VP-L6.
+
+---
+
 ## 2026-09-18 — DL-760 VP Data Delivery Spec v1.0 (D1–D5 / S1–S3)
 
 **Decision.** [`Specs/VP-Data-Delivery-Spec-v1_0.md`](../Specs/VP-Data-Delivery-Spec-v1_0.md) is **BINDING** (India MATCH 73 · sha1 `ce2064af71f72883dc0e3cc91a60ac1c5ffc5392` · 5 `## ` · last `## 5. Round log`). Consolidates backfill, hot-tier, and streaming into a testable delivery contract. Supersedes no law.

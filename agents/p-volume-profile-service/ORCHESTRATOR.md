@@ -40,7 +40,7 @@ Everything not on this line is **parked** or **serves it**. Touched only when th
 
 **Working spec (data end):** VP **v0.6.1** sha1 `7e3bbedc58e1cbadc2ce96bb820bf93059f8806d` (427) · **DL-730**. v0.6 remains on disk as baseline.  
 **API contract (frozen):** [`Specs/VP-API-Contract-v1_3.md`](../../Specs/VP-API-Contract-v1_3.md) · 51 · sha1 `d57dc51ef52c6e6ec1fa0c20be5544cac6c2cb82` · **MATCH** · **DL-756**. Live stream SSE. Supersedes v1.2.1. v1.0/v1.1 remain on disk as baseline.  
-**Data Delivery v1.0:** [`Specs/VP-Data-Delivery-Spec-v1_0.md`](../../Specs/VP-Data-Delivery-Spec-v1_0.md) · 73 · sha1 `ce2064af71f72883dc0e3cc91a60ac1c5ffc5392` · **MATCH** · **DL-760**. D1–D5 / S1–S3. ADVISOR watch 20.  
+**Data Delivery v1.1:** [`Specs/VP-Data-Delivery-Spec-v1_1.md`](../../Specs/VP-Data-Delivery-Spec-v1_1.md) · 57 · sha1 `5955d88d36495846e7f28180738de7f4c38900ae` · **MATCH** · **DL-761**. D6 continuous B-ADJ. v1.0 stays on disk. ADVISOR watch 20 (D6/T5).  
 **App end:** SA **v0.4 authored** sha1 `d68060cc5221b83170d39aeace5e8fb8b7470c51` (540 · 22 `## `) · **DL-731**. Supersedes v0.3.1. **DL-728 pointer CLOSED.** NOT BUILD. Advisor round 2 vs **v0_3_1**; dispositions → **v0.4.1 via Coach**.  
 **AZ-VP-9-A1:** [`Specs/amendments/AZ-VP-9-A1.md`](../../Specs/amendments/AZ-VP-9-A1.md) sha1 `53bf74daa8a2b67ac3073d6fdb92bfed9b297ab0` (41) · **MATCH**.  
 **AZ-VP-9-A7:** [`Specs/amendments/AZ-VP-9-A7.md`](../../Specs/amendments/AZ-VP-9-A7.md) sha1 `efcaa297c80e8e4410a24bbbeb8aec68987e3e6c` (40 · 2 `## ` · last `## Standing`) · **MATCH** · **DL-738**. Scope boundary over A2–A6.  

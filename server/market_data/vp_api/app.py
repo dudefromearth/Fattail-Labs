@@ -14,6 +14,13 @@ import auth
 from config import get_config
 from guards import require_session
 from market_data.vp_api.range_gate import range_decision
+from market_data.vp_engine.continuous import (
+    FUTURES,
+    adjust_for,
+    continuous_histogram_path,
+    provenance,
+    shift_bins,
+)
 from market_data.vp_engine.coverage import VP_ROW, ceiling_of, floor_of, load_coverage
 from market_data.vp_engine.display_rebin import display_rebin
 from market_data.vp_engine.rebuild import histogram_path
@@ -45,6 +52,10 @@ def _computing(request: Request) -> JSONResponse | dict:
             status_code=403, content={"error": "computing_consumers_only"}
         )
     return claims
+
+
+def _continuous_block(source: str) -> dict[str, Any] | None:
+    return provenance(_root(), source)
 
 
 def _coverage_pair(source: str) -> dict[str, str | None]:
@@ -86,6 +97,11 @@ def _envelope(hist: dict[str, Any], *, target: str, source: str) -> dict[str, An
         "vp_row": hist.get("vp_row") or VP_ROW.get(source, 0.25),
         "bins": hist.get("bins") or [],
         "coverage": _coverage_pair(source),
+        **(
+            {"continuous": _continuous_block(source)}
+            if _continuous_block(source)
+            else {}
+        ),
     }
 
 
@@ -154,6 +170,15 @@ def _load_hist(source: str, kind: str, session_date: date) -> dict[str, Any] | N
     if not path.is_file():
         return None
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _load_hist_published(source: str, kind: str, session_date: date) -> tuple[dict[str, Any] | None, bool]:
+    """Futures session: prefer D6 continuous histogram (already in current frame)."""
+    if kind == "session" and source.upper() in FUTURES:
+        path = continuous_histogram_path(_root(), source, session_date)
+        if path.is_file():
+            return json.loads(path.read_text(encoding="utf-8")), True
+    return _load_hist(source, kind, session_date), False
 
 
 def _apply_display_row(
@@ -272,12 +297,13 @@ def profile_range(
         d = date.fromisoformat(iso)
         if d < a or d > b:
             continue
-        hist = _load_hist(src, "session", d)
+        hist, already = _load_hist_published(src, "session", d)
         if not hist:
             continue
         last = hist
         native_row = float(hist.get("vp_row") or native_row)
-        for bn in hist.get("bins") or []:
+        delta = 0.0 if already else (adjust_for(_root(), src, d) if src in FUTURES else 0.0)
+        for bn in shift_bins(list(hist.get("bins") or []), delta):
             px = float(bn["price"])
             if price_lo is not None and px < price_lo:
                 continue
@@ -351,15 +377,19 @@ def profile(
         return JSONResponse(
             status_code=503, content={"error": "UNAVAILABLE", "status": "UNAVAILABLE"}
         )
-    hist = _load_hist(src, "session", day)
+    hist, already = _load_hist_published(src, "session", day)
     if not hist:
         return JSONResponse(
             status_code=503, content={"error": "UNAVAILABLE", "status": "UNAVAILABLE"}
         )
     body = _envelope(hist, target=target, source=src)
     native = float(hist.get("vp_row") or VP_ROW.get(src, 0.25))
+    bins = list(body.get("bins") or [])
+    if src in FUTURES and not already:
+        bins = shift_bins(bins, adjust_for(_root(), src, day))
+        body["bins"] = bins
     applied = _apply_display_row(
-        list(body.get("bins") or []), body, native_row=native, requested=row
+        bins, body, native_row=native, requested=row
     )
     return payload_response(request, applied, kind="session", live=False)
 
@@ -405,7 +435,13 @@ def ohlc_window(
         if b:
             days = [x for x in days if x <= b.isoformat()]
     chunks = load_chunks(src, tf, days)
-    bars, served, contract, rule = assemble_bars(chunks, from_d=a, to_d=b)
+    adj = None
+    if src in FUTURES:
+        from market_data.vp_engine.continuous import load_roll_table
+
+        doc = load_roll_table(_root(), src)
+        adj = (doc or {}).get("adjust") if doc else None
+    bars, served, contract, rule = assemble_bars(chunks, from_d=a, to_d=b, adjust=adj)
     missing = [d for d in days if d not in served]
     if not served:
         return JSONResponse(
@@ -429,6 +465,9 @@ def ohlc_window(
         "profile_generation_id": f"{src}:{tf}:{served[0]}:{served[-1]}:{len(bars)}",
         "flags": {"mapping": "FAILED", "approximation": "none"},
     }
+    cont = _continuous_block(src)
+    if cont:
+        body["continuous"] = cont
     return payload_response(request, body, kind="ohlc", live=live)
 
 
