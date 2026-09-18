@@ -4,6 +4,22 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-18 — DL-738 AZ-VP-9-A7 Charting Scope Boundary
+
+**Decision.** [`Specs/amendments/AZ-VP-9-A7.md`](../Specs/amendments/AZ-VP-9-A7.md) is **scope-boundary law** over **A2–A6** (India MATCH 40 · sha1 `efcaa297c80e8e4410a24bbbeb8aec68987e3e6c` · 2 `## ` · last `## Standing`). Nothing in A2–A6 is struck; this bounds them.
+
+**Closed set:** profile + orientation/axis (A2) · color grammar/overlay (A3) · axes/grid/range (A4) · A5 engine serving the profile · price layer line/candle/bar at specified TFs (A6) · provenance/states/caption · SA-L11 in-development nav · SA-spec phases when their gates open.
+
+**OUT unless a future amendment laws them in:** drawing tools, general indicator libraries, alerts (separate product), watchlists, multi-chart layouts, symbol search beyond product instruments, social/publishing, any TradingView capability not named in A2–A6 or the SA spec.
+
+**Effort rule (board clause 5 · ADVISOR watch):** when a choice arises between deepening chart generality and completing a specified VP feature, the specified feature wins. Scope creep toward a general charting platform is a **finding**, not initiative. "TradingView has it" is never, by itself, a reason to build.
+
+**Does not.** MiniTwo. Stop StudioTwo `:3000`/`:4000`. `git add -A`.
+
+**Cites:** **DL-714** · AZ-VP-9-A2…A6 · SA spec v0.4 §8a.
+
+---
+
 ## 2026-09-14 — DL-703 Practice Position Lifecycle PPL3: close gates are API law
 
 **Decision.** Member `POST` / `PATCH` of a `TO_CLOSE` fill is gated in the API (four gates; 422 without an explicit payload override). `DELETE` of a TO_OPEN that still has a non-synthetic close slice is **409** and names the blocking close id. Kit `useConfirm` / `AlertDialog` replaces `window.confirm` on TradeSheet and blotter bulk trash. Import commit stays **OD-25** (not 422 on truncated-history orphans). Soft-trash stays **OD-19** (not this packet).
