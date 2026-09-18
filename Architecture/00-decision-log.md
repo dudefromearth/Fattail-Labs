@@ -4,6 +4,24 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-18 — DL-750 VP serving hot path: pin + ETag + Redis db2
+
+**Decision (Coach: chart fill too slow).** Three layers, in order:
+
+1. **Hop.** Canonical VP base remains `http://192.168.1.111:4010` (never `studioone.local`). `vp_client.api_base()` rewrites `.local` → that IP. HTTP/1.1 keep-alive on the client pool; uvicorn `timeout_keep_alive=75` on the API. `/range` StudioTwo→LAN IP: first **25.5 ms**, rest p50 **7.2 ms** (on-box ~4 ms). `.local` first request still **1168 ms**. Health gzip last-print scan no longer blocks: miss returns 0 and scans in the background.
+
+2. **A14.6 ETag.** Now live on **DEV sidecar and StudioOne prod API** (bounced `gui/503/ai.fattail.labs.vp-api` PID 53142→62256; chain_feed PID **538** untouched). Labs hop `/api/vp/v1/*` already copied headers. Closed generations: `immutable`; live/developing: `must-revalidate`. If-None-Match → 304.
+
+3. **Redis hot layer** on StudioOne (and StudioTwo) **DB 2** — `LABS_VP_HOT=1` `LABS_VP_HOT_REDIS_URL=redis://127.0.0.1:6379/2` `LABS_VP_HOT_MAX_BYTES=67108864`. Keys `vp:hot:*`, generation-scoped. **No CONFIG SET** of maxmemory/policy (chain Redis stays `noeviction` / db0 `mb:*`). Application cap refuses SET over the byte max. Caches `/range`, developing, OHLC buckets. Until VPS2b, this is the full-span `/range` answer at depth.
+
+**Waterfall (Labs `:4000` computing-class, SPX/ES):** cold **7258 ms → 1048 ms**; warm **38 ms**. Health 6339→27; OHLC 891→978 cold / **3 ms** warm.
+
+**Does not.** Touch chain_feed. Change Redis eviction. Stop `:3000`/`:4000`. `git add -A`.
+
+**Cites:** **DL-743** · **DL-745** · **DL-742** VPS2b · CP-1.
+
+---
+
 ## 2026-09-18 — DL-749 AZ-VP-9-A17 Behavioral parity default
 
 **Decision.** [`Specs/amendments/AZ-VP-9-A17.md`](../Specs/amendments/AZ-VP-9-A17.md) is **behavioral parity law** (India MATCH 47 · sha1 `99d135b3b9fb2fec3917f8c91b34908e172058bd` · 2 `## ` · last `## Standing`). **Strikes** A4/A11's default x-window ("current session span") — that default produced a mostly-blank future canvas. Extends A5/A13: the TV benchmark governs **conduct**, not just looks.

@@ -318,6 +318,30 @@ def ohlc_for_source(
     days = list_source_days(src)
     if lookback_days > 0:
         days = days[-int(lookback_days) :]
+    from market_data.vp_hot import hot
+    from market_data.vp_ingest.store import prints_path
+
+    stamp_parts: list[str] = []
+    root = None
+    try:
+        from sa_dev.store_read import store_root
+
+        root = store_root()
+    except Exception:
+        root = None
+    if root is not None:
+        for iso in days:
+            p = prints_path(root, src, date.fromisoformat(iso))
+            if p.is_file():
+                st = p.stat()
+                stamp_parts.append(f"{iso}:{int(st.st_mtime)}:{st.st_size}")
+    stamp = f"{src}:{tf}:{lookback_days}:" + "|".join(stamp_parts)
+    ck = f"ohlc:{src}:{tf}:{lookback_days}"
+    layer = hot()
+    if layer.enabled and stamp_parts:
+        cached = layer.get(ck)
+        if cached and isinstance(cached.get("body"), dict) and layer.gen_matches(cached, stamp):
+            return cached["body"]
     rows: list[dict[str, Any]] = []
     for iso in days:
         rows.extend(load_prints(src, date.fromisoformat(iso)))
@@ -326,7 +350,7 @@ def ohlc_for_source(
     )
     last_t = bars[-1]["t"] if bars else 0
     gid = f"{src}:{tf}:{contract or ''}:{last_t}:{len(bars)}"
-    return {
+    out = {
         "ok": True,
         "source": src,
         "space": "source",
@@ -340,6 +364,9 @@ def ohlc_for_source(
         "store": detail,
         "profile_generation_id": gid,
     }
+    if layer.enabled and stamp_parts:
+        layer.set(ck, out, gen=stamp)
+    return out
 
 
 def _coverage_block(body: dict[str, Any]) -> dict[str, Any]:
