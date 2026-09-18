@@ -15,6 +15,8 @@ AF0 → AF-H → AF-M → AF-U → AF-K → AF-Z
          [AF-X2 SRS — Coach only]
 
 **Width Fit** is a **new board:** [`p-options-lab-heatmap-width-fit`](../p-options-lab-heatmap-width-fit/) · plan v1.0. Do not fire AF-X as Width Fit.
+
+**GEX Calendar (`gex-cal`)** is **GBH** (**DL-747**): [`p-options-lab-heatmap-gex-calendar`](../p-options-lab-heatmap-gex-calendar/). Frozen `gex_v1`. **Not BUILD** until OD-GC1…GC4. Not the VP heatmap overlay.
 ```
 
 | Phase | Name | Blocks |

@@ -4,6 +4,29 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-18 — DL-747 Third build instance: GROK BUILD — HEATMAP (GBH)
+
+**Decision (Coach).** A **third build instance** joins the DL-720 split. Shared law unchanged: **CP-1**, collectors win StudioTwo contention, conflicts **STOP and report to Coach** — never instance-to-instance. Shared Labs components change only through Coach.
+
+| Instance | Owns | Does not |
+|----------|------|----------|
+| **GROK BUILD — INFRA** | `VPS*` / `VPSB*` · VP data end · StudioOne VP jobs | `SADEV*` · `HM*` / `OD-GC*` · Heatmap gex-cal |
+| **GROK BUILD — APPS** | `SADEV*` · VP/SA surfaces on the Labs tree (`/app/options-lab/volume-profile`) | Write VP ingest · `VPS*`/`VPSB*` · `HM*` / `OD-GC*` · frozen `gex_v1` Heatmap template track |
+| **GROK BUILD — HEATMAP (GBH)** | Options Lab Heatmap **gex-cal** template track · token namespace **`HM*` / `OD-GC*`** · data domain **frozen `gex_v1` generations** · board `agents/p-options-lab-heatmap-gex-calendar/` | `VPS*` / `VPSB*` / `SADEV*` · VP stores · VP surfaces |
+| **GROK ADVISOR** | Reviews | Build |
+
+**Governing spec (GBH):** [`Specs/FatTail-Labs-Options-Lab-Heatmap-GEX-Calendar-Spec-v0_1.md`](../Specs/FatTail-Labs-Options-Lab-Heatmap-GEX-Calendar-Spec-v0_1.md) sha1 `36a347185aaece5c4b900bf22e9683ad4ffbaf6f` (570). **DRAFT** until Coach stamps **OD-GC1…GC4**. Not BUILD AUTHORITY.
+
+**Route trees:** APPS and GBH share the Labs tree with **separate** routes — volume-profile vs heatmap. Do not fuse.
+
+**Disambiguation:** the gex-cal Heatmap template (GBH) is **not** the VP program's future "heatmap overlay" (SA-edges consumer). Distinct products.
+
+**Does not.** Stamp OD-GC1…4 this packet. Let GBH touch VP stores. Merge gex-cal with SA heatmap overlay. Change collector-wins.
+
+**Cites:** **DL-720** · Heatmap Templates v0.2.4 · LIM v0.4.7 sibling.
+
+---
+
 ## 2026-09-18 — DL-746 AZ-VP-9-A15 round-2 look verdicts · A16 per-instrument tick
 
 **Decision.** Two amendments land together (India MATCH both):
