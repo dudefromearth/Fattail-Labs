@@ -8,7 +8,7 @@ from datetime import date, datetime
 from typing import Any
 
 TFS = ("1m", "5m", "15m", "1h", "1d")
-HORIZON_SESSIONS = 63
+HORIZON_SESSIONS = 126
 SOURCES = ("ES", "MES", "SPY")
 
 

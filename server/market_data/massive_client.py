@@ -394,6 +394,60 @@ class MassiveClient:
                 time.sleep(page_pause_s)
         return out
 
+    def fetch_futures_trades_session(
+        self,
+        ticker: str,
+        session_end_date: str,
+        *,
+        limit: int = 1000,
+        max_pages: int = 5000,
+        page_pause_s: float = 0.05,
+    ) -> list[dict[str, Any]]:
+        """Paginate GET /futures/v1/trades/{ticker}?session_end_date=YYYY-MM-DD."""
+        ticker = (ticker or "").strip().upper()
+        day = str(session_end_date).strip()[:10]
+        if not ticker or len(day) < 10:
+            raise MassiveClientError("ticker and session_end_date required")
+        path = f"/futures/v1/trades/{urllib.parse.quote(ticker, safe='')}"
+        qs = urllib.parse.urlencode(
+            {
+                "session_end_date": day,
+                "sort": "timestamp.asc",
+                "limit": str(max(1, min(1000, int(limit)))),
+            }
+        )
+        url: str | None = f"{self.base_url}{path}?{qs}"
+        out: list[dict[str, Any]] = []
+        pages = 0
+        while url and pages < max_pages:
+            pages += 1
+            data = self._get_json(url)
+            results = data.get("results") if isinstance(data, dict) else None
+            if isinstance(results, list):
+                for row in results:
+                    if isinstance(row, dict):
+                        out.append(row)
+            next_url = data.get("next_url") if isinstance(data, dict) else None
+            cursor = data.get("next_cursor") or data.get("cursor") if isinstance(data, dict) else None
+            if next_url:
+                nu = str(next_url).strip()
+                url = nu if nu.startswith("http") else f"{self.base_url}{nu}"
+            elif cursor:
+                qs2 = urllib.parse.urlencode(
+                    {
+                        "session_end_date": day,
+                        "sort": "timestamp.asc",
+                        "limit": str(max(1, min(1000, int(limit)))),
+                        "cursor": str(cursor),
+                    }
+                )
+                url = f"{self.base_url}{path}?{qs2}"
+            else:
+                break
+            if page_pause_s > 0 and pages > 1:
+                time.sleep(page_pause_s)
+        return out
+
     def fetch_quotes_day(
         self,
         symbol: str,

@@ -1,29 +1,35 @@
 {
-  "stamped": "2026-09-18T15:05:00-04:00",
-  "note": "Coach evening window 2026-09-18. Order a–f. Morning 5-session backfill is OUTSTANDING — not folded silently. Item A fails loud if vendor fetch is still missing.",
+  "stamped": "2026-09-18T15:35:00-04:00",
+  "note": "Coach evening window. A failed/held item reports and autorun CONTINUES to items whose depends_on does not include it. A blocks only deeper floors (nothing else tonight depends on A). F closes the window.",
   "items": [
     {
       "id": "A-BACKFILL-5",
-      "cmd": "cd server && .venv/bin/python -m market_data.vp_ops.packets backfill5"
+      "depends_on": [],
+      "cmd": "cd server && .venv/bin/python -m market_data.vp_ingest.backfill --five"
     },
     {
       "id": "B-HOT-126-STABLE",
+      "depends_on": [],
       "cmd": "cd server && .venv/bin/python -m market_data.vp_ops.packets tonight_hot126"
     },
     {
       "id": "C-STREAMER-V13",
+      "depends_on": [],
       "cmd": "cd server && .venv/bin/python -m market_data.vp_ops.packets tonight_streamer"
     },
     {
       "id": "D-FULL-STABLE-CAPTURE",
+      "depends_on": [],
       "cmd": "cd server && .venv/bin/python -m market_data.vp_ops.packets tonight_capture"
     },
     {
       "id": "E-MINITWO-SA-SURFACE",
+      "depends_on": [],
       "cmd": "cd server && .venv/bin/python -m market_data.vp_ops.packets tonight_minitwo_sa"
     },
     {
       "id": "F-COMMIT-HELP-WATCH",
+      "depends_on": [],
       "cmd": "cd server && .venv/bin/python -m market_data.vp_ops.packets tonight_help_watch"
     }
   ]

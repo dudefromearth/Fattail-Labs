@@ -4,6 +4,20 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-18 — DL-759 VP vendor day fetch + autorun continues + horizon 126
+
+**Decision (Coach).** Historical pull is real date-addressed REST day files (SPY `/v3/trades`, ES/MES `/futures/v1/trades?session_end_date=`), land→bin→coverage, resumable via manifest. Flat-file S3 named **blocked**: no `MASSIVE_S3_ACCESS_KEY_ID`. Dry-run 2026-09-17: **SPY count 564764 = 564764** (delta 0; first print `p=759.36 t=1789632000015` matches live gzip). ES/MES REST is a superset of the incomplete local 09-17 Globex day.
+
+**Autorun:** a failed/held item reports; queue **continues** independents (`depends_on`). Tonight A does not block B–F.
+
+**Horizon:** `HORIZON_SESSIONS=126`. Stream `GET /v1/stream` seated (v1.3). Stocks capture subscribe is registry-driven on the existing socket.
+
+**Does not.** Daytime historical on the chain_feed account after this dry-run. Stop `:3000`/`:4000`. Touch chain_feed. `git add -A`.
+
+**Cites:** **DL-758** · **DL-756** · CP-1.
+
+---
+
 ## 2026-09-18 — DL-758 AZ-VP-9-A20 Right-click settings everywhere
 
 **Decision.** [`Specs/amendments/AZ-VP-9-A20.md`](../Specs/amendments/AZ-VP-9-A20.md) is **right-click settings law** (India MATCH 36 · sha1 `a1ca66c24a02e0024f502f4339e1d2282d3a52bc` · 2 `## ` · last `## Standing`). Extends A10. Supersedes A10 plain-click invocation wherever plain click conflicts with an engine gesture (axis drag-to-scale, canvas pan); layer-control path remains.

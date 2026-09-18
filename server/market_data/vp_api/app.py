@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Query, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 import auth
 from config import get_config
@@ -21,6 +21,7 @@ from market_data.vp_chunks import TFS, assemble_bars, ns_bars, parse_bound
 from market_data.vp_hot import hot
 from market_data.vp_http_cache import HEALTH, payload_response
 from market_data.vp_ingest.store import archive_root, in_rth
+from market_data.vp_stream import iter_source_sse
 from market_data.vp_warmer import load_chunks
 
 app = FastAPI(title="VP Profile API", docs_url=None, redoc_url=None)
@@ -429,3 +430,24 @@ def ohlc_window(
         "flags": {"mapping": "FAILED", "approximation": "none"},
     }
     return payload_response(request, body, kind="ohlc", live=live)
+
+
+@app.get("/v1/stream")
+@app.get("/v1/stream/{source_symbol}")
+async def stream_ticks(
+    request: Request,
+    source_symbol: str | None = None,
+    source: str | None = Query(default=None),
+):
+    """Contract v1.3 SSE. Tails ingest. Collectors untouched."""
+    gate = _computing(request)
+    if isinstance(gate, JSONResponse):
+        return gate
+    src = (source_symbol or source or "").upper()
+    if not src:
+        return JSONResponse(status_code=422, content={"error": "source_required"})
+    return StreamingResponse(
+        iter_source_sse(src),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+    )
