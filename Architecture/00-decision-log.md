@@ -4,6 +4,29 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-18 — DL-762 Fidelity doctrine + future Spread/Stat-Arb Lab (parked)
+
+**Decision (Coach).** Same thread as D6 / per-contract SoR (**DL-761**). No prior numbered "stat-arb doctrine" row was on `origin/main`; this entry is the durable seat.
+
+**Fidelity doctrine (data end being laid today is judged against this too):**
+1. **Per-contract archive is SoR.** Continuous (D6) is a derived view. Never destroy or overwrite contract-era prints. This is why item 1 exists.
+2. Known dependencies, not in build:
+   - **2a** per-contract API access
+   - **2b** quotes / NBBO capture
+   - **2c** CME calendar-spread instruments
+   plus the per-contract archive now accumulating.
+
+**Future product family (working handle: Spread/Stat-Arb Lab; Coach names it when commissioned):**
+1. **Separate product line** — own future spec line, token namespace, and build track. The VP tool's **A7 fence is unaffected**: no spread features creep into the VP surface.
+2. Dependencies are 2a–2c plus the per-contract archive (item 1).
+3. **Nothing builds until Coach's word.** This entry exists so today's data end is judged against that future.
+
+**Does not.** Commission the lab. Touch VP surface. Stop `:3000`/`:4000`. `git add -A`.
+
+**Cites:** **DL-761** · D6.4 · **AZ-VP-9-A7** · **FI-051**.
+
+---
+
 ## 2026-09-18 — DL-761 VP Data Delivery Spec v1.1 D6 continuous series
 
 **Decision.** [`Specs/VP-Data-Delivery-Spec-v1_1.md`](../Specs/VP-Data-Delivery-Spec-v1_1.md) is **BINDING** (India MATCH 57 · sha1 `5955d88d36495846e7f28180738de7f4c38900ae` · 3 `## ` · last `## Round log`). **Supersedes** v1.0's delivery row as the current spec; [`VP-Data-Delivery-Spec-v1_0.md`](../Specs/VP-Data-Delivery-Spec-v1_0.md) stays on disk.
