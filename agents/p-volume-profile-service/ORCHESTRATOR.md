@@ -54,6 +54,7 @@ Everything not on this line is **parked** or **serves it**. Touched only when th
 **AZ-VP-9-A17:** [`Specs/amendments/AZ-VP-9-A17.md`](../../Specs/amendments/AZ-VP-9-A17.md) sha1 `99d135b3b9fb2fec3917f8c91b34908e172058bd` (47 · 2 `## `) · **MATCH** · **DL-749**. Behavioral parity default. A4/A11 x-window default **struck**.  
 **AZ-VP-9-A18:** [`Specs/amendments/AZ-VP-9-A18.md`](../../Specs/amendments/AZ-VP-9-A18.md) sha1 `60778d811d4fc802f3998e05a6725373b3a582fb` (31 · 2 `## `) · **MATCH** · **DL-752**. One design every ticker. A18.4 per-symbol surface paths are findings.  
 **AZ-VP-9-A19:** [`Specs/amendments/AZ-VP-9-A19.md`](../../Specs/amendments/AZ-VP-9-A19.md) sha1 `0c824a543407c315c8bb8dc3e9de3e68e2cb0667` (46 · 2 `## `) · **MATCH** · **DL-753**. Axis labeling hierarchy. **FINAL**.  
+**AZ-VP-9-A20:** [`Specs/amendments/AZ-VP-9-A20.md`](../../Specs/amendments/AZ-VP-9-A20.md) sha1 `a1ca66c24a02e0024f502f4339e1d2282d3a52bc` (36 · 2 `## `) · **MATCH** · **DL-758**. Right-click settings everywhere.  
 **AZ-VP-9-A21:** [`Specs/amendments/AZ-VP-9-A21.md`](../../Specs/amendments/AZ-VP-9-A21.md) sha1 `4cf98d2153279846e64d16e7952e57e8127bad72` (32 · 2 `## `) · **MATCH** · **DL-754**. Defaults in every dialog.  
 **AZ-VP-9-A22:** [`Specs/amendments/AZ-VP-9-A22.md`](../../Specs/amendments/AZ-VP-9-A22.md) sha1 `fde8890db6f6e6534bec78eeb52c2abf65ccde30` (33 · 2 `## `) · **MATCH** · **DL-755**. Settings survive everything. Profile-store gap filed.
 

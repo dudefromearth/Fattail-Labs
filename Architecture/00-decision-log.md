@@ -4,6 +4,20 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-18 — DL-758 AZ-VP-9-A20 Right-click settings everywhere
+
+**Decision.** [`Specs/amendments/AZ-VP-9-A20.md`](../Specs/amendments/AZ-VP-9-A20.md) is **right-click settings law** (India MATCH 36 · sha1 `a1ca66c24a02e0024f502f4339e1d2282d3a52bc` · 2 `## ` · last `## Standing`). Extends A10. Supersedes A10 plain-click invocation wherever plain click conflicts with an engine gesture (axis drag-to-scale, canvas pan); layer-control path remains.
+
+**Law:** Right-click on any canvas object opens THAT object's A10 dialog. Hit-test most specific. Singleton stands. Browser context menu suppressed on the chart surface only. Touch = long-press.
+
+**A20 (ADVISOR watch 19):** a canvas object whose right-click does not open its A10 dialog is a **finding**.
+
+**Does not.** MiniTwo. Stop StudioTwo `:3000`/`:4000`. `git add -A`.
+
+**Cites:** **DL-757** · **DL-740** · A10.
+
+---
+
 ## 2026-09-18 — DL-757 VP Phase B L2 guest + A18–A22 + canvas settings
 
 **Decision (Coach).** Phase A stock LWC stands. **Phase B released:** one custom

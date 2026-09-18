@@ -30,6 +30,7 @@
 | **AZ-VP-9-A17** | [`Specs/amendments/AZ-VP-9-A17.md`](../../Specs/amendments/AZ-VP-9-A17.md) · **DL-749** · sha1 `99d135b3b9fb2fec3917f8c91b34908e172058bd` · behavioral parity default · A4/A11 x-window default struck |
 | **AZ-VP-9-A18** | [`Specs/amendments/AZ-VP-9-A18.md`](../../Specs/amendments/AZ-VP-9-A18.md) · **DL-752** · sha1 `60778d811d4fc802f3998e05a6725373b3a582fb` · one design every ticker · A18.4 per-symbol surface code is a finding |
 | **AZ-VP-9-A19** | [`Specs/amendments/AZ-VP-9-A19.md`](../../Specs/amendments/AZ-VP-9-A19.md) · **DL-753** · sha1 `0c824a543407c315c8bb8dc3e9de3e68e2cb0667` · axis labeling hierarchy · FINAL |
+| **AZ-VP-9-A20** | [`Specs/amendments/AZ-VP-9-A20.md`](../../Specs/amendments/AZ-VP-9-A20.md) · **DL-758** · sha1 `a1ca66c24a02e0024f502f4339e1d2282d3a52bc` · right-click settings everywhere |
 | **AZ-VP-9-A21** | [`Specs/amendments/AZ-VP-9-A21.md`](../../Specs/amendments/AZ-VP-9-A21.md) · **DL-754** · sha1 `4cf98d2153279846e64d16e7952e57e8127bad72` · defaults in every dialog |
 | **AZ-VP-9-A22** | [`Specs/amendments/AZ-VP-9-A22.md`](../../Specs/amendments/AZ-VP-9-A22.md) · **DL-755** · sha1 `fde8890db6f6e6534bec78eeb52c2abf65ccde30` · settings survive everything · profile-store gap filed |
 | **API contract v1.3** | [`Specs/VP-API-Contract-v1_3.md`](../../Specs/VP-API-Contract-v1_3.md) · **DL-756** sha1 `d57dc51ef52c6e6ec1fa0c20be5544cac6c2cb82` · live stream SSE · supersedes v1.2.1 |
