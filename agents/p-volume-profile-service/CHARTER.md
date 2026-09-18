@@ -27,6 +27,7 @@
 | **AZ-VP-9-A14** | [`Specs/amendments/AZ-VP-9-A14.md`](../../Specs/amendments/AZ-VP-9-A14.md) · **DL-745** · sha1 `4489d35bd98115c9b8b5a5d255a2db4d938a68a7` · fonts / controls / local-feel · ETag transport |
 | **AZ-VP-9-A15** | [`Specs/amendments/AZ-VP-9-A15.md`](../../Specs/amendments/AZ-VP-9-A15.md) · **DL-746** · sha1 `671e11365d95032353b923abfbf4403d0477b56a` · round-2 look verdicts |
 | **AZ-VP-9-A16** | [`Specs/amendments/AZ-VP-9-A16.md`](../../Specs/amendments/AZ-VP-9-A16.md) · **DL-746** · sha1 `156577a1d3fea9d4d33e6ac8c6606afc2841a008` · per-instrument tick · no surface table |
+| **AZ-VP-9-A17** | [`Specs/amendments/AZ-VP-9-A17.md`](../../Specs/amendments/AZ-VP-9-A17.md) · **DL-749** · sha1 `99d135b3b9fb2fec3917f8c91b34908e172058bd` · behavioral parity default · A4/A11 x-window default struck |
 | **API contract v1.1** | [`Specs/VP-API-Contract-v1_1.md`](../../Specs/VP-API-Contract-v1_1.md) · **DL-733** sha1 `d01b3dd9bfbac3bbcafb34110ef7d06cd6650915` |
 | **Dev sidecar record** | [`DEV-API.md`](DEV-API.md) — APPS reads this; never scan ports. Canonical LAN `http://192.168.1.111:4010` (**DL-743**); never `studioone.local` |
 | **OPS-DASH** | [`OPS-DASH.md`](OPS-DASH.md) · **LIVE** `http://studioone.local:5055` · StudioTwo `:5056` retired (**DL-734** · **DL-737**) |

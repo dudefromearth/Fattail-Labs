@@ -50,7 +50,8 @@ Everything not on this line is **parked** or **serves it**. Touched only when th
 **AZ-VP-9-A13:** [`Specs/amendments/AZ-VP-9-A13.md`](../../Specs/amendments/AZ-VP-9-A13.md) sha1 `292a711a94fd6d31cc18750da86f7f1fa3f35d15` (51 · 3 `## ` · last `## Standing`) · **MATCH** · **DL-744**. TV look parity. Benchmark: [`benchmarks/a13-tv-look-2026-09-18/`](benchmarks/a13-tv-look-2026-09-18/). Coach's eye is the gate.  
 **AZ-VP-9-A14:** [`Specs/amendments/AZ-VP-9-A14.md`](../../Specs/amendments/AZ-VP-9-A14.md) sha1 `4489d35bd98115c9b8b5a5d255a2db4d938a68a7` (55 · 4 `## ` · last `## Standing`) · **MATCH** · **DL-745**. Local-feel. ETag = generation id (transport).  
 **AZ-VP-9-A15:** [`Specs/amendments/AZ-VP-9-A15.md`](../../Specs/amendments/AZ-VP-9-A15.md) sha1 `671e11365d95032353b923abfbf4403d0477b56a` (39 · 2 `## `) · **MATCH** · **DL-746**. Round-2 look. Benchmark: [`benchmarks/a15-tv-look-round2-2026-09-18/`](benchmarks/a15-tv-look-round2-2026-09-18/).  
-**AZ-VP-9-A16:** [`Specs/amendments/AZ-VP-9-A16.md`](../../Specs/amendments/AZ-VP-9-A16.md) sha1 `156577a1d3fea9d4d33e6ac8c6606afc2841a008` (26 · 2 `## `) · **MATCH** · **DL-746**. Per-instrument tick. No surface tick table.
+**AZ-VP-9-A16:** [`Specs/amendments/AZ-VP-9-A16.md`](../../Specs/amendments/AZ-VP-9-A16.md) sha1 `156577a1d3fea9d4d33e6ac8c6606afc2841a008` (26 · 2 `## `) · **MATCH** · **DL-746**. Per-instrument tick. No surface tick table.  
+**AZ-VP-9-A17:** [`Specs/amendments/AZ-VP-9-A17.md`](../../Specs/amendments/AZ-VP-9-A17.md) sha1 `99d135b3b9fb2fec3917f8c91b34908e172058bd` (47 · 2 `## `) · **MATCH** · **DL-749**. Behavioral parity default. A4/A11 x-window default **struck**.
 
 **Governance — surface seeds (standing checks):**  
 5. Specified VP feature wins over chart generality. Scope creep toward a general charting platform is a **finding**, not initiative. (**AZ-VP-9-A7** · **DL-738**)  
@@ -62,6 +63,7 @@ Everything not on this line is **parked** or **serves it**. Touched only when th
 11. Spinner-first pan/zoom is a finding. Invented bars to look fast is a finding. Missing ETag on a generation-keyed payload is a finding. (**AZ-VP-9-A14** · **DL-745**)  
 12. Axis figures smaller than the round-2 TV shots, hollow un-bordered candles as default, dead y-void beyond 75 px padding, or labels like `7687.11` are findings. (**AZ-VP-9-A15** · **DL-746**)  
 13. A hardcoded 0.25 (or any per-symbol tick table) in surface code is a finding. (**AZ-VP-9-A16** · **DL-746**)  
+14. A surface report to Coach without A17.5 parity attestation is a finding. Blank-future default x-window is a finding. (**AZ-VP-9-A17** · **DL-749**)  
 **Git:** `vp/seated-law-v0.6` · **DL-724**.  
 **Law:** **CP-1** · **DL-707**  
 **Token:** `VPS0-W0` STAMPED **DL-706** · VPS0 **CLOSED**

@@ -4,6 +4,20 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-18 — DL-749 AZ-VP-9-A17 Behavioral parity default
+
+**Decision.** [`Specs/amendments/AZ-VP-9-A17.md`](../Specs/amendments/AZ-VP-9-A17.md) is **behavioral parity law** (India MATCH 47 · sha1 `99d135b3b9fb2fec3917f8c91b34908e172058bd` · 2 `## ` · last `## Standing`). **Strikes** A4/A11's default x-window ("current session span") — that default produced a mostly-blank future canvas. Extends A5/A13: the TV benchmark governs **conduct**, not just looks.
+
+**Law:** TV behavior is the default for everything. A deviation from TradingView is a **defect** unless a numbered law requires it. Burden of proof is on the builder. Default visible window: trailing recent bars ending at NOW with a small right offset (TV-standard), data filling the canvas. Named defects: blank-future canvas; scale-drag losing the series; no recovery. Checklist (A17.4) must work today.
+
+**A17.5 (ADVISOR watch 14):** any look/behavior report reaching Coach without a side-by-side parity attestation (checklist vs benchmark, plus numbered-law deviations) is a **finding**.
+
+**Does not.** MiniTwo. Stop StudioTwo `:3000`/`:4000`. `git add -A`.
+
+**Cites:** **DL-746** · **DL-744** · A4 · A5 · A11 · A13.
+
+---
+
 ## 2026-09-18 — DL-748 Lead-contract OHLC rule · roll-week bin eligibility question
 
 **Decision.**
