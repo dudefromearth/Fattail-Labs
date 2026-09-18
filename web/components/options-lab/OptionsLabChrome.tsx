@@ -33,12 +33,14 @@ export default function OptionsLabChrome({
   wide = false,
   /** Compact top bar only — no title/blurb/symbol strip (child owns controls). */
   workspace = false,
+  tone = "default",
 }: {
   active: OptionsLabAppId;
   children: ReactNode;
   fillHeight?: boolean;
   wide?: boolean;
   workspace?: boolean;
+  tone?: "default" | "dark";
 }) {
   const item = optionsLabApp(active);
   const { symbol, setSymbol, universe, loading, error } = useOptionsLab();
@@ -49,7 +51,9 @@ export default function OptionsLabChrome({
       data-testid="options-lab-chrome-top"
     >
       <nav
-        className="justify-self-start text-sm text-[var(--color-label-secondary)]"
+        className={`justify-self-start text-sm ${
+          tone === "dark" ? "text-zinc-400" : "text-[var(--color-label-secondary)]"
+        }`}
         aria-label="Breadcrumb"
       >
         <Link
@@ -70,13 +74,17 @@ export default function OptionsLabChrome({
         <span className="mx-2 text-[var(--color-label-tertiary)]" aria-hidden>
           ›
         </span>
-        <span className="font-medium text-[var(--color-label)]">
+        <span
+          className={`font-medium ${
+            tone === "dark" ? "text-zinc-100" : "text-[var(--color-label)]"
+          }`}
+        >
           {item.label}
         </span>
       </nav>
 
       <div className="justify-self-center">
-        <OptionsLabNav active={active} />
+        <OptionsLabNav active={active} tone={tone} />
       </div>
 
       <div className="hidden sm:block" aria-hidden />
@@ -84,12 +92,22 @@ export default function OptionsLabChrome({
   );
 
   if (workspace) {
+    const dark = tone === "dark";
     return (
       <main
-        className="flex h-[calc(100dvh-4.5rem)] min-h-0 w-full max-w-none flex-col overflow-hidden"
+        className={`flex h-[calc(100dvh-4.5rem)] min-h-0 w-full max-w-none flex-col overflow-hidden ${
+          dark ? "bg-[#131722] text-zinc-200" : ""
+        }`}
         data-testid="options-lab-workspace"
+        data-tone={tone}
       >
-        <div className="shrink-0 border-b border-[var(--color-separator)] bg-[var(--color-surface)]">
+        <div
+          className={`shrink-0 border-b ${
+            dark
+              ? "border-zinc-800 bg-[#131722]"
+              : "border-[var(--color-separator)] bg-[var(--color-surface)]"
+          }`}
+        >
           {topNav}
         </div>
         {error && (

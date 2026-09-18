@@ -11,10 +11,19 @@ import {
   type OptionsLabAppId,
 } from "@/lib/optionsLabSuite";
 
-export default function OptionsLabNav({ active }: { active: OptionsLabAppId }) {
+export default function OptionsLabNav({
+  active,
+  tone = "default",
+}: {
+  active: OptionsLabAppId;
+  tone?: "default" | "dark";
+}) {
+  const dark = tone === "dark";
   return (
     <nav
-      className="inline-flex max-w-full flex-wrap items-center justify-center gap-0.5 rounded-full bg-[var(--color-fill)] p-1"
+      className={`inline-flex max-w-full flex-wrap items-center justify-center gap-0.5 rounded-full p-1 ${
+        dark ? "bg-[#1e222d]" : "bg-[var(--color-fill)]"
+      }`}
       aria-label="Options Lab apps"
       data-testid="options-lab-suite-nav"
     >
@@ -29,8 +38,12 @@ export default function OptionsLabNav({ active }: { active: OptionsLabAppId }) {
               "inline-flex min-h-9 items-center justify-center rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors sm:px-4",
               "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]",
               isActive
-                ? "bg-[var(--color-surface)] text-[var(--color-label)] shadow-[var(--elevation-1)]"
-                : "text-[var(--color-label-secondary)] hover:text-[var(--color-label)]",
+                ? dark
+                  ? "bg-zinc-200 text-zinc-900"
+                  : "bg-[var(--color-surface)] text-[var(--color-label)] shadow-[var(--elevation-1)]"
+                : dark
+                  ? "text-zinc-400 hover:text-zinc-100"
+                  : "text-[var(--color-label-secondary)] hover:text-[var(--color-label)]",
             ].join(" ")}
           >
             {item.label}

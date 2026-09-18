@@ -45,18 +45,28 @@ website, not here.
 A practice tool for recording your trades and reviewing them over time. It's the book
 of record for your practice — what you did, and how it turned out. Each account is one
 book. Filter the **account book** with **Autofilter** on the Trade history row
-(Exec time, Campaign, Strategy, Symbol, Status). The table is a **page** of
+(Exec time, Campaign, Strategy, Symbol, Status). Status matching states are
+**Open**, **Complete**, **Orphan close**, and **partial_residual** (leftover
+units after a smaller close, for example 1 of 5). The table is a **page** of
 matches; shown is this page, total is how many in the book match. Status is
 the full book. Tap a campaign badge on a row to filter to
 that campaign — same Autofilter, not a second control. Search-and-assign is not on
 the Trade Log — that is Find and Badge, on the Campaigns page. See **Trade Log
-Autofilter**.
+Autofilter** and **Recording and closing a trade**.
+
+A close that does not pass the pairing checks is **refused with 422** unless you
+tick the matching override on the sheet. Deleting an open that still has a close
+is **refused with 409** until you delete the close first. See **Recording and
+closing a trade**.
 
 ## New trade
 To log a position by hand, use the **New trade** button on the Trade Log (you can
 also **Import** a file or paste a thinkorswim ticket). In the trade sheet you set
-everything about the trade yourself: the **underlying**, the strategy, and the legs
-(strike, expiry, side, quantity, price), plus your process notes, then save.
+everything about the trade yourself. Options are **structure-first** (strategy,
+underlier, expiration, strikes, units, net). **Stock, futures, and crypto** are
+**symbol · quantity · fill** — not option legs. Add process notes if you like,
+then save. Closing those simple assets uses the same simple fields. See
+**Recording and closing a trade**.
 
 **Changing the underlying (e.g. from SPX):** yes — the underlying is a normal
 editable field. It just **defaults to SPX** (and defaults to SPY for stock, /ES for
@@ -189,23 +199,24 @@ disciplined decisions — it does **not** predict profit, give trade signals, or
 what to buy.
 
 ## Volume Profile
-A study tool in Options Lab (`/app/options-lab/volume-profile`) that shows a sideways
-histogram of how much volume has traded at each price. Price runs up the side; a longer
-horizontal bar means more volume traded there — so you can see where a symbol has "done
-most of its business." A live-price marker highlights the bar at the current mid, and you
-choose the symbol, a bar period (1d / 4h / 1h / 30m), and text size.
+A study tool in Options Lab (`/app/options-lab/volume-profile`): **one chart, layers
+you switch on.** Price candles sit behind a blue side-anchored volume-by-price
+histogram (how much volume traded at each price, full history since the coverage
+floor). Analysis overlay is off until you turn it on. Footprint and Position are
+named future layers, not on yet.
 
-**How to read it:** pick your symbol and period, then scan for the longest bars — the
-busiest, most-accepted prices — note the thin bars where price moved through quickly, and
-watch where the live marker sits.
+**How to read it:** Morning / Entry / Manage are one-click presets (Morning = Coach’s
+show chart). Right-click the canvas, candles, profile, or scale for settings
+(background, grid, fonts, candle colors, high/low lines). Your settings live on
+your account, not only in the browser.
 
-**Why it matters:** high-volume prices tend to be reference levels traders revisit, so it
-helps you frame where activity has concentrated when studying a name.
+**Why it matters:** high-volume prices tend to be reference levels traders revisit,
+so it helps you frame where activity has concentrated when studying a name.
 
-**Good to know:** it's a study tool, not a signal. The member chart *estimates*
-volume-by-price from OHLC bars (it's labelled "From OHLC window — not measured tick VP"),
-so it's an approximation, not exact tick data; it covers regular-hours equity/ETF data and
-doesn't show Point of Control or value areas.
+**Good to know:** study tool, not a signal. The **member** tab still shows the
+residual OHLC-window *estimate* until the layered chart ships to members; admin
+already sees the tick-measured full-history profile. It is not Market Profile / TPO
+and does not draw a Point of Control unless Analysis is on.
 
 ## Playbook
 Your personal scrapbook for how you trade under risk — your rules, setups, regimes, and

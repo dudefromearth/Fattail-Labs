@@ -9,7 +9,7 @@ export const metadata = {
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-zinc-50 dark:bg-zinc-950" data-testid="admin-shell">
+    <div className="flex min-h-dvh flex-1 flex-col bg-zinc-50 dark:bg-zinc-950" data-testid="admin-shell">
       <header className="shrink-0 border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-4 px-4 py-3">
           <Link
@@ -32,7 +32,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
       </header>
-      <div className="mx-auto w-full max-w-[100vw] flex-1">{children}</div>
+      <div className="flex min-h-0 w-full max-w-[100vw] flex-1 flex-col overflow-hidden">
+        {children}
+      </div>
       <footer className="border-t border-zinc-200 px-4 py-3 text-center text-xs text-zinc-400 dark:border-zinc-800">
         Operator control plane — in-place editing stays on production pages. Noindex.
       </footer>

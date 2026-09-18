@@ -7,12 +7,13 @@ Transport only — no envelope rewrite.
 from __future__ import annotations
 
 from fastapi import APIRouter, Query, Request
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 import auth
 from config import get_config
 from guards import require_session
 from market_data.vp_http_cache import passthrough_headers
+from sa_dev.stream import iter_live_sse
 from sa_dev.vp_client import ContractMismatch, fetch_v1
 
 router = APIRouter(tags=["vp-contract-proxy"])
@@ -128,6 +129,26 @@ def proxy_profile(
     except ContractMismatch as exc:
         return JSONResponse(status_code=502, content={"error": str(exc)})
     return _upstream_response(status, body, headers)
+
+
+@router.get("/api/vp/v1/stream")
+def proxy_stream(
+    request: Request,
+    source: str = Query(default="ES"),
+    timeframe: str = Query(default="5m"),
+):
+    gate = _computing(request)
+    if isinstance(gate, JSONResponse):
+        return gate
+    return StreamingResponse(
+        iter_live_sse(source, timeframe, headers=_forward(request)),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 

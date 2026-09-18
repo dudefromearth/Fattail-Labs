@@ -33,6 +33,10 @@ SURFACE_FACTORY_VIEWS = frozenset(
 SURFACE_INSPECT_KEYS = frozenset({"defaults", "default_view_id", "views"})
 SURFACE_VIEW_MAX = 12
 
+# AZ-VP-9-A22 — SA surface profile-store on the identity (account-keyed).
+SA_SURFACE_SCHEMA = 1
+SA_SURFACE_MAX_BYTES = 64 * 1024
+
 # Idle timeout preference (minutes) — all roles except administrator
 SESSION_IDLE_MIN_DEFAULT = 960  # 16h — spans a full pre->post-market trading day
 SESSION_IDLE_MIN_LO = 15
@@ -144,6 +148,73 @@ def _parse_surface_inspect_write(raw) -> dict:
         "default_view_id": default_id,
         "views": views,
     }
+
+
+def _parse_json_obj(raw):
+    if raw is None or raw == "":
+        return None
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return None
+    if isinstance(raw, dict):
+        return raw
+    return None
+
+
+def _empty_sa_surface() -> dict:
+    return {"schema": SA_SURFACE_SCHEMA, "prefs": None}
+
+
+def _migrate_sa_surface(raw) -> dict:
+    """Forward-migrate a stored document to the current schema. Never drop prefs."""
+    doc = _parse_json_obj(raw)
+    if doc is None:
+        return _empty_sa_surface()
+    schema = doc.get("schema")
+    prefs = doc.get("prefs")
+    # Cache-shaped blob written before schema wrapping: prefs at top level.
+    if schema is None and "prefs" not in doc and (
+        "mode" in doc or "visible" in doc or "objectDefaults" in doc
+    ):
+        prefs = {k: v for k, v in doc.items() if k != "schema"}
+        schema = 1
+    try:
+        schema_n = int(schema) if schema is not None else 1
+    except (TypeError, ValueError):
+        schema_n = 1
+    if schema_n < 1:
+        schema_n = 1
+    if prefs is not None and not isinstance(prefs, dict):
+        prefs = None
+    # Future schemas are unknown to this binary — keep prefs, stamp current.
+    # Older schemas bump to current (v1 is the first; bump is a no-op today).
+    return {"schema": SA_SURFACE_SCHEMA, "prefs": prefs}
+
+
+def _write_sa_surface(body) -> dict:
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=422, detail="JSON object required")
+    encoded = json.dumps(body, separators=(",", ":"))
+    if len(encoded.encode("utf-8")) > SA_SURFACE_MAX_BYTES:
+        raise HTTPException(status_code=422, detail="sa-surface document too large")
+    schema = body.get("schema", SA_SURFACE_SCHEMA)
+    try:
+        schema_n = int(schema)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail="schema must be an integer") from exc
+    if schema_n > SA_SURFACE_SCHEMA:
+        raise HTTPException(
+            status_code=422,
+            detail=f"unknown sa-surface schema {schema_n}",
+        )
+    prefs = body.get("prefs")
+    if prefs is None:
+        raise HTTPException(status_code=422, detail="prefs required")
+    if not isinstance(prefs, dict):
+        raise HTTPException(status_code=422, detail="prefs must be an object")
+    return {"schema": SA_SURFACE_SCHEMA, "prefs": prefs}
 
 
 def _read_surface_inspect(raw) -> dict:
@@ -976,6 +1047,52 @@ async def patch_profile(request: Request) -> dict:
     if row is None:
         raise HTTPException(status_code=404, detail="Identity not found")
     return _profile_payload(row, claims["role"])
+
+
+@router.get("/api/me/sa-surface")
+def get_sa_surface(request: Request) -> dict:
+    """A22 — profile-store document. Server copy is the home of record."""
+    claims = require_session(request)
+    iid = int(claims["identity_id"])
+    if iid == 0:
+        raise HTTPException(status_code=400, detail="No identity for this session")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT sa_surface_json FROM identities WHERE identity_id = %s",
+                (iid,),
+            )
+            row = cur.fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Identity not found")
+    return _migrate_sa_surface(row.get("sa_surface_json"))
+
+
+@router.put("/api/me/sa-surface")
+async def put_sa_surface(request: Request) -> dict:
+    """A22 — last write stored; GET after this is the conflict winner."""
+    claims = require_session(request)
+    iid = int(claims["identity_id"])
+    if iid == 0:
+        raise HTTPException(status_code=400, detail="No identity for this session")
+    try:
+        body = await request.json()
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail="JSON body required") from exc
+    stored = _write_sa_surface(body)
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT identity_id FROM identities WHERE identity_id = %s",
+                (iid,),
+            )
+            if cur.fetchone() is None:
+                raise HTTPException(status_code=404, detail="Identity not found")
+            cur.execute(
+                "UPDATE identities SET sa_surface_json = %s WHERE identity_id = %s",
+                (json.dumps(stored), iid),
+            )
+    return stored
 
 
 @router.post("/api/me/profile/avatar")

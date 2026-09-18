@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query, Request
+from starlette.responses import JSONResponse, StreamingResponse
 
 from config import get_config
 from guards import require_admin
-from sa_dev.service import health, structure_for
+from market_data.vp_http_cache import HEALTH, payload_response
+from sa_dev.service import health, ohlc_for_source, range_for, structure_for
+from sa_dev.stream import iter_live_sse, iter_mock_sse
 
 router = APIRouter(tags=["sa-dev"])
 
@@ -35,9 +38,10 @@ def _require_dev_admin(request: Request) -> dict:
 
 
 @router.get("/api/dev/sa/v1/health")
-def get_health(request: Request) -> dict:
+def get_health(request: Request):
     _require_dev_admin(request)
-    return health(headers=_forward_cookie(request))
+    body = health(headers=_forward_cookie(request))
+    return JSONResponse(content=body, headers={"Cache-Control": HEALTH})
 
 
 @router.get("/api/dev/sa/v1/structure/{target_symbol}")
@@ -48,7 +52,8 @@ def get_structure(
     session_date: str | None = Query(default=None),
     kind: str = Query(default="session"),
     harness: str = Query(default="auto"),
-) -> dict:
+    include_bins: bool = Query(default=False),
+):
     _require_dev_admin(request)
     payload = structure_for(
         target_symbol,
@@ -57,7 +62,77 @@ def get_structure(
         kind=kind,
         harness=harness,
         headers=_forward_cookie(request),
+        include_bins=include_bins,
     )
-    if "bins" in payload:
+    if "bins" in payload and not include_bins:
         raise HTTPException(status_code=500, detail="bins leaked into structure")
-    return payload
+    live = harness == "live" and kind == "developing"
+    return payload_response(request, payload, kind=kind, live=live)
+
+
+@router.get("/api/dev/sa/v1/range/{target_symbol}")
+def get_range_profile(
+    request: Request,
+    target_symbol: str,
+    source: str | None = Query(default=None),
+    from_date: str = Query(alias="from"),
+    to_date: str = Query(alias="to"),
+    price_lo: float | None = Query(default=None),
+    price_hi: float | None = Query(default=None),
+    row: float | None = Query(default=None),
+    harness: str = Query(default="auto"),
+):
+    """A12 full-history profile. Computing-class / admin-dev only."""
+    _require_dev_admin(request)
+    payload = range_for(
+        target_symbol,
+        source=source,
+        from_date=from_date,
+        to_date=to_date,
+        price_lo=price_lo,
+        price_hi=price_hi,
+        row=row,
+        harness=harness,
+        headers=_forward_cookie(request),
+    )
+    return payload_response(request, payload, kind="range", live=harness == "live")
+
+
+@router.get("/api/dev/sa/v1/ohlc/{source}")
+def get_source_ohlc(
+    request: Request,
+    source: str,
+    tf: str = Query(default="5m"),
+    lookback_days: int = Query(default=5),
+):
+    """SOURCE-space candles from the same prints as the profile (A12.4)."""
+    _require_dev_admin(request)
+    if tf not in ("1m", "5m", "15m", "1h", "1d"):
+        raise HTTPException(status_code=422, detail="tf must be 1m|5m|15m|1h|1d")
+    payload = ohlc_for_source(source, tf=tf, lookback_days=lookback_days)
+    return payload_response(request, payload, kind="ohlc", live=True)
+
+
+@router.get("/api/dev/sa/v1/stream")
+def get_stream(
+    request: Request,
+    source: str = Query(default="ES"),
+    timeframe: str = Query(default="5m"),
+    harness: str = Query(default="live"),
+    once: bool = Query(default=False),
+):
+    """SSE relay for contract v1.3. Computing-class / admin-dev only."""
+    _require_dev_admin(request)
+    if harness == "fixture":
+        gen = iter_mock_sse(source, timeframe, once=True if once else False)
+    else:
+        gen = iter_live_sse(source, timeframe, headers=_forward_cookie(request))
+    return StreamingResponse(
+        gen,
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
