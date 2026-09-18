@@ -4,6 +4,18 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-18 — DL-752 AZ-VP-9-A18 One design, every ticker
+
+**Decision.** [`Specs/amendments/AZ-VP-9-A18.md`](../Specs/amendments/AZ-VP-9-A18.md) is **uniformity law** (India MATCH 31 · sha1 `60778d811d4fc802f3998e05a6725373b3a582fb` · 2 `## ` · last `## Standing`). Extends A2–A17, the stable-extension directive, and Contract v1.2.1/v1.3. Nothing struck.
+
+**Law:** One surface design for every symbol. Only three things vary, all served: data, tick grid, provenance. Symbol switch is pure re-derivation (A16.4). Per-symbol surface code paths are **findings** (A18.4 · ADVISOR watch 15).
+
+**Does not.** MiniTwo. Stop StudioTwo `:3000`/`:4000`. `git add -A`.
+
+**Cites:** **DL-749** · A16 · VP-L3.
+
+---
+
 ## 2026-09-18 — DL-751 VP hot serving tier: 63-session OHLC chunks + warmer
 
 **Decision (Coach).** ~3 months (~63 trading sessions) resident in VP Redis as **per-session gzip chunks** × five timeframes (1m/5m/15m/1h/1d) × ES/MES/SPY, plus developing keys. `GET /v1/ohlc/{source}/{tf}?from=&to=` **assembles chunks only** — print gzip is the warmer's job, never the member request.

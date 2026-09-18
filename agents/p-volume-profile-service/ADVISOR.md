@@ -14,5 +14,6 @@ INFRA does not self-review specs. Findings route here.
 | 12 | **Round-2 look (AZ-VP-9-A15 · DL-746)** | Axis type smaller than the annotated TV shots; un-bordered candles; fixed sparse time labels; y-void beyond ~75 px padding; labels like `7687.11`. |
 | 13 | **Instrument tick (AZ-VP-9-A16 · DL-746)** | Hardcoded 0.25 or any client-side per-symbol tick table; ES→SPX without re-deriving the scale from metadata. |
 | 14 | **Parity attestation (AZ-VP-9-A17.5 · DL-749)** | Any look/behavior report reaching Coach without a side-by-side checklist attestation vs the TV benchmark, plus numbered-law deviations. Blank-future default x-window. TV-standard behavior treated as needing Coach dictation. |
+| 15 | **One design every ticker (AZ-VP-9-A18.4 · DL-752)** | Per-symbol code paths in surface work; bespoke chrome for primary pairs; a symbol switch that changes layout or behavior. |
 
-Surface seeds must carry standing checks **5**–**14**. A hit is a **finding**, not initiative.
+Surface seeds must carry standing checks **5**–**15**. A hit is a **finding**, not initiative.
