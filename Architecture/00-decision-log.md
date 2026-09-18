@@ -4,6 +4,27 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-18 — DL-746 AZ-VP-9-A15 round-2 look verdicts · A16 per-instrument tick
+
+**Decision.** Two amendments land together (India MATCH both):
+
+| File | Lines | sha1 | Headings | Last |
+|------|------:|------|----------|------|
+| [`AZ-VP-9-A15.md`](../Specs/amendments/AZ-VP-9-A15.md) | 39 | `671e11365d95032353b923abfbf4403d0477b56a` | 2 | `## Standing` |
+| [`AZ-VP-9-A16.md`](../Specs/amendments/AZ-VP-9-A16.md) | 26 | `156577a1d3fea9d4d33e6ac8c6606afc2841a008` | 2 | `## Standing` |
+
+**A15** extends A13/A14. Round-2 annotated TV screenshots filed at [`benchmarks/a15-tv-look-round2-2026-09-18/`](../agents/p-volume-profile-service/benchmarks/a15-tv-look-round2-2026-09-18/). Verdicts: fonts TV-size (~12–13 px); bordered candles (darker outline/wick, lighter fill); time axis bigger and span-responsive; y-range fill with ~75 px padding; price scale on futures increments (not `7687.11`). Coach's eye is the gate.
+
+**A16** refines A15.5: scale increments from the **instrument's own tick metadata** (symbol-metadata / vendor Contracts). No hardcoded 0.25 in surface code. Switching ES→SPX / SPY-MES→XSP re-derives the scale.
+
+**Tick path (A16 data note):** envelope `vp_row` is **source-space** (ES/MES 0.25, SPY 0.10) — display may use it for the source instrument. Target-grid tick (SPX/XSP 0.01) is **not** on the payload; `market_symbol_universe` has no `tick_size`; member universe list does not expose tick. **Contract candidate** (do not improvise on v1.1; never a client table): `tick_size` + `target_tick_size` on the identity block, or `GET /v1/instruments/{symbol}`. Until then, source-space scales on `vp_row` only. Evidence: [`A16-tick-path-2026-09-18.md`](../agents/p-volume-profile-service/gate-reports/A16-tick-path-2026-09-18.md).
+
+**Does not.** MiniTwo. Stop StudioTwo `:3000`/`:4000`. `git add -A`. Client-side tick table. Contract v1.2 this packet.
+
+**Cites:** **DL-745** · **DL-744** · A15.5 · VP-L3 · VP-L12 · Q7(a).
+
+---
+
 ## 2026-09-18 — DL-745 AZ-VP-9-A14 fonts/controls/local-feel · ETag transport
 
 **Decision.** [`Specs/amendments/AZ-VP-9-A14.md`](../Specs/amendments/AZ-VP-9-A14.md) is **fonts, control homes, and local-feel performance law** (India MATCH 55 · sha1 `4489d35bd98115c9b8b5a5d255a2db4d938a68a7` · 4 `## ` · last `## Standing`). Extends A2, A4, A6, A10, A13. Nothing struck.
