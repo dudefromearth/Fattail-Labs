@@ -4,6 +4,22 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-18 — DL-755 AZ-VP-9-A22 Settings survive everything
+
+**Decision.** [`Specs/amendments/AZ-VP-9-A22.md`](../Specs/amendments/AZ-VP-9-A22.md) is **persistence law** (India MATCH 33 · sha1 `fde8890db6f6e6534bec78eeb52c2abf65ccde30` · 2 `## ` · last `## Standing`). Extends A8.2/A9.5/A11.2/A21.2 — pins WHERE persistence lives. Nothing struck.
+
+**Law:** Server-side is the home of record for every user setting, object default, mode-preset override, layer state, and dialog value — member Labs profile store, account-keyed, schema-versioned. Browser storage is a cache only; the server copy wins. House defaults remain platform config (A21.2).
+
+**Profile-store touchpoint (dev + MiniTwo):** `GET`/`PATCH /api/me/profile` already carries member-keyed `surface_inspect` (`identities.surface_inspect_json`, migration 130). MiniTwo column **present**; 3 identities non-null; unauthenticated prod route **401**. That document is Surface inspect views — **not** schema-versioned, **not** VP/SA settings. VP prefs today are `saLayerStore` localStorage; Member Settings v1.0 is localStorage by spec. **Gap (platform item):** no versioned VP settings document. Do not treat localStorage as the SoR. Evidence: [`A22-profile-store-2026-09-18.md`](../agents/p-volume-profile-service/gate-reports/A22-profile-store-2026-09-18.md).
+
+**A22 (ADVISOR watch 18):** browser storage as the home of record is a **finding**.
+
+**Does not.** MiniTwo migrate/restart. Browser-only workaround. Stop StudioTwo `:3000`/`:4000`. `git add -A`.
+
+**Cites:** **DL-754** · **DL-338** · A21.
+
+---
+
 ## 2026-09-18 — DL-754 AZ-VP-9-A21 Defaults in every dialog
 
 **Decision.** [`Specs/amendments/AZ-VP-9-A21.md`](../Specs/amendments/AZ-VP-9-A21.md) is **defaults-dropdown law** (India MATCH 32 · sha1 `4cf98d2153279846e64d16e7952e57e8127bad72` · 2 `## ` · last `## Standing`). Extends A9/A10/A20 (universal dialog) and A11 (presets). Nothing struck.

@@ -17,5 +17,6 @@ INFRA does not self-review specs. Findings route here.
 | 15 | **One design every ticker (AZ-VP-9-A18.4 · DL-752)** | Per-symbol code paths in surface work; bespoke chrome for primary pairs; a symbol switch that changes layout or behavior. |
 | 16 | **Axis labeling (AZ-VP-9-A19 · DL-753)** | Off-ladder / awkward-decimal price labels; time labels that skip the largest changing unit; crowding/overlap; orphan gridlines without labels. |
 | 17 | **Defaults dropdown (AZ-VP-9-A21 · DL-754)** | A settings dialog without Save as default / Reset to default / Reset to house default in the A10 footer. |
+| 18 | **Settings survive (AZ-VP-9-A22 · DL-755)** | Browser storage treated as the home of record for VP/SA settings; a layout change that silently discards member state; a browser-only workaround for missing profile-store persistence. |
 
-Surface seeds must carry standing checks **5**–**17**. A hit is a **finding**, not initiative.
+Surface seeds must carry standing checks **5**–**18**. A hit is a **finding**, not initiative.

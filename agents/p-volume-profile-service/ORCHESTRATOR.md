@@ -54,7 +54,8 @@ Everything not on this line is **parked** or **serves it**. Touched only when th
 **AZ-VP-9-A17:** [`Specs/amendments/AZ-VP-9-A17.md`](../../Specs/amendments/AZ-VP-9-A17.md) sha1 `99d135b3b9fb2fec3917f8c91b34908e172058bd` (47 · 2 `## `) · **MATCH** · **DL-749**. Behavioral parity default. A4/A11 x-window default **struck**.  
 **AZ-VP-9-A18:** [`Specs/amendments/AZ-VP-9-A18.md`](../../Specs/amendments/AZ-VP-9-A18.md) sha1 `60778d811d4fc802f3998e05a6725373b3a582fb` (31 · 2 `## `) · **MATCH** · **DL-752**. One design every ticker. A18.4 per-symbol surface paths are findings.  
 **AZ-VP-9-A19:** [`Specs/amendments/AZ-VP-9-A19.md`](../../Specs/amendments/AZ-VP-9-A19.md) sha1 `0c824a543407c315c8bb8dc3e9de3e68e2cb0667` (46 · 2 `## `) · **MATCH** · **DL-753**. Axis labeling hierarchy. **FINAL**.  
-**AZ-VP-9-A21:** [`Specs/amendments/AZ-VP-9-A21.md`](../../Specs/amendments/AZ-VP-9-A21.md) sha1 `4cf98d2153279846e64d16e7952e57e8127bad72` (32 · 2 `## `) · **MATCH** · **DL-754**. Defaults in every dialog.
+**AZ-VP-9-A21:** [`Specs/amendments/AZ-VP-9-A21.md`](../../Specs/amendments/AZ-VP-9-A21.md) sha1 `4cf98d2153279846e64d16e7952e57e8127bad72` (32 · 2 `## `) · **MATCH** · **DL-754**. Defaults in every dialog.  
+**AZ-VP-9-A22:** [`Specs/amendments/AZ-VP-9-A22.md`](../../Specs/amendments/AZ-VP-9-A22.md) sha1 `fde8890db6f6e6534bec78eeb52c2abf65ccde30` (33 · 2 `## `) · **MATCH** · **DL-755**. Settings survive everything. Profile-store gap filed.
 
 **Governance — surface seeds (standing checks):**  
 5. Specified VP feature wins over chart generality. Scope creep toward a general charting platform is a **finding**, not initiative. (**AZ-VP-9-A7** · **DL-738**)  
@@ -70,6 +71,7 @@ Everything not on this line is **parked** or **serves it**. Touched only when th
 15. Per-symbol code paths in surface work are findings. (**AZ-VP-9-A18.4** · **DL-752**)  
 16. Off-ladder labels, crowding, or orphan gridlines are findings. (**AZ-VP-9-A19** · **DL-753**)  
 17. A settings dialog without the defaults dropdown is a finding. (**AZ-VP-9-A21** · **DL-754**)  
+18. Browser storage as the home of record for VP/SA settings is a finding. (**AZ-VP-9-A22** · **DL-755**)  
 **Git:** `vp/seated-law-v0.6` · **DL-724**.  
 **Law:** **CP-1** · **DL-707**  
 **Token:** `VPS0-W0` STAMPED **DL-706** · VPS0 **CLOSED**
