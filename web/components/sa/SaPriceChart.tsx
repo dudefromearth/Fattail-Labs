@@ -11,7 +11,7 @@ import {
   type ISeriesApi,
   type UTCTimestamp,
 } from "lightweight-charts";
-import { fetchGen, peek } from "@/lib/saDelivery";
+import { fetchGen, peek, type FetchGenResult } from "@/lib/saDelivery";
 import { honestBars } from "@/lib/saBars";
 import { resolveTick, tickDecimals } from "@/lib/saTicks";
 import { useSaCanvas } from "./SaCanvasContext";
@@ -433,7 +433,7 @@ export default function SaPriceChart({
         harness,
         apiBase,
       });
-      const applyBins = (r: { body?: Record<string, unknown>; ms: number }, bins: VpBin[]) => {
+      const applyBins = (r: FetchGenResult, bins: VpBin[]) => {
         if (cancelled) return;
         const prices = bins.map((b) => b.price);
         bandRef.current = {
