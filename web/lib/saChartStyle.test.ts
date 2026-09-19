@@ -10,6 +10,7 @@ import {
   colorBars,
   lineStyleOf,
   visibleHiLo,
+  vpSeriesOptions,
 } from "./saChartStyle";
 
 assert.equal(lineStyleOf("dotted"), LineStyle.Dotted);
@@ -25,6 +26,10 @@ assert.equal(canvas.grid.vertLines.visible, true);
 const both = canvasOptions({ ...p, axis: "both" });
 assert.equal(both.leftPriceScale.visible, true);
 assert.equal(both.rightPriceScale.visible, true);
+
+assert.equal(vpSeriesOptions(p).priceScaleId, "left");
+assert.equal(vpSeriesOptions({ ...p, axis: "right" }).priceScaleId, "right");
+assert.equal(candleOptions(p).priceScaleId, "left");
 
 const hollow = candleOptions({ ...p, candleBodyOn: false });
 assert.equal(hollow.upColor, "rgba(0,0,0,0)");

@@ -89,6 +89,16 @@ export function candleOptions(prefs: SaPrefs) {
   };
 }
 
+/** Guest L2 must share L1's scale — default custom series binds right, which is hidden when axis is left. */
+export function vpSeriesOptions(prefs: SaPrefs) {
+  return {
+    lastValueVisible: false,
+    priceLineVisible: false,
+    priceScaleId: prefs.axis === "right" ? "right" : "left",
+    visible: prefs.visible.L2 !== false,
+  };
+}
+
 export function colorBars(
   bars: CandlestickData[],
   prefs: SaPrefs,

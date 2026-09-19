@@ -4,6 +4,42 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-19 — DL-766 A23 line-count metric is not a defect (Coach)
+
+**Decision (Coach, W4-G accepted).** The AZ-VP-9-A23 line “deleted plumbing exceeds added code” is a **miscalibrated acceptance metric**, not a build failure. It was a line-count prediction. Lifecycle hygiene, pane-band correction, and tests legitimately grow the count.
+
+**Binding acceptance (met):** overlay plumbing gone (`git grep` empty) and the **same engine paints profile and candles**.
+
+Do not resurface the line-count miss as a defect. Stands beside **DL-765**.
+
+**Cites:** **DL-765** · **DL-764** · AZ-VP-9-A23 · Coach W4-G accepted 2026-09-19.
+
+---
+
+## 2026-09-19 — DL-765 AZ-VP-9-A23 primitive as-built (W4-G)
+
+**Decision.** L2 volume profile on the LWC widget is an `ISeriesPrimitive` attached to the candlestick series (`attachPrimitive`, zOrder `"top"`). `/range` completion sets bins then `requestUpdate()`. Overlay canvas (`sa-vp-overlay`) and `redrawVp` **demolished**; they do not ship. As-built: `Architecture/35-options-lab-volume-profile.md`. Gates W1-G…W4-G PASS. Board `agents/p-vp-chart-primitive/`.
+
+**Deviation (recorded):** spec acceptance “deleted plumbing exceeds added code” is not met vs git HEAD (net growth is lifecycle + pane band + tests). Overlay symbols are gone.
+
+**Does not.** VP service/API/ingest. MiniTwo. Playwright pan/zoom (not in this packet).
+
+**Cites:** **DL-764** · AZ-VP-9-A23 · audit 2026-09-19.
+
+---
+
+## 2026-09-19 — DL-764 AZ-VP-9-A23 VP chart primitive migration GO
+
+**Decision (Coach Phase-5 stamp, 2026-09-19).** [`Specs/AZ-VP-9-A23.md`](../Specs/AZ-VP-9-A23.md) is **BUILD AUTHORITY**. Source `Specs/VP-Chart-Primitive-Migration-Spec-v1_0.md` sha1 `3880bb2b7aba10586188a409515a07b751f44cbd` verified on dispatch. Board `agents/p-vp-chart-primitive/`. Token this entry.
+
+**Upheld:** zOrder `"top"`. Disabled overlay behind a flag only W1-G → W3, then demolished; does not ship.
+
+**Does not.** VP service / API / ingest. `VP-Overlay-Spec-v0_1` contract-overlay (different law). MiniTwo.
+
+**Cites:** audit `docs/Volume-Profile-Lightweight-Charts-Rendering-Audit-2026-09-19.md` · A12 · A17 · **DL-757**.
+
+---
+
 ## 2026-09-18 — DL-763 Term Mass (`gex-cal`) GC0-0
 
 **Decision (Coach GC0-0, 2026-09-18).** Heatmap template `gex-cal`, picker **Term Mass**, is **BUILD AUTHORITY**. Spec [`FatTail-Labs-Options-Lab-Heatmap-GEX-Calendar-Spec-v0_1_1.md`](../Specs/FatTail-Labs-Options-Lab-Heatmap-GEX-Calendar-Spec-v0_1_1.md) sha1 `37c4427c2ffc3071dc27a8592c16cf6307acd289`. Plan v1.1. Token `agents/go/GC0-W0.md`. Board `agents/p-options-lab-heatmap-gex-calendar/`. v0_1 remains baseline freeze. Options Lab suite app label is **Runner** (route `/app/options-lab/heatmap`).

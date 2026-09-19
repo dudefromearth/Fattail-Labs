@@ -41,6 +41,7 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | [26-strategy-lab-member-timeline.md](./26-strategy-lab-member-timeline.md) | **NOW:** Design+Curate lock; Deploy UX for members; Tradier real-money gated (DL-252) |
 | [32-strategy-lab-guiding-doctrine.md](./32-strategy-lab-guiding-doctrine.md) | **Guiding light:** position don’t predict · book-level shape · VP memory · DL-382–386 |
 | [33-strategy-lab-3d-surface.md](./33-strategy-lab-3d-surface.md) | **3D Surface first-ship as-built** · `/app/options-lab/surface` · App Spec v0.1.8 · Autofit v0.1.6 · multi-DTE front-exp (**DL-427**) · never clock-blocked (**DL-445**) · DL-401–427 · 445 |
+| [35-options-lab-volume-profile.md](./35-options-lab-volume-profile.md) | **Options Lab Volume Profile widget:** LWC candlesticks + L2 `ISeriesPrimitive` (**AZ-VP-9-A23** · **DL-764** · **DL-765**) |
 | [34-redis-cache-and-sse-gateway.md](./34-redis-cache-and-sse-gateway.md) | **Pointer map:** which specs bind Redis (`mb:*`) vs Coach’s “SSE gateway” (as-built WS) vs thesis SSE (Template Runner TR3) · **DL-532** |
 
 **Market Bus / Options chain (2026-08-10) — as-built live market plane:**

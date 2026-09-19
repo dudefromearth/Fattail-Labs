@@ -4,11 +4,16 @@
 import assert from "node:assert/strict";
 import {
   bandContains,
+  beginBandFetch,
   displayRow,
+  endBandFetch,
   expandBand,
   hitProfile,
+  hostToPane,
+  panePriceWindow,
   rangeUrl,
   sliceVisible,
+  vpBandEpoch,
 } from "./saVpBand";
 
 assert.equal(displayRow(40, 400, 0.25), 0.25);
@@ -43,7 +48,7 @@ const url = rangeUrl({
   hi: 6800,
   row: 0.25,
 });
-assert.match(url, /\/range\/SPX\?/);
+assert.match(url, /\/api\/app\/vp\/v1\/range\/SPX\?/);
 assert.match(url, /price_lo=6400/);
 assert.match(url, /row=0.25/);
 assert.match(url, /source=ES/);
@@ -56,5 +61,73 @@ assert.equal(
   hitProfile([{ x0: 0, y0: 10, x1: 40, y1: 20 }], 50, 15),
   false,
 );
+
+const panePt = hostToPane(80, 12, { width: 500, height: 420 }, { width: 420, height: 400 }, "left");
+assert.ok(panePt);
+assert.equal(panePt.x, 0);
+assert.equal(panePt.y, 12);
+assert.equal(
+  hostToPane(10, 12, { width: 500, height: 420 }, { width: 420, height: 400 }, "left"),
+  null,
+);
+assert.ok(
+  hostToPane(10, 12, { width: 500, height: 420 }, { width: 420, height: 400 }, "right"),
+);
+
+const priceAt = (y: number) => 1000 - y;
+assert.equal(panePriceWindow(priceAt, 7), null);
+const pane = panePriceWindow(priceAt, 400);
+assert.ok(pane);
+assert.equal(pane.lo, 600);
+assert.equal(pane.hi, 1000);
+const hostBox = panePriceWindow(priceAt, 450);
+assert.ok(hostBox);
+assert.notEqual(hostBox.lo, pane.lo);
+
+const epochA = vpBandEpoch({
+  source: "ES",
+  target: "SPX",
+  from: "2026-01-01",
+  to: "2026-09-18",
+  priceTf: "5m",
+  harness: "live",
+  apiBase: "/api/app/vp/v1",
+});
+const epochTf = vpBandEpoch({
+  source: "ES",
+  target: "SPX",
+  from: "2026-01-01",
+  to: "2026-09-18",
+  priceTf: "15m",
+  harness: "live",
+  apiBase: "/api/app/vp/v1",
+});
+const epochSym = vpBandEpoch({
+  source: "NQ",
+  target: "NDX",
+  from: "2026-01-01",
+  to: "2026-09-18",
+  priceTf: "5m",
+  harness: "live",
+  apiBase: "/api/app/vp/v1",
+});
+assert.notEqual(epochA, epochTf);
+assert.notEqual(epochA, epochSym);
+
+const flight = { inflight: false, pending: false };
+const fetches: string[] = [];
+const ensure = (need: boolean) => {
+  if (!need) return;
+  if (beginBandFetch(flight) === "wait") return;
+  fetches.push("fetch");
+};
+ensure(true);
+ensure(true);
+assert.deepEqual(fetches, ["fetch"]);
+assert.equal(flight.pending, true);
+assert.equal(endBandFetch(flight), "again");
+ensure(true);
+assert.deepEqual(fetches, ["fetch", "fetch"]);
+assert.equal(endBandFetch(flight), "idle");
 
 console.log("saVpBand.test.ts ok");

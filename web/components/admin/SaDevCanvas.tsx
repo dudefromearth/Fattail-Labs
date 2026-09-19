@@ -47,6 +47,7 @@ type Health = {
       floor_session?: string | null;
       ceiling_session?: string | null;
       sessions_binned?: number;
+      continuous?: { adjusted?: boolean; method?: string; rolls?: number };
     }
   >;
 };
@@ -213,6 +214,7 @@ export default function SaDevCanvas() {
         spanFloor={spanFloor}
         spanCeiling={spanCeiling}
         spanTruncated={spanTruncated}
+        continuous={cov?.continuous}
         extra={
           <>
             <button
@@ -260,6 +262,7 @@ export default function SaDevCanvas() {
         target={mode === "live" ? targetForSource(liveSrc) : fixture.target}
         spanFloor={mode === "fixtures" ? fixture.session_date : spanFloor}
         spanCeiling={mode === "fixtures" ? fixture.session_date : spanCeiling}
+        continuous={cov?.continuous}
         harness={mode === "fixtures" ? "fixture" : "live"}
       />
       <SaPartDialog />

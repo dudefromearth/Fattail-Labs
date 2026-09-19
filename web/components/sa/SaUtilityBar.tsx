@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { SA_DEV_TERRITORY, type TerritoryEntry } from "@/lib/saDevTerritory";
 import { spanChipText, type PriceTf } from "@/lib/saLayerStore";
-import { mappingBadge } from "@/lib/saScale";
+import { continuousChip, mappingBadge, type ContinuousBlock } from "@/lib/saScale";
 import { SA_INTERVALS, SA_THEME } from "@/lib/saTheme";
 import type { SaStructure } from "@/lib/saSurface";
 import SaLayerStrip from "./SaLayerStrip";
@@ -29,6 +29,7 @@ export default function SaUtilityBar({
   spanFloor,
   spanCeiling,
   spanTruncated,
+  continuous,
 }: {
   title: string;
   pendingName?: boolean;
@@ -49,10 +50,12 @@ export default function SaUtilityBar({
   spanFloor?: string | null;
   spanCeiling?: string | null;
   spanTruncated?: boolean;
+  continuous?: ContinuousBlock;
 }) {
   const { open, prefs, patch, resetMode, resetView, liveFlag } = useSaCanvas();
   const status = data?.named_state || data?.status || "—";
   const mapping = mappingBadge(data?.flags?.mapping);
+  const contText = continuousChip(continuous);
   const cov = data?.coverage;
   const floor = spanFloor ?? cov?.floor_session;
   const ceiling = spanCeiling ?? cov?.ceiling_session;
@@ -115,8 +118,15 @@ export default function SaUtilityBar({
       </select>
       <Chip
         testId="sa-live-flag"
-        title="Stream heartbeat"
+        title="Last-print age from v1.3 heartbeat"
         text={liveFlag}
+        className={
+          liveFlag === "LIVE"
+            ? "border-emerald-700 text-emerald-400"
+            : liveFlag === "STALE"
+              ? "border-amber-700 text-amber-400"
+              : "text-zinc-500"
+        }
       />
       <Chip
         testId="sa-dev-shown-label"
@@ -148,6 +158,14 @@ export default function SaUtilityBar({
         text={mapping}
         onClick={() => open("chips")}
       />
+      {contText ? (
+        <Chip
+          testId="sa-continuous-chip"
+          title="Futures continuous series (D6.5)"
+          text={contText}
+          onClick={() => open("chips")}
+        />
+      ) : null}
       <SaLayerStrip />
       <button
         type="button"
@@ -218,11 +236,13 @@ function Chip({
   title,
   testId,
   onClick,
+  className = "",
 }: {
   text: string;
   title: string;
   testId: string;
   onClick?: () => void;
+  className?: string;
 }) {
   return (
     <button
@@ -235,7 +255,7 @@ function Chip({
         e.preventDefault();
         onClick();
       }}
-      className="h-8 shrink-0 max-w-[14rem] truncate rounded-full border border-zinc-700 bg-[#1e222d] px-2 text-[11px] leading-8 text-zinc-300"
+      className={`h-8 max-w-[14rem] shrink-0 truncate rounded-full border border-zinc-700 bg-[#1e222d] px-2 text-[11px] leading-8 text-zinc-300 ${className}`}
     >
       {text}
     </button>

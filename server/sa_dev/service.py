@@ -252,7 +252,7 @@ def ohlc_for_source(
     last_t = bars[-1]["t"] if bars else 0
     gid = f"{src}:{tf}:{contract or ''}:{last_t}:{len(bars)}"
     status = "COMPLETE" if not missing else ("WARMING" if not bars else "GAPPED")
-    return {
+    out: dict[str, Any] = {
         "ok": True,
         "source": src,
         "space": "source",
@@ -268,6 +268,36 @@ def ohlc_for_source(
         "profile_generation_id": gid,
         "missing": missing,
     }
+    cont = _continuous_block(src)
+    if cont:
+        out["continuous"] = cont
+    return out
+
+
+_FUTURES_SOURCES = frozenset({"ES", "MES", "NQ", "CL", "GC", "RTY", "YM"})
+
+
+def _continuous_block(source: str, rolls: int = 0) -> dict[str, Any] | None:
+    """D6.5 — futures payloads carry the continuous provenance block."""
+    src = (source or "").upper()
+    if src not in _FUTURES_SOURCES:
+        return None
+    return {"adjusted": True, "method": "back-adjust", "rolls": int(rolls or 0)}
+
+
+def _stamp_continuous_coverage(coverage: dict[str, Any] | None) -> dict[str, Any]:
+    out: dict[str, Any] = dict(coverage or {})
+    for src, rec in list(out.items()):
+        if not isinstance(rec, dict):
+            continue
+        if rec.get("continuous"):
+            continue
+        block = _continuous_block(str(src))
+        if block:
+            rec = dict(rec)
+            rec["continuous"] = block
+            out[src] = rec
+    return out
 
 
 def _coverage_block(body: dict[str, Any]) -> dict[str, Any]:
@@ -297,7 +327,7 @@ def health(*, headers: dict[str, str] | None = None) -> dict[str, Any]:
             "live_coverage": False,
             "dev_only": True,
         }
-    coverage = _coverage_block(body)
+    coverage = _stamp_continuous_coverage(_coverage_block(body))
     return {
         **body,
         "coverage": coverage or body.get("coverage"),

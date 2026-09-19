@@ -19,7 +19,15 @@ type Health = {
   vp_api_base?: string;
   coverage?: Record<
     string,
-    { floor_session?: string | null; ceiling_session?: string | null }
+    {
+      floor_session?: string | null;
+      ceiling_session?: string | null;
+      continuous?: {
+        adjusted?: boolean;
+        method?: string;
+        rolls?: number;
+      };
+    }
   >;
 };
 
@@ -45,10 +53,10 @@ export default function VolumeProfileSaSurface({
       kind: "developing",
       include_bins: "true",
     });
-    const structUrl = `/api/dev/sa/v1/structure/${pair.target}?${qs}`;
+    const structUrl = `/api/app/vp/v1/structure/${pair.target}?${qs}`;
     const hit = peek(structUrl);
     if (hit?.body) setData(hit.body as SaStructure);
-    void fetchGen("/api/dev/sa/v1/health").then((r) => {
+    void fetchGen("/api/app/vp/v1/health").then((r) => {
       if (r.body) {
         setHealth(r.body as Health);
         const served = servedFromHealth(r.body as Health);
@@ -98,6 +106,7 @@ export default function VolumeProfileSaSurface({
         spanFloor={spanFloor}
         spanCeiling={spanCeiling}
         spanTruncated={spanTruncated}
+        continuous={cov?.continuous}
       />
       {error ? (
         <p className="px-2 text-xs text-[var(--color-label)]">{error}</p>

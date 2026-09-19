@@ -38,7 +38,10 @@ def mock_stream_events(
     }
     return [
         ("hello", {"protocol": "vp-stream/1.3", "source": src, "timeframe": timeframe}),
-        ("heartbeat", {"t": AS_OF_NS, "source": src}),
+        (
+            "heartbeat",
+            {"t": AS_OF_NS, "source": src, "last_print_age_ms": 0},
+        ),
         ("tick", {"source": src, "p": px, "t": AS_OF_NS + 1_000_000}),
         ("bar", {"source": src, "timeframe": timeframe, **bar}),
         (
@@ -49,7 +52,14 @@ def mock_stream_events(
                 "kind": "ohlc",
             },
         ),
-        ("heartbeat", {"t": AS_OF_NS + 1_000_000_000, "source": src}),
+        (
+            "heartbeat",
+            {
+                "t": AS_OF_NS + 1_000_000_000,
+                "source": src,
+                "last_print_age_ms": 1000,
+            },
+        ),
     ]
 
 
@@ -130,7 +140,12 @@ async def iter_print_tail_sse(source: str, timeframe: str) -> AsyncIterator[byte
     last_gen = ""
     while True:
         now_ns = int(datetime.now(timezone.utc).timestamp() * 1_000_000_000)
-        yield sse("heartbeat", {"t": now_ns, "source": src})
+        now_s = now_ns / 1_000_000_000
+        age_ms = int(max(0, (now_s - last_t) * 1000)) if last_t else None
+        hb = {"t": now_ns, "source": src}
+        if age_ms is not None:
+            hb["last_print_age_ms"] = age_ms
+        yield sse("heartbeat", hb)
         days = await asyncio.to_thread(list_source_days, src)
         if days:
             rows = await asyncio.to_thread(
