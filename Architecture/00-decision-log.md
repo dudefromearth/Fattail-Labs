@@ -4,6 +4,14 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-19 — DL-772 SYM0-G PASS · v0.2.1 Advisor
+
+**Decision.** India **SYM0-G PASS** on frozen spec sha1 `c87580829301d9a44e678641023e32c07bca58d6` (command MATCH). Juliet may seed SYM1 + SYM2. SYM3 remains HOLD (REQ-003 PNG not on main). `@ES` is a continuity-alias (Coach dialect). D6/D7/D8 open. Report: `agents/p-symbology-registry/gate-reports/SYM0-G.md`.
+
+**Cites:** **DL-771**.
+
+---
+
 ## 2026-09-19 — DL-771 Symbology Registry spec v0.2.1 intake · §0 seats 1–10 ratified
 
 **Decision (Coach, 2026-09-19).** Proceed on Symbology & Registry Service. Spec **v0.2.1** frozen:
