@@ -1,6 +1,8 @@
-# SYM3 — REQ-003 tile + dialog — HOLD
+# SYM3 — REQ-003 tile + dialog
 
-**Status:** HOLD  
-**Reason:** `artifacts/references/REQ-003-symbol-search-reference.png` is not on `origin/main`. Ask Coach. Do not substitute.
+**Status:** UNBLOCKED 2026-09-19  
+**Visual contract:** `artifacts/references/REQ-003-symbol-search-reference.png`  
+**Blob:** `f09d78735399a7d4fe78d13ee5fe21e3c4707ab6`  
+**Measurement:** `artifacts/references/REQ-003-measurement-spec.md`
 
-When unblocked: Echo + Charlie, StudioTwo, measurement spec from that blob first.
+Echo + Charlie, StudioTwo. Consume `GET /symbology/v1/universe` and `resolve`. Fixture until SYM-SWAP. REQ-003 cannot close on the fixture. AP-1 is Coach's browser after SWAP.
