@@ -4,6 +4,28 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-19 — DL-776 REQ-003 F1 clauses 2–3 replaced (Coach-ruled)
+
+**Decision (Coach, 2026-09-19).** REQ-003 F1 clauses **2** and **3** are replaced. Clauses **1, 4–6** and the screen-recording acceptance stand as issued. REQ-003 stays OPEN. Not AP-1.
+
+**Coach wording (RL-1):**
+
+> "full search" (tickers AND names both matched, substrings highlighted)
+>
+> "the current active and the forward contract are on top."
+
+**Clause 2 — Full search.** Every keystroke matches ticker AND plain-English name ("e-mini", "s&p", "500" all reach the ES family). Matched substrings highlighted in the rows.
+
+**Clause 3 — Ordering.** Ticker-prefix matches rank above name-only matches. Within a futures family, top rows are always: current front contract first, forward contract second (ES1! / ES2! alias forms shown against them), then remaining strip contracts chronologically. Front/forward read from the live strip as-of `strip_generation_id` — never hardcoded.
+
+**Acceptance recording (additive):** typing **"es"** → ES family on top, front first, forward second, highlights visible.
+
+Filed: `artifacts/reqs/REQ-003-F1.md`. Seed: `agents/p-symbology-registry/seeds/SYM3-F1.md`. Gate: **SYM3-F1-G**.
+
+**Cites:** RL-1 · AP-1 · **DL-774** · spec SYM-3 / SYM-4.
+
+---
+
 ## 2026-09-19 — DL-775 R2-G PASS · REQ-002 TV settings dialog (parallel)
 
 **Decision.** REQ-002 implementer half **R2-G PASS** on StudioTwo. Hierarchical TV-model dialog on the member VP route (white/black, our sections only, A22 Ok-commit / Cancel-revert, right-click opens the matching section). Visual contract blob `bf9fa21ac600cfe0432f2651dcee9080d55258f4`. Parallel to SYM — did not touch `server/symbology/`.

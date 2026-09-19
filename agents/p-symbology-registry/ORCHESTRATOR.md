@@ -16,6 +16,7 @@
 | SYM3-G | REQ-003 tile + dialog | Echo + Charlie | StudioTwo | **PASS (GO)** — four chips `e-chips.png` |
 | SYM-SWAP-G | Delete fixture; live API | Alpha + Charlie + Delta | StudioOne + StudioTwo | **PASS (GO)** |
 | SYM-AT | SYM-AT-1…14 artifacts | Kilo + Delta | both | **PASS (GO)** · `artifacts/symbology/sym-at/` |
-| AP-1 | Joint: tile → dialog → selection → chart LIVE | Coach | StudioTwo browser | **READY — call Coach** |
+| SYM3-F1-G | REQ-003 F1 clauses 2–3 (full search + strip order) | Echo + Charlie + Alpha | StudioTwo; StudioOne overlay if hop | **SEEDED** · **DL-776** |
+| AP-1 | Joint: tile → dialog → selection → chart LIVE | Coach | StudioTwo browser | after SYM3-F1-G — **not "done"** |
 
 Juliet executes packets. Grok Build does not implement. Auto-GO on clean gates. Stop + GO/NO-GO on a problem.

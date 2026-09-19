@@ -75,7 +75,15 @@ Our option set only — do not clone TV fields we do not have. VP chart is first
 
 **Acceptance — AP-1 / PP-1:** headed studiotwo:3000 artifacts (a)–(e) per the FINAL packet. Closure: Coach's own browser, his clicks. REQ-003 in every status report until closed.
 
-**Dispatch:** **BLOCKED** — reference PNG not on `origin/main` (2026-09-19).
+**Dispatch:** PNG on `origin/main` blob `f09d78735399a7d4fe78d13ee5fe21e3c4707ab6`. SYM3-G PASS (surface). SYM-SWAP-G PASS. **REQ-003 stays OPEN.**
+
+**F1 amendment (2026-09-19, Coach-ruled):** replaces F1 clauses **2–3** only. Filed `artifacts/reqs/REQ-003-F1.md`.
+
+> "full search" (tickers AND names both matched, substrings highlighted)
+>
+> "the current active and the forward contract are on top."
+
+Typing "es" → ES family on top, front first, forward second, highlights visible. Clauses 1, 4–6 stand as issued.
 
 **Closes:** AP-1 or Coach withdraw. Not closed.
 
