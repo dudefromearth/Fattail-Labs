@@ -29,6 +29,7 @@ import {
   type SaPrefs,
   type WorkflowMode,
 } from "@/lib/saLayerStore";
+import { sectionForPart } from "@/lib/saSettingsSections";
 
 type Ctx = {
   prefs: SaPrefs;
@@ -42,6 +43,8 @@ type Ctx = {
   openPart: DialogPart | null;
   open: (part: DialogPart) => void;
   close: () => void;
+  ok: () => void;
+  cancel: () => void;
   liveFlag: "LIVE" | "STALE" | "OFF";
   setLiveFlag: (f: "LIVE" | "STALE" | "OFF") => void;
   saveObjectDefault: (part: DialogPart) => void;
@@ -54,6 +57,7 @@ const C = createContext<Ctx | null>(null);
 export function SaCanvasProvider({ children }: { children: ReactNode }) {
   const [prefs, setPrefs] = useState<SaPrefs>(defaultPrefs);
   const [openPart, setOpenPart] = useState<DialogPart | null>(null);
+  const snapshotRef = useRef<SaPrefs | null>(null);
   const [liveFlag, setLiveFlag] = useState<"LIVE" | "STALE" | "OFF">("OFF");
   const [hydrated, setHydrated] = useState(false);
   const serverReady = useRef(false);
@@ -95,6 +99,7 @@ export function SaCanvasProvider({ children }: { children: ReactNode }) {
     if (!hydrated) return;
     savePrefs(prefs);
     if (!serverReady.current) return;
+    if (openPart) return;
     const t = window.setTimeout(() => {
       void fetch("/api/me/sa-surface", {
         method: "PUT",
@@ -104,7 +109,7 @@ export function SaCanvasProvider({ children }: { children: ReactNode }) {
       });
     }, 450);
     return () => window.clearTimeout(t);
-  }, [prefs, hydrated]);
+  }, [prefs, hydrated, openPart]);
 
   const patch = useCallback((p: Partial<SaPrefs>) => {
     setPrefs((prev) => {
@@ -159,9 +164,22 @@ export function SaCanvasProvider({ children }: { children: ReactNode }) {
     setPrefs((prev) => ({ ...prev, firstRunSeen: true }));
   }, []);
   const open = useCallback((part: DialogPart) => {
-    setOpenPart(part);
+    setOpenPart((cur) => {
+      if (cur == null) snapshotRef.current = structuredClone(prefsRef.current);
+      return sectionForPart(part);
+    });
   }, []);
-  const close = useCallback(() => setOpenPart(null), []);
+  const cancel = useCallback(() => {
+    const snap = snapshotRef.current;
+    snapshotRef.current = null;
+    setOpenPart(null);
+    if (snap) setPrefs(snap);
+  }, []);
+  const ok = useCallback(() => {
+    snapshotRef.current = null;
+    setOpenPart(null);
+  }, []);
+  const close = cancel;
 
   const value = useMemo(
     () => ({
@@ -176,6 +194,8 @@ export function SaCanvasProvider({ children }: { children: ReactNode }) {
       openPart,
       open,
       close,
+      ok,
+      cancel,
       liveFlag,
       setLiveFlag,
       saveObjectDefault,
@@ -194,6 +214,8 @@ export function SaCanvasProvider({ children }: { children: ReactNode }) {
       openPart,
       open,
       close,
+      ok,
+      cancel,
       liveFlag,
       setLiveFlag,
       saveObjectDefault,

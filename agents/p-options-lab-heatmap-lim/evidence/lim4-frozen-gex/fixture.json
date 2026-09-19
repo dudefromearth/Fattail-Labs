@@ -77,7 +77,7 @@
   "horizon": "2026-12-18",
   "template": {
     "id": "gex",
-    "label": "Chain GEX (estimate)",
+    "label": "GEX (traditional)",
     "layout": "profile",
     "valueModes": [
       {

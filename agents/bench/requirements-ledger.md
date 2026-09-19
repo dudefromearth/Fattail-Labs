@@ -10,6 +10,7 @@ Status: `OPEN` · `AP-1` · `WITHDRAWN`
 |----|----------|-------|--------|-----------------|
 | **REQ-001** | 2026-09-19 | VP | OPEN | See full row below. |
 | **REQ-002** | 2026-09-19 | VP settings | OPEN | See full row below. |
+| **REQ-003** | 2026-09-19 | VP contracts | OPEN | See full row below. |
 
 ### REQ-001 — ≥ 90 days of price on the chart (VP confirmation blocker)
 
@@ -22,7 +23,7 @@ Status: `OPEN` · `AP-1` · `WITHDRAWN`
 >
 > Add one step after acceptance: Coach performs the visual cross-check — profile nodes and gaps against 3 months of price he knows. HIS confirmation, not the screenshot, is what marks the VP instrument CONFIRMED on the board. The screenshot only closes the range requirement.
 
-**Prior statement (no row — process defect, RL-1):** Data Delivery v1.0 D1 / T1: “at least 3 months of downloadable price history” / pan ES 5m through ≥ 3 months. Restated here as REQ-001.
+**Prior statements (RL-1 process defect — stated ≥5 times without a row):** Data Delivery v1.0 D1 / T1 “≥ 3 months”; REQ-001 addendum; this packet “LONG OVERDUE”. Filed as REQ-001. Does not close conversationally.
 
 **Acceptance split:**
 1. **Range requirement** — screenshot of ≥ 90 days of price on the chart closes REQ-001's *range* half.
@@ -30,23 +31,51 @@ Status: `OPEN` · `AP-1` · `WITHDRAWN`
 
 **Closes:** AP-1 or Coach withdraw. Not closed.
 
-### REQ-002 v2 — match the TV dialog exactly
+### REQ-002 v2 — TV-model settings dialog (hierarchical, context, light)
 
-**Captured:** 2026-09-19.  
-**Track:** VP / SA settings chrome.
+**Captured:** 2026-09-19. Addendum same day: hierarchical combined dialog; context right-click; light theme; our settings only.
 
 **Coach wording (RL-1):**
 
 > the same layout, the same control elements and components, the same sizes, everything the same as TV.
+>
+> current settings standards are "inadequate"; he wants "the exact model that TV uses."
+>
+> Light theme for the dialog: white background, black text.
 
 **Visual contract:** `artifacts/references/REQ-002-settings-dialog-reference.png`  
 **Git blob:** `bf9fa21ac600cfe0432f2651dcee9080d55258f4`  
 **Spec:** `Specs/REQ-002-TV-Settings-Dialog-Fidelity-Spec-v2.md`  
-**Measurement:** `artifacts/references/REQ-002-measurement-spec.md`
+**Measurement:** `artifacts/references/REQ-002-measurement-spec.md`  
+**Inventory:** `agents/p-vp-chart-primitive/gate-reports/REQ-002-inventory.md`
 
-If that file is not on `main` at that blob, the packet does not dispatch — ask Coach, don't substitute another screenshot.
+Our option set only — do not clone TV fields we do not have. VP chart is first wire.
 
-**Acceptance — AP-1 / PP-1:** side-by-side AND overlay vs the reference; deviations enumerated (target: none beyond clause 5). Closure: verified in Coach's own browser on StudioTwo, opened by his right-click.
+**Acceptance — AP-1 / PP-1:** headed screenshots on studiotwo:3000 member route — (a) dialog open, white/black, sidebar; (b) two right-click targets → two sections. Closure: Coach's own browser, his right-click. **OPEN until then.**
+
+**Closes:** AP-1 or Coach withdraw. Not closed.
+
+### REQ-003 FINAL — Symbol picker: TV pattern, role-aware registry, gray law
+
+**Captured:** 2026-09-19. **Supersedes** REQ-003 v1–v4 and the addendum; this is the only build text.
+
+**Coach wording (RL-1):**
+
+> same method as TV for selection... unsupported unavailable or grayed out
+>
+> universe "about 20 or so" bound by ">= 3 expirations per week" because "we are focused on 1-5 DTE"
+>
+> futures supported "for other purposes"
+>
+> goal: "maximize the way we display available symbols."
+
+**Visual contract:** `artifacts/references/REQ-003-symbol-search-reference.png` on **main**. Not on main → **do not dispatch, ask Coach.** Do not substitute another screenshot.
+
+**Law (summary):** TV-fidelity picker; All/Futures/Stocks/Indices chips; full universe visible at rest; ES family expandable (ES1!/ES2! + strip contracts); dialect ES1! /ES @ES / ESZ6; interim 1! opens front labeled “opens front contract · continuous coming”; registry-driven roles **options** (SPX, XSP; ≥3 expirations/week) vs **price-structure** (ES, MES); gray real-but-unsupported with reason; eligibility report before adding ~20 options rows.
+
+**Acceptance — AP-1 / PP-1:** headed studiotwo:3000 artifacts (a)–(e) per the FINAL packet. Closure: Coach's own browser, his clicks. REQ-003 in every status report until closed.
+
+**Dispatch:** **BLOCKED** — reference PNG not on `origin/main` (2026-09-19).
 
 **Closes:** AP-1 or Coach withdraw. Not closed.
 

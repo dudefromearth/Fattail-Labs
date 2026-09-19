@@ -566,13 +566,19 @@ PAGE = """<!DOCTYPE html>
     border-radius: 8px; padding: 6px 10px; }
   .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
   .dot.on { background: var(--ok); } .dot.off { background: var(--bad); }
+  .pipe { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+  h2.vp { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; }
+  .LIVE, .CURRENT, .UP { color: var(--ok); }
+  .STALE, .HELD, .HOLD, .MIGRATION { color: var(--ext); }
+  .DOWN, .GAPPED { color: var(--bad); }
+  .NO, .UNKNOWN { color: var(--idle); }
 </style>
 </head>
 <body>
 <header>
   <div>
     <h1>Chain Snapshot</h1>
-    <div class="sub">StudioOne live counts · Redis + COUNTS.json · read-only</div>
+    <div class="sub">StudioOne live counts · Redis + COUNTS.json · VP data-end · one pane · read-only</div>
     <div class="sub path" id="write-root">writing —</div>
   </div>
   <div class="chips">
@@ -597,6 +603,42 @@ PAGE = """<!DOCTYPE html>
       </thead>
       <tbody id="syms"></tbody>
     </table>
+  </section>
+  <section class="card" data-panel="vp-ops">
+    <h2 class="vp">VP data-end (ops · no bins · never commands)</h2>
+    <div class="sub" id="vp-asof">as of —</div>
+    <div class="pipe" style="margin-top:12px">
+      <div>
+        <h2 class="vp">1 · chain_feed (CP-1)</h2>
+        <div id="vp-chain">—</div>
+      </div>
+      <div>
+        <h2 class="vp">2 · collectors</h2>
+        <table><thead><tr><th>src</th><th>state</th><th>pid</th><th>age s</th><th>gaps</th></tr></thead>
+        <tbody id="vp-collectors"></tbody></table>
+      </div>
+      <div>
+        <h2 class="vp">3 · engine</h2>
+        <table><thead><tr><th>src</th><th>state</th><th>binned</th><th>floor</th><th>ceil</th></tr></thead>
+        <tbody id="vp-engine"></tbody></table>
+      </div>
+      <div>
+        <h2 class="vp">4 · API</h2>
+        <div id="vp-api">—</div>
+      </div>
+      <div>
+        <h2 class="vp">5 · backfill</h2>
+        <div id="vp-backfill">—</div>
+      </div>
+      <div>
+        <h2 class="vp">6 · consumers</h2>
+        <div id="vp-consumers">—</div>
+      </div>
+      <div>
+        <h2 class="vp">7 · last autorun</h2>
+        <div id="vp-autorun">—</div>
+      </div>
+    </div>
   </section>
 </main>
 <script>
@@ -694,6 +736,56 @@ async function load(){
     dayDoc = await (await fetch('/api/day?day=' + encodeURIComponent(day))).json();
   } catch (e) { /* keep counts */ }
   paint(st, dayDoc);
+  loadVp();
+}
+function vpCls(s){
+  const t = String(s || "");
+  if (t.indexOf("NO ") === 0) return "NO";
+  if (t.indexOf("NOT ") === 0) return "UNKNOWN";
+  return t.split(/[^A-Z]/)[0] || "UNKNOWN";
+}
+function vpCell(v){ return v == null || v === "" ? "—" : v; }
+async function loadVp(){
+  const el = $('vp-asof');
+  if (!el) return;
+  try {
+    const d = await (await fetch('/api/vp-ops')).json();
+    if (d.named_state === 'UNAVAILABLE') {
+      el.textContent = 'VP pane UNAVAILABLE · ' + (d.error || '');
+      return;
+    }
+    el.textContent = 'as of ' + (d.as_of || '—') + ' · ' + (d.store || '');
+    const ch = d.chain_feed || {};
+    $('vp-chain').innerHTML = '<span class="'+vpCls(ch.state)+'">'+vpCell(ch.state)+'</span> · pid '+vpCell(ch.pid)+' · freshness '+vpCell(ch.freshness_s)+'s<div class="sub">'+vpCell(ch.last_snapshot)+'</div>';
+    const tb = $('vp-collectors'); tb.innerHTML = '';
+    for (const src of ['SPY','ES','MES']) {
+      const c = (d.collectors || {})[src] || {};
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td>'+src+'</td><td class="'+vpCls(c.state)+'">'+vpCell(c.state)+'</td><td>'+vpCell(c.pid)+'</td><td>'+vpCell(c.last_print_age_s)+'</td><td>'+vpCell(c.gaps_today)+'</td>';
+      tb.appendChild(tr);
+    }
+    const eb = $('vp-engine'); eb.innerHTML = '';
+    for (const src of ['SPY','ES','MES']) {
+      const e = (d.engine || {})[src] || {};
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td>'+src+'</td><td class="'+vpCls(e.state)+'">'+vpCell(e.state)+'</td><td>'+vpCell(e.sessions_binned)+'</td><td>'+vpCell(e.floor)+'</td><td>'+vpCell(e.ceiling)+'</td>';
+      eb.appendChild(tr);
+    }
+    const a = d.api || {};
+    const cov = a.coverage || {};
+    $('vp-api').innerHTML = '<span class="'+vpCls(a.state)+'">'+vpCell(a.state)+'</span> · '+vpCell(a.contract)+'<div class="sub">'+vpCell(a.base)+' · ES '+vpCell((cov.ES||{}).floor_session)+'…'+vpCell((cov.ES||{}).ceiling_session)+'</div>';
+    const b = d.backfill || {};
+    $('vp-backfill').innerHTML = '<span class="'+vpCls(b.state)+'">'+vpCell(b.state)+'</span> · '+vpCell(b.tranche)+'<div class="sub">integrity '+vpCell(b.integrity)+'</div>';
+    const cons = d.consumers || {};
+    const m = cons.minitwo_labs || {};
+    const s = cons.studiotwo_dev || {};
+    $('vp-consumers').innerHTML = 'MiniTwo → S1 API: <span class="'+vpCls(m.state)+'">'+vpCell(m.state)+'</span><div class="sub">'+vpCell(m.last_success)+'</div>StudioTwo DEV: <span class="'+vpCls(s.state)+'">'+vpCell(s.state)+'</span>';
+    const au = d.autorun || {};
+    const tn = d.tonight || {};
+    $('vp-autorun').innerHTML = '<span class="'+vpCls(au.state)+'">'+vpCell(au.state)+'</span> · '+vpCell(au.last)+'<div class="sub">queue '+vpCell((tn.queue||[]).join(", "))+' · next '+vpCell(tn.next)+'</div>';
+  } catch (e) {
+    el.textContent = 'VP pane UNAVAILABLE';
+  }
 }
 $('day').addEventListener('change', (e) => { selected = e.target.value; load(); });
 load();
@@ -856,6 +948,22 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if path == "/api/status":
                 self._json(200, live_status())
+                return
+            if path == "/api/vp-ops":
+                try:
+                    from market_data.ops_dash.snapshot import build_snapshot
+
+                    self._json(200, build_snapshot())
+                except Exception as exc:
+                    self._json(
+                        200,
+                        {
+                            "named_state": "UNAVAILABLE",
+                            "error": str(exc),
+                            "no_bins": True,
+                            "read_only": True,
+                        },
+                    )
                 return
             if path == "/api/procs":
                 self._json(200, {"processes": process_bits()})

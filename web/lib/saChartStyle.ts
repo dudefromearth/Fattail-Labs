@@ -52,6 +52,9 @@ export function canvasOptions(prefs: SaPrefs) {
       rightOffset: prefs.rightOffsetBars ?? 5,
       borderColor: prefs.scaleLineColor || "#2b2b43",
       timeVisible: true,
+      // REQ-001: 90d of 5m (~11k bars) must fit when zoomed out. Default
+      // minBarSpacing 0.5 caps the pane at ~8 days.
+      minBarSpacing: 0.05,
     },
     leftPriceScale: {
       visible: prefs.axis === "left" || prefs.axis === "both",

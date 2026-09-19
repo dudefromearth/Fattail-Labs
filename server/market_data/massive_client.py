@@ -394,6 +394,71 @@ class MassiveClient:
                 time.sleep(page_pause_s)
         return out
 
+    def fetch_futures_aggs(
+        self,
+        ticker: str,
+        *,
+        resolution: str,
+        start: str,
+        end: str,
+        limit: int = 50000,
+        max_pages: int = 20,
+    ) -> list[dict[str, Any]]:
+        """GET /futures/v1/aggs/{ticker}?resolution=&from=&to=
+
+        Returns bars oldest→newest with ``t`` in unix ms, plus o/h/l/c/v.
+        """
+        ticker = (ticker or "").strip().upper()
+        if not ticker:
+            raise MassiveClientError("ticker required")
+        qs = urllib.parse.urlencode(
+            {
+                "resolution": resolution,
+                "from": str(start)[:10],
+                "to": str(end)[:10],
+                "limit": str(max(1, min(50000, int(limit)))),
+                "sort": "window_start.asc",
+            }
+        )
+        url: str | None = f"{self.base_url}/futures/v1/aggs/{urllib.parse.quote(ticker, safe='')}?{qs}"
+        out: list[dict[str, Any]] = []
+        pages = 0
+        while url and pages < max_pages:
+            pages += 1
+            data = self._get_json(url)
+            results = data.get("results") if isinstance(data, dict) else None
+            if isinstance(results, list):
+                for row in results:
+                    if not isinstance(row, dict):
+                        continue
+                    ws = row.get("window_start")
+                    try:
+                        ns = int(ws)
+                    except (TypeError, ValueError):
+                        continue
+                    # ns → ms
+                    t_ms = ns // 1_000_000 if ns > 10**15 else ns
+                    try:
+                        o = float(row["open"])
+                        h = float(row["high"])
+                        l = float(row["low"])
+                        cl = float(row["close"])
+                    except (KeyError, TypeError, ValueError):
+                        continue
+                    vol = row.get("volume")
+                    try:
+                        v = float(vol) if vol is not None else 0.0
+                    except (TypeError, ValueError):
+                        v = 0.0
+                    out.append({"t": t_ms, "o": o, "h": h, "l": l, "c": cl, "v": v})
+            nxt = data.get("next_url") if isinstance(data, dict) else None
+            if nxt:
+                nu = str(nxt).strip()
+                url = nu if nu.startswith("http") else f"{self.base_url}{nu}"
+            else:
+                url = None
+        return out
+
     def fetch_futures_trades_session(
         self,
         ticker: str,

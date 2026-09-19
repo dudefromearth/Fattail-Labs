@@ -17,6 +17,9 @@ export default function SaUtilityBar({
   sources,
   sourceId,
   onSource,
+  contracts,
+  contractId,
+  onContract,
   extra,
   focus,
   onFocus,
@@ -38,6 +41,9 @@ export default function SaUtilityBar({
   sources: { id: string; label: string }[];
   sourceId: string;
   onSource: (id: string) => void;
+  contracts?: { id: string; label: string }[];
+  contractId?: string;
+  onContract?: (id: string) => void;
   extra?: ReactNode;
   focus: TerritoryEntry;
   onFocus: (e: TerritoryEntry) => void;
@@ -103,6 +109,42 @@ export default function SaUtilityBar({
           </option>
         ))}
       </select>
+      {contracts && contracts.length > 0 && onContract ? (
+        <select
+          className="h-8 shrink-0 rounded border border-zinc-700 bg-[#1e222d] px-1.5 text-xs text-zinc-200"
+          value={contractId || contracts[0].id}
+          onChange={(e) => onContract(e.target.value)}
+          aria-label="Contract"
+          data-testid="sa-contract-select"
+        >
+          {contracts.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+      ) : null}
+      <button
+        type="button"
+        aria-label="Settings"
+        title="Settings"
+        data-testid="sa-settings-open"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-zinc-700 bg-[#1e222d] text-zinc-200"
+        onClick={() => open("L0")}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <path
+            d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
+            stroke="currentColor"
+            strokeWidth="1.6"
+          />
+          <path
+            d="M19.4 13a7.8 7.8 0 0 0 .1-2l2-1.5-2-3.5-2.4 1a8 8 0 0 0-1.7-1L15 4h-6l-.4 2.5a8 8 0 0 0-1.7 1l-2.4-1-2 3.5 2 1.5a7.8 7.8 0 0 0 .1 2l-2 1.5 2 3.5 2.4-1a8 8 0 0 0 1.7 1L9 20h6l.4-2.5a8 8 0 0 0 1.7-1l2.4 1 2-3.5-2-1.5Z"
+            stroke="currentColor"
+            strokeWidth="1.6"
+          />
+        </svg>
+      </button>
       <select
         className="h-8 shrink-0 rounded border border-zinc-700 bg-[#1e222d] px-1.5 text-xs text-zinc-200"
         value={prefs.priceTf}

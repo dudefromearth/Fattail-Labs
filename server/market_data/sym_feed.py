@@ -68,6 +68,13 @@ def main(argv: list[str] | None = None) -> int:
     store = get_store() or BusStore()
     client = MassiveClient()
 
+    # VPS1: SPY trades WS in this process. Quote tick() below is unchanged.
+    if os.environ.get("LABS_VP_SPY_TRADES", "").strip() in ("1", "true", "yes"):
+        from market_data.vp_ingest.capture import start_spy_trades_thread
+
+        start_spy_trades_thread()
+        print("vp spy trades ingest thread started", flush=True)
+
     def tick() -> None:
         try:
             status = _fetch_market_status(client.api_key, client.base_url)

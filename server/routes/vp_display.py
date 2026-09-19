@@ -13,7 +13,13 @@ import auth
 from config import get_config
 from guards import require_session
 from market_data.vp_http_cache import HEALTH, payload_response
-from sa_dev.service import health, ohlc_for_source, range_for, structure_for
+from sa_dev.service import (
+    contracts_for_source,
+    health,
+    ohlc_for_source,
+    range_for,
+    structure_for,
+)
 from sa_dev.stream import iter_live_sse, iter_mock_sse
 
 router = APIRouter(tags=["vp-display"])
@@ -92,18 +98,28 @@ def get_range_profile(
     return payload_response(request, payload, kind="range", live=harness == "live")
 
 
+@router.get("/api/app/vp/v1/contracts/{source}")
+def get_contracts(request: Request, source: str):
+    _require_member(request)
+    rows = contracts_for_source(source)
+    return {"source": source.upper(), "contracts": rows}
+
+
 @router.get("/api/app/vp/v1/ohlc/{source}")
 def get_source_ohlc(
     request: Request,
     source: str,
     tf: str = Query(default="5m"),
     lookback_days: int = Query(default=0),
+    contract: str | None = Query(default=None),
 ):
     """Hydration depth: lookback_days=0 means all served sessions (D1)."""
     _require_member(request)
     if tf not in ("1m", "5m", "15m", "1h", "1d"):
         raise HTTPException(status_code=422, detail="tf must be 1m|5m|15m|1h|1d")
-    payload = ohlc_for_source(source, tf=tf, lookback_days=lookback_days)
+    payload = ohlc_for_source(
+        source, tf=tf, lookback_days=lookback_days, contract=contract
+    )
     return payload_response(request, payload, kind="ohlc", live=True)
 
 

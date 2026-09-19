@@ -4,6 +4,26 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-19 — DL-770 REQ-002 hierarchical TV-model settings dialog (VP first)
+
+**Decision.** Combined settings dialog on the VP chart: left sidebar of **our** sections, right pane, white background / black text, context right-click opens that section, gear opens Canvas. Live preview; **Ok** commits; **Cancel** reverts. Persist A22 (`/api/me/sa-surface`); no draft PUT while the dialog is open. Inventory: `agents/p-vp-chart-primitive/gate-reports/REQ-002-inventory.md`. Registry: `web/lib/saSettingsSections.ts`.
+
+**REQ-002 remains OPEN** until AP-1 in Coach's browser on StudioTwo (his right-click).
+
+**Does not.** Clone TV's full option set. Analyzer / Runner settings this packet.
+
+**Cites:** RL-1 · **DL-768** · A10 · A20 · A22.
+
+---
+
+## 2026-09-19 — DL-769 REQ-003 contract picker (minimum)
+
+**Decision.** REQ-003: support individual and continuous contracts — not there yet. **Minimum now (Coach):** see the individual contract in a dropdown or dialog and select which to view. Chart currently defaults to ESZ6 (Dec). Continuous stitching is later.
+
+**Cites:** RL-1 · **DL-768** · **DL-767**.
+
+---
+
 ## 2026-09-19 — DL-768 REQ-002 v2 TV settings dialog fidelity
 
 **Decision.** REQ-002 v2: match the TV settings dialog exactly. Coach: “the same layout, the same control elements and components, the same sizes, everything the same as TV.” Visual contract is `artifacts/references/REQ-002-settings-dialog-reference.png` git blob **`bf9fa21ac600cfe0432f2651dcee9080d55258f4`**. Measurement spec extracted from that file. If the blob is not on `main`, the packet does not dispatch — no substitute screenshot.

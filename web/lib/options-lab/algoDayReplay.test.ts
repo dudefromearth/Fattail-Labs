@@ -3,13 +3,19 @@
  */
 
 import {
+  clampReplayWindow,
+  fullReplayWindow,
+  panReplayWindow,
   replayCursor,
   replayFrac,
+  replayFracInWindow,
   sampleAtFrac,
+  sampleAtWindowFrac,
   sessionOpenCursor,
   sessionOpenSpot,
   sessionSpotNow,
   spotPctFromReplay,
+  zoomReplayWindow,
 } from "./algoDayReplay";
 
 function assert(cond: unknown, msg: string): void {
@@ -84,4 +90,22 @@ assert(Math.abs(spotPctFromReplay(7700, 7641) - ((7700 / 7641) * 100 - 100)) < 1
   assert(e != null && e.spot === 102, "frac 1");
 }
 
-console.log("  8 tests passed");
+{
+  const full = fullReplayWindow(samples);
+  assert(full != null && full.loMs === 1_000 && full.hiMs === 7_000, "full window");
+  const panned = panReplayWindow({ loMs: 3_000, hiMs: 5_000 }, samples, 0.5);
+  assert(panned.loMs < 3_000, "drag right reveals older");
+  const left = panReplayWindow({ loMs: 1_000, hiMs: 3_000 }, samples, 1);
+  assert(left.loMs === 1_000, "cannot pan past first print");
+  const zIn = zoomReplayWindow({ loMs: 1_000, hiMs: 7_000 }, samples, 4_000, 0.5);
+  assert(zIn.hiMs - zIn.loMs < 7_000 - 1_000, "compress shortens span");
+  const zOut = zoomReplayWindow(zIn, samples, 4_000, 4);
+  assert(zOut.hiMs - zOut.loMs >= zIn.hiMs - zIn.loMs, "expand lengthens span");
+  const clamped = clampReplayWindow({ loMs: 0, hiMs: 9_000 }, samples);
+  assert(clamped.loMs === 1_000 && clamped.hiMs === 7_000, "clamp to samples");
+  assert(Math.abs(replayFracInWindow({ loMs: 1_000, hiMs: 7_000 }, 4_000) - 0.5) < 1e-9, "mid in window");
+  const at = sampleAtWindowFrac(samples, { loMs: 1_000, hiMs: 7_000 }, 1);
+  assert(at != null && at.spot === 102, "window frac 1");
+}
+
+console.log("  16 tests passed");

@@ -154,3 +154,103 @@ export function sampleAtFrac(
   if (!c) return null;
   return samples[c.idx] ?? { t_ms: c.t_ms, spot: c.spot };
 }
+
+/** Visible time span on the replay HUD. Full path until the member pans or zooms. */
+export type ReplayWindow = { loMs: number; hiMs: number };
+
+export function fullReplayWindow(
+  samples: readonly ReplaySample[],
+): ReplayWindow | null {
+  if (samples.length < 2) return null;
+  const loMs = samples[0].t_ms;
+  const hiMs = samples[samples.length - 1].t_ms;
+  if (!(hiMs > loMs)) return null;
+  return { loMs, hiMs };
+}
+
+export function minReplaySpanMs(samples: readonly ReplaySample[]): number {
+  const full = fullReplayWindow(samples);
+  if (!full) return 1_000;
+  return Math.max(5_000, (full.hiMs - full.loMs) / 200);
+}
+
+export function clampReplayWindow(
+  win: ReplayWindow,
+  samples: readonly ReplaySample[],
+): ReplayWindow {
+  const full = fullReplayWindow(samples);
+  if (!full) return win;
+  const min = minReplaySpanMs(samples);
+  let lo = win.loMs;
+  let hi = win.hiMs;
+  if (!(hi > lo)) return full;
+  if (hi - lo < min) {
+    const mid = (lo + hi) / 2;
+    lo = mid - min / 2;
+    hi = mid + min / 2;
+  }
+  if (hi - lo > full.hiMs - full.loMs) return full;
+  if (lo < full.loMs) {
+    hi += full.loMs - lo;
+    lo = full.loMs;
+  }
+  if (hi > full.hiMs) {
+    lo -= hi - full.hiMs;
+    hi = full.hiMs;
+  }
+  if (lo < full.loMs) lo = full.loMs;
+  if (hi > full.hiMs) hi = full.hiMs;
+  if (!(hi > lo)) return full;
+  return { loMs: lo, hiMs: hi };
+}
+
+/** Drag right (dxFrac > 0) reveals older time on the left. */
+export function panReplayWindow(
+  win: ReplayWindow,
+  samples: readonly ReplaySample[],
+  dxFrac: number,
+): ReplayWindow {
+  const span = win.hiMs - win.loMs;
+  if (!(span > 0) || !Number.isFinite(dxFrac)) return win;
+  return clampReplayWindow(
+    { loMs: win.loMs - dxFrac * span, hiMs: win.hiMs - dxFrac * span },
+    samples,
+  );
+}
+
+/** factor > 1 expands (more time); factor < 1 compresses. */
+export function zoomReplayWindow(
+  win: ReplayWindow,
+  samples: readonly ReplaySample[],
+  originMs: number,
+  factor: number,
+): ReplayWindow {
+  if (!(factor > 0) || !Number.isFinite(factor)) return win;
+  const o = Number.isFinite(originMs) ? originMs : (win.loMs + win.hiMs) / 2;
+  return clampReplayWindow(
+    {
+      loMs: o - (o - win.loMs) * factor,
+      hiMs: o + (win.hiMs - o) * factor,
+    },
+    samples,
+  );
+}
+
+export function replayFracInWindow(win: ReplayWindow, tMs: number): number {
+  const span = win.hiMs - win.loMs;
+  if (!(span > 0)) return 0;
+  return Math.min(1, Math.max(0, (tMs - win.loMs) / span));
+}
+
+export function sampleAtWindowFrac(
+  samples: readonly ReplaySample[],
+  win: ReplayWindow,
+  frac: number,
+): ReplaySample | null {
+  const f = Math.min(1, Math.max(0, frac));
+  const target = win.loMs + f * Math.max(0, win.hiMs - win.loMs);
+  return sampleAtFrac(
+    samples,
+    replayFrac(samples, target),
+  );
+}

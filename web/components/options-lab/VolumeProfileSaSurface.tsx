@@ -44,6 +44,10 @@ export default function VolumeProfileSaSurface({
   const [focus, setFocus] = useState<TerritoryEntry>(SA_DEV_TERRITORY[0]);
   const [error, setError] = useState<string | null>(null);
   const [health, setHealth] = useState<Health | null>(null);
+  const [contracts, setContracts] = useState<{ id: string; label: string }[]>(
+    [],
+  );
+  const [contract, setContract] = useState<string>("");
 
   useEffect(() => {
     setError(null);
@@ -78,6 +82,35 @@ export default function VolumeProfileSaSurface({
       });
   }, [pair.source, pair.target]);
 
+  useEffect(() => {
+    let cancel = false;
+    void fetch(`/api/app/vp/v1/contracts/${source}`, {
+      credentials: "same-origin",
+    })
+      .then((r) => (r.ok ? r.json() : { contracts: [] }))
+      .then((body) => {
+        if (cancel) return;
+        const rows = (body.contracts || []) as {
+          id: string;
+          label: string;
+          last_trade_date?: string;
+        }[];
+        setContracts(rows);
+        const today = new Date().toISOString().slice(0, 10);
+        setContract((cur) => {
+          if (rows.some((x) => x.id === cur)) return cur;
+          const live = rows.find((x) => (x.last_trade_date || "") >= today);
+          return live?.id || rows[0]?.id || "";
+        });
+      })
+      .catch(() => {
+        if (!cancel) setContracts([]);
+      });
+    return () => {
+      cancel = true;
+    };
+  }, [source]);
+
   const served = servedFromHealth(health);
   const cov = health?.coverage?.[source];
   const spanFloor = cov?.floor_session ?? null;
@@ -101,6 +134,9 @@ export default function VolumeProfileSaSurface({
         sources={served.map((s) => ({ id: s.id, label: s.label }))}
         sourceId={source}
         onSource={setSource}
+        contracts={contracts}
+        contractId={contract}
+        onContract={setContract}
         focus={focus}
         onFocus={setFocus}
         spanFloor={spanFloor}
@@ -116,6 +152,7 @@ export default function VolumeProfileSaSurface({
         target={served.find((s) => s.source === source)?.target}
         spanFloor={spanFloor}
         spanCeiling={spanCeiling}
+        contract={contract || null}
       />
       <SaPartDialog />
     </div>

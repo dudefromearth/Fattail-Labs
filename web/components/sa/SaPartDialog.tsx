@@ -1,37 +1,22 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import {
   AXIS_FONTS,
   AXIS_FONT_SIZES,
   LAYER_REGISTRY,
   lawfulFields,
   type CrosshairStyle,
-  type DialogPart,
   type SaPrefs,
 } from "@/lib/saLayerStore";
+import { SETTINGS_SECTIONS } from "@/lib/saSettingsSections";
 import { asHex, SA_THEME } from "@/lib/saTheme";
 import { useSaCanvas } from "./SaCanvasContext";
 
-const TITLES: Record<DialogPart, string> = {
-  L0: "Canvas",
-  L1: "Price",
-  L2: "Profile",
-  L3: "Analysis",
-  L4: "Footprint",
-  LP: "Position",
-  axis: "Scales and lines",
-  grid: "Grid",
-  legend: "Legend",
-  chips: "Provenance",
-  range: "Price span",
-  mode: "Mode",
-};
-
 const FIELD =
-  "rounded border border-zinc-500 bg-[#131722] px-1.5 py-0.5 text-[11px] text-zinc-200";
-const CHECK = "h-3.5 w-3.5 shrink-0 accent-zinc-200";
-const RANGE = "w-full accent-zinc-300";
+  "h-9 min-w-[8.5rem] rounded-md border border-zinc-300 bg-white px-2 text-[13px] text-zinc-900";
+const CHECK = "h-[18px] w-[18px] shrink-0 accent-zinc-900";
+const RANGE = "w-full accent-zinc-900";
 
 function Swatch({
   value,
@@ -45,11 +30,11 @@ function Swatch({
   onChange: (v: string) => void;
 }) {
   return (
-    <span className="inline-flex h-7 w-8 overflow-hidden rounded border border-zinc-400 bg-zinc-800">
+    <span className="inline-flex h-8 w-8 overflow-hidden rounded border border-zinc-300 bg-white">
       <input
         type="color"
         data-testid={testId}
-        className="h-8 w-10 -m-0.5 cursor-pointer border-0 p-0"
+        className="h-9 w-10 -m-0.5 cursor-pointer border-0 p-0"
         value={asHex(value, fallback)}
         onChange={(e) => onChange(e.target.value)}
       />
@@ -57,13 +42,28 @@ function Swatch({
   );
 }
 
-function Section({ label, children }: { label: string; children: ReactNode }) {
+function Group({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="space-y-1.5">
-      <p className="text-[9px] font-semibold uppercase tracking-wide text-zinc-400">
+    <div className="space-y-3">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
         {label}
       </p>
       {children}
+    </div>
+  );
+}
+
+function Row({
+  label,
+  children,
+}: {
+  label: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex min-h-[48px] items-center justify-between gap-4">
+      <div className="text-[14px] text-zinc-900">{label}</div>
+      <div className="flex shrink-0 items-center gap-2">{children}</div>
     </div>
   );
 }
@@ -76,21 +76,22 @@ export default function SaPartDialog() {
     setMode,
     resetMode,
     openPart,
-    close,
+    open,
+    ok,
+    cancel,
     saveObjectDefault,
     resetToObjectDefault,
     resetPartToHouse,
   } = useSaCanvas();
-  const drag = useRef<{ dx: number; dy: number } | null>(null);
-  const box = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!openPart) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
+      if (e.key === "Escape") cancel();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [close]);
+  }, [openPart, cancel]);
 
   if (!openPart) return null;
   const def = LAYER_REGISTRY.find((L) => L.id === openPart);
@@ -103,557 +104,602 @@ export default function SaPartDialog() {
 
   return (
     <div
-      ref={box}
-      data-testid="sa-part-dialog"
-      data-part={openPart}
-      className="absolute z-30 w-72 rounded border border-zinc-500 bg-[#1e222d] text-zinc-200 shadow-lg"
-      style={{
-        left: prefs.dialogPos.x,
-        top: prefs.dialogPos.y,
-        fontFamily: '"Trebuchet MS", "Segoe UI", sans-serif',
-        fontSize: 13,
-        color: "#d1d4dc",
-        background: "#1e222d",
+      className="absolute inset-0 z-40 flex items-center justify-center bg-black/35"
+      data-testid="sa-settings-overlay"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) cancel();
       }}
     >
-      <header
-        className="flex cursor-move items-center gap-2 border-b border-zinc-600 px-2 py-1.5"
-        onMouseDown={(e) => {
-          drag.current = {
-            dx: e.clientX - prefs.dialogPos.x,
-            dy: e.clientY - prefs.dialogPos.y,
-          };
-          const move = (ev: MouseEvent) => {
-            if (!drag.current) return;
-            patch({
-              dialogPos: {
-                x: Math.max(8, ev.clientX - drag.current.dx),
-                y: Math.max(8, ev.clientY - drag.current.dy),
-              },
-            });
-          };
-          const up = () => {
-            drag.current = null;
-            window.removeEventListener("mousemove", move);
-            window.removeEventListener("mouseup", up);
-          };
-          window.addEventListener("mousemove", move);
-          window.addEventListener("mouseup", up);
-        }}
+      <div
+        role="dialog"
+        aria-labelledby="sa-settings-title"
+        data-testid="sa-part-dialog"
+        data-part={openPart}
+        className="flex h-[min(640px,85vh)] w-[640px] max-w-[92vw] flex-col overflow-hidden rounded-lg bg-white text-zinc-900 shadow-2xl"
+        style={{ fontFamily: '"Trebuchet MS", "Segoe UI", sans-serif' }}
+        onMouseDown={(e) => e.stopPropagation()}
       >
-        <span className="text-xs font-semibold text-zinc-100">
-          {TITLES[openPart]}
-        </span>
-        {canToggle ? (
+        <header className="flex h-[52px] shrink-0 items-center justify-between px-5">
+          <h2 id="sa-settings-title" className="text-[20px] font-semibold">
+            Settings
+          </h2>
           <button
             type="button"
-            className="ml-auto h-6 rounded border border-zinc-500 px-2 text-[11px] text-zinc-200"
-            data-testid="sa-dialog-primary-toggle"
-            onClick={() => setVisible(canToggle, !prefs.visible[canToggle])}
+            aria-label="Close"
+            className="flex h-8 w-8 items-center justify-center text-2xl leading-none text-zinc-600"
+            onClick={cancel}
           >
-            {prefs.visible[canToggle] ? "on" : "off"}
+            ×
           </button>
-        ) : (
-          <span className="ml-auto" />
-        )}
-        <button
-          type="button"
-          aria-label="Close"
-          className="h-6 w-6 text-zinc-400"
-          onClick={close}
-        >
-          ×
-        </button>
-      </header>
-      <div className="max-h-[28rem] space-y-3 overflow-y-auto px-2 py-2 text-[11px] text-zinc-200">
-        {def?.reserved ? (
-          <p data-testid="sa-dialog-reserved">{def.note}</p>
-        ) : null}
+        </header>
 
-        {has("canvasBg") ? (
-          <Section label="Chart">
-            <label className="flex items-center justify-between gap-2">
-              Background
-              <Swatch
-                testId="sa-canvas-bg"
-                value={prefs.canvasBg}
-                fallback={SA_THEME.bg}
-                onChange={(v) => patch({ canvasBg: v })}
-              />
-            </label>
-            <label className="flex items-center justify-between gap-2">
-              <span className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className={CHECK}
-                  checked={prefs.vertGridOn}
-                  onChange={(e) => patch({ vertGridOn: e.target.checked })}
-                />
-                Vertical grid
-              </span>
-              <Swatch
-                testId="sa-grid-color"
-                value={prefs.gridColor}
-                fallback={SA_THEME.grid}
-                onChange={(v) => patch({ gridColor: v })}
-              />
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                className={CHECK}
-                checked={prefs.horzGridOn}
-                onChange={(e) => patch({ horzGridOn: e.target.checked })}
-              />
-              Horizontal grid
-            </label>
-            <label className="block">
-              Grid opacity
-              <input
-                type="range"
-                min={0}
-                max={40}
-                data-testid="sa-grid-opacity"
-                value={Math.round((prefs.gridOpacity ?? 0.08) * 100)}
-                onChange={(e) =>
-                  patch({ gridOpacity: Number(e.target.value) / 100 })
-                }
-                className={RANGE}
-              />
-            </label>
-            <label className="flex items-center justify-between gap-2">
-              Crosshair
-              <span className="flex items-center gap-1">
-                <Swatch
-                  value={prefs.crosshairColor}
-                  fallback="#758696"
-                  onChange={(v) => patch({ crosshairColor: v })}
-                />
-                <select
-                  className={FIELD}
-                  value={prefs.crosshairStyle}
-                  onChange={(e) =>
-                    patch({
-                      crosshairStyle: e.target.value as CrosshairStyle,
-                    })
-                  }
+        <div className="flex min-h-0 flex-1">
+          <nav
+            className="w-[148px] shrink-0 overflow-y-auto px-2 py-1"
+            aria-label="Settings sections"
+          >
+            {SETTINGS_SECTIONS.map((s) => {
+              const on = s.id === openPart;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  data-testid={`sa-settings-section-${s.id}`}
+                  className={`flex h-12 w-full items-center rounded-full px-3 text-left text-[14px] ${
+                    on ? "bg-zinc-100 font-medium" : "text-zinc-800 hover:bg-zinc-50"
+                  }`}
+                  onClick={() => open(s.id)}
                 >
-                  <option value="solid">solid</option>
-                  <option value="dotted">dotted</option>
-                  <option value="dashed">dashed</option>
-                  <option value="largeDashed">large dash</option>
-                </select>
-              </span>
-            </label>
-          </Section>
-        ) : null}
+                  {s.label}
+                </button>
+              );
+            })}
+          </nav>
 
-        {has("axisFont") ? (
-          <Section label="Scales">
-            <label className="flex items-center justify-between gap-2">
-              Text
-              <span className="flex items-center gap-1">
-                <Swatch
-                  value={prefs.axisTextColor}
-                  fallback="#d1d4dc"
-                  onChange={(v) => patch({ axisTextColor: v })}
-                />
-                <select
-                  className={FIELD}
-                  data-testid="sa-axis-font-size"
-                  value={prefs.axisFontSize}
-                  onChange={(e) =>
-                    patch({ axisFontSize: Number(e.target.value) })
-                  }
-                >
-                  {AXIS_FONT_SIZES.map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-              </span>
-            </label>
-            <label className="flex items-center justify-between gap-2">
-              Font
-              <select
-                className={`${FIELD} max-w-[9rem]`}
-                data-testid="sa-axis-font"
-                value={prefs.axisFont}
-                onChange={(e) => patch({ axisFont: e.target.value })}
-              >
-                {AXIS_FONTS.map((f) => (
-                  <option key={f} value={f}>
-                    {f}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex items-center justify-between gap-2">
-              Lines
-              <Swatch
-                value={prefs.scaleLineColor}
-                fallback="#2b2b43"
-                onChange={(v) => patch({ scaleLineColor: v })}
-              />
-            </label>
-          </Section>
-        ) : null}
+          <div className="min-h-0 flex-1 overflow-y-auto border-l border-zinc-200 px-6 py-3 text-[14px]">
+            {def?.reserved ? (
+              <p data-testid="sa-dialog-reserved">{def.note}</p>
+            ) : null}
 
-        {has("marginTop") ? (
-          <Section label="Margins">
-            <label className="flex items-center justify-between gap-2">
-              Top
-              <span>
-                <input
-                  type="number"
-                  min={0}
-                  max={40}
-                  className={`${FIELD} w-12 text-right`}
-                  value={Math.round((prefs.marginTop ?? 0.05) * 100)}
-                  onChange={(e) =>
-                    patch({
-                      marginTop: Math.min(40, Math.max(0, Number(e.target.value) || 0)) / 100,
-                    })
-                  }
-                />{" "}
-                %
-              </span>
-            </label>
-            <label className="flex items-center justify-between gap-2">
-              Bottom
-              <span>
-                <input
-                  type="number"
-                  min={0}
-                  max={40}
-                  className={`${FIELD} w-12 text-right`}
-                  value={Math.round((prefs.marginBottom ?? 0.05) * 100)}
-                  onChange={(e) =>
-                    patch({
-                      marginBottom:
-                        Math.min(40, Math.max(0, Number(e.target.value) || 0)) /
-                        100,
-                    })
-                  }
-                />{" "}
-                %
-              </span>
-            </label>
-            <label className="flex items-center justify-between gap-2">
-              Right
-              <span>
-                <input
-                  type="number"
-                  min={0}
-                  max={40}
-                  className={`${FIELD} w-12 text-right`}
-                  value={prefs.rightOffsetBars}
-                  onChange={(e) =>
-                    patch({
-                      rightOffsetBars: Math.min(
-                        40,
-                        Math.max(0, Number(e.target.value) || 0),
-                      ),
-                    })
-                  }
-                />{" "}
-                bars
-              </span>
-            </label>
-          </Section>
-        ) : null}
-
-        {has("priceFormat") ? (
-          <Section label="Candles">
-            <label className="block">
-              Format
-              <select
-                className={`ml-1 ${FIELD}`}
-                value={prefs.priceFormat}
-                onChange={(e) =>
-                  patch({
-                    priceFormat: e.target.value as SaPrefs["priceFormat"],
-                  })
+            {canToggle && canToggle !== "L0" ? (
+              <Row
+                label={
+                  <span className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className={CHECK}
+                      data-testid="sa-dialog-primary-toggle"
+                      checked={prefs.visible[canToggle]}
+                      onChange={(e) => setVisible(canToggle, e.target.checked)}
+                    />
+                    Show {def?.label ?? "layer"}
+                  </span>
                 }
               >
-                <option value="candle">candle</option>
-                <option value="bar">bar</option>
-                <option value="line">line</option>
-              </select>
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                className={CHECK}
-                checked={prefs.colorByPrevClose}
-                onChange={(e) => patch({ colorByPrevClose: e.target.checked })}
-              />
-              Color bars based on previous close
-            </label>
-            <label className="flex items-center justify-between gap-2">
-              <span className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className={CHECK}
-                  checked={prefs.candleBodyOn}
-                  onChange={(e) => patch({ candleBodyOn: e.target.checked })}
-                />
-                Body
-              </span>
-              <span className="flex gap-1">
-                <Swatch
-                  value={prefs.candleUp}
-                  fallback="#26a69a"
-                  onChange={(v) => patch({ candleUp: v })}
-                />
-                <Swatch
-                  value={prefs.candleDown}
-                  fallback="#ef5350"
-                  onChange={(v) => patch({ candleDown: v })}
-                />
-              </span>
-            </label>
-            <label className="flex items-center justify-between gap-2">
-              <span className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className={CHECK}
-                  checked={prefs.candleBorderOn}
-                  onChange={(e) => patch({ candleBorderOn: e.target.checked })}
-                />
-                Borders
-              </span>
-              <span className="flex gap-1">
-                <Swatch
-                  value={prefs.borderUp}
-                  fallback="#26a69a"
-                  onChange={(v) => patch({ borderUp: v })}
-                />
-                <Swatch
-                  value={prefs.borderDown}
-                  fallback="#ef5350"
-                  onChange={(v) => patch({ borderDown: v })}
-                />
-              </span>
-            </label>
-            <label className="flex items-center justify-between gap-2">
-              <span className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className={CHECK}
-                  checked={prefs.candleWickOn}
-                  onChange={(e) => patch({ candleWickOn: e.target.checked })}
-                />
-                Wick
-              </span>
-              <span className="flex gap-1">
-                <Swatch
-                  value={prefs.wickUp}
-                  fallback="#26a69a"
-                  onChange={(v) => patch({ wickUp: v })}
-                />
-                <Swatch
-                  value={prefs.wickDown}
-                  fallback="#ef5350"
-                  onChange={(v) => patch({ wickDown: v })}
-                />
-              </span>
-            </label>
-          </Section>
-        ) : null}
+                <span />
+              </Row>
+            ) : null}
 
-        {has("orientation") ? (
-          <label className="block">
-            VP anchor
-            <select
-              className={`ml-1 ${FIELD}`}
-              data-testid="sa-vp-anchor"
-              value={prefs.orientation}
-              onChange={(e) =>
-                patch({ orientation: e.target.value as "ltr" | "rtl" })
+            {has("canvasBg") ? (
+              <Group label="Chart">
+                <Row label="Background">
+                  <Swatch
+                    testId="sa-canvas-bg"
+                    value={prefs.canvasBg}
+                    fallback={SA_THEME.bg}
+                    onChange={(v) => patch({ canvasBg: v })}
+                  />
+                </Row>
+                <Row
+                  label={
+                    <span className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        className={CHECK}
+                        checked={prefs.vertGridOn}
+                        onChange={(e) =>
+                          patch({ vertGridOn: e.target.checked })
+                        }
+                      />
+                      Vertical grid
+                    </span>
+                  }
+                >
+                  <Swatch
+                    testId="sa-grid-color"
+                    value={prefs.gridColor}
+                    fallback={SA_THEME.grid}
+                    onChange={(v) => patch({ gridColor: v })}
+                  />
+                </Row>
+                <Row
+                  label={
+                    <span className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        className={CHECK}
+                        checked={prefs.horzGridOn}
+                        onChange={(e) =>
+                          patch({ horzGridOn: e.target.checked })
+                        }
+                      />
+                      Horizontal grid
+                    </span>
+                  }
+                >
+                  <span />
+                </Row>
+                <Row label="Grid opacity">
+                  <input
+                    type="range"
+                    min={0}
+                    max={40}
+                    data-testid="sa-grid-opacity"
+                    value={Math.round((prefs.gridOpacity ?? 0.08) * 100)}
+                    onChange={(e) =>
+                      patch({ gridOpacity: Number(e.target.value) / 100 })
+                    }
+                    className={`${RANGE} w-40`}
+                  />
+                </Row>
+                <Row label="Crosshair">
+                  <Swatch
+                    value={prefs.crosshairColor}
+                    fallback="#758696"
+                    onChange={(v) => patch({ crosshairColor: v })}
+                  />
+                  <select
+                    className={FIELD}
+                    value={prefs.crosshairStyle}
+                    onChange={(e) =>
+                      patch({
+                        crosshairStyle: e.target.value as CrosshairStyle,
+                      })
+                    }
+                  >
+                    <option value="solid">solid</option>
+                    <option value="dotted">dotted</option>
+                    <option value="dashed">dashed</option>
+                    <option value="largeDashed">large dash</option>
+                  </select>
+                </Row>
+              </Group>
+            ) : null}
+
+            {has("axisFont") ? (
+              <Group label="Scales">
+                <Row label="Text">
+                  <Swatch
+                    value={prefs.axisTextColor}
+                    fallback="#d1d4dc"
+                    onChange={(v) => patch({ axisTextColor: v })}
+                  />
+                  <select
+                    className={FIELD}
+                    data-testid="sa-axis-font-size"
+                    value={prefs.axisFontSize}
+                    onChange={(e) =>
+                      patch({ axisFontSize: Number(e.target.value) })
+                    }
+                  >
+                    {AXIS_FONT_SIZES.map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                </Row>
+                <Row label="Font">
+                  <select
+                    className={`${FIELD} max-w-[11rem]`}
+                    data-testid="sa-axis-font"
+                    value={prefs.axisFont}
+                    onChange={(e) => patch({ axisFont: e.target.value })}
+                  >
+                    {AXIS_FONTS.map((f) => (
+                      <option key={f} value={f}>
+                        {f}
+                      </option>
+                    ))}
+                  </select>
+                </Row>
+                <Row label="Lines">
+                  <Swatch
+                    value={prefs.scaleLineColor}
+                    fallback="#2b2b43"
+                    onChange={(v) => patch({ scaleLineColor: v })}
+                  />
+                </Row>
+              </Group>
+            ) : null}
+
+            {has("marginTop") ? (
+              <Group label="Margins">
+                <Row label="Top">
+                  <input
+                    type="number"
+                    min={0}
+                    max={40}
+                    className={`${FIELD} w-16 text-right`}
+                    value={Math.round((prefs.marginTop ?? 0.05) * 100)}
+                    onChange={(e) =>
+                      patch({
+                        marginTop:
+                          Math.min(40, Math.max(0, Number(e.target.value) || 0)) /
+                          100,
+                      })
+                    }
+                  />
+                  <span className="text-zinc-500">%</span>
+                </Row>
+                <Row label="Bottom">
+                  <input
+                    type="number"
+                    min={0}
+                    max={40}
+                    className={`${FIELD} w-16 text-right`}
+                    value={Math.round((prefs.marginBottom ?? 0.05) * 100)}
+                    onChange={(e) =>
+                      patch({
+                        marginBottom:
+                          Math.min(40, Math.max(0, Number(e.target.value) || 0)) /
+                          100,
+                      })
+                    }
+                  />
+                  <span className="text-zinc-500">%</span>
+                </Row>
+                <Row label="Right">
+                  <input
+                    type="number"
+                    min={0}
+                    max={40}
+                    className={`${FIELD} w-16 text-right`}
+                    value={prefs.rightOffsetBars}
+                    onChange={(e) =>
+                      patch({
+                        rightOffsetBars: Math.min(
+                          40,
+                          Math.max(0, Number(e.target.value) || 0),
+                        ),
+                      })
+                    }
+                  />
+                  <span className="text-zinc-500">bars</span>
+                </Row>
+              </Group>
+            ) : null}
+
+            {has("priceFormat") ? (
+              <Group label="Candles">
+                <Row label="Format">
+                  <select
+                    className={FIELD}
+                    value={prefs.priceFormat}
+                    onChange={(e) =>
+                      patch({
+                        priceFormat: e.target.value as SaPrefs["priceFormat"],
+                      })
+                    }
+                  >
+                    <option value="candle">candle</option>
+                    <option value="bar">bar</option>
+                    <option value="line">line</option>
+                  </select>
+                </Row>
+                <Row
+                  label={
+                    <span className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        className={CHECK}
+                        checked={prefs.colorByPrevClose}
+                        onChange={(e) =>
+                          patch({ colorByPrevClose: e.target.checked })
+                        }
+                      />
+                      Color bars based on previous close
+                    </span>
+                  }
+                >
+                  <span />
+                </Row>
+                <Row
+                  label={
+                    <span className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        className={CHECK}
+                        checked={prefs.candleBodyOn}
+                        onChange={(e) =>
+                          patch({ candleBodyOn: e.target.checked })
+                        }
+                      />
+                      Body
+                    </span>
+                  }
+                >
+                  <Swatch
+                    value={prefs.candleUp}
+                    fallback="#26a69a"
+                    onChange={(v) => patch({ candleUp: v })}
+                  />
+                  <Swatch
+                    value={prefs.candleDown}
+                    fallback="#ef5350"
+                    onChange={(v) => patch({ candleDown: v })}
+                  />
+                </Row>
+                <Row
+                  label={
+                    <span className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        className={CHECK}
+                        checked={prefs.candleBorderOn}
+                        onChange={(e) =>
+                          patch({ candleBorderOn: e.target.checked })
+                        }
+                      />
+                      Borders
+                    </span>
+                  }
+                >
+                  <Swatch
+                    value={prefs.borderUp}
+                    fallback="#26a69a"
+                    onChange={(v) => patch({ borderUp: v })}
+                  />
+                  <Swatch
+                    value={prefs.borderDown}
+                    fallback="#ef5350"
+                    onChange={(v) => patch({ borderDown: v })}
+                  />
+                </Row>
+                <Row
+                  label={
+                    <span className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        className={CHECK}
+                        checked={prefs.candleWickOn}
+                        onChange={(e) =>
+                          patch({ candleWickOn: e.target.checked })
+                        }
+                      />
+                      Wick
+                    </span>
+                  }
+                >
+                  <Swatch
+                    value={prefs.wickUp}
+                    fallback="#26a69a"
+                    onChange={(v) => patch({ wickUp: v })}
+                  />
+                  <Swatch
+                    value={prefs.wickDown}
+                    fallback="#ef5350"
+                    onChange={(v) => patch({ wickDown: v })}
+                  />
+                </Row>
+              </Group>
+            ) : null}
+
+            {has("orientation") ? (
+              <Group label="Volume profile">
+                <Row label="VP anchor">
+                  <select
+                    className={FIELD}
+                    data-testid="sa-vp-anchor"
+                    value={prefs.orientation}
+                    onChange={(e) =>
+                      patch({ orientation: e.target.value as "ltr" | "rtl" })
+                    }
+                  >
+                    <option value="ltr">left</option>
+                    <option value="rtl">right</option>
+                  </select>
+                </Row>
+                <Row label="Width">
+                  <input
+                    type="range"
+                    min={35}
+                    max={75}
+                    value={Math.round(prefs.profileWidthFrac * 100)}
+                    onChange={(e) =>
+                      patch({
+                        profileWidthFrac: Number(e.target.value) / 100,
+                      })
+                    }
+                    className={`${RANGE} w-40`}
+                  />
+                </Row>
+                <Row label="Opacity">
+                  <input
+                    type="range"
+                    min={35}
+                    max={50}
+                    value={Math.round((prefs.profileOpacity || 0.42) * 100)}
+                    onChange={(e) =>
+                      patch({
+                        profileOpacity: Number(e.target.value) / 100,
+                      })
+                    }
+                    className={`${RANGE} w-40`}
+                  />
+                </Row>
+              </Group>
+            ) : null}
+
+            {has("axis") ? (
+              <Group label="Price scale">
+                <Row label="Scales placement">
+                  <select
+                    className={FIELD}
+                    data-testid="sa-scale-side"
+                    value={prefs.axis}
+                    onChange={(e) =>
+                      patch({
+                        axis: e.target.value as "left" | "right" | "both",
+                      })
+                    }
+                  >
+                    <option value="left">left</option>
+                    <option value="right">right</option>
+                    <option value="both">both</option>
+                  </select>
+                </Row>
+              </Group>
+            ) : null}
+
+            {has("lastPriceOn") ? (
+              <Group label="Price labels and lines">
+                <Row
+                  label={
+                    <span className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        className={CHECK}
+                        checked={prefs.lastPriceOn}
+                        onChange={(e) =>
+                          patch({ lastPriceOn: e.target.checked })
+                        }
+                      />
+                      Last price
+                    </span>
+                  }
+                >
+                  <Swatch
+                    value={prefs.lastPriceColor}
+                    fallback="#26a69a"
+                    onChange={(v) => patch({ lastPriceColor: v })}
+                  />
+                </Row>
+                <Row
+                  label={
+                    <span className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        className={CHECK}
+                        data-testid="sa-hilo-on"
+                        checked={prefs.hiLoOn}
+                        onChange={(e) => patch({ hiLoOn: e.target.checked })}
+                      />
+                      High and low
+                    </span>
+                  }
+                >
+                  <Swatch
+                    testId="sa-hi-color"
+                    value={prefs.hiColor}
+                    fallback="#4caf50"
+                    onChange={(v) => patch({ hiColor: v })}
+                  />
+                  <Swatch
+                    testId="sa-lo-color"
+                    value={prefs.loColor}
+                    fallback="#ef5350"
+                    onChange={(v) => patch({ loColor: v })}
+                  />
+                </Row>
+              </Group>
+            ) : null}
+
+            {has("legendOn") ? (
+              <Row
+                label={
+                  <span className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className={CHECK}
+                      checked={prefs.legendOn}
+                      onChange={(e) => patch({ legendOn: e.target.checked })}
+                    />
+                    Show legend
+                  </span>
+                }
+              >
+                <span />
+              </Row>
+            ) : null}
+
+            {has("priceLookbackDays") ? (
+              <Group label="Price layer">
+                <Row label="Lookback (days)">
+                  <input
+                    type="number"
+                    min={1}
+                    max={1096}
+                    className={`${FIELD} w-20`}
+                    value={prefs.priceLookbackDays}
+                    onChange={(e) =>
+                      patch({
+                        priceLookbackDays: Number(e.target.value) || 5,
+                      })
+                    }
+                  />
+                </Row>
+                <p className="text-[12px] text-zinc-500">
+                  Moves the price layer only — profile stays full-history (A12).
+                </p>
+              </Group>
+            ) : null}
+
+            {openPart === "L3" && fields.length <= 1 ? (
+              <p className="text-zinc-500">Visibility only — no extra settings (A7).</p>
+            ) : null}
+          </div>
+        </div>
+
+        <footer className="flex h-14 shrink-0 items-center justify-between border-t border-zinc-200 px-4">
+          <select
+            className="h-9 rounded-md border border-zinc-300 bg-white px-3 text-[13px] text-zinc-900"
+            data-testid="sa-defaults-menu"
+            value=""
+            onChange={(e) => {
+              const v = e.target.value;
+              e.currentTarget.value = "";
+              if (v === "morning" || v === "entry" || v === "management") {
+                setMode(v);
+                return;
               }
+              if (v === "save") saveObjectDefault(openPart);
+              if (v === "reset") resetToObjectDefault(openPart);
+              if (v === "house") resetPartToHouse(openPart);
+              if (v === "reset-mode") resetMode();
+            }}
+          >
+            <option value="" disabled>
+              Template
+            </option>
+            <option value="morning">Morning</option>
+            <option value="entry">Entry</option>
+            <option value="management">Management</option>
+            <option value="save">Save as default</option>
+            <option value="reset">Reset to default</option>
+            <option value="house">Reset to house default</option>
+            <option value="reset-mode">Reset this mode to house</option>
+          </select>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              data-testid="sa-settings-cancel"
+              className="h-9 rounded-md border border-zinc-300 bg-white px-4 text-[13px] text-zinc-900"
+              onClick={cancel}
             >
-              <option value="ltr">left</option>
-              <option value="rtl">right</option>
-            </select>
-          </label>
-        ) : null}
-        {has("axis") ? (
-          <Section label="Price scale">
-            <label className="block">
-              Scales placement
-              <select
-                className={`ml-1 ${FIELD}`}
-                data-testid="sa-scale-side"
-                value={prefs.axis}
-                onChange={(e) =>
-                  patch({ axis: e.target.value as "left" | "right" | "both" })
-                }
-              >
-                <option value="left">left</option>
-                <option value="right">right</option>
-                <option value="both">both</option>
-              </select>
-            </label>
-          </Section>
-        ) : null}
-
-        {has("lastPriceOn") ? (
-          <Section label="Price labels and lines">
-            <label className="flex items-center justify-between gap-2">
-              <span className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className={CHECK}
-                  checked={prefs.lastPriceOn}
-                  onChange={(e) => patch({ lastPriceOn: e.target.checked })}
-                />
-                Last price
-              </span>
-              <Swatch
-                value={prefs.lastPriceColor}
-                fallback="#26a69a"
-                onChange={(v) => patch({ lastPriceColor: v })}
-              />
-            </label>
-            <label className="flex items-center justify-between gap-2">
-              <span className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className={CHECK}
-                  data-testid="sa-hilo-on"
-                  checked={prefs.hiLoOn}
-                  onChange={(e) => patch({ hiLoOn: e.target.checked })}
-                />
-                High and low
-              </span>
-              <span className="flex gap-1">
-                <Swatch
-                  testId="sa-hi-color"
-                  value={prefs.hiColor}
-                  fallback="#4caf50"
-                  onChange={(v) => patch({ hiColor: v })}
-                />
-                <Swatch
-                  testId="sa-lo-color"
-                  value={prefs.loColor}
-                  fallback="#ef5350"
-                  onChange={(v) => patch({ loColor: v })}
-                />
-              </span>
-            </label>
-          </Section>
-        ) : null}
-
-        {has("legendOn") ? (
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              className={CHECK}
-              checked={prefs.legendOn}
-              onChange={(e) => patch({ legendOn: e.target.checked })}
-            />
-            Show legend
-          </label>
-        ) : null}
-        {has("priceLookbackDays") ? (
-          <label className="block">
-            Price-layer lookback (days)
-            <input
-              type="number"
-              min={1}
-              max={1096}
-              className={`ml-1 w-16 ${FIELD}`}
-              value={prefs.priceLookbackDays}
-              onChange={(e) =>
-                patch({ priceLookbackDays: Number(e.target.value) || 5 })
-              }
-            />
-            <span className="mt-1 block text-[10px] text-zinc-400">
-              Moves the price layer only — profile stays full-history (A12).
-            </span>
-          </label>
-        ) : null}
-        {has("profileWidthFrac") ? (
-          <label className="block">
-            Width
-            <input
-              type="range"
-              min={35}
-              max={75}
-              value={Math.round(prefs.profileWidthFrac * 100)}
-              onChange={(e) =>
-                patch({ profileWidthFrac: Number(e.target.value) / 100 })
-              }
-              className={RANGE}
-            />
-          </label>
-        ) : null}
-        {has("profileOpacity") ? (
-          <label className="block">
-            Opacity
-            <input
-              type="range"
-              min={35}
-              max={50}
-              value={Math.round((prefs.profileOpacity || 0.42) * 100)}
-              onChange={(e) =>
-                patch({ profileOpacity: Number(e.target.value) / 100 })
-              }
-              className={RANGE}
-            />
-          </label>
-        ) : null}
-        {has("mode") ? (
-          <div className="space-y-1">
-            <p className="text-zinc-400">
-              House defaults stubbed until Coach tunes.
-            </p>
-            {(["morning", "entry", "management"] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                className={`mr-1 rounded px-2 py-0.5 ${
-                  prefs.mode === m ? "bg-zinc-200 text-zinc-900" : "border border-zinc-600"
-                }`}
-                onClick={() => setMode(m)}
-              >
-                {m}
-              </button>
-            ))}
-            <button type="button" className="block underline" onClick={resetMode}>
-              Reset this mode to house
+              Cancel
+            </button>
+            <button
+              type="button"
+              data-testid="sa-settings-ok"
+              className="h-9 rounded-md bg-zinc-900 px-4 text-[13px] font-medium text-white"
+              onClick={ok}
+            >
+              Ok
             </button>
           </div>
-        ) : null}
-        {fields.length === 0 && !def?.reserved ? (
-          <p className="text-zinc-400">
-            Display only — no extra settings (A7).
-          </p>
-        ) : null}
+        </footer>
       </div>
-      <footer className="border-t border-zinc-700 px-2 py-1.5">
-        <select
-          className={`w-full ${FIELD}`}
-          data-testid="sa-defaults-menu"
-          defaultValue=""
-          onChange={(e) => {
-            const v = e.target.value;
-            e.currentTarget.value = "";
-            if (v === "save") saveObjectDefault(openPart);
-            if (v === "reset") resetToObjectDefault(openPart);
-            if (v === "house") resetPartToHouse(openPart);
-          }}
-        >
-          <option value="" disabled>
-            Defaults
-          </option>
-          <option value="save">Save as default</option>
-          <option value="reset">Reset to default</option>
-          <option value="house">Reset to house default</option>
-        </select>
-      </footer>
     </div>
   );
 }

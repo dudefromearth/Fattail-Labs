@@ -2,6 +2,7 @@
  *   npx --yes tsx lib/saLayerStore.test.ts
  */
 import assert from "node:assert/strict";
+import { sectionForPart, SETTINGS_FIRST_SECTION, SETTINGS_SECTIONS } from "./saSettingsSections";
 import {
   applyMode,
   defaultPrefs,
@@ -78,6 +79,13 @@ assert.equal(
   "L2",
 );
 assert.equal(partFromPointer({ x: 400, y: 390, w: 800, h: 400, axis: "left" }), "range");
+assert.equal(SETTINGS_FIRST_SECTION, "L0");
+assert.equal(sectionForPart("axis"), "axis");
+assert.equal(sectionForPart("L2"), "L2");
+assert.equal(sectionForPart("grid"), "L0");
+assert.equal(sectionForPart("chips"), "legend");
+assert.equal(sectionForPart("mode"), "L0");
+assert.ok(SETTINGS_SECTIONS.some((s) => s.id === "axis" && s.label === "Scales and lines"));
 const restored = prefsFromServerDoc(
   surfaceDoc({
     ...p,

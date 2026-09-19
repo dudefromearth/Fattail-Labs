@@ -143,6 +143,22 @@ async function network(
   };
 }
 
+/** Await the network hop. Use for OHLC when stale cache would hide history (REQ-001). */
+export async function fetchGenWait(url: string): Promise<FetchGenResult> {
+  hydrateCache();
+  // Do not send If-None-Match — a 304 would re-apply a short cached series (REQ-001).
+  return network(url, undefined);
+}
+
+export function ohlcSpanDays(bars: { t?: number }[] | undefined): number {
+  if (!bars || bars.length < 2) return 0;
+  const a = Number(bars[0].t);
+  const b = Number(bars[bars.length - 1].t);
+  if (!Number.isFinite(a) || !Number.isFinite(b) || b <= a) return 0;
+  const ms = b > 1e12 ? b - a : (b - a) * 1000;
+  return ms / 86400000;
+}
+
 export async function fetchGen(url: string): Promise<FetchGenResult> {
   hydrateCache();
   const hit = mem.get(url);

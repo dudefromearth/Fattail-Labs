@@ -11,7 +11,7 @@ import {
   type ISeriesApi,
   type UTCTimestamp,
 } from "lightweight-charts";
-import { fetchGen, peek, type FetchGenResult } from "@/lib/saDelivery";
+import { fetchGen, fetchGenWait, ohlcSpanDays, peek, type FetchGenResult } from "@/lib/saDelivery";
 import { honestBars } from "@/lib/saBars";
 import { resolveTick, tickDecimals } from "@/lib/saTicks";
 import { useSaCanvas } from "./SaCanvasContext";
@@ -84,6 +84,7 @@ export default function SaPriceChart({
   spanCeiling,
   harness = "live",
   apiBase = "/api/app/vp/v1",
+  contract,
 }: {
   source: string;
   target?: string;
@@ -91,6 +92,7 @@ export default function SaPriceChart({
   spanCeiling?: string | null;
   harness?: "live" | "fixture";
   apiBase?: string;
+  contract?: string | null;
 }) {
   const { prefs, setLiveFlag, open } = useSaCanvas();
   const prefsRef = useRef(prefs);
@@ -115,6 +117,8 @@ export default function SaPriceChart({
   const [tick, setTick] = useState<number | null>(null);
   const [rangeMs, setRangeMs] = useState<number | null>(null);
   const [vpBins, setVpBins] = useState(0);
+  const [histDays, setHistDays] = useState<number | null>(null);
+  const [histWarn, setHistWarn] = useState<string | null>(null);
 
   const requestVpUpdate = () => {
     primitiveRef.current?.requestUpdate();
@@ -172,9 +176,14 @@ export default function SaPriceChart({
     const qs = new URLSearchParams({
       tf: prefs.priceTf,
       lookback_days: "0",
+      min_days: "90",
     });
+    if (contract) qs.set("contract", contract);
     const url = `${apiBase}/ohlc/${source}?${qs}`;
     const hit = peek(url);
+    const cachedBars = Array.isArray(hit?.body?.bars)
+      ? (hit.body.bars as OhlcBar[])
+      : [];
     const apply = (raw: OhlcBar[]) => {
       const candles = colorBars(toCandles(raw), prefsRef.current);
       candlesRef.current = candles;
@@ -209,17 +218,31 @@ export default function SaPriceChart({
         });
       }
     };
-    if (hit && Array.isArray(hit.body.bars)) apply(hit.body.bars as OhlcBar[]);
+    if (cachedBars.length && ohlcSpanDays(cachedBars) >= 90) apply(cachedBars);
     let cancel = false;
-    void fetchGen(url).then((r) => {
+    void fetchGenWait(url).then((r) => {
       if (cancel) return;
       if (Array.isArray(r.body?.bars)) apply(r.body.bars as OhlcBar[]);
-      else if (!hit) setErr("No OHLC");
+      else if (!cachedBars.length) setErr("No OHLC");
+      const days =
+        Number(r.body?.history_span_days) ||
+        ohlcSpanDays(r.body?.bars as { t?: number }[] | undefined);
+      const need = Number(r.body?.req001_min_days) || 90;
+      if (Number.isFinite(days)) {
+        setHistDays(days);
+        if (days < need) {
+          setHistWarn(
+            `SHORT HISTORY: ${days.toFixed(0)} days of price (need ≥ ${need}). Not silent.`,
+          );
+        } else {
+          setHistWarn(null);
+        }
+      }
     });
     return () => {
       cancel = true;
     };
-  }, [source, prefs.priceTf, apiBase]);
+  }, [source, prefs.priceTf, apiBase, contract]);
 
   useEffect(() => {
     const paint = paintRef.current;
@@ -577,7 +600,7 @@ export default function SaPriceChart({
       onGen: () => {
         markLive();
         const url = `${apiBase}/ohlc/${source}?tf=${prefs.priceTf}&lookback_days=0`;
-        void fetchGen(url).then((r) => {
+        void fetchGenWait(url).then((r) => {
           if (Array.isArray(r.body?.bars) && seriesRef.current) {
             const candles = colorBars(
               toCandles(r.body.bars as OhlcBar[]),
@@ -612,6 +635,7 @@ export default function SaPriceChart({
       data-tick-ms={tickMs ?? ""}
       data-l2={prefs.visible.L2 ? "1" : "0"}
       data-vp-bins={vpBins}
+      data-history-days={histDays ?? ""}
       data-bar-count={candlesRef.current.length}
       data-range-ms={rangeMs ?? ""}
       data-anchor={prefs.orientation === "rtl" ? "right" : "left"}
@@ -647,6 +671,19 @@ export default function SaPriceChart({
       style={{ background: prefs.canvasBg }}
     >
       <div ref={hostRef} className="h-full min-h-0 w-full" />
+      {histDays != null ? (
+        <p
+          className={`pointer-events-none absolute left-2 top-2 z-20 max-w-[28rem] rounded border px-2 py-1 text-[11px] ${
+            histWarn
+              ? "border-amber-700 bg-[#1e222d] text-amber-300"
+              : "border-zinc-600 bg-[#1e222d] text-zinc-300"
+          }`}
+          data-testid="sa-short-history"
+        >
+          {histWarn ||
+            `Price ${histDays.toFixed(0)}d · zoom out then pan left for June`}
+        </p>
+      ) : null}
       {err ? (
         <p className="relative z-10 p-3 text-sm text-zinc-400" data-testid="sa-price-chart-empty">
           {err}
