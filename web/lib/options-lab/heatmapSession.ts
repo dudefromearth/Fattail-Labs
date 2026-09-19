@@ -53,7 +53,22 @@ export type HeatmapSessionPrefs = {
   wfTime: "live" | "average" | "replay";
   wfWindow: AverageWindow;
   cacheBudgetMib: BudgetStopMib;
+  /** ET calendar day (YYYY-MM-DD) this was last saved. Gates same-day-only
+   * restore of the expiration so the Heatmap starts each new day on 0DTE. */
+  savedEtDay?: string;
 };
+
+/** Current calendar day in America/New_York as YYYY-MM-DD. */
+export function etDayString(now: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value || "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
 
 type Store = {
   getItem(key: string): string | null;
@@ -131,6 +146,7 @@ export function parseHeatmapSession(raw: unknown): HeatmapSessionPrefs | null {
     cacheBudgetMib: clampBudgetMib(
       Number(o.cacheBudgetMib) || DEFAULT_BUDGET_MIB,
     ),
+    savedEtDay: typeof o.savedEtDay === "string" ? o.savedEtDay : undefined,
   };
 }
 
@@ -191,7 +207,10 @@ export function writeHeatmapSession(
 ): void {
   if (!store) return;
   try {
-    store.setItem(HEATMAP_SESSION_KEY, JSON.stringify(prefs));
+    store.setItem(
+      HEATMAP_SESSION_KEY,
+      JSON.stringify({ ...prefs, savedEtDay: etDayString() }),
+    );
   } catch {
     /* quota / private */
   }

@@ -97,6 +97,7 @@ import {
   subscribeTmSlots,
 } from "@/lib/options-lab/tmSlots";
 import {
+  etDayString,
   readHeatmapSession,
   writeHeatmapSession,
 } from "@/lib/options-lab/heatmapSession";
@@ -384,7 +385,11 @@ export default function HeatmapChainPanel() {
     const s = readHeatmapSession();
     if (s) {
       restoreSymbolRef.current = s.symbol;
-      if (s.expiration) setExpiration(s.expiration);
+      // Only restore a saved expiration if it was chosen TODAY (ET). A prior
+      // day's pick (e.g. yesterday's 1DTE lingering in a still-open tab) is
+      // ignored so the Heatmap starts each new day on today's 0DTE default.
+      if (s.expiration && s.savedEtDay === etDayString())
+        setExpiration(s.expiration);
       setSide(s.side);
       setWings(s.wings);
       setTemplateId(s.templateId);
@@ -607,7 +612,9 @@ export default function HeatmapChainPanel() {
     if (!symbol) return;
     const sticky = readHeatmapSession();
     const keepExp =
-      sticky?.symbol === symbol && Boolean(sticky.expiration);
+      sticky?.symbol === symbol &&
+      Boolean(sticky.expiration) &&
+      sticky.savedEtDay === etDayString();
     if (!keepExp) {
       setExpiration("");
       setLadderDte(null);
