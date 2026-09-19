@@ -1,0 +1,63 @@
+{
+  "all_pass": true,
+  "gate": "SYM-AT",
+  "items": [
+    {
+      "file": "AT-01-esz6-matches-no-bind.json",
+      "pass": true
+    },
+    {
+      "file": "AT-02-alias-ingest-refused.json",
+      "pass": true
+    },
+    {
+      "file": "AT-03-fixture-deleted.json",
+      "pass": true
+    },
+    {
+      "file": "AT-04-pair-badge-dark-coming.json",
+      "pass": true
+    },
+    {
+      "file": "AT-05-rth-generation-unchanged.json",
+      "pass": true
+    },
+    {
+      "file": "AT-06-unsupported-miss.json",
+      "pass": true
+    },
+    {
+      "file": "AT-07-stale-not-active.json",
+      "pass": true
+    },
+    {
+      "file": "AT-08-alias-bound-dated.json",
+      "pass": true
+    },
+    {
+      "file": "AT-09-post-close-advance.json",
+      "pass": true
+    },
+    {
+      "file": "AT-10-adjustment-refused.json",
+      "pass": true
+    },
+    {
+      "file": "AT-11-preset-overlay.json",
+      "pass": true
+    },
+    {
+      "file": "AT-12-pair-badge-front-contract.json",
+      "pass": true
+    },
+    {
+      "file": "AT-13-tv1vo-named-not-built.json",
+      "pass": true
+    },
+    {
+      "file": "AT-14-dated-ignores-preset.json",
+      "pass": true
+    }
+  ],
+  "live": "http://192.168.1.111:4011"
+}

@@ -4,6 +4,42 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-19 — DL-775 R2-G PASS · REQ-002 TV settings dialog (parallel)
+
+**Decision.** REQ-002 implementer half **R2-G PASS** on StudioTwo. Hierarchical TV-model dialog on the member VP route (white/black, our sections only, A22 Ok-commit / Cancel-revert, right-click opens the matching section). Visual contract blob `bf9fa21ac600cfe0432f2651dcee9080d55258f4`. Parallel to SYM — did not touch `server/symbology/`.
+
+**REQ-002 remains OPEN** until AP-1 in Coach's browser (his right-click). Gate: `agents/p-req-002-settings-dialog/gate-reports/R2-G.md`.
+
+**Cites:** **DL-768** · **DL-770** · RL-1 · AP-1.
+
+---
+
+## 2026-09-19 — DL-774 SYM-SWAP-G PASS · SYM-AT artifacts · AP-1 ready
+
+**Decision.** Fixture `artifacts/symbology/req-003-picker.json` is deleted. Member Labs `:4000` hops `/symbology/v1/*` to StudioOne `http://192.168.1.111:4011` (computing-class; member cookie not forwarded). CI forbids `FIXTURE` in production web trees and requires the tagged file absent. SYM-AT-1…14 artifacts in `artifacts/symbology/sym-at/` (`INDEX.json` all_pass). Chip row: four chips All / Futures / Stocks / Indices (`artifacts/symbology/sym3/e-chips.png`).
+
+**AP-1 is Coach's:** tile → dialog → selection → chart, his browser, his clicks, StudioTwo. REQ-003 stays OPEN. No report writes "done" before that line.
+
+**Cites:** **DL-773** · spec §5 · RL-1 · AP-1.
+
+---
+
+## 2026-09-19 — DL-773 SYM1-DEPLOY-G PASS · registry sidecar on StudioOne D1
+
+**Decision.** Symbology Registry runtime home is StudioOne **:4011** (`python -m symbology_app`, launchd `ai.fattail.labs.symbology`). Overlay rsync only — StudioOne git stays `36699be9` (no full Labs pull). Computing-class, same JWT secret as Labs. **0 Massive** on the hot path.
+
+**CP-1 FULL DRESS:** chain_feed pid **538** BEFORE and AFTER, RSS 71088 unchanged, last line `no interest keys; idle`, log still writing. vp-api pid 74792 *:4010 undegraded. Saturday 16:42 ET (post-close).
+
+**Footprint:** +1 idle FastAPI :4011, no Redis, no chain-feed plist edit.
+
+**Rollback:** `launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/ai.fattail.labs.symbology.plist`
+
+**Evidence:** `agents/p-symbology-registry/gate-reports/SYM1-DEPLOY-G.md` · live `pytest tests/test_symbology_studioone_live.py` 20 passed against `http://192.168.1.111:4011`.
+
+**Cites:** **DL-707** CP-1 · **DL-771** · spec SYM-4 / SYM-13.
+
+---
+
 ## 2026-09-19 — DL-772 SYM0-G PASS · v0.2.1 Advisor
 
 **Decision.** India **SYM0-G PASS** on frozen spec sha1 `c87580829301d9a44e678641023e32c07bca58d6` (command MATCH). Juliet may seed SYM1 + SYM2. SYM3 remains HOLD (REQ-003 PNG not on main). `@ES` is a continuity-alias (Coach dialect). D6/D7/D8 open. Report: `agents/p-symbology-registry/gate-reports/SYM0-G.md`.

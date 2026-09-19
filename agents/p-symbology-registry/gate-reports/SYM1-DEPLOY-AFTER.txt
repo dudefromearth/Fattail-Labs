@@ -1,0 +1,26 @@
+SYM1-DEPLOY AFTER
+captured_at_et 2026-09-19 16:42:27 EDT
+HOST StudioOne.local
+GIT 36699be9 (overlay only — no git pull)
+
+--- chain_feed ps ---
+  PID  PPID     ELAPSED  %CPU %MEM    RSS COMMAND
+  538     1 04-09:12:48   0.3  0.2  71088 Python -m market_data.chain_feed --interval 2
+
+--- chain-feed log ---
+mtime 2026-09-19 16:42:27
+LAST_LINE no interest keys; idle
+LOG_BYTES 37781551  (BEFORE 37781413 — still writing)
+
+--- load ---
+16:42  up 23 days, 17:09, load averages: 2.00 1.87 1.95
+(BEFORE 1.80 1.83 1.93)
+
+--- new process ---
+24910  Python -m symbology_app  *:4011
+launchd ai.fattail.labs.symbology
+
+--- undegraded ---
+chain_feed pid 538 unchanged, RSS 71088 unchanged
+vp-api pid 74792 unchanged *:4010
+Redis 6379 unchanged

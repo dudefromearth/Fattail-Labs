@@ -1,0 +1,16 @@
+{
+  "body": {
+    "binding": null,
+    "house_preset_id": "ts-es-106X",
+    "miss": {
+      "copy": "Not supported yet",
+      "reason_code": "not-supported-yet"
+    },
+    "q": "NQ",
+    "strip_generation_id": "sg-20260919-001",
+    "type": "miss"
+  },
+  "pass": true,
+  "screenshot": "artifacts/symbology/sym3/d-gray-nq.png",
+  "status": 200
+}

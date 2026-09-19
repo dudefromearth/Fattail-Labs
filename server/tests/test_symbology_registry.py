@@ -22,7 +22,8 @@ PATHS = (
 
 
 @pytest.fixture(autouse=True)
-def _reset_registry():
+def _reset_registry(monkeypatch):
+    monkeypatch.setenv("LABS_SYMBOLOGY_API_BASE", "inprocess")
     service.reset_runtime_for_tests()
     yield
     service.reset_runtime_for_tests()

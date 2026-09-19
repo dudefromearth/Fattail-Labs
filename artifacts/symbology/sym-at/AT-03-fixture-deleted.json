@@ -1,0 +1,6 @@
+{
+  "exists": false,
+  "fixture_path": "artifacts/symbology/req-003-picker.json",
+  "note": "CI: tests/test_symbology_fixture_hygiene.py; production web greps clean of FIXTURE and FGHJKMNQUVXZ",
+  "pass": true
+}

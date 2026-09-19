@@ -1,0 +1,15 @@
+{
+  "pass": true,
+  "tv-1VO": {
+    "applyable": false,
+    "default": false,
+    "id": "tv-1VO",
+    "kind": "activity",
+    "reason": {
+      "copy": "needs the daily volume path",
+      "reason_code": "needs-the-daily-volume-path"
+    },
+    "rule": "First session next-month daily volume exceeds front",
+    "status": "named-not-built"
+  }
+}

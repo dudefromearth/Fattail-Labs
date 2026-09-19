@@ -1,0 +1,40 @@
+{
+  "keys": [
+    {
+      "exc": "AliasIngestRefused",
+      "key": "ES1!",
+      "refused": true
+    },
+    {
+      "exc": "AliasIngestRefused",
+      "key": "/ES",
+      "refused": true
+    },
+    {
+      "exc": "AliasIngestRefused",
+      "key": "@ES",
+      "refused": true
+    },
+    {
+      "exc": "AliasIngestRefused",
+      "key": "ES2!",
+      "refused": true
+    },
+    {
+      "exc": "AliasIngestRefused",
+      "key": "1!",
+      "refused": true
+    },
+    {
+      "exc": "AliasIngestRefused",
+      "key": "ES",
+      "refused": true
+    },
+    {
+      "exc": "AliasIngestRefused",
+      "key": "ESZ6",
+      "refused": true
+    }
+  ],
+  "pass": true
+}

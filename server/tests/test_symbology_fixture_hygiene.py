@@ -1,13 +1,11 @@
-"""SYM2 — §5 tagged fixture hygiene (SYM-AT-3 production leak).
+"""SYM-SWAP — §5 fixture deleted; production trees stay FIXTURE-clean (SYM-AT-3).
 
-The REQ-003 picker fixture may carry the tag FIXTURE. Production-oriented
-web trees must not. REQ-003 cannot close on this fixture. SYM3 is HOLD.
+REQ-003 cannot close on a fixture. After SYM-SWAP the tagged picker file
+must not exist. Production-oriented web trees must not contain FIXTURE.
 """
 
 from __future__ import annotations
 
-import hashlib
-import json
 import re
 from pathlib import Path
 
@@ -15,8 +13,6 @@ REPO = Path(__file__).resolve().parents[2]
 FIXTURE_REL = Path("artifacts/symbology/req-003-picker.json")
 FIXTURE_PATH = REPO / FIXTURE_REL
 TAG_RE = re.compile(r"\bFIXTURE\b")
-PICKER_FOUR = ("SPX", "XSP", "ES", "MES")
-PICKER_SHA1 = "a6af42c82f11fe732964527aa12158ee19937c28"
 
 # Next production entry: pages, components, client libs, public, tokens.
 # Tests / e2e / node_modules / .next are not a production bundle.
@@ -55,13 +51,8 @@ _TEXT_SUFFIXES = {
     ".txt",
 }
 
-# Only the §5 fixture may carry the tag inside scanned trees.
-_ALLOWED = frozenset({FIXTURE_PATH.resolve()})
-
-
-def _picker_sha1(picker: list) -> str:
-    canonical = json.dumps(picker, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha1(canonical.encode("utf-8")).hexdigest()
+# SYM-SWAP: no allowlist. The tagged picker file is deleted.
+_ALLOWED: frozenset[Path] = frozenset()
 
 
 def _is_skipped(path: Path) -> bool:
@@ -112,33 +103,11 @@ def _scan(paths: list[Path]) -> list[str]:
     return offenders
 
 
-def test_fixture_carries_tag_and_hashed_picker_four():
-    assert FIXTURE_PATH.is_file(), f"missing {FIXTURE_REL}"
-    raw = FIXTURE_PATH.read_text(encoding="utf-8")
-    assert _tag_hits(raw), "fixture must carry the FIXTURE tag"
-    body = json.loads(raw)
-    assert body["tag"] == "FIXTURE"
-    assert body["spec_sha1"] == "c87580829301d9a44e678641023e32c07bca58d6"
-    assert body["law"]["req_003_cannot_close_on_fixture"] is True
-    assert body["law"]["sym_swap_required_before_ap1"] is True
-    assert body["law"]["sym3"] == "HOLD"
-    assert body["law"]["vps_stage_a_consumes"] is False
-    assert body["not_in_picker"] == ["SPY"]
-
-    picker = body["picker"]
-    assert [row["symbol"] for row in picker] == list(PICKER_FOUR)
-    assert "SPY" not in {row["symbol"] for row in picker}
-    by_sym = {row["symbol"]: row for row in picker}
-    assert by_sym["SPX"]["roles"] == ["options"]
-    assert by_sym["XSP"]["roles"] == ["options"]
-    assert by_sym["ES"]["roles"] == ["price-structure"]
-    assert by_sym["MES"]["roles"] == ["price-structure"]
-    for row in picker:
-        assert row["state"] == "COMING", row
-        assert row["state"] != "ACTIVE"
-    digest = _picker_sha1(picker)
-    assert digest == PICKER_SHA1
-    assert body["picker_sha1"] == digest
+def test_fixture_file_deleted_after_swap():
+    assert not FIXTURE_PATH.exists(), (
+        f"{FIXTURE_REL} must be deleted at SYM-SWAP "
+        "(surfaces consume the live StudioOne API)"
+    )
 
 
 def test_tag_matcher_does_not_trip_on_fixtures_plural():
@@ -154,16 +123,14 @@ def test_production_web_entry_forbids_fixture_tag():
     assert files, "production web trees missing"
     offenders = _scan(files)
     assert not offenders, (
-        "production bundle must not contain FIXTURE "
-        f"(allowlist={FIXTURE_REL}): {offenders}"
+        f"production bundle must not contain FIXTURE: {offenders}"
     )
 
 
-def test_allowlist_is_only_the_fixture_path():
-    assert _ALLOWED == frozenset({FIXTURE_PATH.resolve()})
+def test_allowlist_is_empty_after_swap():
+    assert _ALLOWED == frozenset()
+    assert not FIXTURE_PATH.exists()
     assert FIXTURE_PATH.resolve() not in {p.resolve() for p in _iter_prod_files()}
-    assert _tag_hits(FIXTURE_PATH.read_text(encoding="utf-8"))
-    assert _scan([FIXTURE_PATH]) == []
 
 
 def test_scan_fails_when_tag_leaks_into_production_file(tmp_path):

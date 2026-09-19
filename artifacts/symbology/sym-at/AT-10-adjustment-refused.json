@@ -1,0 +1,25 @@
+{
+  "modes": [
+    {
+      "mode": "B_ADJ",
+      "refused": true
+    },
+    {
+      "mode": "constant",
+      "refused": true
+    },
+    {
+      "mode": "ratio",
+      "refused": true
+    },
+    {
+      "mode": "C",
+      "refused": true
+    },
+    {
+      "mode": "R",
+      "refused": true
+    }
+  ],
+  "pass": true
+}

@@ -1,0 +1,23 @@
+{
+  "badge": {
+    "active": false,
+    "ends": [
+      {
+        "declared": "ES",
+        "state": "COMING",
+        "symbol": "ESZ2026",
+        "type": "contract"
+      },
+      {
+        "declared": "SPX",
+        "state": "COMING",
+        "symbol": "SPX",
+        "type": "index"
+      }
+    ],
+    "state": "COMING",
+    "strip_generation_id": "sg-20260919-001",
+    "worst_end": "ESZ2026"
+  },
+  "pass": true
+}

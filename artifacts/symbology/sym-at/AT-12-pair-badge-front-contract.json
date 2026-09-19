@@ -1,0 +1,21 @@
+{
+  "ends": [
+    {
+      "declared": "ES",
+      "state": "COMING",
+      "symbol": "ESZ2026",
+      "type": "contract"
+    },
+    {
+      "declared": "SPX",
+      "state": "COMING",
+      "symbol": "SPX",
+      "type": "index"
+    }
+  ],
+  "pass": true,
+  "symbols": [
+    "ESZ2026",
+    "SPX"
+  ]
+}

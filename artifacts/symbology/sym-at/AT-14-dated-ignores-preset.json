@@ -1,0 +1,29 @@
+{
+  "body": {
+    "binding": {
+      "bound_symbol": "ESZ2026",
+      "gray": {
+        "copy": "path not yet verified",
+        "reason_code": "path-not-yet-verified"
+      },
+      "has_chains": false,
+      "may_be_active": true,
+      "member_visible": true,
+      "metadata_ref": "vps:symbol-metadata:ESZ2026",
+      "roles": [
+        "price-structure"
+      ],
+      "root": "ES",
+      "state": "COMING",
+      "symbol": "ESZ2026",
+      "type": "contract"
+    },
+    "house_preset_id": "ts-es-106X",
+    "preset_applied": "ts-es-106X",
+    "q": "ESZ2026",
+    "strip_generation_id": "sg-20260919-001",
+    "type": "binding"
+  },
+  "pass": true,
+  "status": 200
+}

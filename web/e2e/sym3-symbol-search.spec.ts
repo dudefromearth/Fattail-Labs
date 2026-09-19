@@ -33,8 +33,15 @@ test.describe("SYM3 symbol search", () => {
     await expect(page.getByTestId("symbol-search-chip-futures")).toBeVisible();
     await expect(page.getByTestId("symbol-search-chip-stocks")).toBeVisible();
     await expect(page.getByTestId("symbol-search-chip-indices")).toBeVisible();
+    await expect(
+      page.locator('[data-testid^="symbol-search-chip-"]'),
+    ).toHaveCount(4);
     await expect(page.getByText("Forex")).toHaveCount(0);
     await expect(page.getByText("ISIN")).toHaveCount(0);
+    await expect(page.getByText("Bonds")).toHaveCount(0);
+    await page.getByTestId("symbol-search-chips").screenshot({
+      path: join(shots, "e-chips.png"),
+    });
     await expect(page.getByTestId("symbol-search-row-SPX")).toBeVisible();
     await expect(page.getByTestId("symbol-search-row-ES")).toBeVisible();
     await expect(page.getByTestId("symbol-search-row-ES1!")).toHaveCount(0);

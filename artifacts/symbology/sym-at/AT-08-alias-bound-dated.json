@@ -1,0 +1,27 @@
+{
+  "body": {
+    "binding": {
+      "bound_symbol": "ESZ2026",
+      "gray": null,
+      "has_chains": false,
+      "may_be_active": false,
+      "member_visible": true,
+      "metadata_ref": "vps:symbol-metadata:ESZ2026",
+      "roles": [
+        "price-structure"
+      ],
+      "root": "ES",
+      "state": null,
+      "symbol": "ES1!",
+      "type": "continuity-alias"
+    },
+    "house_preset_id": "ts-es-106X",
+    "preset_applied": "ts-es-106X",
+    "q": "ES1!",
+    "strip_generation_id": "sg-20260919-001",
+    "type": "binding"
+  },
+  "pass": true,
+  "screenshot": "artifacts/symbology/sym3/c-slash-es.png",
+  "status": 200
+}

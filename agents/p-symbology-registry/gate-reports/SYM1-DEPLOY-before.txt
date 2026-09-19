@@ -1,0 +1,32 @@
+SYM1-DEPLOY BEFORE
+captured_at_et 2026-09-19 16:42:16 EDT
+HOST StudioOne.local
+NOW_ET 2026-09-19 16:42:16 EDT
+GIT 36699be9
+--- chain_feed ps ---
+  PID  PPID     ELAPSED  %CPU %MEM    RSS COMMAND
+  538     1 04-09:12:37   0.0  0.2  71088 /opt/homebrew/Cellar/python@3.12/3.12.12/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python -m market_data.chain_feed --interval 2
+--- launchd fattail ---
+74792	-15	ai.fattail.labs.vp-api
+538	-15	ai.fattail.labs.chain-feed
+53424	-15	ai.fattail.labs.vp-futures
+-	0	ai.fattail.labs.ssr-od6-first-hour
+2712	1	ai.fattail.labs.ssr-live-capture
+-	0	ai.fattail.labs.ssr-archive-stats
+54391	-15	ai.fattail.labs.ssr-snapshot-dash
+82012	-15	ai.fattail.labs.sym-feed
+53072	0	ai.fattail.labs.vp-engine
+--- listen ---
+redis-ser  5790 ernie    6u  IPv4 0xeb03e7bbc0699c27      0t0  TCP 127.0.0.1:6379 (LISTEN)
+redis-ser  5790 ernie    7u  IPv6 0x5823c87d7217430f      0t0  TCP [::1]:6379 (LISTEN)
+Python    54391 ernie    3u  IPv4 0x16afb440e5b46c3e      0t0  TCP *:5055 (LISTEN)
+Python    74792 ernie    8u  IPv4 0x822ca5e3d5f4a064      0t0  TCP *:4010 (LISTEN)
+--- chain-feed log ---
+-rw-r--r--  1 ernie  staff  37781413 Sep 19 16:42:14 2026 /Users/ernie/Library/Logs/fattail-labs/chain-feed.out.log
+LAST_LINE no interest keys; idle
+LOG_BYTES 37781413
+--- load ---
+16:42  up 23 days, 17:08, 2 users, load averages: 1.80 1.83 1.93
+--- vp-api ---
+  PID  ELAPSED  %CPU    RSS COMMAND
+74792 23:57:56   0.5 364144 /opt/homebrew/Cellar/python@3.12/3.12.12/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python -m market_data.vp_api

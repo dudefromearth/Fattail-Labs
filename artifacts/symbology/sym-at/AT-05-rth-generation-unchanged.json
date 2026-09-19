@@ -1,0 +1,6 @@
+{
+  "after": "sg-20260919-001",
+  "before": "sg-20260919-001",
+  "exc": "StripWriteRefused",
+  "pass": true
+}
