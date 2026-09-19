@@ -262,7 +262,6 @@ export default function SaDevCanvas() {
         target={mode === "live" ? targetForSource(liveSrc) : fixture.target}
         spanFloor={mode === "fixtures" ? fixture.session_date : spanFloor}
         spanCeiling={mode === "fixtures" ? fixture.session_date : spanCeiling}
-        continuous={cov?.continuous}
         harness={mode === "fixtures" ? "fixture" : "live"}
       />
       <SaPartDialog />
