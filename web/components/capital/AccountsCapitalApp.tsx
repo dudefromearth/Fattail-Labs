@@ -36,6 +36,20 @@ function money(n: number | null | undefined): string {
   });
 }
 
+/**
+ * Parse a user-typed money value, tolerating $ , and surrounding spaces
+ * (e.g. "$50,000"). Returns {ok:true,value:null} for empty (clear the field),
+ * {ok:true,value:n} when valid, and {ok:false} when it isn't a number — callers
+ * must show an error and NOT save. (A bare Number("50,000") is NaN, which
+ * serializes to null and silently wipes the field — the reported bug.)
+ */
+function parseMoneyDraft(raw: string): { ok: boolean; value: number | null } {
+  const cleaned = raw.trim().replace(/[$,\s]/g, "");
+  if (cleaned === "") return { ok: true, value: null };
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? { ok: true, value: n } : { ok: false, value: null };
+}
+
 export default function AccountsCapitalApp() {
   const practice = usePracticeContextOptional();
   const [overview, setOverview] = useState<CapitalOverview | null>(null);
@@ -165,12 +179,18 @@ export default function AccountsCapitalApp() {
     setBusy(true);
     setError(null);
     try {
+      let bpVal: number | null = null;
+      if (bpPosture === "self_report" && bpValue.trim() !== "") {
+        const parsed = parseMoneyDraft(bpValue);
+        if (!parsed.ok) {
+          setError("Enter buying power as a number, e.g. 100000");
+          return;
+        }
+        bpVal = parsed.value;
+      }
       await patchAccountBuyingPower(id, {
         buying_power_posture: bpPosture,
-        buying_power_value:
-          bpPosture === "self_report" && bpValue.trim() !== ""
-            ? Number(bpValue)
-            : null,
+        buying_power_value: bpVal,
       });
       setMsg("Buying power saved for this account.");
       await reload();
@@ -192,7 +212,12 @@ export default function AccountsCapitalApp() {
         broker: newBroker,
       };
       if (newStart.trim() !== "") {
-        body.starting_balance = Number(newStart);
+        const parsed = parseMoneyDraft(newStart);
+        if (!parsed.ok) {
+          setError("Enter the starting balance as a number, e.g. 50000");
+          return;
+        }
+        body.starting_balance = parsed.value;
       }
       const r = await fetch("/api/me/trade-log/accounts", {
         method: "POST",
@@ -249,9 +274,13 @@ export default function AccountsCapitalApp() {
     setBusy(true);
     setError(null);
     try {
-      const raw = startDraft.trim();
+      const parsed = parseMoneyDraft(startDraft);
+      if (!parsed.ok) {
+        setError("Enter the starting balance as a number, e.g. 50000");
+        return;
+      }
       const body = {
-        starting_balance: raw === "" ? null : Number(raw),
+        starting_balance: parsed.value,
       };
       const r = await fetch(`/api/me/trade-log/accounts/${id}`, {
         method: "PATCH",
