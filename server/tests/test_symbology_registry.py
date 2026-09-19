@@ -72,6 +72,12 @@ def test_eligibility_report_admin_200(client, admin_cookies):
 # --- universe (SYM-1, SYM-2, SYM-4, initial COMING rows) --------------------
 
 
+def test_universe_api_prefix_alias(client):
+    r = _get(client, "/api/symbology/v1/universe")
+    assert r.status_code == 200, r.text
+    assert [g["root"] for g in r.json()["groups"]] == ["SPX", "XSP", "ES", "MES"]
+
+
 def test_universe_typed_groups_no_spy_no_family(client):
     r = _get(client, "/symbology/v1/universe")
     assert r.status_code == 200, r.text

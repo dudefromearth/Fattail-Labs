@@ -12,7 +12,9 @@ import SaPriceChart from "@/components/sa/SaPriceChart";
 import SaPartDialog from "@/components/sa/SaPartDialog";
 import SaUtilityBar from "@/components/sa/SaUtilityBar";
 import { SaCanvasProvider } from "@/components/sa/SaCanvasContext";
+import SymbolSearchTile from "@/components/symbology/SymbolSearchTile";
 import { useOptionsLab } from "@/lib/optionsLabContext";
+import { SYM_ROLES_VP, type SymbolBind } from "@/lib/symbology/types";
 
 type Health = {
   today?: string;
@@ -36,7 +38,7 @@ export default function VolumeProfileSaSurface({
 }: {
   paused?: boolean;
 }) {
-  const { symbol } = useOptionsLab();
+  const { symbol, setSymbol } = useOptionsLab();
   const pair = sourceForUnderlier(symbol);
   const [source, setSource] = useState(pair.source);
   const [data, setData] = useState<SaStructure | null>(null);
@@ -48,6 +50,8 @@ export default function VolumeProfileSaSurface({
     [],
   );
   const [contract, setContract] = useState<string>("");
+  const [pickerLabel, setPickerLabel] = useState<string>("");
+  const [pickerCaption, setPickerCaption] = useState<string>("");
 
   useEffect(() => {
     setError(null);
@@ -99,6 +103,7 @@ export default function VolumeProfileSaSurface({
         const today = new Date().toISOString().slice(0, 10);
         setContract((cur) => {
           if (rows.some((x) => x.id === cur)) return cur;
+          if (cur) return cur;
           const live = rows.find((x) => (x.last_trade_date || "") >= today);
           return live?.id || rows[0]?.id || "";
         });
@@ -110,6 +115,23 @@ export default function VolumeProfileSaSurface({
       cancel = true;
     };
   }, [source]);
+
+  function onSymbolBind(bind: SymbolBind) {
+    if (
+      bind.type === "contract" ||
+      bind.type === "continuity-alias" ||
+      bind.continuity
+    ) {
+      if (bind.root) setSource(bind.root);
+      setContract(bind.boundSymbol);
+      setPickerLabel(bind.boundSymbol);
+      setPickerCaption(bind.continuityCaption);
+      return;
+    }
+    setSymbol(bind.boundSymbol);
+    setPickerLabel(bind.boundSymbol);
+    setPickerCaption("");
+  }
 
   const served = servedFromHealth(health);
   const cov = health?.coverage?.[source];
@@ -130,6 +152,14 @@ export default function VolumeProfileSaSurface({
         title="Volume Profile"
         pendingName
         shownLabel={shownLabel}
+        leading={
+          <SymbolSearchTile
+            label={pickerLabel || contract || symbol}
+            caption={pickerCaption}
+            roles={SYM_ROLES_VP}
+            onBind={onSymbolBind}
+          />
+        }
         data={data}
         sources={served.map((s) => ({ id: s.id, label: s.label }))}
         sourceId={source}

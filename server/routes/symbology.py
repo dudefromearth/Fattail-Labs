@@ -22,6 +22,7 @@ def _http_exc(status: int, code: str, message: str, **extra: object) -> HTTPExce
 
 
 @router.get("/symbology/v1/universe")
+@router.get("/api/symbology/v1/universe")
 def get_universe(
     request: Request,
     roles: str | None = Query(default=None),
@@ -34,6 +35,7 @@ def get_universe(
 
 
 @router.get("/symbology/v1/resolve")
+@router.get("/api/symbology/v1/resolve")
 def get_resolve(
     request: Request,
     q: str = Query(default=""),
@@ -62,6 +64,7 @@ def get_resolve(
 
 
 @router.post("/symbology/v1/telemetry")
+@router.post("/api/symbology/v1/telemetry")
 async def post_telemetry(request: Request) -> dict:
     require_session(request)
     try:
@@ -79,12 +82,14 @@ async def post_telemetry(request: Request) -> dict:
 
 
 @router.get("/symbology/v1/eligibility-report")
+@router.get("/api/symbology/v1/eligibility-report")
 def get_eligibility_report(request: Request) -> dict:
     require_admin(request)
     return service.eligibility_report()
 
 
 @router.get("/symbology/v1/roll-catalog")
+@router.get("/api/symbology/v1/roll-catalog")
 def get_roll_catalog(request: Request) -> dict:
     require_session(request)
     return catalog.catalog_public()

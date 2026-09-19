@@ -20,6 +20,7 @@ export default function SaUtilityBar({
   contracts,
   contractId,
   onContract,
+  leading,
   extra,
   focus,
   onFocus,
@@ -45,6 +46,7 @@ export default function SaUtilityBar({
   contractId?: string;
   onContract?: (id: string) => void;
   extra?: ReactNode;
+  leading?: ReactNode;
   focus: TerritoryEntry;
   onFocus: (e: TerritoryEntry) => void;
   overlayOn?: boolean;
@@ -96,6 +98,7 @@ export default function SaUtilityBar({
           </span>
         ) : null}
       </span>
+      {leading}
       <select
         className="h-8 shrink-0 rounded border border-zinc-700 bg-[#1e222d] px-1.5 text-xs text-zinc-200"
         value={sourceId}
