@@ -153,7 +153,7 @@ test("W0-M splitter A–F listed fly (Coach path unnamed)", async ({ page }) => 
   // B — suite Heatmap
   await page
     .getByTestId("options-lab-suite-nav")
-    .getByRole("link", { name: "Heatmap" })
+    .getByRole("link", { name: "Runner" })
     .click();
   await page.waitForURL(/\/app\/options-lab\/heatmap/);
   await page
@@ -187,7 +187,7 @@ test("W0-M splitter A–F listed fly (Coach path unnamed)", async ({ page }) => 
   // F — Back (bfcache-ish)
   await page
     .getByTestId("options-lab-suite-nav")
-    .getByRole("link", { name: "Heatmap" })
+    .getByRole("link", { name: "Runner" })
     .click();
   await page.waitForURL(/\/app\/options-lab\/heatmap/);
   await page.goBack();

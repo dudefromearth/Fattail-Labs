@@ -1,6 +1,6 @@
 /**
  * Options Lab suite — Market / analyzer parent.
- * Nav: Volume Profile · Heatmap · Analyzer · Surface.
+ * Nav: Volume Profile · Runner · Analyzer · Surface.
  * Shared symbol selection across apps (Admin universe).
  */
 
@@ -29,10 +29,10 @@ export const OPTIONS_LAB_SUITE: OptionsLabAppItem[] = [
   },
   {
     id: "heatmap",
-    label: "Heatmap",
+    label: "Runner",
     href: "/app/options-lab/heatmap",
     blurb:
-      "Options chain / convexity views — ladder now; butterfly and vertical templates later.",
+      "Run a template across symbols — chain GEX, flies, width fit, LIM.",
     status: "live",
   },
   {

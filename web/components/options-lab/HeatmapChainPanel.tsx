@@ -119,6 +119,9 @@ import { saveAnalyzerTrade } from "@/lib/options-lab/analyzerTrade";
 import HeatmapControlsColumn from "@/components/options-lab/HeatmapControlsColumn";
 import { HeatmapHoverTip } from "@/components/options-lab/HeatmapHoverTip";
 import HeatmapLimQuadrant from "@/components/options-lab/HeatmapLimQuadrant";
+import HeatmapGexCalendar from "@/components/options-lab/HeatmapGexCalendar";
+import { computeGexCal, termMassFlagOn } from "@/lib/options-lab/templates/gexCal";
+import { useGexCalPack } from "@/lib/options-lab/useGexCalPack";
 import { computeLim, type LimResult } from "@/lib/options-lab/templates/lim";
 import {
   limChromeInfoLines,
@@ -141,6 +144,8 @@ import {
 } from "@/lib/options-lab/heatmapTip";
 
 const EXPIRY_PICK_COUNT = 3;
+/** Term Mass: a listed week (tape ~7 columns). Does not change the fly picker. */
+const TERM_MASS_EXPIRY_COUNT = 7;
 
 const secondaryBtn =
   "inline-flex min-h-11 items-center justify-center rounded-full border border-[var(--color-separator)] " +
@@ -325,6 +330,7 @@ export default function HeatmapChainPanel() {
   const [expiryContracts, setExpiryContracts] = useState<
     LadderExpirationContract[]
   >([]);
+  const [termMassExps, setTermMassExps] = useState<string[]>([]);
   const [expiration, setExpiration] = useState("");
   const [side, setSide] = useState<"call" | "put">("call");
   const [wings, setWings] = useState<StrikeWings>(DEFAULT_STRIKE_WINGS);
@@ -458,12 +464,7 @@ export default function HeatmapChainPanel() {
     if (profile.default_view_side === "call" || profile.default_view_side === "put") {
       setSide(profile.default_view_side);
     }
-    if (
-      profile.heatmap_default_template &&
-      HEATMAP_TEMPLATES.some((t) => t.id === profile.heatmap_default_template)
-    ) {
-      setTemplateId(profile.heatmap_default_template);
-    }
+    // Template + value mode stay until the member switches them (Runner).
   }, [profile.symbol]); // only on symbol identity change
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const presentKeyRef = useRef<string>("");
@@ -493,6 +494,43 @@ export default function HeatmapChainPanel() {
   });
 
   const tpl = getTemplate(templateId);
+  const termMassOn =
+    termMassFlagOn() && tpl.layout === "matrix-profile";
+  const gexCalPack = useGexCalPack({
+    enabled: termMassOn,
+    symbol,
+    wings,
+    spot: bus.spot,
+    viewSide: side,
+    visibleExpirations: termMassExps,
+  });
+  const gexCalResult = termMassOn
+    ? computeGexCal({ ...gexCalPack, spot: bus.spot }, valueMode)
+    : null;
+
+  useEffect(() => {
+    if (!termMassOn || !symbol) {
+      setTermMassExps((prev) => (prev.length === 0 ? prev : []));
+      return;
+    }
+    let cancelled = false;
+    void fetchLadderExpirations(symbol, TERM_MASS_EXPIRY_COUNT)
+      .then((pack) => {
+        if (cancelled) return;
+        const next = pack.contracts
+          .map((c) => (c.expiration || "").slice(0, 10))
+          .filter(Boolean)
+          .slice(0, TERM_MASS_EXPIRY_COUNT);
+        setTermMassExps(next);
+      })
+      .catch(() => {
+        if (!cancelled) setTermMassExps([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [termMassOn, symbol]);
+
   const verticalMetric = verticalMetricFromMode(valueMode);
   const modeLabel =
     templateId === "vertical"
@@ -1216,10 +1254,6 @@ export default function HeatmapChainPanel() {
         held={held}
         transport={bus.transport}
         error={error}
-        symbol={symbol}
-        universe={universe}
-        universeLoading={universeLoading}
-        onSymbolChange={setSymbol}
         templateId={templateId}
         tpl={tpl}
         onTemplateChange={setTemplateId}
@@ -1314,17 +1348,39 @@ export default function HeatmapChainPanel() {
       {/* Right ~4/5 — contained panel with header */}
       <section
         className="flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--color-canvas)] p-2 sm:p-3"
-        aria-label="Heatmap view"
+        aria-label="Runner view"
       >
         <div
           className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-[var(--color-separator)] bg-[var(--color-surface)] shadow-[var(--elevation-2,0_4px_16px_rgba(0,0,0,0.18))]"
           data-testid="heatmap-view-panel"
         >
-          <div className="relative z-[2] shrink-0 border-b border-[var(--color-separator)] px-2 py-1.5">
-            <TimeMachineChrome
-              symbol={symbol}
-              watermarkTestId="heatmap-replay-watermark"
-            />
+          <div className="relative z-[2] flex shrink-0 items-center gap-2 border-b border-[var(--color-separator)] px-2 py-1.5">
+            <label className="sr-only" htmlFor="runner-symbol">
+              Symbol
+            </label>
+            <select
+              id="runner-symbol"
+              className="min-h-11 min-w-[7.5rem] shrink-0 rounded-[var(--radius-md,0.5rem)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-2.5 text-sm font-semibold text-[var(--color-label)] shadow-[var(--elevation-1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)] disabled:opacity-45"
+              value={symbol}
+              onChange={(e) => setSymbol(e.target.value)}
+              disabled={universeLoading || !universe.length}
+              data-testid="options-lab-symbol"
+            >
+              {universe.map((u) => (
+                <option key={u.symbol} value={u.symbol}>
+                  {u.symbol}
+                </option>
+              ))}
+              {!universe.length && !universeLoading && (
+                <option value={symbol}>{symbol}</option>
+              )}
+            </select>
+            <div className="min-w-0 flex-1">
+              <TimeMachineChrome
+                symbol={symbol}
+                watermarkTestId="heatmap-replay-watermark"
+              />
+            </div>
           </div>
           {/* Panel header */}
           <header className="relative z-[1] flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-[var(--color-separator)] bg-[var(--color-surface-secondary,var(--color-fill))] px-3 py-2 sm:px-4">
@@ -1454,12 +1510,13 @@ export default function HeatmapChainPanel() {
             ref={scrollRef}
             className={[
               "min-h-0 flex-1",
-              tpl.layout === "quadrant"
+              tpl.layout === "quadrant" || tpl.layout === "matrix-profile"
                 ? "overflow-hidden"
                 : "overflow-x-auto overflow-y-auto",
               tpl.layout === "matrix" ||
               tpl.layout === "profile" ||
-              tpl.layout === "quadrant"
+              tpl.layout === "quadrant" ||
+              tpl.layout === "matrix-profile"
                 ? "bg-[#0a0a0e]"
                 : "bg-[var(--color-surface)]",
             ].join(" ")}
@@ -1672,6 +1729,8 @@ export default function HeatmapChainPanel() {
                 spot={chainCtx.spot}
                 showAnnotations={limPack.showAnnotations}
               />
+            ) : tpl.layout === "matrix-profile" && gexCalResult ? (
+              <HeatmapGexCalendar result={gexCalResult} />
             ) : isWidthFitTemplate(templateId) &&
               wfIface === "ranking" &&
               rankingStats ? (

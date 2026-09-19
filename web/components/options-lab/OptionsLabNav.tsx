@@ -2,7 +2,7 @@
 
 /**
  * Options Lab suite nav — HIG segmented control (Practice / Strategy Lab pattern).
- * Volume Profile · Heatmap · Analyzer
+ * Volume Profile · Runner · Analyzer
  */
 
 import Link from "next/link";

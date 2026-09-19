@@ -13,7 +13,7 @@ import {
 import { DEFAULT_ROC_SENSITIVITY } from "@/lib/options-lab/templates/color";
 import {
   getTemplate,
-  HEATMAP_TEMPLATES,
+  memberHeatmapTemplates,
 } from "@/lib/options-lab/templates/registry";
 import type {
   BwWingSide,
@@ -74,7 +74,7 @@ export function parseHeatmapSession(raw: unknown): HeatmapSessionPrefs | null {
   const o = raw as Record<string, unknown>;
   const symbol = String(o.symbol || "").trim().toUpperCase();
   if (!symbol) return null;
-  const templateId = HEATMAP_TEMPLATES.some((t) => t.id === o.templateId)
+  const templateId = memberHeatmapTemplates().some((t) => t.id === o.templateId)
     ? String(o.templateId)
     : "";
   if (!templateId) return null;

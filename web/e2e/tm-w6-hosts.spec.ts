@@ -31,7 +31,7 @@ test("W6 sticky playhead Analyzer → Heatmap → Surface; Width Fit Replay", as
     .toMatch(/^[1-9]/);
   const t0 = await strip.getAttribute("data-tm-playhead-t");
 
-  await page.getByRole("navigation", { name: "Options Lab apps" }).getByRole("link", { name: "Heatmap" }).click();
+  await page.getByRole("navigation", { name: "Options Lab apps" }).getByRole("link", { name: "Runner" }).click();
   await expect(page.getByTestId("options-lab-heatmap-panel")).toBeVisible({
     timeout: 30_000,
   });

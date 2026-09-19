@@ -21,7 +21,7 @@ import {
 import {
   BW_STRIKE_COUNT_CHOICES,
 } from "@/lib/options-lab/templates/bwFly";
-import { HEATMAP_TEMPLATES } from "@/lib/options-lab/templates/registry";
+import { memberHeatmapTemplates } from "@/lib/options-lab/templates/registry";
 import type {
   BwWingSide,
   HeatmapTemplate,
@@ -48,22 +48,11 @@ import {
 
 const EXPIRY_PICK_COUNT = 3;
 
-type UniverseRow = {
-  symbol: string;
-  kind?: string;
-  strike_step?: number | null;
-  profile?: { strike_step?: number | null } | null;
-};
-
 export type HeatmapControlsColumnProps = {
   streaming: boolean;
   held: boolean;
   transport: string | null | undefined;
   error: string | null;
-  symbol: string;
-  universe: UniverseRow[];
-  universeLoading: boolean;
-  onSymbolChange: (symbol: string) => void;
   templateId: string;
   tpl: HeatmapTemplate;
   onTemplateChange: (id: string) => void;
@@ -179,10 +168,6 @@ export default function HeatmapControlsColumn({
   held,
   transport,
   error,
-  symbol,
-  universe,
-  universeLoading,
-  onSymbolChange,
   templateId,
   tpl,
   onTemplateChange,
@@ -229,7 +214,7 @@ export default function HeatmapControlsColumn({
       <div className={inspectorStickyNav}>
         <div className="flex min-h-[var(--hit-min)] flex-wrap items-center justify-between gap-2">
           <h2 className="text-[length:var(--text-title-3)] font-semibold tracking-tight text-[var(--color-label)]">
-            Heatmap
+            Runner
           </h2>
           <span
             className={
@@ -272,34 +257,6 @@ export default function HeatmapControlsColumn({
           </div>
         ) : null}
 
-        <InspectorSection title="Instrument">
-          <label className={inspectorRow}>
-            <span className={inspectorRowLabel}>Symbol</span>
-            <select
-              className={inspectorField}
-              value={symbol}
-              onChange={(e) => onSymbolChange(e.target.value)}
-              disabled={universeLoading || !universe.length}
-              data-testid="options-lab-symbol"
-            >
-              {universe.map((u) => (
-                <option key={u.symbol} value={u.symbol}>
-                  {u.symbol}
-                  {u.kind ? ` · ${u.kind}` : ""}
-                  {u.profile?.strike_step != null
-                    ? ` · step ${u.profile.strike_step}`
-                    : u.strike_step != null
-                      ? ` · step ${u.strike_step}`
-                      : ""}
-                </option>
-              ))}
-              {!universe.length && !universeLoading && (
-                <option value={symbol}>{symbol}</option>
-              )}
-            </select>
-          </label>
-        </InspectorSection>
-
         <InspectorSection title="Template">
           <label className={inspectorRow}>
             <span className={inspectorRowLabel}>Template</span>
@@ -309,7 +266,7 @@ export default function HeatmapControlsColumn({
               onChange={(e) => onTemplateChange(e.target.value)}
               data-testid="heatmap-template"
             >
-              {HEATMAP_TEMPLATES.map((t) => (
+              {memberHeatmapTemplates().map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.label}
                 </option>

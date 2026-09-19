@@ -7,6 +7,7 @@ import { bwFlyTemplate } from "./bwFly";
 import { verticalTemplate } from "./vertical";
 import { gexTemplate } from "./gex";
 import { limTemplate } from "./lim";
+import { gexCalTemplate, termMassFlagOn } from "./gexCal";
 
 /** Default Heatmap template — Symmetric flies (MSC look). */
 export const DEFAULT_HEATMAP_TEMPLATE_ID = "sym-fly";
@@ -30,7 +31,14 @@ export const HEATMAP_TEMPLATES: HeatmapTemplate[] = [
   },
   gexTemplate,
   limTemplate,
+  gexCalTemplate,
 ];
+
+/** Switcher list — gex-cal only when flag on (GC14 / JR2). */
+export function memberHeatmapTemplates(): HeatmapTemplate[] {
+  if (termMassFlagOn()) return HEATMAP_TEMPLATES;
+  return HEATMAP_TEMPLATES.filter((t) => t.id !== gexCalTemplate.id);
+}
 
 export function getTemplate(id: string): HeatmapTemplate {
   const t = HEATMAP_TEMPLATES.find((x) => x.id === id);

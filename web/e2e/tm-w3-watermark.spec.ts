@@ -66,7 +66,7 @@ test("W3 REPLAY watermark on Analyzer, Heatmap, Surface; no TM glow", async ({
     .evaluate((el) => getComputedStyle(el).animationName);
   expect(anim === "none" || anim === "").toBeTruthy();
 
-  await page.getByRole("link", { name: "Heatmap", exact: true }).click();
+  await page.getByRole("link", { name: "Runner", exact: true }).click();
   await expect(page.getByTestId("options-lab-heatmap-panel")).toBeVisible({
     timeout: 30_000,
   });

@@ -148,7 +148,7 @@ test("hit-target after SPA Analyzer return (not hard reload)", async ({
     wheel: await realWheel(page),
   };
 
-  await page.getByTestId("options-lab-suite-nav").getByRole("link", { name: "Heatmap" }).click();
+  await page.getByTestId("options-lab-suite-nav").getByRole("link", { name: "Runner" }).click();
   await page.waitForURL(/\/app\/options-lab\/heatmap/);
   await page.getByTestId("options-lab-suite-nav").getByRole("link", { name: "Analyzer" }).click();
   await page.waitForURL(/\/app\/options-lab\/analyzer/);

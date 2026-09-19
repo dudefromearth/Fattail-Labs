@@ -1,17 +1,16 @@
-# FatTail Labs — Options Lab Heatmap GEX Calendar Spec v0.1
+# FatTail Labs — Options Lab Heatmap GEX Calendar Spec v0.1.1
 
-**Status:** **DRAFT** — product / architecture authority for one Options Lab Heatmap
-template. **Not BUILD AUTHORITY.** No seed fires from this file until Coach Phase 5
-and **OD-GC1…GC4** are stamped.
+**Status:** **BUILD AUTHORITY** upon stamp of [`agents/go/GC0-W0.md`](../agents/go/GC0-W0.md) (**GC0-0**, Coach 2026-09-18). Effective when that file is written (DL-328). Until then, treat as DRAFT.
 **Date:** 2026-09-18
-**Current revision:** **v0.1**
-**Parent:** Heatmap Templates Spec v0.2.4 (HM1–HM21) · frozen `gex` (§5.5 `gex_v1`) ·
-LIM Spec v0.4.7 (sibling, never fused)
-**Canonical filename:** `Specs/FatTail-Labs-Options-Lab-Heatmap-GEX-Calendar-Spec-v0_1.md`
-**Short name:** **GEX Calendar** / **GC** (law IDs). **Member picker:** **Term Mass** (**OD-GC4** LOCKED, Coach 2026-09-18).
+**Current revision:** **v0.1.1**
+**Supersedes:** [`FatTail-Labs-Options-Lab-Heatmap-GEX-Calendar-Spec-v0_1.md`](./FatTail-Labs-Options-Lab-Heatmap-GEX-Calendar-Spec-v0_1.md) — **baseline freeze; leave on disk.**
+**Parent:** Heatmap Templates Spec v0.2.4 (**HM1–HM21** live; **HM21 = inspector tab-session**, DL-575). Frozen `gex` (§5.5 `gex_v1`) ·
+LIM Spec v0.4.7 (sibling, never fused). Templates v0.3 DRAFT auxiliary-plane amendment is **not** this template’s plane.
+**Canonical filename:** `Specs/FatTail-Labs-Options-Lab-Heatmap-GEX-Calendar-Spec-v0_1_1.md`
+**Short name:** **GEX Calendar** / **GC** (law IDs). **Member picker:** **Term Mass** (**OD-GC4** ACCEPT, Coach 2026-09-18).
 **Type:** Heatmap **template** (`gex-cal`) — sibling of frozen `gex` (profile) and
 `lim` (quadrant). Columns are **listed expirations**, not widths.
-**Bench plan:** [`docs/Options-Lab-Heatmap-Term-Mass-Full-Agent-Bench-Plan-v1.0.md`](../docs/Options-Lab-Heatmap-Term-Mass-Full-Agent-Bench-Plan-v1.0.md) · board `agents/p-options-lab-heatmap-gex-calendar/` · token `agents/go/GC0-W0.md` (unstamped until GC0-0).
+**Bench plan:** [`docs/Options-Lab-Heatmap-Term-Mass-Full-Agent-Bench-Plan-v1.1.md`](../docs/Options-Lab-Heatmap-Term-Mass-Full-Agent-Bench-Plan-v1.1.md) · board `agents/p-options-lab-heatmap-gex-calendar/` · token `agents/go/GC0-W0.md`.
 **Architecture companion:** [`Architecture/29-options-lab-heatmap-templates.md`](../Architecture/29-options-lab-heatmap-templates.md)
 
 **Origin:** Rewrite of Coach’s Grok Build prompt
@@ -127,7 +126,7 @@ this template:
 | **HM12** | Label **Chain GEX (estimate)**. Not true dealer GEX. |
 | **HM14** | HIG tokens, ≥44 pt, reduced-motion. Color hysteresis §5.2.2. |
 | **HM15–HM20** | Apply **independently per expiration book** (dual-side, one page, `next_url` hard error, standard contracts, modal step). |
-| **HM21** | Inspector tab-session. `templateId` restores only if this template is **in the production switcher**. Until **OD-GC1…GC4** Accept, there is no production switcher entry (**GC14**). |
+| **HM21** | Inspector tab-session (**v0.2.4 live law** · **DL-575** · `sessionStorage` `ft_labs_heatmap_session`). `templateId` restores only if this template is **in the production switcher**. **GC14:** no production switcher until GC4-G. Templates v0.3 DRAFT §2.4 reused the id **HM21** for an auxiliary read plane — **not live**; not this template. |
 | **§0.3** | Structure / observation descriptors only. No profit claims. |
 | **§5.2.2** | Sticky scale. Do not rewrite every generation. |
 | **§5.5** | `gex_v1` units frozen. This template does not unfreeze them. |
@@ -146,18 +145,18 @@ not a rewrite of single-expiry templates, and not fake columns.
 | **GC1 — Pack of listed books** | Input is N dual-side books for **one** underlier, **same wings**, listed expirations. Rows share a strike window. Columns are those expirations, near-dated left. |
 | **GC2 — Frozen formula** | Cell math is existing `gex_v1`. Call GEX \(+\Gamma·OI·S^2\); put GEX \(-\Gamma·OI·S^2\); net = sum. **Not** `gamma × OI × 100`. **No volume.** Call `gexSide` / `gexNet` / `gexAbs` in `pricing.ts`. Do not duplicate. |
 | **GC3 — Fail loud, never fake** | Empty pack / pack not available → empty grid + **named** empty state. **Forbidden:** repeating one expiry as N columns. A genuine one-expiry pack is **one column** (AT-GC1), not a fake calendar. |
-| **GC4 — Cell identity** | Default cell (`gex_net`) = call + put at that strike **for that expiration**. `valid` false if both sides missing; `gex_net` still requires both sides (AT-HM13). Invalid display is **blank**, not `$0`, and does not paint cyan/magenta. `$0` only when the value is actually zero. |
+| **GC4 — Cell identity** | Default cell (`gex_net`) = call + put at that strike **for that expiration**. `valid` false if **any required side** is missing (AT-GC10 / AT-HM13). For `gex_net` and `gex_abs` both sides are required. Invalid display is **blank**, not `$0`, and does not paint cyan/magenta. `$0` only when the value is actually zero. |
 | **GC5 — NET footer** | Per column: sum of **valid** cells. Invalid cells are omitted, not treated as zero. Sticky footer. |
 | **GC6 — Companion profile** | Bar at strike \(K\) = sum of valid net GEX at \(K\) across **visible columns** (the expirations on screen, not the whole universe). Same strike scroll as the grid. Spot gutter on both panes. |
-| **GC7 — One peak** | Peak = \(\mathrm{argmax}\,|profile\ bar|\) in the visible strike window. Gold on that strike (outline on the grid row is enough; gold fill on the profile bar). Not a trade cue. v1 does **not** ship green/red secondary outliers (**OD-GC3**). Changing sticky scale does not flip sign colors. |
+| **GC7 — One peak** | Peak = \(\mathrm{argmax}\,|profile\ bar|\) in the visible strike window. Gold on that strike (outline on the grid row is enough; gold fill on the profile bar). Not a trade cue. v1 does **not** ship green/red secondary outliers (**OD-GC3 ACCEPT**, Coach GC0-0). Changing sticky scale does not flip sign colors. |
 | **GC8 — Spot row** | `isSpot` on the listed strike nearest live (or Time Machine) spot. Gutter on grid **and** profile. |
 | **GC9 — This template’s scale** | Diverging cyan (negative) ↔ near-black (0) ↔ magenta (positive). Sticky scale = max \(\|cell.value\|\) in the current visible grid, hysteresis as HM §5.2.2. Frozen `gex` and LIM colors stay byte-identical. |
 | **GC10 — Observation-only chrome** | No magnet / pin / air pocket / support / resistance / buy / sell in chrome, tooltips, or help. Peak copy: largest \|mass\| in this window. |
 | **GC11 — No vendor string** | No string `ITMatrix` / `itmatrix` in member chrome, ids, or help. |
 | **GC12 — Time is not this packet** | Live = current chain generations. Historical / replay = Time Machine later. No 3D. No vendor STEP / SPEED. |
 | **GC13 — Isolation** | Do not restyle frozen `gex` or LIM. Do not open `AnalyzerPositionsList`. Append the registry; do not reorder frozen entries. StudioTwo only. |
-| **GC14 — Flag until ODs** | Until **OD-GC1…GC4** are stamped, ship behind a flag, AT-GC1…8 on fixtures, **no production switcher entry**. |
-| **GC15 — Layout** | `layout: "matrix-profile"`. Grid is primary; profile is a companion pane. Do not stuff a profile into fly-matrix chrome. If the enum cannot express this, add the value rather than overload `"matrix"`. |
+| **GC14 — Flag until switcher** | **OD-GC1…GC5** are stamped at **GC0-0**. Until **GC4-G**, ship behind a flag, AT pack on fixtures, **no production switcher entry**. |
+| **GC15 — Layout** | `layout: "matrix-profile"` (**OD-GC5 ACCEPT**, Coach GC0-0). Grid is primary; profile is a companion pane. Do not stuff a profile into fly-matrix chrome. Do not overload `"matrix"`. |
 | **GC16 — Compact dollars** | Cell `display` = compact currency of the raw `gex_v1` `value` (`$12.4M`, `-$159.5M`). Do not reuse frozen `gex` `GEX_DISPLAY_DIV` (÷1e9) for this chrome. AT-GC1 compares **formula values** to frozen `gexNet` per strike, not display strings. |
 | **GC17 — Dual-side per book** | Net GEX always uses both sides of that book. Side filter (HM16) does not drop the other side from the cell. |
 | **GC18 — One underlier** | One symbol. No cross-fill SPY→SPX. Spot from the live underlier pattern / TM spot, bound to the product key. |
@@ -176,7 +175,7 @@ not a rewrite of single-expiry templates, and not fake columns.
   label: "Term Mass",                     // OD-GC4 LOCKED — Coach 2026-09-18; not a vendor name
   description:
     "Strike × expiration matrix of chain GEX (estimate) · companion profile · NET footer",
-  layout: "matrix-profile",               // GC15 — new TemplateLayout value
+  layout: "matrix-profile",               // GC15 · OD-GC5 ACCEPT — new TemplateLayout value
   valueModes: [
     { id: "gex_net", label: "Net" },      // default
     { id: "gex_abs", label: "Absolute" },
@@ -187,7 +186,7 @@ not a rewrite of single-expiry templates, and not fake columns.
 ```
 
 `ValueModeId` already has `gex_net` / `gex_abs` / `gex_all`. Do not add a fourth GEX
-mode. `TemplateLayout` gains `"matrix-profile"`.
+mode. `TemplateLayout` gains `"matrix-profile"` (**OD-GC5 ACCEPT**).
 
 **Switcher:** append `gex-cal` after frozen `gex` / `lim` **only** when **GC14** lifts.
 Member string is **Term Mass**. Until then the registry may include the template
@@ -219,9 +218,11 @@ LIM / flies keep reading the front (or currently selected) book unchanged.
 **Forbidden:** constructing N columns from one `ChainContext` by relabeling the same
 expiry. That is the AT-GC8 fake.
 
-### 5.2 Where the books come from (**OD-GC1**)
+### 5.2 Where the books come from (**OD-GC1 ACCEPT**)
 
-Two lawful sources — Coach stamps one:
+Coach GC0-0 **ACCEPT:** join live generations already listed on the Heatmap strip.
+
+Two sources were on the table; the stamped one is the first:
 
 | Option | Meaning |
 |--------|---------|
@@ -281,7 +282,7 @@ missing contract on a required side → `valid: false` (HM7, AT-HM13 for net).
 |-------|-----|
 | `value` | net GEX (number) or `null` |
 | `display` | compact dollars (**GC16**) or `null` when invalid |
-| `valid` | false if required sides missing |
+| `valid` | false if **any required side** is missing (GC4 · AT-GC10) |
 
 **`gex_abs`:** \(|C|+|P|\) at that \((K,E)\); both sides required (same as `gexAbs`).
 **`gex_all`:** expose call and put (combined), still one cell per \((K,E)\). Default
@@ -338,7 +339,7 @@ Sign colors do not flip when the sticky scale updates (**AT-GC4**).
 ## 8. Chrome
 
 Keep Options Lab Heatmap chrome: template switcher, expiration / wings as today,
-inspector (HM21).
+inspector (**HM21** = tab-session, v0.2.4).
 
 **This template adds:**
 
@@ -437,7 +438,7 @@ Formula stays in `pricing.ts`. Call those per (expiration, strike).
 | **AT-GC8** | Empty pack / pack not available → empty grid + loud named empty state, **not** a repeated single-expiry fake calendar. |
 | **AT-GC9** | Constructing columns by relabeling one book as N expirations is refused (same as AT-GC8). |
 | **AT-GC10** | `gex_net` with only one side present → invalid (AT-HM13 inherited). |
-| **AT-GC11** | Color hysteresis: p95 / max \(\lvert value\rvert\) within 25% across generations → no re-normalize (AT-HM16 pattern). |
+| **AT-GC11** | Color hysteresis: max \(\lvert value\rvert\) within 25% across generations → no re-normalize (GC9 · AT-HM16 pattern). |
 | **AT-GC12** | Template / value-mode switch → zero extra Massive (HM2). |
 | **AT-GC13** | Compact display: actual zero → `$0` (or `$0K`); invalid → blank. |
 | **AT-GC14** | Registry append does not reorder frozen `gex` / `lim` / `sym-fly` / `width-fit` entries. Frozen `gex` SHA1 / byte check unchanged. |
@@ -446,18 +447,15 @@ Formula stays in `pricing.ts`. Call those per (expiration, strike).
 
 ## 13. Open decisions — Accept / Override
 
-Until these four are stamped, **GC14**: flag, fixtures only, no production switcher.
+**GC0-0 (Coach 2026-09-18): OD-GC1…GC5 ACCEPT.** **GC14** is now “flag until GC4-G,” not “until ODs.”
 
-| ID | Topic | Source question | Recommendation (not a stamp) |
-|----|-------|-----------------|------------------------------|
-| **OD-GC1** | **Pack** | Wait for a multi-book / MEXP GO, or join N live chain generations now if the picker already has them? | Join the expirations **already listed** on the Heatmap strip (HM2 attach). Do not wait for SSR-MEXP (archive) to draw live columns. Fail loud (GC3) when a listed expiry has no book. |
-| **OD-GC2** | **N columns** | All listed on the strip, or a fixed 5–7? | Visible = listed on the strip, typical ~5–10, **not** the entire calendar. A later cap is a param, not a second template. |
-| **OD-GC3** | **Peak chrome** | Gold only, or also green/red outliers like the tape? | **Gold only** in v1. Green/red carried as a flagged idea (FI-GC1). |
-| **OD-GC4** | **Member label** | `GEX calendar` vs Echo’s name? | **LOCKED — Term Mass** (Coach 2026-09-18). Echo does not rename. Must not contain a vendor name. Originating placeholder “GEX calendar” kept in conversion notes. |
-
-**OD-GC5 (layout, added for implementability — Coach may discard):** add
-`TemplateLayout` value `"matrix-profile"` rather than overload `"matrix"`.
-Recommendation: **Accept**.
+| ID | Topic | Source question | Disposition |
+|----|-------|-----------------|-------------|
+| **OD-GC1** | **Pack** | Wait for a multi-book / MEXP GO, or join N live chain generations now if the picker already has them? | **ACCEPT.** Join the expirations **already listed** on the Heatmap strip (HM2 attach). Do not wait for SSR-MEXP. Fail loud (GC3) when a listed expiry has no book. |
+| **OD-GC2** | **N columns** | All listed on the strip, or a fixed 5–7? | **ACCEPT.** Visible = listed on the strip, typical ~5–10, **not** the entire calendar. A later cap is a param, not a second template. |
+| **OD-GC3** | **Peak chrome** | Gold only, or also green/red outliers like the tape? | **ACCEPT.** Gold only in v1. Green/red = FI-GC1. |
+| **OD-GC4** | **Member label** | `GEX calendar` vs Echo’s name? | **ACCEPT — Term Mass** (Coach 2026-09-18). Echo does not rename. No vendor name. Originating placeholder “GEX calendar” kept in conversion notes. |
+| **OD-GC5** | **Layout enum** | Add `"matrix-profile"` or overload `"matrix"`? | **ACCEPT.** `TemplateLayout` gains `"matrix-profile"`. Do not overload `"matrix"`. |
 
 ---
 
@@ -491,7 +489,7 @@ Flagged ideas: see also `Architecture/flagged-ideas.md` at Coach disposition.
 
 ## 15. Implementation sequence (ready for plan derivation — not a board)
 
-**Not BUILD AUTHORITY.** Juliet does not seed from this file until Phase 5.
+**BUILD AUTHORITY** upon `GC0-W0` stamp (**GC0-0**). Product code starts at **GC1**.
 
 | Phase | Deliverable |
 |-------|-------------|
@@ -521,8 +519,8 @@ Tests first. Frozen `gex` / LIM byte checks on every phase.
 
 | Version | Date | Notes |
 |---------|------|-------|
-| **v0.1.1** | 2026-09-18 | **OD-GC4 LOCKED — Term Mass** (Coach). Picker string, AT-GC6, help filename. Originating “GEX calendar” kept in conversion notes. Bench plan v1.0. |
-| **v0.1** | 2026-09-18 | Initial DRAFT. Conversion of Coach’s Grok prompt (ITMatrix-derived view) into Heatmap Templates form. AT-GC1…8 carried; AT-GC9…14 added for fake-pack, HM13, hysteresis, traffic, display, registry isolation. OD-GC1…GC4 carried from source §9; OD-GC5 layout enum added as a recommendation. |
+| **v0.1.1** | 2026-09-18 | Advisor F1–F2 fork. GC4 = invalid if **any required side** missing. AT-GC11 drops “p95 /”. GC7 / GC15 / §4 note OD-GC3 / OD-GC5 stamped. §13 lead-in: ODs ACCEPT; GC14 = flag until GC4-G. Header **GC0-0**. **OD-GC1…GC5 ACCEPT.** v0_1 remains baseline. |
+| **v0.1** | 2026-09-18 | Initial DRAFT. Conversion of Coach’s Grok prompt (ITMatrix-derived view) into Heatmap Templates form. Baseline freeze. |
 
 **One-line law**
 

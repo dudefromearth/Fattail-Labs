@@ -1,6 +1,6 @@
 # Options Lab — Heatmap Template Architecture
 
-**Status:** **AS-BUILT (partial)** (2026-09-02) — dual-side generation + template registry + **Advanced Fly** (id `sym-fly`) + **Width Fit** + gex_v1 + ladder + **HM21** inspector tab-session; vertical/bw-fly landed; **LIM** (`lim`, `layout: "quadrant"`) **DL-653**  
+**Status:** **AS-BUILT (partial)** (2026-09-18) — dual-side generation + template registry + **Advanced Fly** (id `sym-fly`) + **Width Fit** + gex_v1 + ladder + **HM21** inspector tab-session; vertical/bw-fly landed; **LIM** (`lim`, `layout: "quadrant"`) **DL-653**; **Term Mass** (`gex-cal`, `layout: "matrix-profile"`) **DL-763** (flag `NEXT_PUBLIC_LABS_HEATMAP_TERM_MASS`)  
 **Surface:** Options Lab → **Heatmap** (`/app/options-lab/heatmap`)  
 **Type:** Design + as-built map — live chain **views** (templates) over one shared option-chain model  
 **Product law:** [`Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md`](../Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) **v0.2.1** (**HM21** · **DL-575**) · **Advanced Fly** [`Specs/FatTail-Labs-Options-Lab-Heatmap-Advanced-Fly-Spec-v0_2.md`](../Specs/FatTail-Labs-Options-Lab-Heatmap-Advanced-Fly-Spec-v0_2.md) (v0.2.4) · **DL-311**  

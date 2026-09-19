@@ -4,6 +4,20 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-18 — DL-763 Term Mass (`gex-cal`) GC0-0
+
+**Decision (Coach GC0-0, 2026-09-18).** Heatmap template `gex-cal`, picker **Term Mass**, is **BUILD AUTHORITY**. Spec [`FatTail-Labs-Options-Lab-Heatmap-GEX-Calendar-Spec-v0_1_1.md`](../Specs/FatTail-Labs-Options-Lab-Heatmap-GEX-Calendar-Spec-v0_1_1.md) sha1 `37c4427c2ffc3071dc27a8592c16cf6307acd289`. Plan v1.1. Token `agents/go/GC0-W0.md`. Board `agents/p-options-lab-heatmap-gex-calendar/`. v0_1 remains baseline freeze. Options Lab suite app label is **Runner** (route `/app/options-lab/heatmap`).
+
+**OD-GC1…GC5 ACCEPT** (join live strip; N = strip list; gold-only peak; picker Term Mass; `layout: "matrix-profile"`). **JR1–JR8 ACCEPT** (JR6 withdrawn as filename fork; JR8 option **(a)** — AGENTS.md current-state row this packet).
+
+**HM21:** live law remains **inspector tab-session** (Templates v0.2.4 · **DL-575**). Templates v0.3 DRAFT §2.4 reused **HM21** for an auxiliary read plane — **not live**; rebase must not steal the id. gex-cal does not use that plane. GC docs cite inspector as **HM21**.
+
+**Bus:** `MarketSocket.chains` Map + stream `chain_subs` already hold N `(symbol,expiration,wings)` interests. Heatmap has only ever asked for one. GC1 attaches N through the existing socket. No second Massive client. No fake columns.
+
+**Cites:** **DL-747** · **DL-575** · HM1–HM21 v0.2.4 · spec v0.1.1.
+
+---
+
 ## 2026-09-18 — DL-762 Fidelity doctrine + future Spread/Stat-Arb Lab (parked)
 
 **Decision (Coach).** Same thread as D6 / per-contract SoR (**DL-761**). No prior numbered "stat-arb doctrine" row was on `origin/main`; this entry is the durable seat.

@@ -41,7 +41,7 @@ export const HOME_QUICK_NAV_OPTIONS: HomeQuickNavOption[] = [
     id: "options_lab",
     label: "Options Lab",
     required: false,
-    description: "Heatmap, Analyzer, Volume Profile — live options chain.",
+    description: "Runner, Analyzer, Volume Profile — live options chain.",
   },
   {
     id: "fattail_hard",

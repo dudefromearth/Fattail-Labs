@@ -24,7 +24,12 @@ export type ValueModeId =
   | "quote"
   | "lim";
 
-export type TemplateLayout = "table" | "matrix" | "profile" | "quadrant";
+export type TemplateLayout =
+  | "table"
+  | "matrix"
+  | "profile"
+  | "quadrant"
+  | "matrix-profile";
 
 export type ChainContext = {
   symbol: string;

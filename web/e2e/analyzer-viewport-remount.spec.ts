@@ -102,7 +102,7 @@ test("Analyzer 2D still paints and pans after Surface round-trip", async ({
     .poll(async () => (await canvasPainted(canvas)).ok, { timeout: 45_000 })
     .toBe(true);
 
-  await page.getByRole("link", { name: "Heatmap" }).first().click();
+  await page.getByRole("link", { name: "Runner" }).first().click();
   await page.waitForURL(/\/app\/options-lab\/heatmap/);
   await page.getByRole("link", { name: "Analyzer" }).first().click();
   await page.waitForURL(/\/app\/options-lab\/analyzer/);
