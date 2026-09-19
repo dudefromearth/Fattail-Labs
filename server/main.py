@@ -89,6 +89,7 @@ def create_app() -> FastAPI:
     )
     from routes.vp_contract_proxy import router as vp_contract_proxy_router
     from routes.vp_display import router as vp_display_router
+    from routes.symbology import router as symbology_router
     from routes.pricing import router as pricing_router
     from routes.hard import router as hard_router
     from routes.options_lab_session import router as options_lab_session_router
@@ -177,6 +178,7 @@ def create_app() -> FastAPI:
     app.include_router(volume_profile_admin_router)
     app.include_router(vp_contract_proxy_router)
     app.include_router(vp_display_router)
+    app.include_router(symbology_router)
     if cfg.env == "dev":
         from routes.sa_dev import router as sa_dev_router
         from routes.vp_contract_mock import router as vp_contract_mock_router

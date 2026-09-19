@@ -10,8 +10,8 @@
 | Gate | Packet | Seat | Machine | Status |
 |------|--------|------|---------|--------|
 | SYM0-G | Advisor pass v0.2.1 | India | StudioTwo | **PASS** · **DL-772** |
-| SYM1-G | Registry API + SYM laws + PP-1 initial rows | Alpha + Kilo | StudioOne **CP-1** | **IN FLIGHT** |
-| SYM2-G | Tagged fixture §5 | Alpha + Kilo | StudioTwo (file) | **IN FLIGHT** |
+| SYM1-G | Registry API + SYM laws + PP-1 initial rows | Alpha + Kilo | StudioOne **CP-1** | **PASS (GO)** |
+| SYM2-G | Tagged fixture §5 | Alpha + Kilo | StudioTwo (file) | **PASS (GO)** |
 | SYM3-G | REQ-003 tile + dialog | Echo + Charlie | StudioTwo | **HOLD** — PNG |
 | SYM-SWAP-G | Delete fixture; live API | Alpha + Charlie + Delta | StudioOne CP-1 + StudioTwo | after SYM1+SYM3 |
 | SYM-AT | SYM-AT-1…14 artifacts | Kilo + Delta | both | after SWAP |

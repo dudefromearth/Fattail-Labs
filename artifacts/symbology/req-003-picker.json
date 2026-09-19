@@ -1,0 +1,39 @@
+{
+  "tag": "FIXTURE",
+  "spec": "FatTail-Labs-Symbology-Registry-Service-Spec-v0_2_1.md",
+  "spec_sha1": "c87580829301d9a44e678641023e32c07bca58d6",
+  "law": {
+    "req_003_cannot_close_on_fixture": true,
+    "sym_swap_required_before_ap1": true,
+    "sym3": "HOLD",
+    "vps_stage_a_consumes": false
+  },
+  "not_in_picker": ["SPY"],
+  "picker_sha1": "a6af42c82f11fe732964527aa12158ee19937c28",
+  "picker": [
+    {
+      "symbol": "SPX",
+      "type": "index",
+      "roles": ["options"],
+      "state": "COMING"
+    },
+    {
+      "symbol": "XSP",
+      "type": "index",
+      "roles": ["options"],
+      "state": "COMING"
+    },
+    {
+      "symbol": "ES",
+      "type": "root",
+      "roles": ["price-structure"],
+      "state": "COMING"
+    },
+    {
+      "symbol": "MES",
+      "type": "root",
+      "roles": ["price-structure"],
+      "state": "COMING"
+    }
+  ]
+}
