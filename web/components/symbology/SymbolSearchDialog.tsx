@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/icons";
 import { fetchResolve, fetchUniverse, postGrayTelemetry } from "@/lib/symbology/api";
 import {
+  aliasAgainst,
+  attachStripPointers,
   chromeForRoot,
   continuityCaptionFor,
   familyChildren,
@@ -25,12 +27,15 @@ import {
   groupMatchesChip,
   groupParent,
   groupsFromRows,
-  isBangAlias,
   pairBadgeForRoot,
   pairBadgesFromUniverse,
+  rankSearchGroups,
   rowBindable,
   rowGrayCopy,
   rowIsGray,
+  searchChildren,
+  splitHighlight,
+  stripRoleFor,
 } from "@/lib/symbology/picker";
 import {
   CLASS_CHIPS,
@@ -152,14 +157,21 @@ export default function SymbolSearchDialog({
     if (!resolve || resolve.type === "miss") return [];
     if (resolve.type === "binding" && resolve.binding) {
       const row = resolve.binding;
-      return groupsFromRows([row], [row.root]).filter((g) =>
-        groupMatchesChip(g, chip),
-      );
+      return attachStripPointers(
+        groupsFromRows([row], [row.root]),
+        universe,
+      ).filter((g) => groupMatchesChip(g, chip));
     }
     const matches = resolve.matches || [];
     const order = [...new Set(matches.map((m) => m.root))];
-    return groupsFromRows(matches, order).filter((g) => groupMatchesChip(g, chip));
-  }, [resolve, chip]);
+    const grouped = attachStripPointers(
+      groupsFromRows(matches, order),
+      universe,
+    );
+    return rankSearchGroups(grouped, query).filter((g) =>
+      groupMatchesChip(g, chip),
+    );
+  }, [resolve, chip, universe, query]);
 
   const showingSearch = query.trim().length > 0;
   const groups = showingSearch ? searchGroups : restGroups;
@@ -421,17 +433,6 @@ export default function SymbolSearchDialog({
   );
 }
 
-function searchChildren(group: UniverseGroup, query: string): SymbologyRow[] {
-  const q = query.trim();
-  return group.rows.filter((r) => {
-    if (r.type === "root") return false;
-    if (r.type === "continuity-alias" && !isBangAlias(r.symbol)) {
-      return q === r.symbol || q.toUpperCase() === r.symbol.toUpperCase();
-    }
-    return true;
-  });
-}
-
 function FamilyBlock({
   group,
   query,
@@ -486,6 +487,8 @@ function FamilyBlock({
     return (
       <Row
         row={headerRow}
+        group={group}
+        query={query}
         depth="parent"
         chrome={chrome}
         focused={parentFocused}
@@ -502,6 +505,8 @@ function FamilyBlock({
     <div data-testid={`symbol-search-family-${group.root}`}>
       <Row
         row={headerRow}
+        group={group}
+        query={query}
         depth="parent"
         chrome={chrome}
         focused={parentFocused}
@@ -521,6 +526,8 @@ function FamilyBlock({
               <Row
                 key={row.symbol}
                 row={row}
+                group={group}
+                query={query}
                 depth="child"
                 chrome={chrome}
                 focused={focusKey === key}
@@ -534,8 +541,31 @@ function FamilyBlock({
   );
 }
 
+function Highlighted({ text, query }: { text: string; query: string }) {
+  const parts = splitHighlight(text, query);
+  return (
+    <>
+      {parts.map((p, i) =>
+        p.hit ? (
+          <mark
+            key={`${p.text}-${i}`}
+            data-testid="symbol-search-highlight"
+            className="rounded-[1px] bg-[#ffeb3b] text-black"
+          >
+            {p.text}
+          </mark>
+        ) : (
+          <span key={`${p.text}-${i}`}>{p.text}</span>
+        ),
+      )}
+    </>
+  );
+}
+
 function Row({
   row,
+  group,
+  query,
   depth,
   chrome,
   focused,
@@ -546,6 +576,8 @@ function Row({
   onActivate,
 }: {
   row: SymbologyRow;
+  group: UniverseGroup;
+  query: string;
   depth: "parent" | "child";
   chrome: ReturnType<typeof chromeForRoot>;
   focused: boolean;
@@ -556,8 +588,11 @@ function Row({
   onActivate: () => void;
 }) {
   const gray = rowIsGray(row);
-  const caption = continuityCaptionFor(row);
+  const caption = continuityCaptionFor(row, group);
   const reason = rowGrayCopy(row);
+  const alias = depth === "child" ? aliasAgainst(row, group) : null;
+  const stripRole = depth === "child" ? stripRoleFor(row, group) : null;
+  const name = row.display_name || chrome.title;
   const tickerCls = gray
     ? "text-zinc-400"
     : "text-[#2962ff]";
@@ -567,6 +602,9 @@ function Row({
       data-testid={`symbol-search-row-${row.symbol}`}
       data-type={row.type}
       data-state={row.state || ""}
+      data-depth={depth}
+      data-strip-role={stripRole || ""}
+      data-alias={alias || ""}
       data-focused={focused ? "1" : "0"}
       onMouseEnter={onFocus}
       onFocus={onFocus}
@@ -590,10 +628,22 @@ function Row({
         <span className="sr-only"> </span>
       )}
       <span className={`w-[7.5rem] shrink-0 text-[14px] font-medium ${tickerCls}`}>
-        {row.symbol}
+        <Highlighted text={row.symbol} query={query} />
       </span>
+      {depth === "child" ? (
+        alias ? (
+          <span
+            data-testid="symbol-search-alias-against"
+            className="w-[3.25rem] shrink-0 text-[12px] font-medium text-zinc-500"
+          >
+            <Highlighted text={alias} query={query} />
+          </span>
+        ) : (
+          <span className="w-[3.25rem] shrink-0" aria-hidden />
+        )
+      ) : null}
       <span className="min-w-0 flex-1 truncate text-[13px] text-zinc-700">
-        {chrome.title}
+        <Highlighted text={name} query={query} />
         {caption ? (
           <span
             className="ml-2 text-[11px] text-zinc-500"

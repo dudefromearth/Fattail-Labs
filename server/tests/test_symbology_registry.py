@@ -110,6 +110,39 @@ def test_universe_typed_groups_no_spy_no_family(client):
     assert "index" in seen_types
 
 
+def test_universe_groups_expose_front_forward_and_display_name(client):
+    r = _get(client, "/symbology/v1/universe")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    es = next(g for g in body["groups"] if g["root"] == "ES")
+    strip = service.current_strip()
+    assert es["front"] == strip.front_by_root["ES"]
+    assert es["forward"] == strip.forward_by_root["ES"]
+    assert es["front"] == catalog.pick_front(
+        strip.contracts_by_root["ES"],
+        as_of=strip.as_of,
+        preset_id=strip.house_preset_id,
+    )
+    assert es["forward"] == catalog.pick_nth(
+        strip.contracts_by_root["ES"],
+        as_of=strip.as_of,
+        preset_id=strip.house_preset_id,
+        n=2,
+    )
+    assert es["front"] != es["forward"]
+    by_sym = {row["symbol"]: row for row in es["rows"]}
+    assert by_sym["ES"]["display_name"] == "E-mini S&P 500 Futures"
+    front_name = by_sym[es["front"]]["display_name"]
+    assert front_name.startswith("E-mini S&P 500 Futures ")
+    assert catalog.month_year_label(es["front"]) in front_name
+    for row in es["rows"]:
+        assert row["display_name"]
+    spx = next(g for g in body["groups"] if g["root"] == "SPX")
+    assert "front" not in spx
+    assert "forward" not in spx
+    assert spx["rows"][0]["display_name"] == "S&P 500 Index"
+
+
 def test_universe_es_aliases_and_long_form(client):
     r = _get(client, "/symbology/v1/universe", roles="price-structure")
     assert r.status_code == 200, r.text
@@ -203,6 +236,36 @@ def test_mes_alias_binds_mesz2026(client):
     r = _get(client, "/symbology/v1/resolve", q="MES1!")
     assert r.status_code == 200, r.text
     assert r.json()["binding"]["bound_symbol"] == "MESZ2026"
+
+
+@pytest.mark.parametrize("q", ["e-mini", "s&p", "500"])
+def test_resolve_name_search_reaches_es(client, q):
+    r = _get(client, "/symbology/v1/resolve", q=q)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["type"] == "matches"
+    assert body["binding"] is None
+    roots = {m["root"] for m in body["matches"]}
+    assert "ES" in roots
+    names = {m["display_name"] for m in body["matches"]}
+    assert any("E-mini" in (n or "") for n in names)
+
+
+def test_resolve_es_ticker_prefix_ranks_above_name_only(client):
+    r = _get(client, "/symbology/v1/resolve", q="es")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["type"] == "matches"
+    order: list[str] = []
+    for m in body["matches"]:
+        if m["root"] not in order:
+            order.append(m["root"])
+    assert order[0] == "ES"
+    assert "MES" in order
+    assert order.index("ES") < order.index("MES")
+    symbols = {m["symbol"] for m in body["matches"]}
+    assert "ES1!" in symbols
+    assert any(m["root"] == "ES" and m["type"] == "contract" for m in body["matches"])
 
 
 def test_root_es_lists_does_not_bind(client):

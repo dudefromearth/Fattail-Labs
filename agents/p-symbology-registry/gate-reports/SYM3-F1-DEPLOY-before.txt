@@ -1,0 +1,19 @@
+SYM3-F1 StudioOne overlay BEFORE
+captured_at_et Sat Sep 19 17:27:00 EDT 2026
+StudioOne.local
+36699be9
+=== chain_feed ===
+  538     1 04-09:57:21   0.0  0.2  71088 /opt/homebrew/Cellar/python@3.12/3.12.12/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python -m market_data.chain_feed --interval 2
+=== symbology 4011 ===
+COMMAND   PID  USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+Python  24910 ernie    6u  IPv4 0x2d9251aaf360ddd0      0t0  TCP *:4011 (LISTEN)
+=== chain-feed log ===
+-rw-r--r--  1 ernie  staff  37810577 Sep 19 17:26 /Users/ernie/Library/Logs/fattail-labs/chain-feed.out.log
+LAST_LINE no interest keys; idle
+
+LOG_BYTES  37810577
+
+=== load ===
+17:27  up 23 days, 17:53, 2 users, load averages: 1.90 2.12 1.98
+=== vp-api ===
+74792 01-00:42:40   0.6 347760 /opt/homebrew/Cellar/python@3.12/3.12.12/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python -m market_data.vp_api

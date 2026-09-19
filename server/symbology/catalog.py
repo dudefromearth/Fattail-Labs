@@ -32,6 +32,22 @@ MONTH_NAMES = {
     "dec": 12,
 }
 
+# English month labels for display_name. Clients must not carry MONTH_CODES.
+MONTH_ABBR = (
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+)
+
 ROLL_ROWS: tuple[dict[str, Any], ...] = (
     {
         "id": "ts-es-106X",
@@ -207,6 +223,15 @@ def parse_long_form(symbol: str) -> tuple[str, int, int] | None:
     if not root.isalpha():
         return None
     return root, int(year_s), CODE_TO_MONTH[code]
+
+
+def month_year_label(symbol: str) -> str | None:
+    """Plain-English month + year for a dated long form (e.g. 'Dec 2026')."""
+    parsed = parse_long_form(symbol)
+    if parsed is None:
+        return None
+    _root, year, month = parsed
+    return f"{MONTH_ABBR[month - 1]} {year}"
 
 
 def trigger_date(expiry: date, preset: dict[str, Any]) -> date:

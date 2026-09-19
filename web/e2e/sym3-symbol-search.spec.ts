@@ -48,9 +48,18 @@ test.describe("SYM3 symbol search", () => {
     await dialog.screenshot({ path: join(shots, "a-at-rest.png") });
 
     await page.getByTestId("symbol-search-row-ES").click();
-    await expect(page.getByTestId("symbol-search-row-ES1!")).toBeVisible();
-    await expect(page.getByTestId("symbol-search-row-ES2!")).toBeVisible();
-    await expect(page.getByTestId("symbol-search-family-ES")).toContainText(
+    const family = page.getByTestId("symbol-search-family-ES");
+    const children = family.locator('[data-depth="child"]');
+    await expect(children.nth(0)).toHaveAttribute("data-strip-role", "front");
+    await expect(children.nth(0).getByTestId("symbol-search-alias-against")).toHaveText(
+      "ES1!",
+    );
+    await expect(children.nth(1)).toHaveAttribute("data-strip-role", "forward");
+    await expect(children.nth(1).getByTestId("symbol-search-alias-against")).toHaveText(
+      "ES2!",
+    );
+    await expect(page.getByTestId("symbol-search-row-ES1!")).toHaveCount(0);
+    await expect(family).toContainText(
       "opens front contract · continuous coming",
     );
     await expect(page.getByTestId("symbol-search-pair-badge").filter({ hasText: "ES → SPX" }).first()).toBeVisible();
@@ -73,5 +82,49 @@ test.describe("SYM3 symbol search", () => {
       "Not supported yet",
     );
     await dialog.screenshot({ path: join(shots, "d-gray-nq.png") });
+  });
+
+  test("type es: ES family on top, front then forward, highlights", async ({
+    page,
+  }) => {
+    test.setTimeout(180_000);
+    mkdirSync(shots, { recursive: true });
+    await login(page);
+    await page.goto("/app/options-lab/volume-profile");
+    await page.getByTestId("symbol-search-tile").click();
+    const dialog = page.getByTestId("symbol-search-dialog");
+    await expect(dialog).toBeVisible();
+    await page.getByTestId("symbol-search-input").fill("es");
+    const families = page.locator('[data-testid^="symbol-search-family-"]');
+    await expect(families.first()).toHaveAttribute(
+      "data-testid",
+      "symbol-search-family-ES",
+      { timeout: 15_000 },
+    );
+    const family = page.getByTestId("symbol-search-family-ES");
+    const children = family.locator('[data-depth="child"]');
+    await expect(children.nth(0)).toHaveAttribute("data-strip-role", "front");
+    await expect(
+      children.nth(0).getByTestId("symbol-search-alias-against"),
+    ).toHaveText("ES1!");
+    await expect(children.nth(1)).toHaveAttribute("data-strip-role", "forward");
+    await expect(
+      children.nth(1).getByTestId("symbol-search-alias-against"),
+    ).toHaveText("ES2!");
+    await expect(page.getByTestId("symbol-search-highlight").first()).toBeVisible();
+    await dialog.screenshot({ path: join(shots, "f-es-search.png") });
+
+    await page.getByTestId("symbol-search-input").fill("e-mini");
+    await expect(page.getByTestId("symbol-search-family-ES")).toBeVisible({
+      timeout: 15_000,
+    });
+    await page.getByTestId("symbol-search-input").fill("s&p");
+    await expect(page.getByTestId("symbol-search-family-ES")).toBeVisible({
+      timeout: 15_000,
+    });
+    await page.getByTestId("symbol-search-input").fill("500");
+    await expect(page.getByTestId("symbol-search-family-ES")).toBeVisible({
+      timeout: 15_000,
+    });
   });
 });

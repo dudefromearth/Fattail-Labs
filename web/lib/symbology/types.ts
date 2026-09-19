@@ -29,11 +29,17 @@ export type SymbologyRow = {
   metadata_ref: string | null;
   gray: GrayReason | null;
   bound_symbol?: string;
+  /** Plain-English name from the registry. Surfaces do not invent membership. */
+  display_name?: string;
 };
 
 export type UniverseGroup = {
   root: string;
   rows: SymbologyRow[];
+  /** Dated long form as-of strip_generation_id. Futures groups only. */
+  front?: string | null;
+  /** Next contract after front on the live strip. Futures groups only. */
+  forward?: string | null;
 };
 
 export type UniversePayload = {

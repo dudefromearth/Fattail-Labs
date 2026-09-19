@@ -90,36 +90,145 @@ export function isFrontDialect(symbol: string): boolean {
   return symbol.startsWith("/") || symbol.startsWith("@");
 }
 
-export function continuityCaptionFor(row: SymbologyRow): string {
-  if (row.type !== "continuity-alias") return "";
-  if (isFrontDialect(row.symbol)) return CONTINUITY_CAPTION;
+export function continuityCaptionFor(
+  row: SymbologyRow,
+  group?: UniverseGroup,
+): string {
+  if (row.type === "continuity-alias") {
+    if (isFrontDialect(row.symbol)) return CONTINUITY_CAPTION;
+    return "";
+  }
+  if (group && row.type === "contract" && group.front && row.symbol === group.front) {
+    return CONTINUITY_CAPTION;
+  }
   return "";
 }
 
-/** TV family children at rest: 1! / 2! then dated long form. Dialects stay in search. */
+/** TV family children at rest: dated strip only. 1! / 2! are chrome against front/forward. */
 export function isRestChild(row: SymbologyRow): boolean {
-  if (row.type === "contract") return true;
-  if (row.type === "continuity-alias" && isBangAlias(row.symbol)) return true;
-  return false;
+  return row.type === "contract";
 }
 
-export function sortFamilyChildren(rows: SymbologyRow[]): SymbologyRow[] {
-  const rank = (row: SymbologyRow): number => {
-    if (row.type === "continuity-alias" && row.symbol.endsWith("1!")) return 0;
-    if (row.type === "continuity-alias" && row.symbol.endsWith("2!")) return 1;
-    if (row.type === "continuity-alias") return 2;
-    if (row.type === "contract") return 3;
-    return 9;
+export function sortFamilyChildren(
+  rows: SymbologyRow[],
+  group?: Pick<UniverseGroup, "front" | "forward">,
+): SymbologyRow[] {
+  const contracts = rows.filter((r) => r.type === "contract");
+  if (!group) return contracts;
+  const used = new Set<string>();
+  const out: SymbologyRow[] = [];
+  const take = (sym: string | null | undefined) => {
+    if (!sym) return;
+    const hit = contracts.find((r) => r.symbol === sym);
+    if (hit && !used.has(hit.symbol)) {
+      out.push(hit);
+      used.add(hit.symbol);
+    }
   };
-  return [...rows].sort((a, b) => {
-    const d = rank(a) - rank(b);
-    if (d !== 0) return d;
-    return rows.indexOf(a) - rows.indexOf(b);
-  });
+  take(group.front);
+  take(group.forward);
+  for (const row of contracts) {
+    if (used.has(row.symbol)) continue;
+    out.push(row);
+  }
+  return out;
 }
 
 export function familyChildren(group: UniverseGroup): SymbologyRow[] {
-  return sortFamilyChildren(group.rows.filter(isRestChild));
+  return sortFamilyChildren(group.rows.filter(isRestChild), group);
+}
+
+export function stripRoleFor(
+  row: SymbologyRow,
+  group: UniverseGroup,
+): "front" | "forward" | null {
+  if (row.type !== "contract") return null;
+  if (group.front && row.symbol === group.front) return "front";
+  if (group.forward && row.symbol === group.forward) return "forward";
+  return null;
+}
+
+export function aliasAgainst(row: SymbologyRow, group: UniverseGroup): string | null {
+  const role = stripRoleFor(row, group);
+  if (role === "front") return `${group.root}1!`;
+  if (role === "forward") return `${group.root}2!`;
+  return null;
+}
+
+export function searchChildren(group: UniverseGroup, query: string): SymbologyRow[] {
+  const q = query.trim();
+  const kids = familyChildren(group);
+  const dialects = group.rows.filter((r) => {
+    if (r.type !== "continuity-alias" || isBangAlias(r.symbol)) return false;
+    return q === r.symbol || q.toUpperCase() === r.symbol.toUpperCase();
+  });
+  return [...kids, ...dialects];
+}
+
+export function groupSearchRank(group: UniverseGroup, query: string): number {
+  const q = query.trim().toUpperCase();
+  if (!q) return 1;
+  const prefix = group.rows.some((r) => r.symbol.toUpperCase().startsWith(q));
+  return prefix ? 0 : 1;
+}
+
+export function rankSearchGroups(
+  groups: UniverseGroup[],
+  query: string,
+): UniverseGroup[] {
+  return [...groups].sort((a, b) => {
+    const d = groupSearchRank(a, query) - groupSearchRank(b, query);
+    if (d !== 0) return d;
+    return groups.indexOf(a) - groups.indexOf(b);
+  });
+}
+
+export function attachStripPointers(
+  groups: UniverseGroup[],
+  universe: { groups: UniverseGroup[] } | null,
+): UniverseGroup[] {
+  if (!universe) return groups;
+  const byRoot = new Map(universe.groups.map((g) => [g.root, g]));
+  return groups.map((g) => {
+    const src = byRoot.get(g.root);
+    if (!src) return g;
+    const have = new Set(g.rows.map((r) => r.symbol));
+    const parent = src.rows.find((r) => r.type === "root");
+    const rows = parent && !have.has(parent.symbol) ? [parent, ...g.rows] : [...g.rows];
+    return {
+      ...g,
+      front: g.front ?? src.front,
+      forward: g.forward ?? src.forward,
+      rows: rows.map((r) => {
+        if (r.display_name) return r;
+        const hit = src.rows.find((s) => s.symbol === r.symbol);
+        return hit?.display_name ? { ...r, display_name: hit.display_name } : r;
+      }),
+    };
+  });
+}
+
+export type HighlightPart = { text: string; hit: boolean };
+
+export function splitHighlight(text: string, query: string): HighlightPart[] {
+  const q = query.trim();
+  if (!q || !text) return [{ text, hit: false }];
+  const lower = text.toLowerCase();
+  const needle = q.toLowerCase();
+  const parts: HighlightPart[] = [];
+  let i = 0;
+  while (i < text.length) {
+    const j = lower.indexOf(needle, i);
+    if (j < 0) {
+      parts.push({ text: text.slice(i), hit: false });
+      break;
+    }
+    if (j > i) parts.push({ text: text.slice(i, j), hit: false });
+    parts.push({ text: text.slice(j, j + needle.length), hit: true });
+    i = j + needle.length;
+    if (!needle.length) break;
+  }
+  return parts;
 }
 
 export function groupParent(group: UniverseGroup): SymbologyRow | null {

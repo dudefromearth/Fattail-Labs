@@ -27,6 +27,15 @@ ALL_ROOTS = FUTURES_ROOTS + INDEX_ROOTS + STOCK_ROOTS
 # Picker group order (hashed four, then volume-source).
 GROUP_ORDER = ("SPX", "XSP", "ES", "MES", "SPY")
 
+# Plain-English titles on the wire (SYM3-F1). Surfaces do not invent names.
+DISPLAY_TITLES: dict[str, str] = {
+    "ES": "E-mini S&P 500 Futures",
+    "MES": "Micro E-mini S&P 500 Futures",
+    "SPX": "S&P 500 Index",
+    "XSP": "Mini-SPX Index",
+    "SPY": "SPDR S&P 500 ETF Trust",
+}
+
 # Frozen intake generation (SYM-4). Not date.today() — tests stay deterministic.
 INITIAL_AS_OF = date(2026, 9, 19)
 INITIAL_GENERATION_ID = "sg-20260919-001"
@@ -100,6 +109,7 @@ class Row:
             "has_chains": self.has_chains,
             "may_be_active": self.may_be_active,
             "metadata_ref": self.metadata_ref,
+            "display_name": _display_name(self),
         }
         if self.state == "COMING":
             out["gray"] = reasons.payload(reasons.COMING_REASON)
@@ -115,6 +125,7 @@ class Strip:
     house_preset_id: str
     contracts_by_root: dict[str, list[str]]
     front_by_root: dict[str, str]
+    forward_by_root: dict[str, str]
     seq: int
 
 
@@ -129,6 +140,34 @@ def _contracts_for_root(root: str, as_of: date) -> list[str]:
         catalog.contract_symbol(root, y, code)
         for y, _m, code in catalog.quarterly_from(as_of, count=STRIP_CONTRACTS_PER_ROOT)
     ]
+
+
+def _display_name(row: Row) -> str:
+    title = DISPLAY_TITLES.get(row.root, row.root)
+    if row.type == "contract":
+        label = catalog.month_year_label(row.symbol)
+        if label:
+            return f"{title} {label}"
+    return title
+
+
+def _forwards_from_fronts(
+    contracts: dict[str, list[str]],
+    fronts: dict[str, str],
+) -> dict[str, str]:
+    """Forward = next dated contract after front on the live strip.
+
+    Equals catalog.pick_nth(..., n=2) when front is the 1st live contract.
+    """
+    forwards: dict[str, str] = {}
+    for root, clist in contracts.items():
+        front = fronts.get(root)
+        if not front or front not in clist:
+            continue
+        i = clist.index(front)
+        if i + 1 < len(clist):
+            forwards[root] = clist[i + 1]
+    return forwards
 
 
 def _initial_strip() -> Strip:
@@ -147,6 +186,7 @@ def _initial_strip() -> Strip:
         house_preset_id=catalog.HOUSE_PRESET_ID,
         contracts_by_root=contracts,
         front_by_root=fronts,
+        forward_by_root=_forwards_from_fronts(contracts, fronts),
         seq=1,
     )
 
@@ -170,6 +210,7 @@ def current_strip() -> Strip:
             house_preset_id=s.house_preset_id,
             contracts_by_root={k: list(v) for k, v in s.contracts_by_root.items()},
             front_by_root=dict(s.front_by_root),
+            forward_by_root=dict(s.forward_by_root),
             seq=s.seq,
         )
 
@@ -208,6 +249,7 @@ def write_strip_after_close(*, as_of: date, session_open: bool) -> Strip:
             house_preset_id=catalog.HOUSE_PRESET_ID,
             contracts_by_root=contracts,
             front_by_root=fronts,
+            forward_by_root=_forwards_from_fronts(contracts, fronts),
             seq=seq,
         )
         _runtime.strip = new
@@ -351,7 +393,14 @@ def universe(roles_raw: str | None = None) -> dict[str, Any]:
         groups.setdefault(row.root, []).append(row.as_dict())
     order = [root for root in GROUP_ORDER if root in groups]
     order.extend(root for root in groups if root not in GROUP_ORDER)
-    grouped = [{"root": root, "rows": groups[root]} for root in order]
+    grouped: list[dict[str, Any]] = []
+    for root in order:
+        item: dict[str, Any] = {"root": root, "rows": groups[root]}
+        if root in strip.front_by_root:
+            item["front"] = strip.front_by_root[root]
+        if root in strip.forward_by_root:
+            item["forward"] = strip.forward_by_root[root]
+        grouped.append(item)
     return _envelope(
         strip,
         {
@@ -444,6 +493,59 @@ def _row_by_symbol(strip: Strip, symbol: str) -> Row | None:
         if row.symbol == symbol:
             return row
     return None
+
+
+def _row_matches_q(row: Row, needle: str) -> bool:
+    if not needle:
+        return False
+    if needle in row.symbol.upper():
+        return True
+    return needle in _display_name(row).upper()
+
+
+def _visible_role_rows(strip: Strip, wanted: frozenset[str]) -> list[Row]:
+    rows = [r for r in _all_rows(strip) if _row_matches_roles(r, wanted)]
+    if "volume-source" not in wanted:
+        rows = [r for r in rows if r.member_visible]
+    return rows
+
+
+def _full_search(strip: Strip, needle: str, wanted: frozenset[str]) -> list[Row]:
+    """Substring match on ticker AND display_name. Ticker-prefix groups first."""
+    rows = _visible_role_rows(strip, wanted)
+    by_root: dict[str, list[Row]] = {}
+    for row in rows:
+        by_root.setdefault(row.root, []).append(row)
+    matched = [
+        root
+        for root, grows in by_root.items()
+        if any(_row_matches_q(r, needle) for r in grows)
+    ]
+    if not matched:
+        return []
+
+    def order_key(root: str) -> int:
+        try:
+            return GROUP_ORDER.index(root)
+        except ValueError:
+            return 99
+
+    prefix = [
+        root
+        for root in matched
+        if any(r.symbol.upper().startswith(needle) for r in by_root[root])
+    ]
+    name_only = [root for root in matched if root not in prefix]
+    prefix.sort(key=order_key)
+    name_only.sort(key=order_key)
+    out: list[Row] = []
+    for root in prefix + name_only:
+        family = by_root[root]
+        if any(r.type == "root" for r in family):
+            out.extend(r for r in family if r.type != "root")
+        else:
+            out.extend(family)
+    return out
 
 
 def _matches_payload(strip: Strip, q: str, rows: list[Row]) -> dict[str, Any]:
@@ -662,12 +764,10 @@ def resolve(
         if not row.member_visible and "volume-source" not in wanted:
             return _miss_payload(strip, token, "not-available-in-this-app")
         if row.type == "root":
-            listed = [
-                r
-                for r in _all_rows(strip)
-                if r.root == token and r.symbol != token
-            ]
-            return _matches_payload(strip, token, listed)
+            listed = _full_search(strip, token, wanted)
+            if listed:
+                return _matches_payload(strip, token, listed)
+            return _miss_payload(strip, token, "not-supported-yet")
         # cash/index/stock unique bind
         return _binding_payload(
             strip,
@@ -678,6 +778,10 @@ def resolve(
             queried_type=row.type,
             queried_symbol=row.symbol,
         )
+
+    listed = _full_search(strip, token, wanted)
+    if listed:
+        return _matches_payload(strip, token, listed)
 
     # Recognized unsupported (including alias/root forms of those names).
     rec = token.lstrip("/@")

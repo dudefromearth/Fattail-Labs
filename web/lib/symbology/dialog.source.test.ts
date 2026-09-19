@@ -81,4 +81,12 @@ test("continuity caption and pair badge hooks exist", () => {
   assert.match(dialog, /symbol-search-miss/);
 });
 
+test("F1 highlight mark and alias-against chrome exist; no month-code table", () => {
+  assert.match(dialog, /symbol-search-highlight/);
+  assert.match(dialog, /symbol-search-alias-against/);
+  assert.match(dialog, /data-clause5="white-black"/);
+  assert.doesNotMatch(dialog, /FGHJKMNQUVXZ/);
+  assert.doesNotMatch(dialog, /ESZ2026|ESH2027/);
+});
+
 console.log(`\n${n} passed`);
