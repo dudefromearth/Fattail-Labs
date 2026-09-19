@@ -62,7 +62,8 @@ export function openVpStream(
             continue;
           }
           if (parsed.event === "hello") handlers.onHello?.(data);
-          else if (parsed.event === "heartbeat") handlers.onHeartbeat?.(data);
+          else if (parsed.event === "heartbeat" || parsed.event === "hb")
+            handlers.onHeartbeat?.(data);
           else if (parsed.event === "tick")
             handlers.onTick?.(data as { p: number; t?: number; source?: string });
           else if (parsed.event === "bar")

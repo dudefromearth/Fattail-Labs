@@ -28,6 +28,11 @@ const TITLES: Record<DialogPart, string> = {
   mode: "Mode",
 };
 
+const FIELD =
+  "rounded border border-zinc-500 bg-[#131722] px-1.5 py-0.5 text-[11px] text-zinc-200";
+const CHECK = "h-3.5 w-3.5 shrink-0 accent-zinc-200";
+const RANGE = "w-full accent-zinc-300";
+
 function Swatch({
   value,
   fallback,
@@ -40,20 +45,22 @@ function Swatch({
   onChange: (v: string) => void;
 }) {
   return (
-    <input
-      type="color"
-      data-testid={testId}
-      className="h-6 w-7 cursor-pointer bg-transparent"
-      value={asHex(value, fallback)}
-      onChange={(e) => onChange(e.target.value)}
-    />
+    <span className="inline-flex h-7 w-8 overflow-hidden rounded border border-zinc-400 bg-zinc-800">
+      <input
+        type="color"
+        data-testid={testId}
+        className="h-8 w-10 -m-0.5 cursor-pointer border-0 p-0"
+        value={asHex(value, fallback)}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </span>
   );
 }
 
 function Section({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <p className="text-[9px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+      <p className="text-[9px] font-semibold uppercase tracking-wide text-zinc-400">
         {label}
       </p>
       {children}
@@ -99,16 +106,18 @@ export default function SaPartDialog() {
       ref={box}
       data-testid="sa-part-dialog"
       data-part={openPart}
-      className="absolute z-30 w-72 rounded border border-zinc-700 bg-[#1e222d] text-zinc-200 shadow-[var(--elevation-2)]"
+      className="absolute z-30 w-72 rounded border border-zinc-500 bg-[#1e222d] text-zinc-200 shadow-lg"
       style={{
         left: prefs.dialogPos.x,
         top: prefs.dialogPos.y,
         fontFamily: '"Trebuchet MS", "Segoe UI", sans-serif',
         fontSize: 13,
+        color: "#d1d4dc",
+        background: "#1e222d",
       }}
     >
       <header
-        className="flex cursor-move items-center gap-2 border-b border-[var(--color-separator)] px-2 py-1.5"
+        className="flex cursor-move items-center gap-2 border-b border-zinc-600 px-2 py-1.5"
         onMouseDown={(e) => {
           drag.current = {
             dx: e.clientX - prefs.dialogPos.x,
@@ -132,13 +141,13 @@ export default function SaPartDialog() {
           window.addEventListener("mouseup", up);
         }}
       >
-        <span className="text-xs font-semibold text-[var(--color-label)]">
+        <span className="text-xs font-semibold text-zinc-100">
           {TITLES[openPart]}
         </span>
         {canToggle ? (
           <button
             type="button"
-            className="ml-auto h-6 rounded px-2 text-[11px]"
+            className="ml-auto h-6 rounded border border-zinc-500 px-2 text-[11px] text-zinc-200"
             data-testid="sa-dialog-primary-toggle"
             onClick={() => setVisible(canToggle, !prefs.visible[canToggle])}
           >
@@ -150,13 +159,13 @@ export default function SaPartDialog() {
         <button
           type="button"
           aria-label="Close"
-          className="h-6 w-6 text-[var(--color-label-tertiary)]"
+          className="h-6 w-6 text-zinc-400"
           onClick={close}
         >
           ×
         </button>
       </header>
-      <div className="max-h-[28rem] space-y-3 overflow-y-auto px-2 py-2 text-[11px] text-[var(--color-label)]">
+      <div className="max-h-[28rem] space-y-3 overflow-y-auto px-2 py-2 text-[11px] text-zinc-200">
         {def?.reserved ? (
           <p data-testid="sa-dialog-reserved">{def.note}</p>
         ) : null}
@@ -176,6 +185,7 @@ export default function SaPartDialog() {
               <span className="flex items-center gap-2">
                 <input
                   type="checkbox"
+                  className={CHECK}
                   checked={prefs.vertGridOn}
                   onChange={(e) => patch({ vertGridOn: e.target.checked })}
                 />
@@ -191,6 +201,7 @@ export default function SaPartDialog() {
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
+                className={CHECK}
                 checked={prefs.horzGridOn}
                 onChange={(e) => patch({ horzGridOn: e.target.checked })}
               />
@@ -207,7 +218,7 @@ export default function SaPartDialog() {
                 onChange={(e) =>
                   patch({ gridOpacity: Number(e.target.value) / 100 })
                 }
-                className="w-full"
+                className={RANGE}
               />
             </label>
             <label className="flex items-center justify-between gap-2">
@@ -219,7 +230,7 @@ export default function SaPartDialog() {
                   onChange={(v) => patch({ crosshairColor: v })}
                 />
                 <select
-                  className="bg-transparent"
+                  className={FIELD}
                   value={prefs.crosshairStyle}
                   onChange={(e) =>
                     patch({
@@ -248,7 +259,7 @@ export default function SaPartDialog() {
                   onChange={(v) => patch({ axisTextColor: v })}
                 />
                 <select
-                  className="bg-transparent"
+                  className={FIELD}
                   data-testid="sa-axis-font-size"
                   value={prefs.axisFontSize}
                   onChange={(e) =>
@@ -266,7 +277,7 @@ export default function SaPartDialog() {
             <label className="flex items-center justify-between gap-2">
               Font
               <select
-                className="max-w-[9rem] bg-transparent"
+                className={`${FIELD} max-w-[9rem]`}
                 data-testid="sa-axis-font"
                 value={prefs.axisFont}
                 onChange={(e) => patch({ axisFont: e.target.value })}
@@ -298,7 +309,7 @@ export default function SaPartDialog() {
                   type="number"
                   min={0}
                   max={40}
-                  className="w-12 bg-transparent text-right"
+                  className={`${FIELD} w-12 text-right`}
                   value={Math.round((prefs.marginTop ?? 0.05) * 100)}
                   onChange={(e) =>
                     patch({
@@ -316,7 +327,7 @@ export default function SaPartDialog() {
                   type="number"
                   min={0}
                   max={40}
-                  className="w-12 bg-transparent text-right"
+                  className={`${FIELD} w-12 text-right`}
                   value={Math.round((prefs.marginBottom ?? 0.05) * 100)}
                   onChange={(e) =>
                     patch({
@@ -336,7 +347,7 @@ export default function SaPartDialog() {
                   type="number"
                   min={0}
                   max={40}
-                  className="w-12 bg-transparent text-right"
+                  className={`${FIELD} w-12 text-right`}
                   value={prefs.rightOffsetBars}
                   onChange={(e) =>
                     patch({
@@ -358,7 +369,7 @@ export default function SaPartDialog() {
             <label className="block">
               Format
               <select
-                className="ml-1 bg-transparent"
+                className={`ml-1 ${FIELD}`}
                 value={prefs.priceFormat}
                 onChange={(e) =>
                   patch({
@@ -374,6 +385,7 @@ export default function SaPartDialog() {
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
+                className={CHECK}
                 checked={prefs.colorByPrevClose}
                 onChange={(e) => patch({ colorByPrevClose: e.target.checked })}
               />
@@ -383,6 +395,7 @@ export default function SaPartDialog() {
               <span className="flex items-center gap-2">
                 <input
                   type="checkbox"
+                  className={CHECK}
                   checked={prefs.candleBodyOn}
                   onChange={(e) => patch({ candleBodyOn: e.target.checked })}
                 />
@@ -405,6 +418,7 @@ export default function SaPartDialog() {
               <span className="flex items-center gap-2">
                 <input
                   type="checkbox"
+                  className={CHECK}
                   checked={prefs.candleBorderOn}
                   onChange={(e) => patch({ candleBorderOn: e.target.checked })}
                 />
@@ -427,6 +441,7 @@ export default function SaPartDialog() {
               <span className="flex items-center gap-2">
                 <input
                   type="checkbox"
+                  className={CHECK}
                   checked={prefs.candleWickOn}
                   onChange={(e) => patch({ candleWickOn: e.target.checked })}
                 />
@@ -452,7 +467,7 @@ export default function SaPartDialog() {
           <label className="block">
             VP anchor
             <select
-              className="ml-1 bg-transparent"
+              className={`ml-1 ${FIELD}`}
               data-testid="sa-vp-anchor"
               value={prefs.orientation}
               onChange={(e) =>
@@ -469,7 +484,7 @@ export default function SaPartDialog() {
             <label className="block">
               Scales placement
               <select
-                className="ml-1 bg-transparent"
+                className={`ml-1 ${FIELD}`}
                 data-testid="sa-scale-side"
                 value={prefs.axis}
                 onChange={(e) =>
@@ -490,6 +505,7 @@ export default function SaPartDialog() {
               <span className="flex items-center gap-2">
                 <input
                   type="checkbox"
+                  className={CHECK}
                   checked={prefs.lastPriceOn}
                   onChange={(e) => patch({ lastPriceOn: e.target.checked })}
                 />
@@ -505,6 +521,7 @@ export default function SaPartDialog() {
               <span className="flex items-center gap-2">
                 <input
                   type="checkbox"
+                  className={CHECK}
                   data-testid="sa-hilo-on"
                   checked={prefs.hiLoOn}
                   onChange={(e) => patch({ hiLoOn: e.target.checked })}
@@ -533,6 +550,7 @@ export default function SaPartDialog() {
           <label className="flex items-center gap-2">
             <input
               type="checkbox"
+              className={CHECK}
               checked={prefs.legendOn}
               onChange={(e) => patch({ legendOn: e.target.checked })}
             />
@@ -546,13 +564,13 @@ export default function SaPartDialog() {
               type="number"
               min={1}
               max={1096}
-              className="ml-1 w-16 bg-transparent"
+              className={`ml-1 w-16 ${FIELD}`}
               value={prefs.priceLookbackDays}
               onChange={(e) =>
                 patch({ priceLookbackDays: Number(e.target.value) || 5 })
               }
             />
-            <span className="mt-1 block text-[10px] text-[var(--color-label-tertiary)]">
+            <span className="mt-1 block text-[10px] text-zinc-400">
               Moves the price layer only — profile stays full-history (A12).
             </span>
           </label>
@@ -568,7 +586,7 @@ export default function SaPartDialog() {
               onChange={(e) =>
                 patch({ profileWidthFrac: Number(e.target.value) / 100 })
               }
-              className="w-full"
+              className={RANGE}
             />
           </label>
         ) : null}
@@ -583,13 +601,13 @@ export default function SaPartDialog() {
               onChange={(e) =>
                 patch({ profileOpacity: Number(e.target.value) / 100 })
               }
-              className="w-full"
+              className={RANGE}
             />
           </label>
         ) : null}
         {has("mode") ? (
           <div className="space-y-1">
-            <p className="text-[var(--color-label-tertiary)]">
+            <p className="text-zinc-400">
               House defaults stubbed until Coach tunes.
             </p>
             {(["morning", "entry", "management"] as const).map((m) => (
@@ -610,14 +628,14 @@ export default function SaPartDialog() {
           </div>
         ) : null}
         {fields.length === 0 && !def?.reserved ? (
-          <p className="text-[var(--color-label-tertiary)]">
+          <p className="text-zinc-400">
             Display only — no extra settings (A7).
           </p>
         ) : null}
       </div>
       <footer className="border-t border-zinc-700 px-2 py-1.5">
         <select
-          className="w-full bg-transparent text-[11px]"
+          className={`w-full ${FIELD}`}
           data-testid="sa-defaults-menu"
           defaultValue=""
           onChange={(e) => {

@@ -43,6 +43,47 @@ The live tap still has to **load this code** (process restart / deploy). Histori
 
 ---
 
+## Corrections (folded 2026-09-01, P-SV15)
+
+### Post-roll excess — do not mix the reset into Σ gap
+
+Σ gap = −542 on the named contract **includes the 09:31 roll**. Restated **after** the roll (archive 117 at 09:31:06; tape at that snap 1561):
+
+| | named 08-19 put_10 | 08-20 call_10 |
+|--|-------------------:|--------------:|
+| archive after roll | 117 | 186 |
+| archive final | 15758 | 77860 |
+| **archive accretes post-roll** | **15641** | **77674** |
+| tape at roll | 1561 | 1074 |
+| tape final | 14271 | 74896 |
+| **tape accretes post-roll** | **12710** | **73822** |
+| **excess (arch − tape post-roll)** | **+2931** | **+3852** |
+| archive final − RTH/aggs | 15758 − 12827 = **+2931** | 77860 − 74006 = **+3854** |
+
+Named excess **+2931** is the named +22.84% (2930/12827 at ≤16:00; 2931 vs final 15758). Call_10 +3852 vs +3854 (2 lots: roll after 186 vs tape-minus-pre-RTH 184).
+
+### The roll is correct — overnight carry-over is out
+
+Named 09:31:06: archive **117** = tape 1561 − pre-RTH **1444**, exactly. `day.volume` resets at the open and counts RTH-so-far. Overnight carry-over (the 2029 sitting from midnight) is **excluded as an explanation** of the +2931.
+
+Call_10 09:31:03: tape 1074 − pre-RTH 890 = **184**; archive after = **186** (off by 2). Same reset, 2-lot miss.
+
+### Timestamp-alignment lag is not a candidate
+
+Cross-correlate: recompute each step’s `tape_delta` with tape timestamps shifted by k minutes, report Σ\|gap\|.
+
+| lag | named Σ\|gap\| (n_gap0) | call_10 Σ\|gap\| (n_gap0) |
+|----:|------------------------:|--------------------------:|
+| −2 min | 16273 (14) | 46777 (1) |
+| −1 min | 15098 (25) | 40931 (7) |
+| **0** | **9280 (115)** | **10781 (39)** |
+| +1 min | 15826 (19) | 43511 (4) |
+| +2 min | 17316 (14) | 45779 (3) |
+
+Σ\|gap\|-minimising lag is **0** on both, by a wide margin. A lag redistributes and nets to zero; this net **+2931** never reverses. Four consecutive positive gaps 09:48–09:52 ET on the named contract: +509, +104, +427, +485 = **+1525**. Not a lag. Not presented as a candidate.
+
+---
+
 ## Twenty largest \|gap\| — named `O:SPXW260819P07655000`
 
 Times ET. n=312 steps. Σ\|gap\| = **9280**. Top 20 = **7212** (77.7% of Σ\|gap\|).
