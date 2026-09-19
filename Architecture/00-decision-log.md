@@ -4,6 +4,24 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-19 — DL-771 Symbology Registry spec v0.2.1 intake · §0 seats 1–10 ratified
+
+**Decision (Coach, 2026-09-19).** Proceed on Symbology & Registry Service. Spec **v0.2.1** frozen:
+
+- `Specs/FatTail-Labs-Symbology-Registry-Service-Spec-v0_2_1.md`
+- sha1 **`c87580829301d9a44e678641023e32c07bca58d6`** (229 lines)
+- Review object (same sha1): `Specs/FatTail-Labs-Symbology-Registry-Service-Spec-v0.2.1.md`
+
+**§0 seats 1–10 are Coach-ratified** by this direction (were Advisor-seated pending a Coach word). Plan: `docs/Symbology-Registry-Service-Full-Agent-Bench-Plan-v1.0.md`. Board: `agents/p-symbology-registry/`. Token: `agents/go/SYM0-W0.md`. REQ texts: `artifacts/reqs/REQ-001.md` · `REQ-002.md` · `REQ-003.md`.
+
+**First gate:** SYM0-G Advisor pass. **Not** a service-build GO until that PASS.
+
+**Holds:** REQ-003 PNG not on main → SYM3 surface HOLD, ask Coach. D6/D7/D8 stay open. ES/MES model ACTIVE blocked on VPS Q1. CP-1 on StudioOne. SYM-SWAP before REQ-003 AP-1. No "done" before Coach's LIVE browser line.
+
+**Cites:** spec v0.2.1 · RL-1 · AP-1 · PP-1 · **DL-707** CP-1.
+
+---
+
 ## 2026-09-19 — DL-770 REQ-002 hierarchical TV-model settings dialog (VP first)
 
 **Decision.** Combined settings dialog on the VP chart: left sidebar of **our** sections, right pane, white background / black text, context right-click opens that section, gear opens Canvas. Live preview; **Ok** commits; **Cancel** reverts. Persist A22 (`/api/me/sa-surface`); no draft PUT while the dialog is open. Inventory: `agents/p-vp-chart-primitive/gate-reports/REQ-002-inventory.md`. Registry: `web/lib/saSettingsSections.ts`.

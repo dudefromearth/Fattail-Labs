@@ -1,6 +1,6 @@
 # Requirements Ledger (RL-1)
 
-Canonical capture of Coach requirements. Wording preserved. Close only by **AP-1** (Coach acceptance) or explicit withdraw.
+Canonical capture of Coach requirements. Wording preserved. Close only by **AP-1** (Coach acceptance) or explicit withdraw. Hashable FINAL texts: `artifacts/reqs/REQ-001.md` · `REQ-002.md` · `REQ-003.md` (spec §0.8).
 
 Status: `OPEN` · `AP-1` · `WITHDRAWN`
 
