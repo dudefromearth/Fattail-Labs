@@ -183,7 +183,7 @@ export function gexValueToPlotY(
 
 export const gexTemplate: HeatmapTemplate = {
   id: "gex",
-  label: "Chain GEX (estimate)",
+  label: "GEX (traditional)",
   description:
     "Vertical profile · Call+Put combined · Net · Absolute · Γ×OI×S² · not dealer GEX",
   layout: "profile",

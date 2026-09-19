@@ -193,7 +193,7 @@ const ctx = makeCtx();
 }
 
 // Label
-assert(symFlyTemplate.label === "Advanced flies", "label");
+assert(symFlyTemplate.label === "Butterfly (advanced)", "label");
 assert(symFlyTemplate.id === "sym-fly", "id keep");
 assert(symFlyTemplate.defaultValueMode === "debit", "default debit");
 assert(symFlyTemplate.valueModes[0]?.label === "Long/Debit", "long label");

@@ -1,24 +1,24 @@
-# Options Lab Heatmap — Advanced flies values
+# Options Lab Heatmap — Butterfly (advanced) values
 
-Member-facing guide to the Options Lab Heatmap (Advanced flies). Describes what
+Member-facing guide to the Options Lab Runner template **Butterfly (advanced)**. Describes what
 each Value menu choice measures. This is a teaching and inspection tool — it does
 not tell you what to trade, and it never promises a profit.
 
-**Width Fit** is a separate Heatmap **template** (Template switcher), not a
-Value on Advanced flies. See the Width Fit help topic for color-only tiles,
+**Butterfly (width fit)** is a separate Runner **template** (Template switcher), not a
+Value on Butterfly (advanced). See the Width Fit help topic for color-only tiles,
 footer median + n, hover/click panels, and criteria weights.
 
-**GEX lean (window)** is a separate Heatmap **template** (quadrant). See that
+**GEX (quad window)** is a separate Runner **template** (quadrant). See that
 help topic for lean / near-spot mix, the proximity ring, and the four
-standing lines. It is not the frozen Chain GEX (estimate) profile.
+standing lines. It is not the **GEX (traditional)** profile.
 
 ## Options Lab
 Options Lab is the in-app suite for inspecting listed options. Open it from the
 apps area. The Heatmap lives at `/app/options-lab/heatmap`. Analyzer and Surface
 are sibling apps for building a book and viewing its P&L shape.
 
-## Verticals
-A **Verticals** template sits under Broken-wing flies. Same width columns
+## Vertical Spread
+A **Vertical Spread** template sits under Broken Wing Butterfly. Same width columns
 (10…50). **Value** is two tiers. **Debit** or **Credit** is the main
 mode — the listed vertical you are looking at. **Type** is secondary:
 **% Change** and **R:R** describe that Debit or Credit package. Leave
@@ -34,7 +34,7 @@ structure descriptors, not a promised P&L. Missing listed mid → blank
 tile. Option-click copies a VERTICAL thinkorswim script.
 
 ## Heatmap
-Inspector choices (symbol, expiration, template, value, side, Width Fit
+Inspector choices (symbol, expiration, template, value, side, Butterfly (width fit)
 weights and view) stay for **this browser tab session** when you leave for
 other apps and come back. A new tab starts from defaults. See **This tab
 session** for what stays, what does not (hover, Average snapshots), and
@@ -59,7 +59,7 @@ print this tab received. It is not a megabyte slider and not a member
 control of the decay curve. A past day is a download; today is the held
 session.
 
-## Advanced flies Value menu
+## Butterfly (advanced) Value menu
 The Value dropdown chooses **what number** each tile shows (the tile value, sometimes called its score). Every mode uses
 the same grid. Colors are a neighbor rate-of-change of that number; the − / +
 slider under Side makes the color more calm (−) or more sensitive (+). Color

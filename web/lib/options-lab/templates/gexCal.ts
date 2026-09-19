@@ -12,7 +12,7 @@ import type {
 } from "./types";
 
 export const GEX_CAL_TEMPLATE_ID = "gex-cal";
-export const GEX_CAL_LABEL = "Term Mass";
+export const GEX_CAL_LABEL = "GEX (term mass)";
 
 export type GexCalBook = {
   /** YYYY-MM-DD — must equal the pack map key (AT-GC9). */

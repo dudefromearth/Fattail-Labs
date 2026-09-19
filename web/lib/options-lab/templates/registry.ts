@@ -14,12 +14,15 @@ export const DEFAULT_HEATMAP_TEMPLATE_ID = "sym-fly";
 
 export const HEATMAP_TEMPLATES: HeatmapTemplate[] = [
   symFlyTemplate,
-  widthFitTemplate,
   bwFlyTemplate,
+  widthFitTemplate,
   verticalTemplate,
+  limTemplate,
+  gexTemplate,
+  gexCalTemplate,
   {
     id: "ladder",
-    label: "Strike ladder",
+    label: "Strike Ladder (raw data)",
     description: "Raw dual-side chain (view side filtered)",
     layout: "table",
     valueModes: [{ id: "quote", label: "Quotes" }],
@@ -29,9 +32,6 @@ export const HEATMAP_TEMPLATES: HeatmapTemplate[] = [
     computeCell: () => ({ display: null, value: null, valid: false }),
     assignColors: () => ({ stickyScale: 1 }),
   },
-  gexTemplate,
-  limTemplate,
-  gexCalTemplate,
 ];
 
 /** Switcher list — gex-cal only when flag on (GC14 / JR2). */

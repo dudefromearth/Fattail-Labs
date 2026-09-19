@@ -220,7 +220,7 @@ assert(
   HEATMAP_TEMPLATES.some((t) => t.id === WIDTH_FIT_TEMPLATE_ID),
   "Width Fit is a Heatmap template",
 );
-assert(widthFitTemplate.label === "Width Fit", "template label");
+assert(widthFitTemplate.label === "Butterfly (width fit)", "template label");
 
 // Existing debit still computes
 {

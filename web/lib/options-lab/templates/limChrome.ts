@@ -3,7 +3,7 @@
  * Plane-edge labels are Coach-drawn (LIM9). No in-plane copy. No MSC outcome names.
  */
 
-export const LIM_PICKER_LABEL = "GEX lean (window)";
+export const LIM_PICKER_LABEL = "GEX (quad window)";
 export const LIM_MODE_LABEL = "Lean / near-spot mix";
 
 export const LIM_AXIS_X = "Lean";

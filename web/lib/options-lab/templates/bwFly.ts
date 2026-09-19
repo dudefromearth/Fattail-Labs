@@ -61,7 +61,7 @@ function formatDebit(n: number): string {
 
 export const bwFlyTemplate: HeatmapTemplate = {
   id: "bw-fly",
-  label: "Broken-wing flies",
+  label: "Broken Wing Butterfly",
   description:
     "Asymmetric 1-2-1 · equal wing = column width · broken wing = N strikes closest/furthest to spot",
   layout: "matrix",

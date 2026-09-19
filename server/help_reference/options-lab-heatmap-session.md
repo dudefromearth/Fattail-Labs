@@ -5,9 +5,9 @@ browser tab**. Teaching only — it does not tell you what to trade and never
 promises a profit.
 
 ## This tab session
-Open Options Lab → Heatmap (`/app/options-lab/heatmap`). The inspector on
+Open Options Lab → Runner (`/app/options-lab/heatmap`). The inspector on
 the left is your desk: symbol, listed expiration, template, value, Calls or
-Puts, and (on Width Fit) your weights and view.
+Puts, and (on Butterfly (width fit)) your weights and view.
 
 Those choices stay for **this browser tab**. Leave for Analyzer, Surface,
 courses, or the Hub, then come back on the **same tab** — the desk is as
@@ -21,9 +21,9 @@ invent a strike, a mid, or a greek.
 When you return to Heatmap in this tab, these inspector choices come back:
 
 - **Symbol**, **listed expiration**, **Calls** or **Puts**
-- **Template** (Advanced flies, Width Fit, Verticals, and the others)
-- **Value** on Advanced flies, and the − / + color slider
-- **Width Fit** weights, Expand, Heatmap or Ranking, Live / Average /
+- **Template** (Butterfly (advanced), Butterfly (width fit), Vertical Spread, and the others)
+- **Value** on Butterfly (advanced), and the − / + color slider
+- **Butterfly (width fit)** weights, Expand, Heatmap or Ranking, Live / Average /
   Replay, and average window (10 / 20 / 50 / 100)
 
 The strike window is still the held chain.
@@ -44,9 +44,9 @@ snapshots; the inspector choices still return. A **new tab** has neither.
 This is not a server archive and not a history of the market.
 
 ## How to use it
-1. Open **Apps → Options Lab → Heatmap**.
+1. Open **Apps → Options Lab → Runner**.
 2. Set the desk the way you work (symbol, listed expiration, template,
-   side; on Width Fit, your weights and Heatmap or Ranking).
+   side; on Butterfly (width fit), your weights and Heatmap or Ranking).
 3. Leave — Analyzer, another app, or the Hub.
 4. Return on **this tab**. The inspector matches what you set.
 
@@ -59,8 +59,8 @@ the chain for this symbol. If it has dropped off (for example a 0DTE that
 is no longer listed after the close), Heatmap picks a listed date that is
 still there. It will not keep an expired date as if it were live.
 
-## Width Fit
-On the Width Fit template, this tab also remembers Heatmap vs Ranking,
+## Butterfly (width fit)
+On the Butterfly (width fit) template, this tab also remembers Heatmap vs Ranking,
 Live vs Average vs Replay, the window, Expand, and your seven weights.
 See the **Width Fit** help topic for color tiles, ranking, and weights.
 
@@ -69,7 +69,7 @@ Average of colors is observation of listed fit on snapshots this tab held
 
 ## New tab
 A new browser tab (or a new browsing session) starts from product
-defaults: the usual symbol, a listed expiration, Advanced flies, Live,
+defaults: the usual symbol, a listed expiration, Butterfly (advanced), Live,
 Heatmap tiles. Nothing copies from another tab.
 
 Two tabs can each have their own desk. They do not share Average memory.

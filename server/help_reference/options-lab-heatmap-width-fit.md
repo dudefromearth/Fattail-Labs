@@ -1,14 +1,14 @@
-# Options Lab Heatmap — Width Fit
+# Options Lab Heatmap — Butterfly (width fit)
 
-Member-facing guide to the Heatmap **Width Fit** template. It scores listed
+Member-facing guide to the Runner **Butterfly (width fit)** template. It scores listed
 long butterflies for fit to **your** criteria on the live chain. Teaching and
 inspection only — it does not tell you what to trade and never promises a
 profit.
 
-## Width Fit
-Width Fit is a Heatmap **template** (Template switcher), sibling of Advanced
-flies. Open Options Lab → Heatmap (`/app/options-lab/heatmap`) and pick
-**Width Fit**. It is **not** a Value menu item on Advanced flies.
+## Butterfly (width fit)
+Butterfly (width fit) is a Runner **template** (Template switcher), sibling of
+Butterfly (advanced). Open Options Lab → Runner (`/app/options-lab/heatmap`) and pick
+**Butterfly (width fit)**. It is **not** a Value menu item on Butterfly (advanced).
 
 Same long-fly grid: body strike rows, width columns **10, 15, 20, 25, 30, 35,
 40, 45, 50**. Quantities **+1 / −2 / +1** at \(K−w\), \(K\), \(K+w\). Only
@@ -26,8 +26,8 @@ Average of colors is observation of listed fit, not a forecast.
 Ranking display scores are spaced among the top widths so close medians are
 readable; rank order is still the Width Fit median.
 
-## How to open Width Fit
-Apps → Options Lab → Heatmap. Inspector **Template** → **Width Fit**. Choose
+## How to open Butterfly (width fit)
+Apps → Options Lab → Runner. Inspector **Template** → **Butterfly (width fit)**. Choose
 symbol, listed expiration, Calls or Puts. Inspector choices stay for this
 browser tab session when you leave and come back — see **This tab session**.
 The strike window is the held chain. Changing Template does not add a second
@@ -44,7 +44,7 @@ Tiles show **color only** — no numbers on the face.
 
 A light **outline** means high fit **and** neighbors at the same width agree
 (a coherent cluster). Isolated bright cells are suppressed. Color is not a
-directional signal and not a recommendation. The Advanced flies − / + color
+directional signal and not a recommendation. The Butterfly (advanced) − / + color
 slider does not apply on this template.
 
 ## Hover and click
@@ -116,6 +116,6 @@ on isolated cells, not a eighth weight you can zero.
 
 ## What Width Fit is not
 Not a broker, fill, or advice. Not “the best width to trade.” Not the
-Advanced flies Value menu (Long/Debit, Delta, Gamma, Theta, … — those stay
-on **Advanced flies**). Not a P&L picture — use Analyzer and Surface for the
+Butterfly (advanced) Value menu (Long/Debit, Delta, Gamma, Theta, … — those stay
+on **Butterfly (advanced)**). Not a P&L picture — use Analyzer and Surface for the
 book. The app will not invent a strike, a mid, or a greek.

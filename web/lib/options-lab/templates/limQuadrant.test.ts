@@ -292,7 +292,7 @@ const panel = readFileSync(
   assert(ra !== rb, "equal mix, different magF readout");
 }
 
-assert(LIM_PICKER_LABEL === "GEX lean (window)", "placeholder");
+assert(LIM_PICKER_LABEL === "GEX (quad window)", "picker");
 assert(LIM_MODE_LABEL === "Lean / near-spot mix", "mode label");
 assert(limProximityDisplay(0.5) === "0.50", "chip 0-1 two decimals");
 assert(LIM_DISC_R_PT === 20, "E25 disc radius at 1440 ref");

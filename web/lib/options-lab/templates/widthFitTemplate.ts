@@ -12,7 +12,7 @@ export const WIDTH_FIT_TEMPLATE_ID = "width-fit";
 
 export const widthFitTemplate: HeatmapTemplate = {
   id: WIDTH_FIT_TEMPLATE_ID,
-  label: "Width Fit",
+  label: "Butterfly (width fit)",
   description:
     "Fit of listed long butterflies to your criteria on the live surface. Observation only — not a signal.",
   layout: "matrix",

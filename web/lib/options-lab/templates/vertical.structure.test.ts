@@ -52,7 +52,7 @@ assert(verticalFarStrike("put", 100, 10) === 90, "put far is down");
   assert(long === 4, `put long 6−2 = 4 got ${long}`);
 }
 
-assert(verticalTemplate.label === "Verticals", "label");
+assert(verticalTemplate.label === "Vertical Spread", "label");
 assert(verticalTemplate.valueModes[0]?.label === "Debit", "debit");
 assert(verticalTemplate.valueModes[1]?.label === "Credit", "credit");
 

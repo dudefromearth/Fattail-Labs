@@ -118,8 +118,8 @@ Tracks your progress and habits across the platform over time, so you can see th
 your development, not just individual sessions.
 
 ## Options Lab
-The options inspection suite — Heatmap, Analyzer, Surface, Volume Profile.
-Open it from the apps area (`/app/options-lab`). The Heatmap is a grid of
+The options inspection suite — Runner, Analyzer, Surface, Volume Profile.
+Open it from the apps area (`/app/options-lab`). Runner is a grid of
 listed flies; Analyzer is the 2D **Risk graph** and position book
 (`/app/options-lab/analyzer`); Surface is the 3D page
 (`/app/options-lab/surface`). See **Options Lab Analyzer** for how to use
@@ -129,22 +129,22 @@ the day, fidelity says how sharp a past day is yet, and what you cannot
 persist while scrubbing.
 See the Options Lab Heatmap reference for what each Heatmap Value number
 means (Long/Debit, Short/Credit, % Change, Risk to Reward, Delta, Gamma,
-Theta). See **Width Fit** for the Heatmap template that scores listed
+Theta). See **Butterfly (width fit)** for the Runner template that scores listed
 long butterflies against your criteria (color-only tiles, footer n,
-weights). See **GEX lean (window)** for the quadrant that publishes GEX
+weights). See **GEX (quad window)** for the quadrant that publishes GEX
 lean and near-spot mix (factors, not a forecast). See **This tab session**
 for inspector choices that stay when you leave Heatmap and come back on
 the same tab.
 
 ## Heatmap
-Options Lab → Heatmap (`/app/options-lab/heatmap`). Rows are body strikes;
+Options Lab → Runner (`/app/options-lab/heatmap`). Rows are body strikes;
 columns are fly widths 10 through 50. The **Template** switcher picks the
-view. **Advanced flies** uses the Value menu for the number — the tile value, sometimes called the score — on each tile;
+view. **Butterfly (advanced)** uses the Value menu for the number — the tile value, sometimes called the score — on each tile;
 colors follow how that number changes to the neighbor; the − / + slider
-under Side only changes color sensitivity. **Width Fit** is a sibling
+under Side only changes color sensitivity. **Butterfly (width fit)** is a sibling
 template (not a Value): color-only tiles (teal = weaker fit, amber =
 stronger fit to your weights), footer median + n, hover/click panels.
-**GEX lean (window)** is another sibling: a quadrant (lean × near-spot
+**GEX (quad window)** is another sibling: a quadrant (lean × near-spot
 mix) with a proximity ring; Compact keeps the ring.
 Blank or dark tiles mean the fly is not on the listed chain. Inspector
 choices stay for **this browser tab** when you leave and come back; a new

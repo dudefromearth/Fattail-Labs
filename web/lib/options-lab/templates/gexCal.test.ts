@@ -200,6 +200,11 @@ assert(c105.display === null, "invalid not $0");
 
 assert(gexTemplate.id === "gex", "frozen gex id untouched");
 const ids = HEATMAP_TEMPLATES.map((t) => t.id);
+assert(
+  ids.join(",") ===
+    "sym-fly,bw-fly,width-fit,vertical,lim,gex,gex-cal,ladder",
+  `template menu order ${ids.join(",")}`,
+);
 assert(ids.indexOf("gex") < ids.indexOf("gex-cal"), "AT-GC14 after gex");
 assert(ids.indexOf("lim") < ids.indexOf("gex-cal"), "AT-GC14 after lim");
 assert(ids.filter((id) => id === "gex-cal").length === 1, "AT-GC14 once");

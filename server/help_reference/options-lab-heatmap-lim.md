@@ -1,14 +1,14 @@
-# Options Lab Heatmap — GEX lean (window)
+# Options Lab Heatmap — GEX (quad window)
 
 Member-facing guide to the Heatmap **LIM** template. It shows where this
 expiration’s GEX mass sits relative to spot, and the near-spot mix of
 sign, concentration and closeness. Teaching and inspection only — it
 does not tell you what to trade and never promises a profit.
 
-## GEX lean (window)
-A Heatmap **template** (Template switcher), sibling of Advanced flies,
-Width Fit, and Chain GEX (estimate). Open Options Lab → Heatmap
-(`/app/options-lab/heatmap`) and pick **GEX lean (window)**. Code id
+## GEX (quad window)
+A Runner **template** (Template switcher), sibling of Butterfly (advanced),
+Butterfly (width fit), and GEX (traditional). Open Options Lab → Runner
+(`/app/options-lab/heatmap`) and pick **GEX (quad window)**. Code id
 `lim`. Layout is a **quadrant**, not a grid.
 
 The disc is lean (left/right) and near-spot mix (up/down). Colour is
@@ -46,6 +46,6 @@ changes (UTC midnight = 20:00 ET daylight / 19:00 standard — not the
 cash open).
 
 ## How to open
-Apps → Options Lab → Heatmap. Inspector **Template** → **GEX lean
-(window)**. Choose symbol and listed expiration. Changing Template does
+Apps → Options Lab → Runner. Inspector **Template** → **GEX (quad
+window)**. Choose symbol and listed expiration. Changing Template does
 not add a second market feed.

@@ -119,7 +119,7 @@ function invalid(tooltip: string): Omit<GridCell, "colorT" | "bgCss"> {
 
 export const symFlyTemplate: HeatmapTemplate = {
   id: "sym-fly",
-  label: "Advanced flies",
+  label: "Butterfly (advanced)",
   description:
     "Fly surface · Debit default · research Value modes over OPF-held chain",
   layout: "matrix",

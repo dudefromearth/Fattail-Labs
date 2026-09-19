@@ -31,7 +31,7 @@ test("LIM7 surface fit at 1280, 1440, 1920", async ({ page }) => {
   await expect(async () => {
     if ((await tpl.inputValue()) !== "lim") await tpl.selectOption("lim");
     await expect(
-      page.getByRole("heading", { name: "GEX lean (window)" }),
+      page.getByRole("heading", { name: "GEX (quad window)" }),
     ).toBeVisible({ timeout: 2_000 });
   }).toPass({ timeout: 20_000 });
 

@@ -3,6 +3,7 @@
 import { HeatmapHoverTip } from "@/components/options-lab/HeatmapHoverTip";
 import type { GexCalCell, GexCalResult } from "@/lib/options-lab/templates/gexCal";
 import {
+  GEX_CAL_LABEL,
   fmtGexCalDollars,
   gexCalCellFill,
   gexCalColorT,
@@ -30,13 +31,13 @@ function cellTip(cell: GexCalCell, colLabel: string): HeatmapTipModel {
   if (!cell.valid) {
     return {
       title: `${cell.strike} · ${colLabel}`,
-      kicker: "Term Mass",
+      kicker: GEX_CAL_LABEL,
       rows: [{ label: "GEX", value: "Not available", tone: "muted" }],
     };
   }
   return {
     title: `${cell.strike} · ${colLabel}`,
-    kicker: "Term Mass",
+    kicker: GEX_CAL_LABEL,
     rows: [
       {
         label: "Net",
@@ -94,8 +95,8 @@ export default function HeatmapGexCalendar({
         data-testid="term-mass-empty"
       >
         {result.emptyReason === "fake"
-          ? "Term Mass needs a real expiration pack — not one book copied across dates."
-          : "Term Mass pack is not available."}
+          ? `${GEX_CAL_LABEL} needs a real expiration pack — not one book copied across dates.`
+          : `${GEX_CAL_LABEL} pack is not available.`}
       </div>
     );
   }

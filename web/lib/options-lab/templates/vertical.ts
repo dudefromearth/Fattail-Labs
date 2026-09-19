@@ -80,7 +80,7 @@ function formatPkg(n: number): string {
 
 export const verticalTemplate: HeatmapTemplate = {
   id: "vertical",
-  label: "Verticals",
+  label: "Vertical Spread",
   description:
     "Debit or Credit vertical · Type is % Change or R:R of that package",
   layout: "matrix",
