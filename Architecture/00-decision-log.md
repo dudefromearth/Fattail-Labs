@@ -4,6 +4,28 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-19 — DL-768 REQ-002 v2 TV settings dialog fidelity
+
+**Decision.** REQ-002 v2: match the TV settings dialog exactly. Coach: “the same layout, the same control elements and components, the same sizes, everything the same as TV.” Visual contract is `artifacts/references/REQ-002-settings-dialog-reference.png` git blob **`bf9fa21ac600cfe0432f2651dcee9080d55258f4`**. Measurement spec extracted from that file. If the blob is not on `main`, the packet does not dispatch — no substitute screenshot.
+
+**Acceptance:** AP-1 / PP-1 — side-by-side and overlay vs the reference; Coach's own browser, right-click. Spec `Specs/REQ-002-TV-Settings-Dialog-Fidelity-Spec-v2.md`.
+
+**Cites:** RL-1 · A10 · A20 · A22 · **DL-767**.
+
+---
+
+## 2026-09-19 — DL-767 RL-1 Requirements Ledger · REQ-001 VP 90-day price
+
+**Decision (Coach standing rule RL-1, 2026-09-19).** Every requirement Coach states is captured the same session as a numbered **REQ-###** row, wording preserved. Closes only by **AP-1** (Coach acceptance) or explicit withdraw. Open REQs in every status report. Stated twice without a row = process defect. Doctrine §16. Ledger: `agents/bench/requirements-ledger.md`.
+
+**REQ-001 OPEN (VP, now, blocks confirmation):** Without ≥ 90 days of price on the chart, Coach cannot validate the volume profile against known price structure — the VP product is UNCONFIRMED until this lands. Screenshot closes the *range* requirement only. Coach's visual cross-check (nodes/gaps vs 3 months of price he knows) marks the instrument CONFIRMED.
+
+**Process defect (RL-1):** D1/T1 “≥ 3 months of price history” was stated without a REQ row; restated as REQ-001. Filed this session.
+
+**Cites:** doctrine §16 · Data Delivery v1.0 D1 · **DL-760**.
+
+---
+
 ## 2026-09-19 — DL-766 A23 line-count metric is not a defect (Coach)
 
 **Decision (Coach, W4-G accepted).** The AZ-VP-9-A23 line “deleted plumbing exceeds added code” is a **miscalibrated acceptance metric**, not a build failure. It was a line-count prediction. Lifecycle hygiene, pane-band correction, and tests legitimately grow the count.

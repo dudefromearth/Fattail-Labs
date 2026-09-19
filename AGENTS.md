@@ -260,6 +260,8 @@ All agents operate under two constitutional documents:
 
 - **[doctrine.md](./agents/bench/doctrine.md)** — Operating constitution: domain ownership,
   invariants, evidence culture, communication discipline, learner capacity, product boundary.
+  **RL-1** (§16): every Coach requirement is a REQ-### row the same session
+  (`agents/bench/requirements-ledger.md`).
 - **[first-principles-doctrine.md](./agents/bench/first-principles-doctrine.md)** — Immune
   system: build on what exists, Three Strikes → first principles, sunk cost is not an
   argument, evidence over assertion.

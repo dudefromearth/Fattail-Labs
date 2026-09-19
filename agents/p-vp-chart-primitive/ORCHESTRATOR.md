@@ -16,4 +16,8 @@ Coach stamp: zOrder `"top"`; overlay flag W1-G→W3 only, then demolished.
 
 Grok Build orchestrates. Implementers execute. Auto-GO on clean gates. Stop + GO/NO-GO on a problem.
 
+**Open REQs (RL-1):**
+- **REQ-001 OPEN** — ≥ 90 days of price on the chart. Blocks VP confirmation. Screenshot closes *range* only; Coach visual cross-check marks CONFIRMED.
+- **REQ-002 OPEN** — “the same layout, the same control elements and components, the same sizes, everything the same as TV.” Contract: `artifacts/references/REQ-002-settings-dialog-reference.png` blob `bf9fa21ac600cfe0432f2651dcee9080d55258f4`. Packet does not dispatch until that blob is on `main`.
+
 **Open (outside A23, do not chase):** `GET /api/app/vp/v1/structure/SPX?kind=developing&include_bins=true` returned **500** on StudioTwo during A23 diagnose (2026-09-19). `/api/me/sa-surface` was **400** for `identity_id=0` (dev-login, no identity row) — not the same bug. Neither blocks the primitive pass.

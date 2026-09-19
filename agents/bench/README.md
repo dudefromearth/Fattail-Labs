@@ -8,7 +8,8 @@ each agent with deep domain mastery, strict invariants, and clear coordination p
 Same callsigns and governance as the Fly-on-the-Wall bench; domains remapped to this
 product.
 
-**Governed by:** `doctrine.md` and `first-principles-doctrine.md`
+**Governed by:** `doctrine.md` and `first-principles-doctrine.md`  
+**Requirements Ledger (RL-1):** `requirements-ledger.md` — every Coach requirement is a REQ-### row the same session
 **Pre-implementation process:** `spec-create-review-workflow.md`
 **Core growth law:** doctrine principle 10 — **the bench strengthens with every invocation**
 **Coach Content Law:** doctrine §11 · DL-176 — nothing of Coach’s is removed; research before

@@ -238,6 +238,20 @@ those paths.
 
 **Active program (now):** Options Lab Heatmap LIM, through LIM6 (**DL-651 · DL-652**). IKI Lab is parked, not cancelled. All other trees frozen. DL-539 §8 five-module freeze is unchanged.
 
+### 16. Requirements Ledger (RL-1) (2026-09-19 · Coach standing rule)
+
+**Coach (verbatim law):** Every requirement Coach states — in chat, on a walk, in a review — is captured within the same session as a numbered REQ-### row on the board, with his wording preserved. A REQ closes only by AP-1 acceptance or by Coach explicitly withdrawing it. Open REQs appear in every status report. A requirement stated twice without a row is a process defect and is reported as one.
+
+| Term | Meaning |
+|------|---------|
+| **REQ-###** | One row per requirement. Numbered in order of capture. Coach's wording is the row. |
+| **Board** | Canonical ledger `agents/bench/requirements-ledger.md` plus the active project's `ORCHESTRATOR.md`. |
+| **AP-1 acceptance** | Coach's acceptance stamp. Until AP-1 exists as a named protocol elsewhere, AP-1 **is** Coach saying the REQ is accepted. Agents do not close REQs. |
+| **Withdraw** | Coach explicitly withdraws the REQ. Silence is not withdraw. |
+| **Process defect** | The same requirement stated twice with no row. Report it; then file the row. |
+
+Open REQs are listed in every status report (Juliet board, gate reports, session close). Juliet files the row the same session. India/Delta **FAIL** a close-out that claims done while an open REQ on that track is unmet.
+
 ## Agent Hierarchy
 
 - **Coach** — Visionary, final decision maker, human authority (Ernie)
