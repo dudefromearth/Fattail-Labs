@@ -86,6 +86,10 @@ assert.equal(sectionForPart("grid"), "L0");
 assert.equal(sectionForPart("chips"), "legend");
 assert.equal(sectionForPart("mode"), "L0");
 assert.ok(SETTINGS_SECTIONS.some((s) => s.id === "axis" && s.label === "Scales and lines"));
+assert.equal(SETTINGS_SECTIONS.find((s) => s.id === "L0")?.icon, "canvas");
+assert.equal(SETTINGS_SECTIONS.find((s) => s.id === "axis")?.icon, "axis");
+assert.equal(SETTINGS_SECTIONS.find((s) => s.id === "legend")?.icon, "legend");
+assert.ok(SETTINGS_SECTIONS.every((s) => s.icon && s.label));
 const restored = prefsFromServerDoc(
   surfaceDoc({
     ...p,

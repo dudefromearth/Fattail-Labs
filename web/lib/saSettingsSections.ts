@@ -2,24 +2,37 @@
  * REQ-002 — chart settings section registry.
  * Other Labs chart apps adopt the same ids; VP is the first wire.
  * Our settings only — no TV-only options.
+ *
+ * Icons are TV-model glyphs (pencil, candles, histogram, axis arrows) —
+ * not HIG SF Symbols. Rendered at 20px per the measurement spec.
  */
 
 import type { DialogPart } from "./saLayerStore";
 
+export type SettingsSectionIcon =
+  | "canvas"
+  | "price"
+  | "profile"
+  | "analysis"
+  | "axis"
+  | "legend"
+  | "range";
+
 export type SettingsSection = {
   id: DialogPart;
   label: string;
+  icon: SettingsSectionIcon;
 };
 
 /** Sidebar order. First section is the generic (gear) landing. */
 export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
-  { id: "L0", label: "Canvas" },
-  { id: "L1", label: "Price" },
-  { id: "L2", label: "Profile" },
-  { id: "L3", label: "Analysis" },
-  { id: "axis", label: "Scales and lines" },
-  { id: "legend", label: "Status line" },
-  { id: "range", label: "Range" },
+  { id: "L0", label: "Canvas", icon: "canvas" },
+  { id: "L1", label: "Price", icon: "price" },
+  { id: "L2", label: "Profile", icon: "profile" },
+  { id: "L3", label: "Analysis", icon: "analysis" },
+  { id: "axis", label: "Scales and lines", icon: "axis" },
+  { id: "legend", label: "Status line", icon: "legend" },
+  { id: "range", label: "Range", icon: "range" },
 ];
 
 export const SETTINGS_FIRST_SECTION: DialogPart = SETTINGS_SECTIONS[0].id;
