@@ -8,6 +8,7 @@ import {
   autoFitY,
   canvasSpace,
   fromCanvasPrice,
+  continuousChip,
   mappingBadge,
   toCanvasPrice,
   yFor,
@@ -19,6 +20,12 @@ assert.equal(canvasSpace(undefined), "source");
 assert.equal(canvasSpace("OK"), "target");
 assert.equal(mappingBadge("FAILED"), "source space · map FAILED");
 assert.equal(mappingBadge("OK"), "target space · map OK");
+assert.equal(
+  continuousChip({ adjusted: true, method: "back-adjust", rolls: 2 }),
+  "continuous (back-adjusted)",
+);
+assert.equal(continuousChip(null), null);
+assert.equal(continuousChip({ adjusted: false }), null);
 
 const src = 7700;
 assert.equal(toCanvasPrice(src, { ratio: 1, offset_published: -100 }, "source"), 7700);

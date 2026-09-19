@@ -17,6 +17,18 @@ export function mappingBadge(mappingFlag?: string | null): string {
   return `${space} space · map ${flag}`;
 }
 
+/** D6.5 — one calm futures provenance chip. */
+export type ContinuousBlock = {
+  adjusted?: boolean;
+  method?: string;
+  rolls?: number;
+} | null | undefined;
+
+export function continuousChip(block: ContinuousBlock): string | null {
+  if (!block || block.adjusted !== true) return null;
+  return "continuous (back-adjusted)";
+}
+
 /** Map a SOURCE-space price onto the canvas space. Identity when mapping is not OK. */
 export function toCanvasPrice(
   sourcePrice: number,

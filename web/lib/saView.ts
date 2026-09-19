@@ -2,6 +2,18 @@
 
 export const RIGHT_PAD_BARS = 5;
 
+const TF_MS: Record<string, number> = {
+  "1m": 60_000,
+  "5m": 300_000,
+  "15m": 900_000,
+  "1h": 3_600_000,
+  "1d": 86_400_000,
+};
+
+export function tfMs(tf: string): number {
+  return TF_MS[tf] || 300_000;
+}
+
 export function defaultTimeWindow(
   dataLo: number,
   dataHi: number,
