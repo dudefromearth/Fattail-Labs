@@ -4,6 +4,28 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-19 — DL-777 SODP intake · StudioOne data plane (DRAFT, not BUILD)
+
+**Decision.** Coach directed a **clean separation**: all data movement and data APIs on StudioOne; UI remote (StudioTwo / MacBook / MiniTwo). Filed for **full bench review**, not a build GO.
+
+**Review object:**
+
+- Spec **DRAFT** `Specs/FatTail-Labs-StudioOne-Data-Plane-Spec-v0_1.md`
+- Arch `Architecture/36-studioone-data-plane.md`
+- Design `Architecture/36-studioone-data-plane-design.md`
+- Plan `docs/StudioOne-Data-Plane-Full-Agent-Bench-Plan-v1.0.md`
+- Board `agents/p-studioone-data-plane/` · token `agents/go/SODP0-W0.md`
+
+**TS-1 record (both strikes, cited):** (1) REQ-001 pre-swap never confirmed at Coach's screen; (2) post-swap ES and MES cut at Sep 6, banner silent. Struck component = conditional Massive-fill (`_aggs_price_fill`). Not repaired. Replacement is SODP2 on StudioOne after stamp.
+
+**SODP-4:** product Labs (identity/courses/MySQL) stays MiniTwo until Coach stamps SODP-LABS. Flagged for India, not erased.
+
+**Does not.** Implement history. MiniTwo deploy. Repair the fill. Stop `:3000`/`:4000`.
+
+**Cites:** Coach 2026-09-19 clean-separation · **TS-1** doctrine §17 · **CP-1** DL-707 · Arch 28.
+
+---
+
 ## 2026-09-19 — DL-776 REQ-003 F1 clauses 2–3 replaced (Coach-ruled)
 
 **Decision (Coach, 2026-09-19).** REQ-003 F1 clauses **2** and **3** are replaced. Clauses **1, 4–6** and the screen-recording acceptance stand as issued. REQ-003 stays OPEN. Not AP-1.

@@ -67,7 +67,8 @@ FatTail Labs replaces LearnDash with a first-party course platform for FatTail.a
 |---|---|---|
 | **dev** | localhost | `uvicorn` + `next dev` allowed; `/api/auth/dev-login` |
 | **staging** | DudeTwo · `labs-stage.fattail.ai` | Built Next only |
-| **production** | MiniTwo · `labs.fattail.ai` | Sole Labs host; launchd; built Next only |
+| **production** | MiniTwo · `labs.fattail.ai` | Sole Labs **product** host; launchd; built Next only |
+| **data plane (target)** | StudioOne | Sole market/data APIs + capture — **Arch 36** · SODP spec v0.1 **DRAFT**. As-built is still split (OHLC on StudioTwo Labs). |
 
 Deploy details: `infra/deploy.md`.
 

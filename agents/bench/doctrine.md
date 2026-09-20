@@ -252,6 +252,21 @@ those paths.
 
 Open REQs are listed in every status report (Juliet board, gate reports, session close). Juliet files the row the same session. India/Delta **FAIL** a close-out that claims done while an open REQ on that track is unmet.
 
+### 17. Two-Strike Replacement (TS-1) (2026-09-19 · Coach standing rule)
+
+**Coach (verbatim law):** A component that fails acceptance twice is not repaired a third time. Strikes are counted at Coach's screen (AP-1), not at gates or proxies. On the second strike, the bench stops diagnosing toward a fix and designs the replacement: the simplest architecture in which the part that demonstrably works is primary and the failing part is deleted — not disabled, not flagged off, DELETED, with a grep-proof in the close-out. The replacement decision is recorded in the DL with both strikes cited. Laws and doctrine are not components; this rule replaces designs, never gates. Diagnosis of a struck component is permitted only to inform the replacement, never to justify repair #3.
+
+| Term | Meaning |
+|------|---------|
+| **Strike** | Coach AP-1 at his screen: the component failed acceptance. Gate FAIL is not a strike. A proxy screenshot is not a strike. |
+| **Two** | Second AP-1 miss on the same component. There is no repair #3. |
+| **Replacement** | Simplest architecture: the part that demonstrably works is primary. The failing part is **deleted** (grep-proof close-out). Not a flag. Not a disable. |
+| **DL** | The replacement decision cites **both** strikes. |
+| **Not components** | Laws and doctrine are not deleted by TS-1. TS-1 replaces **designs**, never gates. |
+| **Diagnosis** | Allowed only to inform the replacement (what else consumes the struck part). Forbidden as a brief for repair #3. |
+
+India/Delta **FAIL** a packet that patches a twice-struck component. Juliet seeds replacement, not a third repair.
+
 ## Agent Hierarchy
 
 - **Coach** — Visionary, final decision maker, human authority (Ernie)

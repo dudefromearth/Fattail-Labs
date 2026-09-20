@@ -262,9 +262,11 @@ All agents operate under two constitutional documents:
   invariants, evidence culture, communication discipline, learner capacity, product boundary.
   **RL-1** (§16): every Coach requirement is a REQ-### row the same session
   (`agents/bench/requirements-ledger.md`).
+  **TS-1** (§17): a component that fails AP-1 twice is not repaired a third time —
+  replace, delete the failing part, grep-proof; strikes are Coach's screen, not gates.
 - **[first-principles-doctrine.md](./agents/bench/first-principles-doctrine.md)** — Immune
   system: build on what exists, Three Strikes → first principles, sunk cost is not an
-  argument, evidence over assertion.
+  argument, evidence over assertion. **TS-1** (two AP-1 strikes) replaces designs, never gates.
 
 **These are not suggestions.** India and Delta have blocking authority when these are
 violated. Tango blocks capacity-over-dependency and profit-claim violations. Hotel blocks

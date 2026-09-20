@@ -60,6 +60,11 @@ ad-hoc polls or WS-only mid tables. See Arch **28** §4.4 and `AGENTS.md` market
   Practice Position Lifecycle (DL-702 · PPL). If existing work must be touched, raise
   it to Coach **three times** and obtain **three successive OKs** on the GO token
   **before** the first edit. One OK is not three; a break resets the count.
+- **Two-Strike Replacement (TS-1 · doctrine §17):** a component that fails AP-1 twice
+  is not repaired a third time. Strikes are Coach's screen, not gates. On the second
+  strike, replace: the part that works is primary; the failing part is **deleted**
+  (grep-proof). Laws and doctrine are not components. Diagnosis informs replacement
+  only — never repair #3.
 - **Documentation parity (nothing hidden):** every feature ships WITH its spec (new or
   versioned in `Specs/`), its decision-log entry, and updates to any affected
   architecture docs — in the same body of work, never "later". `Specs/` must always

@@ -28,6 +28,8 @@ After three failed attempts at a fix, stop. Return to first principles: restate 
 problem, question the approach, and redesign from the ground truth. Do not attempt a
 fourth patch on a flawed foundation.
 
+**TS-1 (Coach, AP-1, 2026-09-19):** a **component** that fails acceptance **twice at Coach's screen** is not repaired a third time. Strikes are AP-1, not gates. On the second strike the bench designs the replacement and **deletes** the failing part (grep-proof). Laws and doctrine are not components. See doctrine §17.
+
 ### 3. Sunk Cost is Not an Argument
 The amount of work already invested in a path has zero weight in deciding whether the
 path is correct. Killing bad work is a victory, not a loss.
