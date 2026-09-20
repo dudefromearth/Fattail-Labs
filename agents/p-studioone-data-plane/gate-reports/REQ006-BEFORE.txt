@@ -1,0 +1,5 @@
+REQ-006 BEFORE Sat Sep 19 23:44:51 EDT 2026
+  PID     ELAPSED  %CPU    RSS COMMAND
+  538 04-16:15:12   0.0  71088 /opt/homebrew/Cellar/python@3.12/3.12.12/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python -m market_data.chain_feed --interval 2
+LAST no interest keys; idle
+BYTES 38055044

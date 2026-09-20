@@ -118,7 +118,12 @@ export default function SaPriceChart({
   const [rangeMs, setRangeMs] = useState<number | null>(null);
   const [vpBins, setVpBins] = useState(0);
   const [histDays, setHistDays] = useState<number | null>(null);
+  const [histBars, setHistBars] = useState<number | null>(null);
   const [histWarn, setHistWarn] = useState<string | null>(null);
+  const [histComplete, setHistComplete] = useState(false);
+  const rawBarsRef = useRef<OhlcBar[]>([]);
+  const atBirthRef = useRef(false);
+  const pagingRef = useRef(false);
 
   const requestVpUpdate = () => {
     primitiveRef.current?.requestUpdate();
@@ -176,10 +181,12 @@ export default function SaPriceChart({
   useEffect(() => {
     if (!source) return;
     clearHistogram();
+    atBirthRef.current = false;
+    pagingRef.current = false;
+    rawBarsRef.current = [];
+    setHistComplete(false);
     const qs = new URLSearchParams({
       tf: prefs.priceTf,
-      lookback_days: "0",
-      min_days: "90",
     });
     if (contract) qs.set("contract", contract);
     const url = `${apiBase}/ohlc/${source}?${qs}`;
@@ -187,13 +194,16 @@ export default function SaPriceChart({
     const cachedBars = Array.isArray(hit?.body?.bars)
       ? (hit.body.bars as OhlcBar[])
       : [];
-    const apply = (raw: OhlcBar[]) => {
+    const cacheComplete =
+      Boolean(hit?.body?.at_contract_birth) ||
+      Number(hit?.body?.bars_served) >= Number(hit?.body?.bars_rule);
+    const apply = (raw: OhlcBar[], resetView: boolean) => {
       const candles = colorBars(toCandles(raw), prefsRef.current);
       candlesRef.current = candles;
       timesRef.current = candles.map((c) => c.time as UTCTimestamp);
       seriesRef.current?.setData(candles);
       const times = timesRef.current as number[];
-      if (times.length && chartRef.current) {
+      if (resetView && times.length && chartRef.current) {
         const dataLo = times[0] * 1000;
         const dataHi = times[times.length - 1] * 1000;
         const w = defaultTimeWindow(dataLo, dataHi, tfMs(prefsRef.current.priceTf), 1);
@@ -221,35 +231,93 @@ export default function SaPriceChart({
         });
       }
     };
-    if (cachedBars.length && ohlcSpanDays(cachedBars) >= 90) apply(cachedBars);
+    if (cachedBars.length && cacheComplete) apply(cachedBars, true);
     let cancel = false;
-    void fetchGenWait(url).then((r) => {
-      if (cancel) return;
+    const ingest = (r: FetchGenResult, resetView: boolean) => {
       const named = String(r.body?.named_state || "");
       if (named && named !== "SHORT HISTORY" && !(Array.isArray(r.body?.bars) && r.body.bars.length)) {
         setErr(named === "MASSIVE EMPTY" ? "History unavailable" : named);
         return;
       }
-      if (Array.isArray(r.body?.bars) && r.body.bars.length) apply(r.body.bars as OhlcBar[]);
-      else if (!cachedBars.length) setErr("No OHLC");
-      const days =
-        Number(r.body?.history_span_days) ||
-        ohlcSpanDays(r.body?.bars as { t?: number }[] | undefined);
-      const need = Number(r.body?.requested_window_days || r.body?.req001_min_days) || 90;
+      const incoming = Array.isArray(r.body?.bars) ? (r.body.bars as OhlcBar[]) : [];
+      if (incoming.length) {
+        rawBarsRef.current = incoming;
+        apply(incoming, resetView);
+      } else if (!cachedBars.length) setErr("No OHLC");
+      atBirthRef.current = Boolean(r.body?.at_contract_birth);
+      setHistComplete(Boolean(r.body?.at_contract_birth));
+      const served = Number(r.body?.bars_served);
+      const rule = Number(r.body?.bars_rule);
+      if (Number.isFinite(served)) setHistBars(served);
       if (r.body?.named_state === "MASSIVE EMPTY") {
         setHistWarn("History unavailable. Price is not on this chart right now.");
       } else if (r.body?.short_history === true) {
-        setHistDays(Number.isFinite(days) ? days : null);
         setHistWarn(
-          `SHORT HISTORY: ${(Number.isFinite(days) ? days : 0).toFixed(0)} days of price (need ≥ ${need}). Not silent.`,
+          `SHORT HISTORY: ${served || 0} bars (need ${rule || 5000}). Not silent.`,
         );
-      } else if (Number.isFinite(days)) {
-        setHistDays(days);
+      } else {
         setHistWarn(null);
       }
+    };
+    void fetchGenWait(url).then((r) => {
+      if (cancel) return;
+      ingest(r, true);
     });
     return () => {
       cancel = true;
+    };
+  }, [source, prefs.priceTf, apiBase, contract]);
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart || !source) return;
+    const onRange = () => {
+      if (pagingRef.current || atBirthRef.current) return;
+      const vis = chart.timeScale().getVisibleRange();
+      const first = timesRef.current[0];
+      if (!vis || first == null) return;
+      if (Number(vis.from) > Number(first) + 120) return;
+      const head = rawBarsRef.current[0];
+      if (!head?.t) return;
+      pagingRef.current = true;
+      const qs = new URLSearchParams({ tf: prefsRef.current.priceTf });
+      if (contract) qs.set("contract", contract);
+      qs.set("before_t", String(head.t));
+      void fetchGenWait(`${apiBase}/ohlc/${source}?${qs}`)
+        .then((r) => {
+          const older = Array.isArray(r.body?.bars)
+            ? (r.body.bars as OhlcBar[])
+            : [];
+          atBirthRef.current = Boolean(r.body?.at_contract_birth);
+          setHistComplete(Boolean(r.body?.at_contract_birth));
+          if (!older.length) return;
+          const seen = new Set(rawBarsRef.current.map((b) => b.t));
+          const prepend = older.filter((b) => !seen.has(b.t));
+          if (!prepend.length) {
+            atBirthRef.current = true;
+            setHistComplete(true);
+            return;
+          }
+          const combined = [...prepend, ...rawBarsRef.current].slice(-40000);
+          rawBarsRef.current = combined;
+          const candles = colorBars(toCandles(combined), prefsRef.current);
+          candlesRef.current = candles;
+          timesRef.current = candles.map((c) => c.time as UTCTimestamp);
+          seriesRef.current?.setData(candles);
+          setHistBars(combined.length);
+          if (r.body?.short_history === true) {
+            setHistWarn(
+              `SHORT HISTORY: ${combined.length} bars (need ${Number(r.body?.bars_rule) || 5000}). Not silent.`,
+            );
+          }
+        })
+        .finally(() => {
+          pagingRef.current = false;
+        });
+    };
+    chart.timeScale().subscribeVisibleTimeRangeChange(onRange);
+    return () => {
+      chart.timeScale().unsubscribeVisibleTimeRangeChange(onRange);
     };
   }, [source, prefs.priceTf, apiBase, contract]);
 
@@ -687,9 +755,17 @@ export default function SaPriceChart({
         >
           {histWarn}
         </p>
+      ) : histComplete ? (
+        <p className="pointer-events-none absolute left-2 top-2 z-20 max-w-[28rem] rounded border border-zinc-600 bg-[#1e222d] px-2 py-1 text-[11px] text-zinc-300">
+          Max available
+        </p>
+      ) : histBars != null ? (
+        <p className="pointer-events-none absolute left-2 top-2 z-20 max-w-[28rem] rounded border border-zinc-600 bg-[#1e222d] px-2 py-1 text-[11px] text-zinc-300">
+          {`${histBars} bars`}
+        </p>
       ) : histDays != null ? (
         <p className="pointer-events-none absolute left-2 top-2 z-20 max-w-[28rem] rounded border border-zinc-600 bg-[#1e222d] px-2 py-1 text-[11px] text-zinc-300">
-          {`Price ${histDays.toFixed(0)}d · zoom out then pan left for June`}
+          {`Price ${histDays.toFixed(0)}d`}
         </p>
       ) : null}
       {err ? (

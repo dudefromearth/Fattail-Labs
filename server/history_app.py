@@ -53,17 +53,16 @@ def get_ohlc(
     source: str,
     tf: str = Query(default="5m"),
     contract: str | None = Query(default=None),
-    requested_window_days: int = Query(default=90),
+    bars: int | None = Query(default=None),
+    before_t: int | None = Query(default=None),
 ):
     blocked = _gate(request)
     if blocked is not None:
         return blocked
-    return serve_history(
-        source,
-        tf=tf,
-        contract=contract,
-        requested_window_days=requested_window_days,
-    )
+    kw: dict = {"tf": tf, "contract": contract, "before_t": before_t}
+    if bars is not None:
+        kw["bars_rule"] = bars
+    return serve_history(source, **kw)
 
 
 @app.get("/history/v1/contracts/{source}")

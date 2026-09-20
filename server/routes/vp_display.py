@@ -94,7 +94,7 @@ def _history_hop(path: str, params: dict[str, str] | None = None) -> JSONRespons
     headers = {**_computing_headers(), "Accept": "application/json"}
     req = urllib.request.Request(url, headers=headers, method="GET")
     try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
+        with urllib.request.urlopen(req, timeout=180) as resp:
             raw = resp.read()
             parsed = json.loads(raw.decode("utf-8")) if raw else {}
             return JSONResponse(content=parsed, status_code=resp.status)
@@ -192,14 +192,20 @@ def get_source_ohlc(
     tf: str = Query(default="5m"),
     lookback_days: int = Query(default=0),
     contract: str | None = Query(default=None),
+    bars: int | None = Query(default=None),
+    before_t: int | None = Query(default=None),
 ):
-    """Hydration depth: lookback_days=0 means all served sessions (D1)."""
+    """Futures OHLC hops to StudioOne history (N-bar model, REQ-006)."""
     _require_member(request)
     if tf not in ("1m", "5m", "15m", "1h", "1d"):
         raise HTTPException(status_code=422, detail="tf must be 1m|5m|15m|1h|1d")
-    params = {"tf": tf}
+    params: dict[str, str] = {"tf": tf}
     if contract:
         params["contract"] = contract
+    if bars is not None:
+        params["bars"] = str(bars)
+    if before_t is not None:
+        params["before_t"] = str(before_t)
     hopped = _history_hop(f"/history/v1/ohlc/{source.upper()}", params)
     if hopped is not None:
         return hopped

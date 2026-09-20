@@ -13,11 +13,18 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from symbology.catalog import MONTH_TO_CODE, contract_symbol, parse_long_form
+from market_data.vp_symbol_metadata import bars_per_session, walk_session_start
+from symbology.catalog import (
+    MONTH_TO_CODE,
+    contract_symbol,
+    expiration_for_contract,
+    parse_long_form,
+)
 
 FUTURES_SOURCES = frozenset({"ES", "MES"})
-REQUESTED_WINDOW_DAYS = 90
-_FETCH_BUFFER_DAYS = 20
+BARS_RULE = 5000
+BARS_RULE_VERSION = 1
+_SESSION_BUFFER = 2
 _DECADE = re.compile(r"^([A-Z]+)([FGHJKMNQUVXZ])(\d)$")
 _RES = {
     "1m": "1min",
@@ -133,12 +140,23 @@ def _print_tail(source: str, tf: str, after_t: int) -> list[dict[str, Any]]:
     return [b for b in bars if int(b.get("t") or 0) > after_t]
 
 
+def _listing_date(bound: str, source: str) -> date | None:
+    exp = expiration_for_contract(bound)
+    if exp is None:
+        return None
+    from market_data.vp_symbol_metadata import session_calendar
+
+    lead = int(session_calendar(source).get("listing_lead_days") or 470)
+    return exp - timedelta(days=lead)
+
+
 def serve(
     source: str,
     *,
     tf: str = "5m",
     contract: str | None = None,
-    requested_window_days: int = REQUESTED_WINDOW_DAYS,
+    bars_rule: int = BARS_RULE,
+    before_t: int | None = None,
 ) -> dict[str, Any]:
     src = (source or "").upper()
     if src not in FUTURES_SOURCES:
@@ -175,26 +193,42 @@ def serve(
             "bar_count": 0,
         }
 
-    window = max(1, int(requested_window_days))
+    rule = max(1, int(bars_rule))
+    try:
+        bps = bars_per_session(src, tf)
+    except KeyError as exc:
+        return {
+            "ok": False,
+            "source": src,
+            "named_state": "NO METADATA",
+            "detail": str(exc),
+            "short_history": False,
+            "bars": [],
+            "bar_count": 0,
+        }
     end = datetime.now(timezone.utc).date()
-    start = end - timedelta(days=window + _FETCH_BUFFER_DAYS)
-    cutoff_ms = int(
-        datetime.combine(
-            end - timedelta(days=window + _FETCH_BUFFER_DAYS),
-            datetime.min.time(),
-            tzinfo=timezone.utc,
-        ).timestamp()
-        * 1000
-    )
+    if before_t:
+        end = datetime.fromtimestamp(int(before_t) / 1000, tz=timezone.utc).date()
+    sessions = (rule + bps - 1) // bps + _SESSION_BUFFER
+    start = walk_session_start(end, sessions)
+    listing = _listing_date(bound, src)
+    at_listing = False
+    if listing:
+        start = listing
+        at_listing = True
 
     cached = _load_cache(vendor, tf)
     raw: list[dict[str, Any]] = []
     if cached and isinstance(cached.get("bars"), list) and cached["bars"]:
-        raw = cached["bars"]
+        raw = list(cached["bars"])
         last_t = int(raw[-1]["t"])
         stale = (datetime.now(timezone.utc).timestamp() * 1000) - last_t > 36 * 3600 * 1000
-        first_ok = int(raw[0]["t"]) <= cutoff_ms
-        if stale or not first_ok:
+        first_ms = int(raw[0]["t"])
+        start_ms = int(
+            datetime.combine(start, datetime.min.time(), tzinfo=timezone.utc).timestamp()
+            * 1000
+        )
+        if stale or first_ms > start_ms:
             raw = []
 
     if not raw:
@@ -207,6 +241,7 @@ def serve(
                 resolution=res,
                 start=start.isoformat(),
                 end=end.isoformat(),
+                max_pages=40,
             )
         except MassiveClientError as exc:
             return {
@@ -218,7 +253,9 @@ def serve(
                 "detail": str(exc),
                 "short_history": False,
                 "price_source": "massive_futures_aggs",
-                "requested_window_days": window,
+                "bars_rule": rule,
+                "bars_served": 0,
+                "at_contract_birth": False,
                 "history_span_days": 0,
                 "bars": [],
                 "bar_count": 0,
@@ -233,7 +270,9 @@ def serve(
                 "detail": f"Massive /futures/v1/aggs/{vendor} returned no bars",
                 "short_history": False,
                 "price_source": "massive_futures_aggs",
-                "requested_window_days": window,
+                "bars_rule": rule,
+                "bars_served": 0,
+                "at_contract_birth": False,
                 "history_span_days": 0,
                 "bars": [],
                 "bar_count": 0,
@@ -244,13 +283,22 @@ def serve(
         except OSError:
             pass
 
-    bars = [b for b in raw if int(b.get("t") or 0) >= cutoff_ms]
+    pool = raw
+    if before_t is not None:
+        pool = [b for b in raw if int(b.get("t") or 0) < int(before_t)]
+    bars = pool[-rule:] if len(pool) > rule else list(pool)
     last_t = int(bars[-1]["t"]) if bars else 0
-    tail = _print_tail(src, tf, last_t) if last_t else []
-    if tail:
-        bars = bars + tail
+    tail: list[dict[str, Any]] = []
+    if before_t is None:
+        tail = _print_tail(src, tf, last_t) if last_t else []
+        if tail:
+            bars = bars + tail
     span = _span_days(bars)
-    short = span < float(window) if bars else True
+    served = len(bars)
+    birth = bool(at_listing and served < rule)
+    if pool and bars and int(bars[0]["t"]) == int(pool[0]["t"]) and served < rule:
+        birth = True
+    short = served < rule and not birth
     out: dict[str, Any] = {
         "ok": True,
         "source": src,
@@ -259,15 +307,17 @@ def serve(
         "vendor_ticker": vendor,
         "price_source": "massive_futures_aggs",
         "tail_source": "vp_prints" if tail else "none",
-        "requested_window_days": window,
+        "bars_rule": rule,
+        "bars_rule_version": BARS_RULE_VERSION,
+        "bars_served": served,
+        "at_contract_birth": birth,
         "history_span_days": round(span, 2),
         "short_history": short,
         "bars": bars,
-        "bar_count": len(bars),
+        "bar_count": served,
+        "metadata_ref": f"vps:symbol-metadata:{src}",
     }
     if short:
         out["named_state"] = "SHORT HISTORY"
-        out["detail"] = (
-            f"price span {span:.1f}d < {window}d (source=massive_futures_aggs)"
-        )
+        out["detail"] = f"served {served} bars < rule {rule} and contract holds more"
     return out

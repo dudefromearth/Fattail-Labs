@@ -1,7 +1,7 @@
 # FatTail Labs — StudioOne Data Plane & Remote UI
 
-**Spec v0.1.5**  
-**Status:** **BUILD AUTHORITY** (Coach stamp 2026-09-19 · SODP2-W0). TOPO-1 / F3.  
+**Spec v0.1.6**  
+**Status:** **BUILD AUTHORITY** (Coach stamp 2026-09-19 · SODP2-W0). REQ-006 N-bar lookback. TOPO-1 / F3.  
 **Date:** 2026-09-19  
 **Program:** SODP  
 **Author:** Juliet (from Coach intent)  
@@ -118,11 +118,11 @@ One Massive account. See **§12 CP-1 budgets**. History GETs after RTH or proven
 
 For futures chart kinds (ES, MES, later NQ…):
 
-1. Input: Labs `bound_symbol` (ESZ2026) + tf + requested window (default 90d).
-2. Translate to vendor ticker (ESZ6) on the server. Never send ESZ2026 to Massive. Never hardcode ESZ6 in the client.
-3. BASE series = Massive native per-contract aggs for the full window. Disk cache on StudioOne (completed days immutable; today refreshes).
+1. Input: Labs `bound_symbol` (ESZ2026) + tf. Depth is **N bars** at that interval (**REQ-006**, N=5000 versioned). Not a calendar window. `requested_window_days` does not exist.
+2. Translate to vendor ticker (ESZ6) on the server. Never send ESZ2026 to Massive. Never hardcode ESZ6 in the client. Bars→date range uses VP-L3 session calendar via `metadata_ref`.
+3. BASE series = Massive native per-contract aggs from **contract birth** (cached). Serve last N; pan `before_t` pages the previous N.
 4. Local capture supplies **only** bars newer than the last Massive bar.
-5. Payload always includes: `bound_symbol`, `vendor_ticker`, `price_source=massive_futures_aggs`, `history_span_days`, `requested_window_days`, `short_history` bool, `named_state=SHORT HISTORY` when short.
+5. Payload: `bound_symbol`, `vendor_ticker`, `price_source=massive_futures_aggs`, `bars_served`, `bars_rule`, `at_contract_birth`, `short_history` (against **bars_rule**, and only if the contract holds more), `named_state`. Cap at birth = COMPLETE, no banner. MASSIVE EMPTY is its own named state.
 6. Empty Massive result is a **named failure**, not a silent print fallback.
 
 **VPS Q1:** when per-contract prints reach 90-day local depth, flipping capture to primary is a **new DL** — not a silent revert. Chart aggs do **not** grant model ACTIVE.
@@ -293,3 +293,4 @@ MiniTwo does **not** run capture, vp-api, or Massive. It runs Next + product Lab
 | 0.1.3 | 2026-09-19 | Mike: hop token `issuer=internal`; Cookie request header only, never Set-Cookie; shared secret; sidecar `LABS_ENV=dev`; SSO callback per UI host |
 | 0.1.4 | 2026-09-19 | India R1: **SODP-MB hold**. TOPO-1 name. SODP-10 = REFACTOR then HARDEN after AP-1 (REQ-004/005) |
 | 0.1.5 | 2026-09-19 | Coach SODP0: interim combined standing Massive includes StudioTwo chain_feed/sym_feed until SODP-MB; SODP1 counts both |
+| 0.1.6 | 2026-09-19 | REQ-006: N-bar lookback; 90d calendar window **deleted**; pan pages |

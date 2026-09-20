@@ -1,6 +1,6 @@
 # Requirements Ledger (RL-1)
 
-Canonical capture of Coach requirements. Wording preserved. Close only by **AP-1** (Coach acceptance) or explicit withdraw. Hashable FINAL texts: `artifacts/reqs/REQ-001.md` · `REQ-002.md` · `REQ-003.md` · `REQ-004.md` · `REQ-005.md` (spec §0.8).
+Canonical capture of Coach requirements. Wording preserved. Close only by **AP-1** (Coach acceptance) or explicit withdraw. Hashable FINAL texts: `artifacts/reqs/REQ-001.md` · `REQ-002.md` · `REQ-003.md` · `REQ-004.md` · `REQ-005.md` · `REQ-006.md` (spec §0.8).
 
 Status: `OPEN` · `AP-1` · `WITHDRAWN`  
 **WG-1 last cycle:** never (not armed — TOPO-1 backlog). Canonical `agents/bench/groundskeeping.json`.
@@ -14,6 +14,7 @@ Status: `OPEN` · `AP-1` · `WITHDRAWN`
 | **REQ-003** | 2026-09-19 | VP contracts | OPEN | See full row below. |
 | **REQ-004** | 2026-09-19 | Refactor sweep | OPEN · **HOLD** | After TOPO-1 AP-1. See row below. |
 | **REQ-005** | 2026-09-19 | Hardening pass | OPEN · **HOLD** | After REQ-004. See row below. |
+| **REQ-006** | 2026-09-19 | Chart lookback | OPEN | N bars per interval; TV pan-page. See row below. |
 
 ### REQ-001 — ≥ 90 days of price on the chart (VP confirmation blocker)
 
@@ -107,6 +108,16 @@ Typing "es" → ES family on top, front first, forward second, highlights visibl
 **Coach wording:** H0 minimum: fail-loud/banner-law; auth seams (computed headers — what authenticates a member); dev-login gap; structure 500; STALE re-verify cadence; CP-1 watchdog + combined Massive budget; secrets/.env; restart-on-crash; backup/off-site + Sept-14 volumes/archive + one restore drill; CVE pass. SEV-ranked packets — Coach approves. H1: PP-1; StudioOne = CP-1 full dress; member-facing close AP-1.
 
 **Closes:** AP-1 per member-facing seed or withdraw. Not closed. Filed `artifacts/reqs/REQ-005.md`.
+
+### REQ-006 — Lookback is a fixed bar count per interval (v2)
+
+**Captured:** 2026-09-19. **GO.** Supersedes calendar 90-day window (**deleted**, not retired).
+
+**Coach wording:** "There should be a fixed number of intervals or candles we can go back, so it will be different for the different time chart intervals." · "Do away with the 90 day current model." · "It is intuitive, where ToS forces you to learn how it works."
+
+N=5000 initial + 5000-bar pages. Cap at contract birth = COMPLETE. SHORT HISTORY only if shorter than N **and** more exists. Payload: bars_served, bars_rule, at_contract_birth. ToS aggregation pairs rejected for lookback (SYM-4.0 keeps ToS continuity).
+
+**Closes:** AP-1 pan ES+MES every interval, pages to first-traded (Sep 2025 Z6). Filed `artifacts/reqs/REQ-006.md`.
 
 ## Closed
 

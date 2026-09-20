@@ -4,6 +4,18 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-19 — DL-785 REQ-006 · TV lookback (N bars, pan pages); 90d DELETED
+
+**Decision (Coach, 2026-09-19).** Chart lookback is the **TV model**: fixed bar count at the interval, pan pages the next N, no calendar-window configuration. Reason, verbatim: *"It is intuitive, where ToS forces you to learn how it works."*
+
+**Rejected:** ToS interval:aggregation preset pairs for chart lookback. ToS continuity remains in the roll-rule catalog (**SYM-4.0**). Vendor note: TV = bar-count lazy paging; ToS = aggregation pairs, ~360d intraday cap, ~40k-bar tick ceiling, “Max available.” The 40k ceiling validates **N=5000** as conservative. File: `artifacts/references/lookback-vendor-tv-tos.md`.
+
+**Deleted (not retired):** 90-day calendar-window lookback. No `requested_window_days`, no day-window default, no 90d constant on provider or surface. Grep-proof. SHORT HISTORY is against `bars_rule`. Cap at contract birth = COMPLETE, no banner.
+
+**Cites:** REQ-006 v2 GO · Coach “Do away with the 90 day current model.”
+
+---
+
 ## 2026-09-19 — DL-784 SODP BUILD stamp · FI-052 CLOSED · SODP2-W0 GO
 
 **Decision (Coach, 2026-09-19).** BUILD AUTHORITY on spec **v0.1.5** and **SODP2-W0**. SODP0-G accepted. SODP1 census accepted (both-sets standing count).
