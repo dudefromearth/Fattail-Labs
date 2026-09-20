@@ -25,7 +25,11 @@ from market_data.vp_ingest.futures_contracts import (
     fetch_active_contracts,
     pick_roll_set,
 )
-from market_data.vp_ingest.futures_schedules import halt_is_scheduled, session_is_open
+from market_data.vp_ingest.futures_schedules import (
+    es_mes_halt_window,
+    halt_is_scheduled,
+    session_is_open,
+)
 from market_data.vp_ingest.disk_guard import CHECK_EVERY_S, below_guard
 from market_data.vp_ingest.store import archive_root, append_gap
 
@@ -143,14 +147,21 @@ def write_session_clock(root: Path, status: dict[str, Any], tickers: list[str]) 
     }
     for p in PRODUCTS:
         opened = session_is_open(status, product=p)
-        halt = halt_is_scheduled({}, product=p)
+        window = es_mes_halt_window()
+        halt = halt_is_scheduled({}, product=p) or window is not None
         sed = session_end_from_status(status, product=p)
-        reason = "in_session" if opened and not halt else (
-            "halt" if halt else "closed"
-        )
+        if window:
+            reason = "halt"
+        elif opened and not halt:
+            reason = "in_session"
+        elif halt:
+            reason = "halt"
+        else:
+            reason = "closed"
         body["products"][p] = {
             "open": bool(opened and not halt),
             "halt": bool(halt),
+            "halt_window": window,
             "session_end_date": sed,
             "reason": reason,
         }

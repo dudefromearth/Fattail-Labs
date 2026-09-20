@@ -63,6 +63,30 @@ def test_vendor_close_is_not_open():
     assert session_is_open(st, product="ES") is False
 
 
+def test_two_daily_stops_are_named_halts():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    from market_data.vp_ingest.futures_schedules import es_mes_halt_window, halt_is_scheduled
+    from market_data.vp_ops.watchdog import dry_run_table
+
+    ET = ZoneInfo("America/New_York")
+    cash = datetime(2026, 9, 21, 16, 22, tzinfo=ET)
+    maint = datetime(2026, 9, 21, 17, 30, tzinfo=ET)
+    open_slot = datetime(2026, 9, 21, 16, 45, tzinfo=ET)
+    assert es_mes_halt_window(cash) == "cash_close"
+    assert es_mes_halt_window(maint) == "maintenance"
+    assert es_mes_halt_window(open_slot) is None
+    assert halt_is_scheduled({}, now=cash, product="ES") is True
+    assert halt_is_scheduled({}, now=maint, product="ES") is True
+    assert halt_is_scheduled({}, now=open_slot, product="ES") is False
+    rows = dry_run_table()
+    cash_rows = [r for r in rows if r["halt_window"] == "cash_close"]
+    maint_rows = [r for r in rows if r["halt_window"] == "maintenance"]
+    assert cash_rows and all(r["page"] == "NO" for r in cash_rows)
+    assert maint_rows and all(r["page"] == "NO" for r in maint_rows)
+
+
 def test_vendor_open_is_open():
     st = {
         "results": [

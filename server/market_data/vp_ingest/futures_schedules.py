@@ -1,8 +1,11 @@
 """Vendor schedules / market-status. Halt is never a gap.
 
 Live HTTP StudioOne-only. Tests inject.
-CME equity-index daily halt is 16:00–17:00 America/Chicago (exchange hours,
-not local-clock session identity).
+ES/MES have TWO daily stops (CME equity-index Globex):
+  cash-close pause  16:15–16:30 America/New_York  Mon–Fri
+  maintenance       17:00–18:00 America/New_York  Mon–Thu
+Vendor market-status remains SoR for open/closed; these windows are
+lawful idle even if the vendor row still says open.
 """
 
 from __future__ import annotations
@@ -11,23 +14,38 @@ from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
 
+ET = ZoneInfo("America/New_York")
 CT = ZoneInfo("America/Chicago")
-# Published CME Globex maintenance for equity index (ES/MES).
-CME_EQUITY_HALT_START_MIN = 16 * 60
-CME_EQUITY_HALT_END_MIN = 17 * 60
 CME_EQUITY_PRODUCTS = frozenset({"ES", "MES"})
+# Named windows in ET minutes.
+CASH_CLOSE_START_MIN = 16 * 60 + 15
+CASH_CLOSE_END_MIN = 16 * 60 + 30
+MAINTENANCE_START_MIN = 17 * 60
+MAINTENANCE_END_MIN = 18 * 60
+
+
+def _et(now: datetime | None) -> datetime:
+    ts = now or datetime.now(tz=ET)
+    if ts.tzinfo is None:
+        return ts.replace(tzinfo=ET)
+    return ts.astimezone(ET)
+
+
+def es_mes_halt_window(now: datetime | None = None) -> str | None:
+    """Named lawful stop covering *now*, or None."""
+    ts = _et(now)
+    wd = ts.weekday()
+    minutes = ts.hour * 60 + ts.minute
+    if wd <= 4 and CASH_CLOSE_START_MIN <= minutes < CASH_CLOSE_END_MIN:
+        return "cash_close"
+    if wd <= 3 and MAINTENANCE_START_MIN <= minutes < MAINTENANCE_END_MIN:
+        return "maintenance"
+    return None
 
 
 def cme_equity_index_halt_now(now: datetime | None = None) -> bool:
-    ts = now or datetime.now(tz=CT)
-    if ts.tzinfo is None:
-        ts = ts.replace(tzinfo=CT)
-    else:
-        ts = ts.astimezone(CT)
-    if ts.weekday() >= 5:
-        return False
-    minutes = ts.hour * 60 + ts.minute
-    return CME_EQUITY_HALT_START_MIN <= minutes < CME_EQUITY_HALT_END_MIN
+    """True during either daily stop. Prefer es_mes_halt_window for the name."""
+    return es_mes_halt_window(now) is not None
 
 
 def session_is_open(status: dict[str, Any] | None, *, product: str) -> bool:
@@ -67,7 +85,7 @@ def halt_is_scheduled(
 ) -> bool:
     """True only when a maintenance window covers *now*. A halt listed
     for later today is not a gap suppressor yet."""
-    if product and product.upper() in CME_EQUITY_PRODUCTS and cme_equity_index_halt_now(now):
+    if product and product.upper() in CME_EQUITY_PRODUCTS and es_mes_halt_window(now):
         return True
     if not schedule:
         return False

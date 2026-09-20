@@ -75,6 +75,47 @@ def fire_alert(msg: str) -> None:
             print(f"vp-watchdog smtp failed {exc}", flush=True)
 
 
+def dry_run_table() -> list[dict[str, str]]:
+    """Lawful-idle table for both daily stops. No SMTP."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    from market_data.vp_ingest.futures_schedules import es_mes_halt_window
+
+    ET = ZoneInfo("America/New_York")
+    samples = [
+        ("Mon 16:10 ET", datetime(2026, 9, 21, 16, 10, tzinfo=ET)),
+        ("Mon 16:15 ET cash-close start", datetime(2026, 9, 21, 16, 15, tzinfo=ET)),
+        ("Mon 16:22 ET cash-close", datetime(2026, 9, 21, 16, 22, tzinfo=ET)),
+        ("Mon 16:30 ET cash-close end", datetime(2026, 9, 21, 16, 30, tzinfo=ET)),
+        ("Mon 16:45 ET", datetime(2026, 9, 21, 16, 45, tzinfo=ET)),
+        ("Mon 17:00 ET maintenance start", datetime(2026, 9, 21, 17, 0, tzinfo=ET)),
+        ("Mon 17:30 ET maintenance", datetime(2026, 9, 21, 17, 30, tzinfo=ET)),
+        ("Mon 18:00 ET maintenance end", datetime(2026, 9, 21, 18, 0, tzinfo=ET)),
+        ("Fri 16:22 ET cash-close", datetime(2026, 9, 25, 16, 22, tzinfo=ET)),
+        ("Fri 17:30 ET (weekly close, not Mon–Thu maintenance)", datetime(2026, 9, 25, 17, 30, tzinfo=ET)),
+        ("Sun 12:00 ET closed", datetime(2026, 9, 20, 12, 0, tzinfo=ET)),
+        ("Sun 18:05 ET open", datetime(2026, 9, 20, 18, 5, tzinfo=ET)),
+    ]
+    rows = []
+    for label, ts in samples:
+        window = es_mes_halt_window(ts)
+        if window:
+            idle, alert = "lawful", "NO"
+        else:
+            idle, alert = "in_session_or_closed", "only if in_session AND stale"
+        rows.append(
+            {
+                "when": label,
+                "iso": ts.isoformat(),
+                "halt_window": window or "—",
+                "idle": idle,
+                "page": alert,
+            }
+        )
+    return rows
+
+
 def check_once(root: Path | None = None) -> list[str]:
     ar = root or archive_root()
     clock = load_clock(ar)
@@ -86,7 +127,8 @@ def check_once(root: Path | None = None) -> list[str]:
         st = (clock.get("products") or {}).get(p) or {}
         reason = st.get("reason") or "unknown"
         if reason in ("closed", "halt"):
-            print(f"vp-watchdog {p} idle lawful reason={reason}", flush=True)
+            window = st.get("halt_window") or reason
+            print(f"vp-watchdog {p} idle lawful reason={reason} window={window}", flush=True)
             continue
         if reason != "in_session":
             print(f"vp-watchdog {p} skip reason={reason}", flush=True)
@@ -104,7 +146,25 @@ def check_once(root: Path | None = None) -> list[str]:
     return alerts
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    import sys
+
+    argv = list(argv or sys.argv[1:])
+    if argv[:1] == ["--dry-run"]:
+        rows = dry_run_table()
+        print("when\thalt_window\tidle\tpage", flush=True)
+        for r in rows:
+            print(f"{r['when']}\t{r['halt_window']}\t{r['idle']}\t{r['page']}", flush=True)
+        cash = [r for r in rows if r["halt_window"] == "cash_close"]
+        maint = [r for r in rows if r["halt_window"] == "maintenance"]
+        if not cash or not maint:
+            print("FAIL: both windows must appear as lawful", flush=True)
+            return 2
+        if any(r["page"] != "NO" for r in cash + maint):
+            print("FAIL: halt windows must not page", flush=True)
+            return 2
+        print("DRY-RUN PASS both daily stops lawful idle", flush=True)
+        return 0
     print(f"vp-watchdog interval={INTERVAL_S}s stale={STALE_S}s", flush=True)
     while True:
         try:

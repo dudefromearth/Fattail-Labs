@@ -31,6 +31,23 @@ MES reason=closed  open=false  halt=false  sed=2026-09-18
 
 Logged named transitions: `vp-futures session {p} {old} -> {new}`. Next-open is not a field on this vendor row; at 18:00 ET the same SoR is expected to flip to `open` with a new `session_end_date` (typically Monday). Engine developing currently **2026-09-18** (last ingested); first Sunday-night prints land under vendor SED and become the developing edge.
 
+## Rider — two daily stops (2026-09-20 07:59 ET)
+
+ES/MES lawful idle is **both** CME windows. Watchdog dry-run on StudioOne (`python -m market_data.vp_ops.watchdog --dry-run`):
+
+| When | halt_window | Page |
+|------|-------------|------|
+| Mon 16:10 ET | — | only if in_session AND stale |
+| Mon **16:15–16:30 ET cash-close** | **cash_close** | **NO** |
+| Mon 16:45 ET | — | only if in_session AND stale |
+| Mon **17:00–18:00 ET maintenance** | **maintenance** | **NO** |
+| Fri 16:22 ET cash-close | cash_close | **NO** |
+| Fri 17:30 ET (weekly close) | — | closed, not paged as stall |
+| Sun 12:00 ET | — | closed |
+| Sun 18:05 ET | — | in_session when vendor says open |
+
+First 16:15 pause is **Monday afternoon**. Clock field `halt_window` is `cash_close` \| `maintenance` \| null. chain_feed **538** unchanged.
+
 ## 5. Watchdog (H0-6)
 
 `python -m market_data.vp_ops.watchdog` KeepAlive. In-session + developing histogram age > 90s → log + `~/Library/Logs/fattail-labs/vp-watchdog.alert` + SMTP if `LABS_SMTP_*` set (Foxtrot). **Now:** `idle lawful reason=closed` — no alert.
