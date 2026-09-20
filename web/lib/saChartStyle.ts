@@ -52,8 +52,8 @@ export function canvasOptions(prefs: SaPrefs) {
       rightOffset: prefs.rightOffsetBars ?? 5,
       borderColor: prefs.scaleLineColor || "#2b2b43",
       timeVisible: true,
-      // REQ-001: 90d of 5m (~11k bars) must fit when zoomed out. Default
-      // minBarSpacing 0.5 caps the pane at ~8 days.
+      // N-bar lookback (REQ-006): default minBarSpacing 0.5 clips a full page
+      // when zoomed out.
       minBarSpacing: 0.05,
     },
     leftPriceScale: {
@@ -92,7 +92,7 @@ export function candleOptions(prefs: SaPrefs) {
   };
 }
 
-/** Guest L2 must share L1's scale — default custom series binds right, which is hidden when axis is left. */
+/** L2 shares L1's price scale (right-scale bind is hidden when the axis is left). */
 export function vpSeriesOptions(prefs: SaPrefs) {
   return {
     lastValueVisible: false,

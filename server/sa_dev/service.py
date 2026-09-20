@@ -235,7 +235,6 @@ def range_for(
 
 from market_data.vp_ohlc import bar_invariant, bars_from_prints, dominant_contract  # noqa: F401
 _TF_SECONDS = {"1m": 60, "5m": 300, "15m": 900, "1h": 3600, "1d": 86400}
-_REQ001_MIN_DAYS = 90
 
 
 def contracts_for_source(source: str) -> list[dict[str, Any]]:
@@ -366,8 +365,6 @@ def ohlc_for_source(
     price_source = "vp_prints"
     gid = f"req001:{src}:{tf}:{contract or ''}:{last_t}:{len(bars)}:{price_source}"
     status = "COMPLETE" if not missing else ("WARMING" if not bars else "GAPPED")
-    if span_days < _REQ001_MIN_DAYS:
-        status = "SHORT HISTORY"
     out: dict[str, Any] = {
         "ok": True,
         "source": src,
@@ -385,14 +382,7 @@ def ohlc_for_source(
         "missing": missing,
         "history_span_days": round(span_days, 2),
         "price_source": price_source,
-        "req001_min_days": _REQ001_MIN_DAYS,
     }
-    if span_days < _REQ001_MIN_DAYS:
-        out["named_state"] = "SHORT HISTORY"
-        out["detail"] = (
-            f"price span {span_days:.1f}d < {_REQ001_MIN_DAYS}d "
-            f"(store={detail}; source={price_source})"
-        )
     cont = _continuous_block(src)
     if cont:
         out["continuous"] = cont

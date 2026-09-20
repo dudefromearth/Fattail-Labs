@@ -30,3 +30,4 @@ assert.equal(derived, 0.25);
 assert.equal(resolveTick({ prices: [10, 10.1, 10.3] }), 0.1);
 
 console.log("saTicks.test.ts ok");
+

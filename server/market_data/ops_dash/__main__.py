@@ -1,17 +1,16 @@
-"""RETIRED StudioTwo interim. Single pane is StudioOne Chain Snapshot :5055."""
+"""Do not bind a dashboard. Live pane is StudioOne Chain Snapshot :5055."""
 
 from __future__ import annotations
 
 import sys
 
-CONSOLIDATED = "http://studioone.local:5055"
+from market_data.ops_dash import LIVE_PANE
 
 
 def main() -> int:
     print(
-        "ops_dash RETIRED. Single ops pane: "
-        f"{CONSOLIDATED} (Chain Snapshot · GET /api/vp-ops). "
-        "Do not bind :5056.",
+        f"No second dashboard. Live pane: {LIVE_PANE} "
+        "(Chain Snapshot · GET /api/vp-ops).",
         file=sys.stderr,
         flush=True,
     )

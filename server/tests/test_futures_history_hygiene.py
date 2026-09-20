@@ -10,6 +10,8 @@ WINDOW_TOKENS = (
     "REQUESTED_WINDOW_DAYS",
     'min_days: "90"',
     "min_days=90",
+    "_REQ001_MIN_DAYS",
+    "req001_min_days",
 )
 
 
@@ -27,6 +29,7 @@ def test_fill_branch_gone():
 def test_calendar_window_deleted_on_provider_and_surface():
     roots = [
         REPO / "server/sa_dev/futures_history.py",
+        REPO / "server/sa_dev/service.py",
         REPO / "server/history_app.py",
         REPO / "web/components/sa/SaPriceChart.tsx",
     ]
