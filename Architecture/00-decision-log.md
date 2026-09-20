@@ -4,6 +4,20 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-19 — DL-780 SODP Mike hop binds (spec v0.1.3)
+
+**Decision.** Mike SODP0 **RETURNED** §6/§7. Juliet landed the binds; SODP-3 and the three-host table were not dropped.
+
+- Computing JWT: `issue_session(identity_id=0, issuer="internal", role="administrator")`. Same `LABS_SESSION_SECRET` as today's VP hop. Sidecar `LABS_ENV=dev`.
+- Outbound **request** `Cookie:` only. Never `Set-Cookie` the computing JWT on the member response.
+- SSO: each UI host's `NEXT_PUBLIC_SITE_URL` = `LABS_SSO_LOGIN_URL_*` callback host. localhost while on `studiotwo` is a 401 identity miss. MiniTwo/MacBook do not inherit StudioTwo's callback or put their session secret on the sidecar in this program.
+
+Mike re-reviews. Not BUILD.
+
+**Cites:** `gate-reports/SODP0-mike.md` · **DL-779**.
+
+---
+
 ## 2026-09-19 — DL-779 SODP plan RETURNED · F3 is the migration
 
 **Decision (Coach, 2026-09-19).** The v1.0 DAG that could land the struck fill on StudioOne and then replace it is **void**. Spec **v0.1.2** · plan **v1.1**.

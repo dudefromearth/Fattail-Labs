@@ -13,7 +13,7 @@
 
 | Gate | Packet | Seat | Machine | Status |
 |------|--------|------|---------|--------|
-| SODP0-G | Advisor + design + infra + auth | India → Echo+Tango → Foxtrot → Mike | StudioTwo read-only | **SEEDED** |
+| SODP0-G | Advisor + design + infra + auth | India → Echo+Tango → Foxtrot → Mike | StudioTwo read-only | Echo+Tango **APPROVED** · Foxtrot **APPROVED** · Hotel **APPROVED** · Mike **RETURNED** → v0.1.3 landed, re-review · India **in flight** |
 | SODP1-G | Census: consumers, Massive writers, CP-1 budget | Kilo + Foxtrot | both, read-only | after stamp |
 | SODP2-G | **F3 = migration** — provider born on StudioOne | Alpha + Foxtrot + Kilo | StudioOne **CP-1 arithmetic** | HOLD stamp |
 | SODP3-G | Re-point every census row + attest | Alpha + Charlie + Kilo | StudioTwo | HOLD |

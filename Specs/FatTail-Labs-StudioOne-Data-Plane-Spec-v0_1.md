@@ -1,7 +1,7 @@
 # FatTail Labs — StudioOne Data Plane & Remote UI
 
-**Spec v0.1.2**  
-**Status:** DRAFT — **RETURNED** (Coach 2026-09-19: TS-1 collision, CP-1 arithmetic, consumer proofs, MiniTwo topology). **NOT BUILD AUTHORITY.**  
+**Spec v0.1.3**  
+**Status:** DRAFT — Mike §6/§7 binds landed (v0.1.2 Coach RETURNED still in force). **NOT BUILD AUTHORITY.**  
 **Date:** 2026-09-19  
 **Program:** SODP  
 **Author:** Juliet (from Coach intent)  
@@ -148,17 +148,23 @@ Member routes on Labs (UI host `:4000`):
 | `/api/app/vp/v1/stream` | StudioOne stream |
 | `/api/symbology/v1/*` | StudioOne `:4011` (already) |
 
-Hop: `require_session` locally → `auth.issue_session(identity_id=0, role=administrator)` Cookie to StudioOne. Never forward `ft_session`. Fail loud if `LABS_SA_DEV_VP_API_BASE` / `LABS_SYMBOLOGY_API_BASE` unset.
+**Hop (SODP-3).** Labs `:4000` on the UI host: `require_session` on the inbound member `ft_session`. Then mint a **new** computing JWT: `auth.issue_session(identity_id=0, issuer="internal", role="administrator")`. Send it to StudioOne as an HTTP **request** header `Cookie: {LABS session cookie name}={token}`. Never copy the inbound member cookie. Never `Set-Cookie` the computing JWT on the member response. Never put computing-class, LAN IPs, or StudioOne URLs in the browser or in Next rewrites.
+
+**Sidecar.** StudioOne `:4010` / `:4011` / history `:4012` verify that JWT with the **same** `LABS_SESSION_SECRET` the UI-host hop used. Sidecar `LABS_ENV=dev` in this program (as-built VP/symbology). Unauthenticated 401; member-class JWT 403 `computing_consumers_only`; computing JWT 200. Fail loud if `LABS_SA_DEV_VP_API_BASE` / `LABS_SYMBOLOGY_API_BASE` / history base unset. History/OHLC/contracts/stream reuse this hop — no second secret, no second token class.
+
+**Negative cases (SODP3 evidence):** member cookie forwarded → 403; no cookie → 401; computing JWT → 200; member hop response has no computing `Set-Cookie`.
 
 ---
 
 ## 7. UI hosts
 
-| Host | Job | SSO / site URL |
-|------|-----|----------------|
-| StudioTwo | Dev UI | `http://studiotwo:3000` |
-| MacBook | Remote UI | named host when Coach wires it; same hop pin |
-| MiniTwo | Production UI | `https://labs.fattail.ai` → Tailscale `http://100.74.220.38:4010` |
+| Host | Job | Site URL | SSO callback | Hop pin |
+|------|-----|----------|--------------|---------|
+| StudioTwo | Dev UI | `http://studiotwo:3000` | `NEXT_PUBLIC_SITE_URL` **and** `LABS_SSO_LOGIN_URL_*` `redirect=` encode **this** origin. Host-only `ft_session`. | LAN `192.168.1.111` `:4010`/`:4011`/`:4012` |
+| MacBook | Remote UI | **named at SODP6** — not invented here | That name is the callback. Not `studiotwo`, not `localhost`, not `labs.fattail.ai`. | LAN pin if on LAN; else Tailscale `100.74.220.38` |
+| MiniTwo | Production UI | `https://labs.fattail.ai` | `LABS_COOKIE_DOMAIN=.fattail.ai`, `LABS_ENV=production` on **product** Labs. **SODP4 named.** Does **not** inherit StudioTwo's callback or put MiniTwo's session secret on the sidecar in this program. | Tailscale `100.74.220.38` `:4010`/`:4011`/`:4012` |
+
+**SSO per UI host.** Browser origin, `NEXT_PUBLIC_SITE_URL`, and `LABS_SSO_LOGIN_URL_*` `redirect=` are the **same** host. Mismatch (including `localhost` while the member is on `studiotwo` or a named MacBook host) is a 401 identity miss — page may load; `/api/auth/me` does not. Next never rewrites `/api/*` to StudioOne. Computing-class never in the browser.
 
 Next never imports Massive. Chart reads hop payload only. Banner: if `short_history === true`, render SHORT HISTORY. Cannot skip.
 
@@ -279,3 +285,4 @@ MiniTwo does **not** run capture, vp-api, or Massive. It runs Next + product Lab
 | 0.1 | 2026-09-19 | First draft from Coach clean-separation intent + TS-1 F3 |
 | 0.1.1 | 2026-09-19 | SODP-10 + §10 hardening round (Coach: tests, no dangle, purpose-built) |
 | 0.1.2 | 2026-09-19 | RETURNED: F3=migration; CP-1 arithmetic; consumer census + deletion proofs; MiniTwo as designed consumer |
+| 0.1.3 | 2026-09-19 | Mike: hop token `issuer=internal`; Cookie request header only, never Set-Cookie; shared secret; sidecar `LABS_ENV=dev`; SSO callback per UI host |
