@@ -37,6 +37,8 @@ This document describes **the entire market/data system**: who owns Massive, who
 
 **Coach (2026-09-19):** serverside functionality including all data movement and API run from StudioOne; UI is remote (StudioTwo / MacBook / MiniTwo).
 
+**One motion (TS-1):** F3 is the migration. The Massive-first provider is born on StudioOne. The old StudioTwo OHLC server (fill branch and all) is deleted. Never copy the struck fill onto the capture box.
+
 ---
 
 ## 2. As-built (2026-09-19) — not the target
@@ -78,7 +80,7 @@ Arch **01** still says MiniTwo is the sole Labs **product** host. That remains t
 | **StudioOne** | D1 capture + VP API + symbology + chain_feed | **Sole data plane.** All Massive. All history. All VP/symbology APIs. |
 | **StudioTwo** | Full-stack dev (Next + Labs + leftover vp-api) | **Dev UI only** + thin Labs hop. No Massive. No vp-api. |
 | **MacBook** | not a named UI host | Same as StudioTwo: Next + hop. |
-| **MiniTwo** | Production Labs (Next + FastAPI + MySQL) | Production **UI** + product Labs API; data via Tailscale to StudioOne. No capture. |
+| **MiniTwo** | Production Labs (Next + FastAPI + MySQL) | Production **UI** + product Labs. **Designed consumer now:** Tailscale `http://100.74.220.38:4010` / `:4011` / history `:4012`. Cutover = named SODP4. Unset pin → 503, never a local fill. No capture. |
 | MiniThree | nginx / TLS | unchanged |
 | DudeTwo | staging | not this program |
 
@@ -100,7 +102,7 @@ Arch **01** still says MiniTwo is the sole Labs **product** host. That remains t
 | API | Port | Consumers |
 |-----|------|-----------|
 | VP Contract v1.1 (`/v1/health`, profile, range) | 4010 | Labs hop `/api/app/vp/v1/*` |
-| History / OHLC | 4010 (or 4012) | Labs hop `/ohlc` |
+| History / OHLC | **4012** (sibling; Foxtrot) | Labs hop `/ohlc` |
 | Symbology v1 | 4011 | Labs hop `/api/symbology/v1/*` |
 | Stream | 4010 | Labs hop `/stream` |
 
@@ -115,6 +117,8 @@ MySQL `labs`, SSO secrets as the member issuer, course blobs, HeyGen, admin Kanb
 Completed session days are immutable files under the on-box store (not an unmounted 2TB path). Key: vendor ticker + resolution + session date. Request path: fill missing days from Massive, then overlay print tail. Fail loud if the cache root is missing.
 
 Labs identity (`ESZ2026`) is stored on the payload. Vendor ticker (`ESZ6`) is a server translation, never a client hardcode (`FGHJKMNQUVXZ` still forbidden in `web/lib/symbology`).
+
+**CP-1 arithmetic (draft):** history = **0 standing** Massive connections; burst 1 GET per (ticker, tf) on cache miss; first ES+MES = 2 REST bursts, post-close or HOLD. Combined standing = chain_feed + sym_feed + vp-futures + (recognition cache once SODP1 names it). No Redis CONFIG. Rollback = bootout history only.
 
 ---
 

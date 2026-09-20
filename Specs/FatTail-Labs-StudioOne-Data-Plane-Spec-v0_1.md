@@ -1,7 +1,7 @@
 # FatTail Labs — StudioOne Data Plane & Remote UI
 
-**Spec v0.1.1**  
-**Status:** DRAFT — review object. **NOT BUILD AUTHORITY.**  
+**Spec v0.1.2**  
+**Status:** DRAFT — **RETURNED** (Coach 2026-09-19: TS-1 collision, CP-1 arithmetic, consumer proofs, MiniTwo topology). **NOT BUILD AUTHORITY.**  
 **Date:** 2026-09-19  
 **Program:** SODP  
 **Author:** Juliet (from Coach intent)  
@@ -69,8 +69,8 @@ It does **not** silently relocate Labs identity, courses, or MySQL `labs`. That 
 | **SODP-4** | Product Labs (identity, courses, MySQL `labs`, SSO issuers) stays MiniTwo in production until Coach stamps **SODP-LABS**. |
 | **SODP-5** | Futures chart history is **one provider**, Massive-first, keyed by Labs `bound_symbol` (e.g. ESZ2026) and translated to the vendor ticker Massive actually serves (ESZ6). Local prints are tail only. No conditional fill. |
 | **SODP-6** | SHORT HISTORY is a **payload flag**. Every surface that draws those bars must render it. A route cannot skip a banner that ships in the payload. |
-| **SODP-7** | **TS-1** applies: the struck `_aggs_price_fill` design is deleted (grep-proof), not repaired. Both AP-1 strikes are cited in the DL. |
-| **SODP-8** | **CP-1** on every StudioOne packet (verbatim in the GO). |
+| **SODP-7** | **TS-1** applies: the struck `_aggs_price_fill` design is deleted (grep-proof), not repaired. Both AP-1 strikes are cited in the DL. **F3 and the migration are one motion:** the Massive-first provider is **born and proven on StudioOne**. The old StudioTwo OHLC server is deleted **whole** (process, plist, fill branch, in-process `ohlc_for_source` Massive path). A packet that copies the fill to StudioOne and then replaces it is **FAIL**. |
+| **SODP-8** | **CP-1 arithmetic**, not citation only. Every landing states its budget (Massive connections especially). The plan states the **combined** footprint vs chain_feed headroom. |
 | **SODP-9** | REQ-001 / 002 / 003 stay OPEN until Coach AP-1. No report writes "done" before his line. |
 | **SODP-10** | After the move, a **hardening round** (not mid-build). Refactor + audit until the plane is purpose-built: Data Services and APIs on StudioOne only; remotes consume APIs only. Consolidated unit tests. **No dangling code** (grep-proof). Doctrine §13: rounds follow implementation; do not streamline SODP2–6 on the fly. |
 
@@ -106,10 +106,10 @@ This is the system **today**. The program exists because it is **not** SODP-1.
 | `symbology` | `:4011` | computing-class registry |
 | `vp-engine` | existing | histograms |
 | `vp-futures` capture | existing | prints = **tail only** for price |
-| **history provider** | part of vp-api **or** sibling `:4012` | Massive-first cache; SODP-5 |
+| **history provider** | sibling **`:4012`** (Foxtrot SODP0: not on chain_feed / vp-api ports) | Massive-first cache; SODP-5 · F3 |
 | Redis | local | `mb:*` bus · `vp:hot:*` · **not** chain_feed maxmemory change |
 
-One Massive account. History GETs after RTH or proven not to starve chain_feed (CP-1).
+One Massive account. See **§12 CP-1 budgets**. History GETs after RTH or proven not to starve chain_feed.
 
 ---
 
@@ -124,9 +124,13 @@ For futures chart kinds (ES, MES, later NQ…):
 5. Payload always includes: `bound_symbol`, `vendor_ticker`, `price_source=massive_futures_aggs`, `history_span_days`, `requested_window_days`, `short_history` bool, `named_state=SHORT HISTORY` when short.
 6. Empty Massive result is a **named failure**, not a silent print fallback.
 
-**VPS Q1:** when per-contract prints reach 90-day local depth, flipping capture to primary is a **new DL** — not a silent revert.
+**VPS Q1:** when per-contract prints reach 90-day local depth, flipping capture to primary is a **new DL** — not a silent revert. Chart aggs do **not** grant model ACTIVE.
 
-**Delete:** `_aggs_price_fill` and its `if requested or span_days < 90` wiring. Grep-proof in close-out, same standard as FIXTURE.
+**Hotel honors (SODP2, not optional):** no root-default hardcoded `ESZ6`/`MESZ6` — default bound is strip `front` then vendor-translate. MES empty is not filled from ES. Print tail is the **same** `bound_symbol` only. Massive empty is a named failure, **not** SHORT HISTORY (SHORT HISTORY is a short **successful** serve). No silent D6.5 back-adjust.
+
+**Delete (StudioTwo, whole server — not a flag):** `_aggs_price_fill`, the `if requested or span_days < 90` wiring, in-process `ohlc_for_source` as a Massive/print BASE, leftover StudioTwo `vp-api` / `chain-feed` / `vp-engine` if they exist only as a second plane. Grep-proof. **Do not rsync the fill onto StudioOne.**
+
+**One motion:** StudioOne history provider proven (June on `ESZ2026` / MES equivalent, computing-class) **before** any consumer is re-pointed. Re-point, then delete the old server. Never: move fill, then F3.
 
 ---
 
@@ -162,7 +166,7 @@ Next never imports Massive. Chart reads hop payload only. Banner: if `short_hist
 
 ## 8. Out of this program
 
-LIM, QFRIC, XS, PPL, Help Watch. IKI. Moving MySQL `labs` / SSO issuers onto StudioOne (**SODP-LABS**). Answering D6/D7/D8. Granting ES/MES **model** ACTIVE (VPS Q1). MiniTwo capture. Repair #3 of `_aggs_price_fill`.
+LIM, QFRIC, XS, PPL, Help Watch. IKI. Moving MySQL `labs` / SSO issuers onto StudioOne (**SODP-LABS**). Answering D6/D7/D8. Granting ES/MES **model** ACTIVE (VPS Q1). MiniTwo capture. Repair #3 of `_aggs_price_fill`. **Copying the fill onto StudioOne.** Production cutover without a named SODP4 GO.
 
 ---
 
@@ -194,9 +198,84 @@ Simplify law (Audit spec v1.1 §2) binds: accepted interface and performance may
 
 ---
 
-## 11. Change table
+## 11. Consumer census (re-point with proof)
+
+Every consumer of every **moved** service is enumerated, re-pointed, and attested. SYM-SWAP lesson: the seam where a route changes is where branches get orphaned.
+
+| Service (StudioOne) | Consumer today | Re-point to | Attest |
+|---------------------|----------------|-------------|--------|
+| History / OHLC | `SaPriceChart` `GET /api/app/vp/v1/ohlc/{source}` | Labs hop → StudioOne history (not in-process fill) | curl through hop: `ESZ2026` first bar June; `price_source=massive_futures_aggs` |
+| History / OHLC | `vp_display.get_source_ohlc` in-process `ohlc_for_source` | **delete** in-process BASE; hop only | grep `ohlc_for_source` no Massive fill |
+| History / OHLC | StudioOne `vp_api` `/v1/ohlc` print-chunks | **replace** with Massive-first provider (do not keep print BASE in parallel) | computing GET June |
+| Contracts | `VolumeProfileSaSurface` `/contracts/{source}` | StudioOne | decade vs long-form: Labs identity on wire |
+| Stream | `SaPriceChart` `/stream` | StudioOne | live tail only |
+| VP structure/range/health | already hopped | stay; attest still StudioOne | `vp_api_base` pin |
+| Symbology | already hopped | stay; attest still `:4011` | `ES1!` bind ESZ2026 |
+| `fetchGen` localStorage | short print series | bust / refuse if `short_history` or span < window | no Sep-6 cache win |
+| Admin `/admin/sa-dev` | same Labs OHLC | same hop | one path |
+| Tests | TestClient in-process | in-process mock **or** live StudioOne pin | no silent fill |
+
+Kilo’s SODP1 artifact is this table filled with **file:line**. SODP3 does not close until every row has a command + output.
+
+Three UI hosts are consumers of the **same** hop contract (StudioTwo, MacBook, MiniTwo). See §14.
+
+---
+
+## 12. CP-1 budgets (arithmetic)
+
+Citation of CP-1 without numbers is not a GO. All Massive talk on StudioOne shares **one** account with `chain_feed`.
+
+| Writer | Standing Massive | Burst | Disk / CPU vs chain_feed | Port |
+|--------|------------------|-------|--------------------------|------|
+| `chain_feed` | 1 REST loop `--interval 2` (idle when no interest keys) | per hot exp | **sacred** — do not add interval | existing |
+| `sym_feed` | REST marks `--interval 5` | — | existing | existing |
+| `vp-futures` capture | session trades | — | existing | existing |
+| **History provider (F3)** | **0 standing** | 1 paginated GET / (vendor ticker, tf) on **cache miss**; today-refresh 1 GET | disk under on-box store; idle FastAPI | `:4010` route or `:4012` |
+| **Recognition cache** (Coach-named) | SODP1 must **name the process** | if it polls Massive, count it here | must not be a second undocumented writer | SODP1 |
+| leftover StudioTwo Massive | **must go to 0** | — | — | StudioTwo `:4010` retired |
+
+**Combined vs chain_feed headroom (draft, Foxtrot measures at SODP1):**
+
+- History is **on-demand + immutable day cache**. First ES+MES miss = **2** REST bursts, not a new interval. Saturday probe: chain_feed pid 538 at 0.3% CPU idle. Two historical GETs (ESZ6 ~5 pages) must run **post-close** or HOLD.
+- If SODP1 finds the recognition cache is a **standing** Massive poll, add its interval to this table **before** SODP2 GO. Combined standing connections = chain_feed + sym_feed + capture + (recognition if standing). History remains burst-only. If Foxtrot cannot show headroom, SODP2 is HOLD until after 16:00 ET **and** the standing set is unchanged.
+- No `CONFIG SET` of Redis maxmemory. No chain-feed plist edit. Rollback = bootout history agent only.
+
+---
+
+## 13. Deletion proofs (no ghost server)
+
+After re-point, the old instance is gone. A ghost StudioTwo OHLC/vp-api that still answers **masks** a misconfigured hop.
+
+For each retired unit (`_aggs_price_fill`, in-process OHLC BASE, StudioTwo `ai.fattail.labs.vp-api`, `chain-feed`, `vp-engine` if they are the leftover plane):
+
+| Proof | Command |
+|-------|---------|
+| Process gone | `lsof -nP -iTCP:4010` empty on StudioTwo; `launchctl list` no leftover label |
+| Plist gone | `ls ~/Library/LaunchAgents/ai.fattail.labs.vp-api.plist` (and chain-feed/engine) → absent **or** in `install/retired/` and not loaded |
+| Grep clean | no `_aggs_price_fill`; no `if requested or span_days <`; no Massive in `ohlc_for_source`; FIXTURE standard |
+
+Delta **FAIL** if any proof is missing. SODP-H may delete further dangle; it may not be the first time the fill disappears — that is SODP5 / SODP2 close-out.
+
+---
+
+## 14. Three consumers (MiniTwo designed now)
+
+Production is a consumer. Topology is designed for **three** hops, not discovered at deploy.
+
+| Consumer | Pin | When live |
+|----------|-----|-----------|
+| StudioTwo (dev) | `http://192.168.1.111:4010` · `:4011` | SODP3 |
+| MacBook (remote UI) | LAN pin if on LAN; else Tailscale `http://100.74.220.38:4010` · `:4011` | SODP6 when Coach names the host |
+| MiniTwo (prod) | `http://100.74.220.38:4010` · `:4011` · history **`:4012`** (Tailscale; never `.local`) | **SODP4 is its own named GO** — this row is the sketch. Pins fail loud if unset. Tailscale down → named 503, not a local fill. |
+
+MiniTwo does **not** run capture, vp-api, or Massive. It runs Next + product Labs + the same thin hop as StudioTwo. Cutover packet is later; the **pins and fail-loud** are specified now.
+
+---
+
+## 15. Change table
 
 | Ver | Date | Change |
 |-----|------|--------|
 | 0.1 | 2026-09-19 | First draft from Coach clean-separation intent + TS-1 F3 |
 | 0.1.1 | 2026-09-19 | SODP-10 + §10 hardening round (Coach: tests, no dangle, purpose-built) |
+| 0.1.2 | 2026-09-19 | RETURNED: F3=migration; CP-1 arithmetic; consumer census + deletion proofs; MiniTwo as designed consumer |

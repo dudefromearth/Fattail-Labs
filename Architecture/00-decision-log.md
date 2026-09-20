@@ -4,6 +4,21 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-19 — DL-779 SODP plan RETURNED · F3 is the migration
+
+**Decision (Coach, 2026-09-19).** The v1.0 DAG that could land the struck fill on StudioOne and then replace it is **void**. Spec **v0.1.2** · plan **v1.1**.
+
+1. **TS-1 collision.** F3 and the migration are **one motion**. Massive-first provider is built and proven on StudioOne. What is deleted on StudioTwo is the old OHLC server **whole**. A packet that copies `_aggs_price_fill` is FAIL.
+2. **CP-1 arithmetic.** Each landing states Massive connections (standing vs burst). Combined footprint vs chain_feed headroom. History = 0 standing; burst on cache miss. Recognition cache must be **named** at SODP1 and budgeted.
+3. **Consumer re-point with proof.** Spec §11 census, file:line, attest each. Deletion proofs: process gone, plist gone, grep clean. Ghost StudioTwo `:4010` is FAIL.
+4. **MiniTwo.** Production is a designed consumer now: Tailscale `100.74.220.38:4010` / `:4011`. Cutover remains a named SODP4 GO. Unset pin → 503, not a local fill.
+
+**Does not.** BUILD. Repair the fill. MiniTwo cutover tonight.
+
+**Cites:** Coach send-back 2026-09-19 · **DL-777** · **TS-1** · **CP-1**.
+
+---
+
 ## 2026-09-19 — DL-778 SODP-H · hardening round after the move (Coach-ruled)
 
 **Decision (Coach, 2026-09-19).** After the StudioOne move: a refactoring and hardening audit so the architecture is sound and bulletproof; **consolidated unit tests**; **no dangling code**; everything clean and purpose-built. **Data Services and APIs on StudioOne; remote services consuming the APIs.**

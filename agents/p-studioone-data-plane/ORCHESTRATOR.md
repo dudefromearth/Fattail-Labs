@@ -1,25 +1,25 @@
 # StudioOne Data Plane & Remote UI — Juliet board
 
-**Spec:** `Specs/FatTail-Labs-StudioOne-Data-Plane-Spec-v0_1.md` **DRAFT**  
+**Spec:** `Specs/FatTail-Labs-StudioOne-Data-Plane-Spec-v0_1.md` **v0.1.2 DRAFT RETURNED**  
 **Arch:** `Architecture/36-studioone-data-plane.md`  
 **Design:** `Architecture/36-studioone-data-plane-design.md`  
-**Plan:** `docs/StudioOne-Data-Plane-Full-Agent-Bench-Plan-v1.0.md`  
+**Plan:** `docs/StudioOne-Data-Plane-Full-Agent-Bench-Plan-v1.0.md` **v1.1** (v1.0 “move then F3” void)  
 **Token:** `agents/go/SODP0-W0.md`  
-**DL:** **DL-777** (intake)
+**DL:** **DL-777** intake · **DL-778** SODP-H · **DL-779** send-back
 
-**Status:** Review — **not BUILD.** No history rewrite until Coach stamp + SODP2-W0.
+**Status:** Review — **not BUILD.** F3 **is** the migration. No fill on StudioOne.
 
 **Open REQs:** REQ-001 OPEN · REQ-002 OPEN · REQ-003 OPEN.
 
 | Gate | Packet | Seat | Machine | Status |
 |------|--------|------|---------|--------|
 | SODP0-G | Advisor + design + infra + auth | India → Echo+Tango → Foxtrot → Mike | StudioTwo read-only | **SEEDED** |
-| SODP1-G | Inventory | Kilo | both, read-only | after SODP0 |
-| SODP2-G | History provider TS-1 | Alpha + Foxtrot + Kilo | StudioOne **CP-1** | HOLD stamp |
-| SODP3-G | Labs hop OHLC | Alpha + Charlie | StudioTwo | HOLD |
-| SODP4-G | MiniTwo hop | Foxtrot + Mike | MiniTwo **named** | HOLD |
-| SODP5-G | Retire StudioTwo leftovers | Foxtrot | StudioTwo | HOLD |
-| SODP6-G | MacBook UI host | Foxtrot + Charlie | MacBook **named** | HOLD |
+| SODP1-G | Census: consumers, Massive writers, CP-1 budget | Kilo + Foxtrot | both, read-only | after stamp |
+| SODP2-G | **F3 = migration** — provider born on StudioOne | Alpha + Foxtrot + Kilo | StudioOne **CP-1 arithmetic** | HOLD stamp |
+| SODP3-G | Re-point every census row + attest | Alpha + Charlie + Kilo | StudioTwo | HOLD |
+| SODP5-G | Delete old OHLC server whole (process, plist, grep) | Foxtrot + Alpha + Delta | StudioTwo | HOLD |
+| SODP4-G | MiniTwo consumer (topology already spec §14) | Foxtrot + Mike | MiniTwo **named** | HOLD |
+| SODP6-G | MacBook consumer | Foxtrot + Charlie | MacBook **named** | HOLD |
 | AP-1 | Pan June ES+MES | Coach | StudioTwo browser | not "done" |
 | SODP-H-G | Hardening: tests, no dangle, purpose-built | Kilo + Alpha + Charlie + India + Echo + Foxtrot + Delta | after AP-1 | **HOLD** · SODP-10 |
 

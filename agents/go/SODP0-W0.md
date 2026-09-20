@@ -25,3 +25,6 @@ India → Echo+Tango → Foxtrot → Mike on the review object. Juliet does not 
 - Product Labs (MySQL/SSO/courses) stays MiniTwo until Coach stamps SODP-LABS.
 - REQ-001 / 002 / 003 OPEN. No "done" before AP-1.
 - Hardening (SODP-H) is **after** the move + AP-1. Do not streamline SODP2–6.
+- **F3 is the migration.** Do not copy `_aggs_price_fill` onto StudioOne.
+- CP-1 **arithmetic** (spec §12) before SODP2 GO. Recognition cache named at SODP1.
+- MiniTwo pin designed now (spec §14); cutover still named SODP4.

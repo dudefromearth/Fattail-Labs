@@ -2,7 +2,7 @@
 
 **Document type:** FatTail Labs Full Agent Bench Plan  
 **Date:** 2026-09-19  
-**Status:** **Review object — not a build GO.** Coach asked for the plan, architecture, and design for full bench review. **SODP0-W0** is intake only.  
+**Status:** **v1.1 RETURNED and revised** (Coach 2026-09-19). v1.0 DAG “land then F3” is **void**. F3 **is** the migration. **Not a build GO.** **SODP0-W0** remains intake.  
 **Author:** Juliet (orchestration) · Grok Build (documents)  
 **Authority:** Coach (stamp / GO / AP-1)  
 **Canonical land path:** `docs/StudioOne-Data-Plane-Full-Agent-Bench-Plan-v1.0.md`  
@@ -42,31 +42,34 @@
 ## 0. Full bench sequence
 
 ```text
-SODP0-G   Advisor + design + infra + auth review  (India → Echo+Tango → Foxtrot → Mike)
+SODP0-G   Advisor + design + infra + auth  (India → Echo+Tango → Foxtrot → Mike + Hotel)
              │
              ▼
-          Coach stamp  →  BUILD AUTHORITY  (spec v0.1.x) + SODP1-W0
+          Coach stamp  →  BUILD + SODP1-W0
              │
-             ├─► SODP1-G  Inventory grep/lsof  (Kilo)           StudioTwo read-only
-             ├─► SODP2-G  History provider on StudioOne (TS-1)  Alpha+Foxtrot+Kilo   CP-1
-             ├─► SODP3-G  Labs hop OHLC/contracts/stream        Alpha+Charlie
-             ├─► SODP4-G  MiniTwo hop                           Foxtrot+Mike         named
-             ├─► SODP5-G  Retire StudioTwo data plane           Foxtrot
-             └─► SODP6-G  MacBook UI host                       Foxtrot+Charlie      named
-                    │
-                    ▼
-             SODP-AT     artifacts (June on ES+MES via hop; grep-proof; lsof)
-                    │
-                    ▼
-             AP-1        Coach: pan June 2026 on ES AND MES, StudioTwo
-                    │
-                    ▼
-             SODP-H-G    Hardening round (after the move, not during)
-                         Kilo consolidated tests · Alpha/Charlie delete dangle
-                         India MATCH · Echo re-gate · Delta grep-proof
+SODP1-G  Census: consumers (file:line) · Massive writers · leftovers
+             │         CP-1 combined budget  ·  recognition-cache NAMED
+             ▼
+SODP2-G  F3 = MIGRATION. Massive-first provider BORN on StudioOne.
+         Proven computing-class: ESZ2026 + MES → June. Fill NEVER copied.
+         CP-1 FULL DRESS + arithmetic vs chain_feed headroom.
+             │
+SODP3-G  Re-point EVERY census row. Attest each. Labs hop only.
+             │
+SODP5-G  Delete old StudioTwo OHLC server WHOLE (process, plist, grep).
+         Leftover vp-api / chain-feed / engine gone. Ghost FAIL.
+             │
+SODP4    MiniTwo consumer  — topology specified now; cutover NAMED later
+SODP6    MacBook consumer  — same hop contract; host NAMED later
+             │
+SODP-AT  hop June ES+MES · deletion proofs · no ghost :4010
+             │
+AP-1     Coach pan June ES AND MES
+             │
+SODP-H-G Hardening (after, not during)
 ```
 
-SODP0 is sequential (workflow Phases 2–4). SODP1 may run during SODP0 if read-only. **No `server/` history rewrite until Coach stamps BUILD and SODP2-W0.**
+**FAIL the program if any packet sequences “move the fill, then F3.”** SODP1 may run read-only during SODP0. **No history code on StudioOne until stamp + SODP2-W0.** SODP4/SODP6 do not block AP-1 on StudioTwo.
 
 ---
 
@@ -104,33 +107,44 @@ Content-studio seats (Bravo, November, Romeo, Papa, Gemba, Golf) are **not seate
 
 India must **flag** (not erase) the tension: Coach said “api run from StudioOne”; SODP-4 keeps product Labs on MiniTwo until a named cut. That is a Coach box, not India’s kill.
 
-### SODP1 — Inventory (Kilo)
+### SODP1 — Census (Kilo + Foxtrot)
 
-Read-only. Grep Massive / `ohlc_for_source` / `_aggs_price_fill` / launchd on StudioTwo vs StudioOne. Artifact: `gate-reports/SODP1-inventory.md`.
+Read-only. Artifact `gate-reports/SODP1-inventory.md` **must** contain:
 
-### SODP2 — History on StudioOne (Alpha + Foxtrot + Kilo)
+1. **Consumer table** (spec §11) with **file:line** for every OHLC / contracts / stream / VP / symbology caller.  
+2. **Massive writers** on StudioOne **and** StudioTwo (process, interval, standing vs burst). **Name the recognition cache** Coach cited — process, or “none found.”  
+3. **Combined CP-1 budget** (spec §12) vs live chain_feed (pid, CPU, last-snapshot).  
+4. Leftover StudioTwo launchd (vp-api, chain-feed, vp-engine).
 
-**CP-1 FULL DRESS.** TS-1 replacement lives here. Massive-first, vendor ticker translation, disk cache, payload banner flag. Delete `_aggs_price_fill`. Overlay/rsync; **no git-pull** of the stale StudioOne Labs tree.
+No GO to SODP2 if recognition cache is unnamed or combined standing Massive is uncounted.
 
-Footprint (draft, Foxtrot confirms): +1 Python HTTP or new route on `:4010`; Massive GETs historical; disk under on-box store; no chain-feed plist edit.
+### SODP2 — F3 **is** the migration (Alpha + Foxtrot + Kilo)
 
-Rollback: bootout the history agent **or** revert the vp-api overlay; Labs hop off.
+**CP-1 FULL DRESS + arithmetic.** Build the Massive-first provider **on StudioOne**. Prove computing-class `ESZ2026` and MES → first bar in June, `short_history` in payload. Vendor-translate on the server. Disk cache. Print tail same contract only.
 
-### SODP3 — Hop (Alpha + Charlie)
+**Do not** rsync `_aggs_price_fill` / in-process `ohlc_for_source` fill onto StudioOne. Overlay new module only. No git-pull of the stale Labs tree.
 
-Labs `/ohlc` `/contracts` `/stream` hop like structure. Client banner from payload. Bust short OHLC cache.
+**Budget (draft; SODP1 may tighten):** sibling **`:4012`**. 0 standing Massive; burst 1 GET/(ticker,tf) on miss; first ES+MES = 2 REST bursts, **post-close or HOLD**. Cache on internal disk (not unmounted 2TB). No chain-feed plist. No Redis CONFIG. Rollback: `launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/ai.fattail.labs.history.plist`.
 
-### SODP4 — MiniTwo (Foxtrot + Mike)
+Hotel honors: no hardcoded root-default `ESZ6`; MES empty ≠ ES; empty ≠ SHORT HISTORY; no model ACTIVE.
 
-Only when Coach names production. Tailscale pin. Product Labs stays.
+### SODP3 — Re-point with proof (Alpha + Charlie + Kilo)
 
-### SODP5 — Retire StudioTwo leftovers (Foxtrot)
+Every SODP1 census row re-pointed and attested (command + output). Labs hop only. Bust short `fetchGen` cache. Fail loud if pin unset.
 
-bootout local vp-api, chain-feed, vp-engine on StudioTwo after SODP3 holds. `lsof :4010` empty.
+A row without an attest is **FAIL** (SYM-SWAP lesson).
 
-### SODP6 — MacBook (Foxtrot + Charlie)
+### SODP5 — Delete the old server whole (Foxtrot + Alpha + Delta)
 
-Named site URL + SSO callback. Same hop.
+**After** SODP3 attests. StudioTwo: in-process OHLC BASE gone; `_aggs_price_fill` gone; leftover vp-api / chain-feed / vp-engine **process gone, plist gone, grep clean**. `lsof :4010` empty. Ghost server = FAIL.
+
+### SODP4 — MiniTwo consumer (Foxtrot + Mike) · **named GO**
+
+Topology **already** spec §14: Tailscale `http://100.74.220.38:4010` / `:4011`. Same hop as StudioTwo. No capture on MiniTwo. Unset pin → 503, not a local fill. Cutover is this packet; design is not deferred to deploy night.
+
+### SODP6 — MacBook consumer (Foxtrot + Charlie) · **named GO**
+
+Same hop contract. LAN pin or Tailscale. SSO callback host for that machine.
 
 ### AP-1
 
@@ -157,7 +171,7 @@ Coach: tile → chart, pan to June 2026, ES **and** MES. REQ-001 range then VP c
 
 ## 3. Isolation FAIL
 
-A seed that: repairs `_aggs_price_fill`; calls Massive from Next; forwards member cookies to StudioOne; git-pulls StudioOne Labs; answers D6/D7/D8; grants model ACTIVE; deploys MiniTwo without a named GO; stops StudioTwo `:3000`/`:4000` as a “fix”; **streamlines SODP2–6 mid-build** (hardening is SODP-H only); leaves dangling data-plane code on a UI host.
+A seed that: repairs `_aggs_price_fill`; **copies the fill onto StudioOne**; sequences “move then F3”; calls Massive from Next; forwards member cookies; git-pulls StudioOne Labs; answers D6/D7/D8; grants model ACTIVE; MiniTwo cutover without named SODP4; treats MiniTwo pin as TBD; stops `:3000`/`:4000` as a “fix”; streamlines mid-build; leaves a ghost StudioTwo `:4010` or fill path.
 
 ---
 
