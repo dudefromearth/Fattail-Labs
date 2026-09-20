@@ -15,7 +15,7 @@
 | Gate | Packet | Seat | Machine | Status |
 |------|--------|------|---------|--------|
 | SODP0-G | Advisor + design + infra + auth | India → Echo+Tango → Foxtrot → Mike | StudioTwo read-only | **PASS (GO)** · stamp request |
-| SODP1-G | Census: consumers, Massive writers, CP-1 budget | Kilo + Foxtrot | both, read-only | **in flight** (read-only parallel) |
+| SODP1-G | Census: consumers, Massive writers, CP-1 budget | Kilo + Foxtrot | both, read-only | **filed** (read-only; not SODP2) |
 | SODP2-G | **F3 = migration** — provider born on StudioOne | Alpha + Foxtrot + Kilo | StudioOne **CP-1 arithmetic** | HOLD stamp |
 | SODP3-G | Re-point every census row + attest | Alpha + Charlie + Kilo | StudioTwo | HOLD |
 | SODP5-G | Delete old OHLC server whole (process, plist, grep) | Foxtrot + Alpha + Delta | StudioTwo | HOLD |
