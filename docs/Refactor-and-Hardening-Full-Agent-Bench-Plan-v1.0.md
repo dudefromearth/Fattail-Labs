@@ -37,6 +37,10 @@ REQ-005  H0 inventory (read-only) ── Coach approves SEV list ── H1 execu
 
 A seed that starts R0 or H0 while TOPO-1 is OPEN is **FAIL**.
 
+## WG-1 — weekly timer (after first backlog clear)
+
+Doctrine §18. Saturday 16:05 ET, StudioTwo launchd `ai.fattail.labs.groundskeeping` (same pattern as Evening Autorun). **Not loaded until armed.** Then R0+H0 fire without a human trigger. Empty lists are a result. R1/H1 still Coach-approved. Missed armed cycle → RL-1 process defect. Status reports print `last_completed_cycle`.
+
 ---
 
 ## Program 1 — REFACTOR SWEEP (REQ-004)

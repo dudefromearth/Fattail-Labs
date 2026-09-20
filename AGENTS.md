@@ -264,6 +264,9 @@ All agents operate under two constitutional documents:
   (`agents/bench/requirements-ledger.md`).
   **TS-1** (§17): a component that fails AP-1 twice is not repaired a third time —
   replace, delete the failing part, grep-proof; strikes are Coach's screen, not gates.
+  **WG-1** (§18): weekly R0+H0 inventories on a timer (Saturday post-RTH); empty lists
+  count; R1/H1 still Coach-approved; missed cycle is an RL-1 defect; last cycle date
+  on every status report.
 - **[first-principles-doctrine.md](./agents/bench/first-principles-doctrine.md)** — Immune
   system: build on what exists, Three Strikes → first principles, sunk cost is not an
   argument, evidence over assertion. **TS-1** (two AP-1 strikes) replaces designs, never gates.

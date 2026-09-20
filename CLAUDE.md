@@ -65,6 +65,9 @@ ad-hoc polls or WS-only mid tables. See Arch **28** §4.4 and `AGENTS.md` market
   strike, replace: the part that works is primary; the failing part is **deleted**
   (grep-proof). Laws and doctrine are not components. Diagnosis informs replacement
   only — never repair #3.
+- **Weekly Grounds-keeping (WG-1 · doctrine §18):** R0+H0 run weekly on launchd
+  (Saturday post-RTH), not on memory. Empty lists are a result. R1/H1 stay
+  Coach-approved. Missed cycle = RL-1 process defect. Status reports show last cycle date.
 - **Documentation parity (nothing hidden):** every feature ships WITH its spec (new or
   versioned in `Specs/`), its decision-log entry, and updates to any affected
   architecture docs — in the same body of work, never "later". `Specs/` must always

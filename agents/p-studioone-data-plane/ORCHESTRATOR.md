@@ -9,7 +9,8 @@
 
 **Status:** Review — **not BUILD.** F3 **is** the migration. No fill on StudioOne.
 
-**Open REQs:** REQ-001 OPEN · REQ-002 OPEN · REQ-003 OPEN.
+**Open REQs:** REQ-001 OPEN · REQ-002 OPEN · REQ-003 OPEN · REQ-004 HOLD · REQ-005 HOLD  
+**WG-1 last cycle:** never (not armed — TOPO-1 backlog)
 
 | Gate | Packet | Seat | Machine | Status |
 |------|--------|------|---------|--------|

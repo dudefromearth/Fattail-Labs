@@ -21,6 +21,8 @@ agents/
     └── gate-reports/             ← Delta's written verdicts with evidence
 ```
 
+**WG-1 last cycle:** see `bench/groundskeeping.json` (print in every status report).
+
 ## The process
 
 1. **Spec first.** Nothing is orchestrated without an approved spec

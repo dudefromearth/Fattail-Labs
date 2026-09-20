@@ -2,7 +2,8 @@
 
 Canonical capture of Coach requirements. Wording preserved. Close only by **AP-1** (Coach acceptance) or explicit withdraw. Hashable FINAL texts: `artifacts/reqs/REQ-001.md` · `REQ-002.md` · `REQ-003.md` · `REQ-004.md` · `REQ-005.md` (spec §0.8).
 
-Status: `OPEN` · `AP-1` · `WITHDRAWN`
+Status: `OPEN` · `AP-1` · `WITHDRAWN`  
+**WG-1 last cycle:** never (not armed — TOPO-1 backlog). Canonical `agents/bench/groundskeeping.json`.
 
 ## Open
 

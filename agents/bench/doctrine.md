@@ -267,6 +267,21 @@ Open REQs are listed in every status report (Juliet board, gate reports, session
 
 India/Delta **FAIL** a packet that patches a twice-struck component. Juliet seeds replacement, not a third repair.
 
+### 18. Weekly Grounds-keeping (WG-1) (2026-09-19 · Coach standing rule)
+
+**Coach (verbatim law):** The refactor/hardening cycle runs WEEKLY on a timer, not on memory. Every week (suggested: Saturday, outside RTH, after the current TOPO-1 → REFACTOR → HARDEN backlog clears): (1) The R0 refactor inventory and H0 hardening inventory run automatically, read-only, per the standing program definitions — no human trigger required, same launchd pattern as Evening Autorun, executing only these stamped inventory seeds. (2) Deliverable each cycle: the two triaged packet lists to Coach. Empty lists are reported as empty — a clean week is a result, not a skipped run. (3) Execution (R1/H1) remains Coach-approved per list, in approved windows, CP-1 dress where applicable. (4) A missed cycle is a process defect, reported per RL-1. The board shows the last completed cycle date in every status report, so "weeks since grounds-keeping" is a number I see, not a feeling.
+
+| Term | Meaning |
+|------|---------|
+| **Cycle** | One Saturday post-RTH fire: R0 + H0 only (read-only inventories). |
+| **Armed** | launchd loaded **after** TOPO-1 AP-1 and the priority board is clear. Until then the plist exists; the runner logs HOLD (not a miss). |
+| **Deliverable** | Two triaged lists (REQ-004 R0, REQ-005 H0). Empty is a result. |
+| **Execute** | R1/H1 only after Coach approves that week's lists. |
+| **Miss** | Armed cycle did not produce the two lists. RL-1 process defect row that week. |
+| **Last cycle** | Canonical `agents/bench/groundskeeping.json` `last_completed_cycle`. Every status report prints it. |
+
+Juliet does not skip a fire because “the tree looked clean.” India/Delta **FAIL** a close-out that omits last-cycle date once WG-1 is armed.
+
 ## Agent Hierarchy
 
 - **Coach** — Visionary, final decision maker, human authority (Ernie)

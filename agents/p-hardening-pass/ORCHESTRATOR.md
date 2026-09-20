@@ -2,7 +2,8 @@
 
 **Plan:** `docs/Refactor-and-Hardening-Full-Agent-Bench-Plan-v1.0.md`  
 **Token:** `agents/go/HRD0-W0.md` **HOLD**  
-**REQ:** REQ-005 OPEN · HOLD until REQ-004 closes
+**REQ:** REQ-005 OPEN · HOLD until REQ-004 closes  
+**WG-1 last cycle:** never (not armed — TOPO-1 backlog)
 
 **Priority board still first:** REQ-001 · REQ-002 · REQ-003 · F3/TOPO-1 · eligibility report · then REQ-004.
 

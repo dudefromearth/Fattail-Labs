@@ -4,6 +4,18 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-19 — DL-782 WG-1 Weekly Grounds-keeping (standing)
+
+**Decision (Coach, 2026-09-19).** Refactor/hardening inventories run **weekly on a timer**, not on memory. Doctrine **§18**. Saturday post-RTH (16:05 ET), StudioTwo launchd like Evening Autorun, **R0 + H0 only**. Empty lists are a result. R1/H1 stay Coach-approved. Missed armed cycle is an RL-1 process defect. Every status report shows last completed cycle date.
+
+**Armed after** TOPO-1 AP-1 and the priority board is clear. Until then: plist on disk, runner HOLD, `last_completed_cycle: null` — HOLD is not a miss.
+
+**Canonical:** `agents/bench/groundskeeping.json`. Install (not loaded): `agents/p-refactor-sweep/install/ai.fattail.labs.groundskeeping.plist`.
+
+**Cites:** Coach WG-1 2026-09-19 · **DL-781** · REQ-004 · REQ-005.
+
+---
+
 ## 2026-09-19 — DL-781 REQ-004/005 queued · TOPO-1 AP-1 first
 
 **Decision (Coach, 2026-09-19).** After TOPO-1 (SODP) AP-1: **REFACTOR** then **HARDEN**, in that order. Board rows now; no R0/H0 execution until the priority board is clear (REQ-001/002/003, F3, TOPO-1, eligibility report).

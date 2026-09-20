@@ -1,0 +1,12 @@
+{
+  "law": "WG-1",
+  "doctrine": "agents/bench/doctrine.md §18",
+  "last_completed_cycle": null,
+  "last_attempt": null,
+  "armed": false,
+  "hold_until_board_clear": true,
+  "hold_reason": "TOPO-1 → REFACTOR → HARDEN backlog; REQ-001/002/003, F3, eligibility report still first",
+  "suggested_fire": "Saturday 16:05 America/New_York (post-RTH)",
+  "inventories": ["R0 agents/p-refactor-sweep/seeds/R0-kilo.md", "H0 agents/p-hardening-pass/seeds/H0-kilo.md"],
+  "weeks_since": null
+}
