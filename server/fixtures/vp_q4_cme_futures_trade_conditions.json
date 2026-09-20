@@ -1,0 +1,10 @@
+{
+  "schema": "vp-q4-cme-futures-trade-conditions-v1",
+  "source": "https://massive.com/docs/websocket/futures/trades",
+  "source_note": "Massive futures WS sample and REST trades sample publish no condition-code glossary for CME. Stocks /v3/reference/conditions is a different id space — MUST NOT be reused. Default: any c[] id is EXCLUDED-and-flagged until a CME-specific map exists.",
+  "store_policy": "ALL prints stored. Engine eligibility is not this collector.",
+  "ws_sample_fields": ["ev", "sym", "z", "p", "s", "t", "q"],
+  "ws_sample_absent": ["c", "x"],
+  "codes": [],
+  "unknown_default": "EXCLUDED-and-flagged"
+}

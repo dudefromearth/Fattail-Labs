@@ -1,0 +1,117 @@
+{
+  "commitHint": "e1c1ef1",
+  "panelBlockSha1": "8476169f89bfd159894a35f3018827ab8410a6e4",
+  "gexFrozenSrcSha1": "0d50f00993941bc631da7a3a02d309ba655bc9b5",
+  "fixtureSha1": "a9b351bffa165de31f3d79b09f8731de156f7228",
+  "panelBlock": "data-testid=\"heatmap-gex-profile\"\n              >\n                <div className=\"sticky top-0 z-[2] flex h-9 items-center border-b border-white/10 bg-[#0a0a0e]/95 px-2 text-[11px] font-medium uppercase tracking-wide text-white/45 backdrop-blur-sm\">\n                  <span className=\"w-20 shrink-0 text-right tabular-nums\">\n                    Strike\n                  </span>\n                  <span className=\"mx-2 flex-1 text-center normal-case tracking-normal\">\n                    {valueMode === \"gex_abs\" ? (\n                      <span className=\"text-sky-400/90\">Absolute GEX →</span>\n                    ) : valueMode === \"gex_net\" ? (\n                      <span className=\"text-emerald-400/90\">\n                        ← Neg · Net · Pos →\n                      </span>\n                    ) : (\n                      <span>\n                        <span className=\"text-red-400/90\">← Puts</span>\n                        <span className=\"text-white/35\"> · </span>\n                        <span className=\"text-sky-400/90\">Calls →</span>\n                      </span>\n                    )}\n                  </span>\n                  <span className=\"w-[4.5rem] shrink-0 text-right tabular-nums\">\n                    {valueMode === \"gex_all\" ||\n                    valueMode === \"gex_call\" ||\n                    valueMode === \"gex_put\"\n                      ? \"C / P\"\n                      : \"Value\"}\n                  </span>\n                </div>\n                {gexProfile.points.map((pt) => {\n                  const scale = smoothGexScale;\n                  const combined =\n                    valueMode === \"gex_all\" ||\n                    valueMode === \"gex_call\" ||\n                    valueMode === \"gex_put\";\n\n                  // Animated magnitudes (lerp toward live GEX)\n                  const callMag =\n                    pt.call != null\n                      ? (smoothGex[`${pt.strike}:c`] ?? Math.abs(pt.call))\n                      : null;\n                  const putMag =\n                    pt.put != null\n                      ? (smoothGex[`${pt.strike}:p`] ?? Math.abs(pt.put))\n                      : null;\n                  const callPct =\n                    callMag != null\n                      ? `${(Math.min(1, callMag / scale) * 50).toFixed(2)}%`\n                      : \"0%\";\n                  const putPct =\n                    putMag != null\n                      ? `${(Math.min(1, putMag / scale) * 50).toFixed(2)}%`\n                      : \"0%\";\n\n                  // Net / Abs single bar (value signed; abs mode uses magnitude)\n                  const seriesRaw =\n                    pt.valid && pt.value != null\n                      ? (smoothGex[`${pt.strike}:v`] ?? pt.value)\n                      : 0;\n                  const seriesSigned =\n                    valueMode === \"gex_abs\" ? Math.abs(seriesRaw) : seriesRaw;\n                  const seriesFrac = Math.min(\n                    1,\n                    Math.abs(seriesSigned) / scale,\n                  );\n                  const seriesPct = `${(seriesFrac * 50).toFixed(2)}%`;\n                  const seriesNeg = seriesSigned < 0;\n                  const seriesPos = seriesSigned > 0;\n\n                  const gexModel = heatmapGexTip({\n                    strikeLabel: pt.label,\n                    isSpot: pt.isSpot,\n                    combined,\n                    call: pt.call,\n                    put: pt.put,\n                    net: pt.value,\n                    callLabel:\n                      pt.call != null ? fmtGexProfile(pt.call) : \"—\",\n                    putLabel: pt.put != null ? fmtGexProfile(pt.put) : \"—\",\n                    netLabel:\n                      pt.value != null ? fmtGexProfile(pt.value) : \"—\",\n                  });\n\n                  return (\n                    <div\n                      key={pt.strike}\n                      data-spot={pt.isSpot ? \"1\" : \"0\"}\n                      className={[\n                        \"flex h-8 items-center border-b border-white/[0.04] px-2\",\n                        pt.isSpot\n                          ? \"border-t border-amber-400/70 bg-amber-400/5\"\n                          : \"\",\n                      ].join(\" \")}\n                      onMouseEnter={(e) => {\n                        if (tipPinnedRef.current) return;\n                        setHoverTip({\n                          model: gexModel,\n                          x: e.clientX,\n                          y: e.clientY,\n                        });\n                      }}\n                      onMouseLeave={() => {\n                        if (tipPinnedRef.current) return;\n                        setHoverTip(null);\n                      }}\n                    >\n                      <span\n                        className={[\n                          \"w-20 shrink-0 text-right tabular-nums font-medium\",\n                          pt.isSpot\n                            ? \"font-bold text-amber-400\"\n                            : \"text-white/50\",\n                        ].join(\" \")}\n                      >\n                        {pt.label}\n                      </span>\n                      <div className=\"relative mx-2 h-5 flex-1 overflow-hidden rounded-sm bg-white/[0.04]\">\n                        <div\n                          className=\"absolute inset-y-0 left-1/2 w-px bg-white/25\"\n                          aria-hidden\n                        />\n                        {combined ? (\n                          <>\n                            {/* Put → left (red) */}\n                            {putMag != null && putMag > 0 ? (\n                              <div\n                                className=\"absolute top-0.5 bottom-0.5 rounded-sm bg-red-500/85 motion-safe:transition-[width] motion-safe:duration-300 motion-safe:ease-out\"\n                                style={{ right: \"50%\", width: putPct }}\n                              />\n                            ) : null}\n                            {/* Call → right (blue) */}\n                            {callMag != null && callMag > 0 ? (\n                              <div\n                                className=\"absolute top-0.5 bottom-0.5 rounded-sm bg-sky-500/85 motion-safe:transition-[width] motion-safe:duration-300 motion-safe:ease-out\"\n                                style={{ left: \"50%\", width: callPct }}\n                              />\n                            ) : null}\n                          </>\n                        ) : pt.valid && (seriesPos || seriesNeg) ? (\n                          <div\n                            className={[\n                              \"absolute top-0.5 bottom-0.5 rounded-sm motion-safe:transition-[width,left,right] motion-safe:duration-300 motion-safe:ease-out\",\n                              valueMode === \"gex_abs\"\n                                ? \"bg-sky-500/90\"\n                                : seriesNeg\n                                  ? \"bg-red-500/85\"\n                                  : \"bg-sky-500/85\",\n                            ].join(\" \")}\n                            style={\n                              seriesNeg\n                                ? { right: \"50%\", width: seriesPct }\n                                : { left: \"50%\", width: seriesPct }\n                            }\n                          />\n                        ) : null}\n                      </div>\n                      <span className=\"w-[4.5rem] shrink-0 text-right tabular-nums text-[11px] leading-tight\">\n                        {combined ? (\n                          <>\n                            <span className=\"text-sky-400\">\n                              {callMag != null ? fmtGexProfile(callMag) : \"—\"}\n                            </span>\n                            <span className=\"text-white/30\">/</span>\n                            <span className=\"text-red-400\">\n                              {putMag != null ? fmtGexProfile(putMag) : \"—\"}\n                            </span>\n                          </>\n                        ) : (\n                          <span\n                            className={\n                              !pt.valid\n                                ? \"text-white/25\"\n                                : seriesNeg\n                                  ? \"text-red-400\"\n                                  : \"text-sky-400\"\n                            }\n                          >\n                            {pt.valid && pt.value != null\n                              ? fmtGexProfile(seriesRaw)\n                              : \"—\"}\n                          </span>\n                        )}\n                      </span>\n                    </div>\n                  );\n                })}\n                {!gexProfile.points.length && (\n                  <div className=\"px-4 py-24 text-center text-white/40\">\n                    {expiration\n                      ? \"Waiting for dual-side chain (γ / OI)…\"\n                      : \"Choose a contract\"}\n                  </div>\n                )}\n              </div>\n            ",
+  "gexFrozenSrc": "/**\n * Chain GEX estimate — vertical profile (strike axis), Spec §5.5 / MSC-style.\n *\n * Value modes:\n *   - Combined (default): call bar → right, put bar → left on same strike\n *   - Net: single signed bar\n *   - Absolute: |call|+|put| → right\n *\n * Formula gex_v1: call +Γ·OI·S² ; put −Γ·OI·S² ; net = sum ; abs = |C|+|P|\n */\n\nimport type { ChainContext, HeatmapTemplate, ValueModeId } from \"./types\";\nimport { contractKey } from \"@/lib/chainLadderApi\";\nimport { gexAbs, gexNet, gexSide } from \"./pricing\";\n\nexport type GexProfilePoint = {\n  strike: number;\n  label: string;\n  isSpot: boolean;\n  /** Mode series value (net / abs / or null when combined-only) */\n  value: number | null;\n  valid: boolean;\n  call: number | null;\n  put: number | null;\n};\n\n/**\n * Listed expiration for Analyzer GEX. Chain-attached (AZ-VP-2): not a\n * position book. Prefer a shown card’s exp, else Range horizon, else first\n * listed. Empty / hidden book still has a horizon.\n */\nexport function gexHorizonExpiration(opts: {\n  tradeExpiration?: string | null;\n  rangeHorizon?: string | null;\n  listedExpirations?: readonly string[] | null;\n}): string {\n  const listed = (opts.listedExpirations ?? [])\n    .map((e) => (e || \"\").slice(0, 10))\n    .filter((e) => /^\\d{4}-\\d{2}-\\d{2}$/.test(e));\n  const candidates = [\n    (opts.tradeExpiration || \"\").slice(0, 10),\n    (opts.rangeHorizon || \"\").slice(0, 10),\n    ...listed,\n  ];\n  return candidates.find((e) => /^\\d{4}-\\d{2}-\\d{2}$/.test(e)) ?? \"\";\n}\n\nexport function buildGexProfile(\n  ctx: ChainContext,\n  mode: ValueModeId,\n): GexProfilePoint[] {\n  const strikes = new Set<number>();\n  for (const row of ctx.contracts.values()) {\n    strikes.add(Number(row.strike));\n  }\n  const sorted = [...strikes].sort((a, b) => b - a);\n  return sorted.map((k) => {\n    const cRow = ctx.contracts.get(contractKey(\"call\", k));\n    const pRow = ctx.contracts.get(contractKey(\"put\", k));\n    const call = gexSide(ctx, \"call\", k);\n    const put = gexSide(ctx, \"put\", k);\n\n    let value: number | null = null;\n    let valid = false;\n\n    switch (mode) {\n      case \"gex_abs\":\n        value = gexAbs(ctx, k);\n        valid = value != null;\n        break;\n      case \"gex_net\":\n        value = gexNet(ctx, k);\n        valid = value != null;\n        break;\n      case \"gex_all\": // combined book view\n      case \"gex_call\": // legacy → treat as combined\n      case \"gex_put\":\n      default:\n        // Combined: valid if either side has data\n        valid = call != null || put != null;\n        value = gexNet(ctx, k); // still compute net for label/tooltip when both present\n        break;\n    }\n\n    return {\n      strike: k,\n      label: String(k),\n      isSpot: Boolean(cRow?.is_spot || pRow?.is_spot),\n      value,\n      valid,\n      call,\n      put,\n    };\n  });\n}\n\nfunction peakOf(vals: number[]): number {\n  let peak = 0;\n  for (const v of vals) {\n    if (v > peak) peak = v;\n  }\n  return peak || 1;\n}\n\n/** Longest-bar scale — mode-aware. Peak magnitude maps to full bar length. */\nexport function gexProfileScale(\n  points: GexProfilePoint[],\n  mode: ValueModeId,\n): number {\n  const vals: number[] = [];\n  for (const p of points) {\n    if (mode === \"gex_abs\") {\n      if (p.valid && p.value != null) vals.push(Math.abs(p.value));\n    } else if (mode === \"gex_net\") {\n      if (p.valid && p.value != null) vals.push(Math.abs(p.value));\n    } else {\n      if (p.call != null) vals.push(Math.abs(p.call));\n      if (p.put != null) vals.push(Math.abs(p.put));\n    }\n  }\n  return peakOf(vals);\n}\n\n/** Combined Call/Put: each side has its own longest-bar peak. */\nexport function gexSidePeaks(points: GexProfilePoint[]): {\n  call: number;\n  put: number;\n  hasCall: boolean;\n  hasPut: boolean;\n} {\n  const calls: number[] = [];\n  const puts: number[] = [];\n  for (const p of points) {\n    if (p.call != null) calls.push(Math.abs(p.call));\n    if (p.put != null) puts.push(Math.abs(p.put));\n  }\n  return {\n    call: peakOf(calls),\n    put: peakOf(puts),\n    hasCall: calls.length > 0,\n    hasPut: puts.length > 0,\n  };\n}\n\nexport const GEX_DISPLAY_DIV = 1e9;\n\nexport function fmtGexProfile(n: number): string {\n  const v = n / GEX_DISPLAY_DIV;\n  return v.toLocaleString(undefined, {\n    maximumFractionDigits: 2,\n    minimumFractionDigits: 0,\n  });\n}\n\n/** Compact right-axis label. Same ÷1e9 units as heatmap GEX. */\nexport function fmtGexAxis(raw: number): string {\n  if (!Number.isFinite(raw) || Math.abs(raw) < 1e-18) return \"0\";\n  const v = raw / GEX_DISPLAY_DIV;\n  const abs = Math.abs(v);\n  const digits = abs >= 100 ? 0 : abs >= 10 ? 1 : 2;\n  const body = abs.toLocaleString(undefined, {\n    maximumFractionDigits: digits,\n    minimumFractionDigits: 0,\n  });\n  return v < 0 ? `−${body}` : body;\n}\n\n/**\n * GEX value → plot Y. 0 sits at mid-height; +peak at the top edge, −peak at the bottom.\n * Bars and the right scale must use this same mapping.\n */\nexport function gexValueToPlotY(\n  value: number,\n  peak: number,\n  plotTop: number,\n  plotHeight: number,\n): number {\n  const maxH = Math.max(1, plotHeight / 2);\n  const axisY = plotTop + plotHeight / 2;\n  const p = Math.max(Math.abs(peak), 1e-12);\n  return axisY - (value / p) * maxH;\n}\n\nexport const gexTemplate: HeatmapTemplate = {\n  id: \"gex\",\n  label: \"GEX (traditional)\",\n  description:\n    \"Vertical profile · Call+Put combined · Net · Absolute · Γ×OI×S² · not dealer GEX\",\n  layout: \"profile\",\n  valueModes: [\n    { id: \"gex_all\", label: \"Call / Put\" },\n    { id: \"gex_net\", label: \"Net\" },\n    { id: \"gex_abs\", label: \"Absolute\" },\n  ],\n  defaultValueMode: \"gex_all\",\n\n  resolveColumns: () => [],\n  resolveRows: () => [],\n  computeCell: () => ({ display: null, value: null, valid: false }),\n  assignColors: () => ({ stickyScale: 1 }),\n};",
+  "fixture": {
+    "gex_all": [
+      {
+        "strike": 7710,
+        "label": "7710",
+        "isSpot": false,
+        "value": 2371600,
+        "valid": true,
+        "call": 23716000,
+        "put": -21344400
+      },
+      {
+        "strike": 7700,
+        "label": "7700",
+        "isSpot": true,
+        "value": 11858000,
+        "valid": true,
+        "call": 59290000,
+        "put": -47432000
+      }
+    ],
+    "gex_net": [
+      {
+        "strike": 7710,
+        "label": "7710",
+        "isSpot": false,
+        "value": 2371600,
+        "valid": true,
+        "call": 23716000,
+        "put": -21344400
+      },
+      {
+        "strike": 7700,
+        "label": "7700",
+        "isSpot": true,
+        "value": 11858000,
+        "valid": true,
+        "call": 59290000,
+        "put": -47432000
+      }
+    ],
+    "gex_abs": [
+      {
+        "strike": 7710,
+        "label": "7710",
+        "isSpot": false,
+        "value": 45060400,
+        "valid": true,
+        "call": 23716000,
+        "put": -21344400
+      },
+      {
+        "strike": 7700,
+        "label": "7700",
+        "isSpot": true,
+        "value": 106722000,
+        "valid": true,
+        "call": 59290000,
+        "put": -47432000
+      }
+    ],
+    "scale_all": 59290000,
+    "scale_net": 11858000,
+    "peaks": {
+      "call": 59290000,
+      "put": 47432000,
+      "hasCall": true,
+      "hasPut": true
+    },
+    "fmt": "1.25",
+    "axis": "−2.5",
+    "plotY": [
+      140,
+      40,
+      240
+    ],
+    "horizon": "2026-12-18",
+    "template": {
+      "id": "gex",
+      "label": "GEX (traditional)",
+      "layout": "profile",
+      "valueModes": [
+        {
+          "id": "gex_all",
+          "label": "Call / Put"
+        },
+        {
+          "id": "gex_net",
+          "label": "Net"
+        },
+        {
+          "id": "gex_abs",
+          "label": "Absolute"
+        }
+      ],
+      "defaultValueMode": "gex_all"
+    },
+    "keys": [
+      "0",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8"
+    ]
+  }
+}

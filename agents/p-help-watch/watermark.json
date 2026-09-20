@@ -1,0 +1,7 @@
+{
+  "schema": "help-watch-watermark-v1",
+  "last_processed_main_sha": "36699be9fca108a60c4f82e4dfa6bf4d2f3b06b0",
+  "help_watch_author_email": "help-watch@labs.fattail.ai",
+  "help_watch_commit_shas": ["c8c65db491c19cadebd5d1c7e98c0ce6010ebbc6"],
+  "sweep_status": "in_progress"
+}
