@@ -57,16 +57,17 @@ SODP2-G  F3 = MIGRATION. Massive-first provider BORN on StudioOne.
 SODP3-G  Re-point EVERY census row. Attest each. Labs hop only.
              │
 SODP5-G  Delete old StudioTwo OHLC server WHOLE (process, plist, grep).
-         Leftover vp-api / chain-feed / engine gone. Ghost FAIL.
+         Leftover vp-api / vp-engine gone. Ghost FAIL.
+         chain_feed/sym_feed stay until SODP-MB (India R1).
              │
 SODP4    MiniTwo consumer  — topology specified now; cutover NAMED later
 SODP6    MacBook consumer  — same hop contract; host NAMED later
              │
-SODP-AT  hop June ES+MES · deletion proofs · no ghost :4010
+SODP-AT  hop June ES+MES · deletion proofs · no ghost OHLC :4010
              │
-AP-1     Coach pan June ES AND MES
+TOPO-1 AP-1     Coach pan June ES AND MES
              │
-SODP-H-G Hardening (after, not during)
+REQ-004 → REQ-005   REFACTOR then HARDEN (own boards, HOLD)
 ```
 
 **FAIL the program if any packet sequences “move the fill, then F3.”** SODP1 may run read-only during SODP0. **No history code on StudioOne until stamp + SODP2-W0.** SODP4/SODP6 do not block AP-1 on StudioTwo.
@@ -150,22 +151,11 @@ Same hop contract. LAN pin or Tailscale. SSO callback host for that machine.
 
 Coach: tile → chart, pan to June 2026, ES **and** MES. REQ-001 range then VP cross-check. REQ-003/002 unchanged unless he marks them.
 
-### SODP-H — Hardening round (full bench, after the move)
+### After TOPO-1 AP-1 — not SODP packets
 
-**Depends:** SODP5 + AP-1. **Forbidden during SODP2–6** (doctrine §13).  
-**Law:** spec SODP-10 · Audit & Hardening Round Spec v1.1 Simplify.  
-**Coach:** refactoring and hardening audit; bulletproof; consolidated unit tests; no dangling code; purpose-built; Data Services and APIs on StudioOne; remotes consume APIs.
+**REQ-004 REFACTOR** then **REQ-005 HARDEN** (`docs/Refactor-and-Hardening-Full-Agent-Bench-Plan-v1.0.md`). Combined SODP-H is **split**. Boards exist; execution HOLD.
 
-| Seat | Packet |
-|------|--------|
-| Kilo | One test suite for StudioOne data services. UI tests consume hops only. 0 warnings. |
-| Alpha + Charlie | Delete dangling (fill remnants, unused print-first OHLC, second Massive, dead launchd). Not disable. |
-| India | Architecture MATCH after deletes. |
-| Echo | Re-gate touched surfaces. |
-| Foxtrot | StudioTwo `lsof :4010` empty; StudioOne process set = spec §4 only. |
-| Delta | FAIL if dangle remains, tests assumed, or AP-1 interface moved. |
-
-**Seed:** `agents/p-studioone-data-plane/seeds/SODP-H.md` (HOLD until AP-1).
+**SODP-MB (India R1):** SODP5 does not retire StudioTwo `chain_feed`/`sym_feed` until a named Market Bus hop GO.
 
 ---
 

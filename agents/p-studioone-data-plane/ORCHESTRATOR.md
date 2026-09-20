@@ -13,7 +13,7 @@
 
 | Gate | Packet | Seat | Machine | Status |
 |------|--------|------|---------|--------|
-| SODP0-G | Advisor + design + infra + auth | India → Echo+Tango → Foxtrot → Mike | StudioTwo read-only | Echo+Tango **APPROVED** · Foxtrot **APPROVED** · Hotel **APPROVED** · Mike **RETURNED** → v0.1.3 landed, re-review · India **in flight** |
+| SODP0-G | Advisor + design + infra + auth | India → Echo+Tango → Foxtrot → Mike + Hotel | StudioTwo read-only | Echo+Tango **APPROVED** · Foxtrot **APPROVED** · Hotel **APPROVED** · Mike **APPROVED** (v0.1.3) · India **RETURNED** (R1 → SODP-11 MB hold in v0.1.4) |
 | SODP1-G | Census: consumers, Massive writers, CP-1 budget | Kilo + Foxtrot | both, read-only | after stamp |
 | SODP2-G | **F3 = migration** — provider born on StudioOne | Alpha + Foxtrot + Kilo | StudioOne **CP-1 arithmetic** | HOLD stamp |
 | SODP3-G | Re-point every census row + attest | Alpha + Charlie + Kilo | StudioTwo | HOLD |
@@ -21,6 +21,6 @@
 | SODP4-G | MiniTwo consumer (topology already spec §14) | Foxtrot + Mike | MiniTwo **named** | HOLD |
 | SODP6-G | MacBook consumer | Foxtrot + Charlie | MacBook **named** | HOLD |
 | AP-1 | Pan June ES+MES | Coach | StudioTwo browser | not "done" |
-| SODP-H-G | Hardening: tests, no dangle, purpose-built | Kilo + Alpha + Charlie + India + Echo + Foxtrot + Delta | after AP-1 | **HOLD** · SODP-10 |
+| After AP-1 | REQ-004 REFACTOR → REQ-005 HARDEN | own boards | after TOPO-1 AP-1 | **HOLD** · SODP-10 · SODP-MB (SODP-11) |
 
 Juliet executes packets. Grok Build does not implement. Auto-GO on clean gates. Stop + GO/NO-GO on a problem.

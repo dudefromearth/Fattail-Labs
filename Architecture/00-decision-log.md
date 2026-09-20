@@ -4,6 +4,21 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-19 — DL-781 REQ-004/005 queued · TOPO-1 AP-1 first
+
+**Decision (Coach, 2026-09-19).** After TOPO-1 (SODP) AP-1: **REFACTOR** then **HARDEN**, in that order. Board rows now; no R0/H0 execution until the priority board is clear (REQ-001/002/003, F3, TOPO-1, eligibility report).
+
+- **REQ-004** R0 inventory → Coach-approved list → R1 behavior-preserving (AP-1 reverse, grep-proof, DL-766 line counts are health not a gate).
+- **REQ-005** H0 SEV inventory (fail-loud, auth seams, structure 500, STALE cadence, CP-1 watchdog + combined Massive budget, secrets, restart, backup/off-site + Sept-14 archive + restore drill, CVE) → Coach-approved list → H1 with PP-1 / CP-1 / AP-1.
+
+**India R1:** **SODP-11** — do not retire StudioTwo `chain_feed`/`sym_feed` until **SODP-MB**. Spec v0.1.4. Mike hop binds remain APPROVED (v0.1.3).
+
+**Does not.** Start R0 or H0. BUILD TOPO-1 tonight.
+
+**Cites:** Coach queue 2026-09-19 · doctrine §13 · **DL-778** (SODP-H split into these two).
+
+---
+
 ## 2026-09-19 — DL-780 SODP Mike hop binds (spec v0.1.3)
 
 **Decision.** Mike SODP0 **RETURNED** §6/§7. Juliet landed the binds; SODP-3 and the three-host table were not dropped.

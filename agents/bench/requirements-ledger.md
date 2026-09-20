@@ -1,6 +1,6 @@
 # Requirements Ledger (RL-1)
 
-Canonical capture of Coach requirements. Wording preserved. Close only by **AP-1** (Coach acceptance) or explicit withdraw. Hashable FINAL texts: `artifacts/reqs/REQ-001.md` · `REQ-002.md` · `REQ-003.md` (spec §0.8).
+Canonical capture of Coach requirements. Wording preserved. Close only by **AP-1** (Coach acceptance) or explicit withdraw. Hashable FINAL texts: `artifacts/reqs/REQ-001.md` · `REQ-002.md` · `REQ-003.md` · `REQ-004.md` · `REQ-005.md` (spec §0.8).
 
 Status: `OPEN` · `AP-1` · `WITHDRAWN`
 
@@ -11,6 +11,8 @@ Status: `OPEN` · `AP-1` · `WITHDRAWN`
 | **REQ-001** | 2026-09-19 | VP | OPEN | See full row below. |
 | **REQ-002** | 2026-09-19 | VP settings | OPEN | See full row below. |
 | **REQ-003** | 2026-09-19 | VP contracts | OPEN | See full row below. |
+| **REQ-004** | 2026-09-19 | Refactor sweep | OPEN · **HOLD** | After TOPO-1 AP-1. See row below. |
+| **REQ-005** | 2026-09-19 | Hardening pass | OPEN · **HOLD** | After REQ-004. See row below. |
 
 ### REQ-001 — ≥ 90 days of price on the chart (VP confirmation blocker)
 
@@ -86,6 +88,24 @@ Our option set only — do not clone TV fields we do not have. VP chart is first
 Typing "es" → ES family on top, front first, forward second, highlights visible. Clauses 1, 4–6 stand as issued.
 
 **Closes:** AP-1 or Coach withdraw. Not closed.
+
+### REQ-004 — Refactor sweep (after TOPO-1)
+
+**Captured:** 2026-09-19. **HOLD** until TOPO-1 AP-1. R0 inventory then Coach-approved list; no R1 before that list.
+
+**Coach wording:** TOPO-1 AP-1 → REFACTOR → HARDEN. R0: dead code, orphaned routes, fill remnants, fixture leftovers, overlay/redrawVp, L2/custom-series comments, duplicate symbol lists, hardcodes, TS-1 one-strike candidates, SYM-SWAP/migration seams. Triaged packets + effort — Coach approves before execute. R1: behavior-preserving; tests before/after; AP-1 in reverse; grep-proofs; line counts (DL-766 health, not a gate).
+
+**Priority:** Open REQs, F3, TOPO-1, eligibility report stay first. This program starts only when that board is clear.
+
+**Closes:** AP-1 (reverse) or withdraw. Not closed. Filed `artifacts/reqs/REQ-004.md`.
+
+### REQ-005 — Hardening pass (after REFACTOR)
+
+**Captured:** 2026-09-19. **HOLD** until REQ-004 closes.
+
+**Coach wording:** H0 minimum: fail-loud/banner-law; auth seams (computed headers — what authenticates a member); dev-login gap; structure 500; STALE re-verify cadence; CP-1 watchdog + combined Massive budget; secrets/.env; restart-on-crash; backup/off-site + Sept-14 volumes/archive + one restore drill; CVE pass. SEV-ranked packets — Coach approves. H1: PP-1; StudioOne = CP-1 full dress; member-facing close AP-1.
+
+**Closes:** AP-1 per member-facing seed or withdraw. Not closed. Filed `artifacts/reqs/REQ-005.md`.
 
 ## Closed
 

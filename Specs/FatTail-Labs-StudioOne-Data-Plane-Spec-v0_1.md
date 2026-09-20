@@ -1,7 +1,7 @@
 # FatTail Labs — StudioOne Data Plane & Remote UI
 
-**Spec v0.1.3**  
-**Status:** DRAFT — Mike §6/§7 binds landed (v0.1.2 Coach RETURNED still in force). **NOT BUILD AUTHORITY.**  
+**Spec v0.1.4**  
+**Status:** DRAFT — India R1 (SODP-MB hold) + Mike §6/§7 landed. Coach also names this migration **TOPO-1**. **NOT BUILD AUTHORITY.**  
 **Date:** 2026-09-19  
 **Program:** SODP  
 **Author:** Juliet (from Coach intent)  
@@ -59,7 +59,7 @@ It does **not** silently relocate Labs identity, courses, or MySQL `labs`. That 
 
 ---
 
-## 2. Laws (SODP-1…9)
+## 2. Laws (SODP-1…11)
 
 | ID | Law |
 |----|-----|
@@ -72,7 +72,8 @@ It does **not** silently relocate Labs identity, courses, or MySQL `labs`. That 
 | **SODP-7** | **TS-1** applies: the struck `_aggs_price_fill` design is deleted (grep-proof), not repaired. Both AP-1 strikes are cited in the DL. **F3 and the migration are one motion:** the Massive-first provider is **born and proven on StudioOne**. The old StudioTwo OHLC server is deleted **whole** (process, plist, fill branch, in-process `ohlc_for_source` Massive path). A packet that copies the fill to StudioOne and then replaces it is **FAIL**. |
 | **SODP-8** | **CP-1 arithmetic**, not citation only. Every landing states its budget (Massive connections especially). The plan states the **combined** footprint vs chain_feed headroom. |
 | **SODP-9** | REQ-001 / 002 / 003 stay OPEN until Coach AP-1. No report writes "done" before his line. |
-| **SODP-10** | After the move, a **hardening round** (not mid-build). Refactor + audit until the plane is purpose-built: Data Services and APIs on StudioOne only; remotes consume APIs only. Consolidated unit tests. **No dangling code** (grep-proof). Doctrine §13: rounds follow implementation; do not streamline SODP2–6 on the fly. |
+| **SODP-10** | After **TOPO-1 AP-1**, two later programs in order: **REFACTOR** then **HARDEN** (REQ-004 · REQ-005). Not mid-build. Doctrine §13. |
+| **SODP-11** | **SODP-MB hold.** SODP5 does **not** retire StudioTwo `chain_feed` / `sym_feed`, and SODP4 does not strip MiniTwo feeds, until a named **SODP-MB** GO hops Arch 28 member routes (`/api/me/market/*`, WS) — **or** those consumers are on the §11 census and hopped first. Do not delete the bus writer before the consumer is hopped (India R1). |
 
 ---
 
@@ -186,7 +187,7 @@ LIM, QFRIC, XS, PPL, Help Watch. IKI. Moving MySQL `labs` / SSO issuers onto Stu
 
 ## 10. Hardening round (after the move · SODP-H)
 
-**When:** after SODP5 (StudioTwo leftovers retired) and AP-1 on the range. **Not** during SODP2–6 (doctrine §13 · Audit & Hardening Round Spec v1.1 Simplify).
+**When:** Coach 2026-09-19 queue: **TOPO-1 AP-1 → REFACTOR (REQ-004) → HARDEN (REQ-005)**. The old combined SODP-H packet is **split**. No refactor packet before TOPO-1 closes; no hardening packet before the refactor sweep closes. Board rows now; execution when that board is clear.
 
 **Coach (verbatim):** refactoring and hardening audit; architecture sound and bulletproof; consolidated unit tests; no dangling code; clean and purpose-built; Data Services and APIs on StudioOne; remote services consuming the APIs.
 
@@ -220,6 +221,7 @@ Every consumer of every **moved** service is enumerated, re-pointed, and atteste
 | `fetchGen` localStorage | short print series | bust / refuse if `short_history` or span < window | no Sep-6 cache win |
 | Admin `/admin/sa-dev` | same Labs OHLC | same hop | one path |
 | Tests | TestClient in-process | in-process mock **or** live StudioOne pin | no silent fill |
+| Market Bus `/api/me/market/*` + WS | Labs Redis + **StudioTwo** `chain_feed` (live) | **SODP-MB** (named) — not SODP5 | India R1: do not bootout this writer first |
 
 Kilo’s SODP1 artifact is this table filled with **file:line**. SODP3 does not close until every row has a command + output.
 
@@ -260,7 +262,7 @@ For each retired unit (`_aggs_price_fill`, in-process OHLC BASE, StudioTwo `ai.f
 | Plist gone | `ls ~/Library/LaunchAgents/ai.fattail.labs.vp-api.plist` (and chain-feed/engine) → absent **or** in `install/retired/` and not loaded |
 | Grep clean | no `_aggs_price_fill`; no `if requested or span_days <`; no Massive in `ohlc_for_source`; FIXTURE standard |
 
-Delta **FAIL** if any proof is missing. SODP-H may delete further dangle; it may not be the first time the fill disappears — that is SODP5 / SODP2 close-out.
+Delta **FAIL** if any proof is missing. The fill disappears at SODP5/SODP2 close-out, not in a later round. **SODP-MB:** leftover StudioTwo `chain_feed` / `sym_feed` are **not** in this deletion set until SODP-MB.
 
 ---
 
@@ -286,3 +288,4 @@ MiniTwo does **not** run capture, vp-api, or Massive. It runs Next + product Lab
 | 0.1.1 | 2026-09-19 | SODP-10 + §10 hardening round (Coach: tests, no dangle, purpose-built) |
 | 0.1.2 | 2026-09-19 | RETURNED: F3=migration; CP-1 arithmetic; consumer census + deletion proofs; MiniTwo as designed consumer |
 | 0.1.3 | 2026-09-19 | Mike: hop token `issuer=internal`; Cookie request header only, never Set-Cookie; shared secret; sidecar `LABS_ENV=dev`; SSO callback per UI host |
+| 0.1.4 | 2026-09-19 | India R1: **SODP-MB hold**. TOPO-1 name. SODP-10 = REFACTOR then HARDEN after AP-1 (REQ-004/005) |
