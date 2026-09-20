@@ -22,20 +22,41 @@ def ingested_days(root: Path, source: str) -> list[date]:
     return sorted(out)
 
 
+def latest_ingested_day(root: Path, source: str) -> date | None:
+    days = ingested_days(root, source)
+    return days[-1] if days else None
+
+
+def bin_developing(root: Path | None = None) -> dict[str, str | None]:
+    """Live path: only the newest ingested session, as developing. No history walk."""
+    ar = root or archive_root()
+    report: dict[str, str | None] = {}
+    for source in SOURCES:
+        latest = latest_ingested_day(ar, source)
+        if latest is None:
+            report[source] = None
+            continue
+        rebuild_session(root=ar, symbol=source, session_date=latest, kind="developing")
+        report[source] = f"{latest.isoformat()}:developing"
+    return report
+
+
 def bin_all(root: Path | None = None) -> dict[str, list[str]]:
     ar = root or archive_root()
     report: dict[str, list[str]] = {}
-    today = date.today()
     for source in SOURCES:
         days = ingested_days(ar, source)
         latest = days[-1] if days else None
         done: list[str] = []
         for day in days:
             kind = "developing" if latest is not None and day == latest else "session"
-            rebuild_session(root=ar, symbol=source, session_date=day, kind=kind)
-            if kind == "developing":
-                rebuild_session(root=ar, symbol=source, session_date=day, kind="session")
-            done.append(f"{day.isoformat()}:{kind}")
+            try:
+                rebuild_session(root=ar, symbol=source, session_date=day, kind=kind)
+                if kind == "developing":
+                    rebuild_session(root=ar, symbol=source, session_date=day, kind="session")
+                done.append(f"{day.isoformat()}:{kind}")
+            except ValueError as exc:
+                done.append(f"{day.isoformat()}:SKIP {exc}")
         report[source] = done
     return report
 

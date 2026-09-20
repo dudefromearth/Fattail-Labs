@@ -131,6 +131,51 @@ def run_loop(
                 return
 
 
+def write_session_clock(root: Path, status: dict[str, Any], tickers: list[str]) -> Path:
+    """Named session state for watchdog / engine. Vendor market-status is SoR."""
+    from datetime import datetime, timezone
+
+    now = datetime.now(timezone.utc).isoformat()
+    body: dict[str, Any] = {
+        "as_of": now,
+        "tickers": list(tickers),
+        "products": {},
+    }
+    for p in PRODUCTS:
+        opened = session_is_open(status, product=p)
+        halt = halt_is_scheduled({}, product=p)
+        sed = session_end_from_status(status, product=p)
+        reason = "in_session" if opened and not halt else (
+            "halt" if halt else "closed"
+        )
+        body["products"][p] = {
+            "open": bool(opened and not halt),
+            "halt": bool(halt),
+            "session_end_date": sed,
+            "reason": reason,
+        }
+    path = root / "vp" / "engine" / "session_clock.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    prev = None
+    if path.is_file():
+        try:
+            prev = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            prev = None
+    path.write_text(json.dumps(body, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    if prev:
+        for p in PRODUCTS:
+            old = (prev.get("products") or {}).get(p, {}).get("reason")
+            new = body["products"][p]["reason"]
+            if old != new:
+                print(
+                    f"vp-futures session {p} {old} -> {new} "
+                    f"sed={body['products'][p]['session_end_date']}",
+                    flush=True,
+                )
+    return path
+
+
 def fetch_market_status() -> dict[str, Any]:
     """Vendor /futures/v1/market-status — session_end_date, open/halt."""
     url = "/futures/v1/market-status?limit=200"
@@ -193,12 +238,29 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     print(f"vp-futures subscribe {tickers}", flush=True)
     allowed = set(tickers)
+
+    def status_and_clock() -> dict[str, Any]:
+        nonlocal last_refresh
+        st = fetch_market_status()
+        write_session_clock(root, st, tickers)
+        sed = session_end_from_status(st, product="ES")
+        today = date.today()
+        if today != last_refresh or (sed and sed != last_refresh.isoformat()):
+            nxt = refresh()
+            if nxt and nxt != list(tickers):
+                print(f"vp-futures roll-set {list(tickers)} -> {nxt}", flush=True)
+                tickers[:] = nxt
+                allowed.clear()
+                allowed.update(nxt)
+            last_refresh = today
+        return st
+
     run_loop(
         root=root,
         allowed=allowed,
         connect=lambda: live_connect(tickers),
         stop=stop,
-        status_fn=fetch_market_status,
+        status_fn=status_and_clock,
     )
     return 0
 

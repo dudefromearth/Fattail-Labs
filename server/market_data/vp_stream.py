@@ -8,6 +8,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import AsyncIterator
 
+from market_data.vp_engine.bin_landed import latest_ingested_day
 from market_data.vp_engine.rebuild import histogram_path, load_prints
 from market_data.vp_ingest.store import archive_root, vendor_ts_to_seconds
 
@@ -30,8 +31,8 @@ async def iter_source_sse(
     last_gen = ""
     while True:
         now_ns = int(datetime.now(timezone.utc).timestamp() * 1_000_000_000)
-        today = date.today()
-        rows = await asyncio.to_thread(load_prints, ar, src, today)
+        session = await asyncio.to_thread(latest_ingested_day, ar, src) or date.today()
+        rows = await asyncio.to_thread(load_prints, ar, src, session)
         rec = rows[-1] if rows else None
         if rec:
             try:
@@ -42,8 +43,11 @@ async def iter_source_sse(
             if px > 0 and ts > last_t:
                 last_t = ts
                 t_ns = int(ts * 1_000_000_000)
-                yield sse("tick", {"t" : t_ns, "p": px, "s": rec.get("s")})
-        hist = histogram_path(ar, src, today, "developing")
+                yield sse(
+                    "tick",
+                    {"t": t_ns, "p": px, "s": rec.get("s"), "session": session.isoformat()},
+                )
+        hist = histogram_path(ar, src, session, "developing")
         if hist.is_file():
             gen = f"{src}:developing:{hist.stat().st_mtime_ns}"
             if gen != last_gen:

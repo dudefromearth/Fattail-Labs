@@ -5,20 +5,20 @@ from __future__ import annotations
 import os
 import time
 
-from market_data.vp_engine.bin_landed import bin_all
+from market_data.vp_engine.bin_landed import bin_developing
 
-INTERVAL_S = int(os.environ.get("LABS_VP_BIN_INTERVAL_S") or "60")
+INTERVAL_S = int(os.environ.get("LABS_VP_BIN_INTERVAL_S") or "15")
 
 
 def main() -> int:
-    print(f"vp-engine bin_loop interval={INTERVAL_S}s", flush=True)
+    print(f"vp-engine bin_loop developing-only interval={INTERVAL_S}s", flush=True)
     while True:
         try:
-            report = bin_all()
-            print(f"vp-engine binned {report}", flush=True)
+            report = bin_developing()
+            print(f"vp-engine developing {report}", flush=True)
         except Exception as exc:
             print(f"vp-engine bin_loop error: {exc}", flush=True)
-        time.sleep(max(15, INTERVAL_S))
+        time.sleep(max(5, INTERVAL_S))
     return 0
 
 

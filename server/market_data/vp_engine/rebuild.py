@@ -80,8 +80,12 @@ def rebuild_session(
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_bytes(canonical_bytes(payload))
     if prints:
-        mark_session(ar, symbol, session_date, binned=False)
-        mark_session(ar, symbol, session_date, binned=True)
+        try:
+            mark_session(ar, symbol, session_date, binned=False)
+            mark_session(ar, symbol, session_date, binned=True)
+        except ValueError:
+            if kind != "developing":
+                raise
         if symbol in ("ES", "MES") and kind == "session":
             rebuild_continuous(ar, symbol, vp_row=row)
     return payload
