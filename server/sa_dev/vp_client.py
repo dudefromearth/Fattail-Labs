@@ -331,6 +331,31 @@ def get_range(
     return _validate_envelope(body)
 
 
+def get_window(
+    target_symbol: str,
+    *,
+    from_t: int,
+    to_t: int,
+    source: str | None = None,
+    row: float | None = None,
+    base: str | None = None,
+    headers: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    import urllib.parse
+
+    use = (base or api_base()).rstrip("/")
+    q: dict[str, str] = {"from_t": str(int(from_t)), "to_t": str(int(to_t))}
+    if source:
+        q["source"] = source
+    if row is not None:
+        q["row"] = str(row)
+    url = f"{use}/v1/profile/{target_symbol}/window?{urllib.parse.urlencode(q)}"
+    status, body = _http_json(url, headers=headers)
+    if status >= 400:
+        raise ContractMismatch(f"HTTP {status}: {body}")
+    return body
+
+
 def get_health(*, base: str | None = None, headers: dict[str, str] | None = None) -> dict[str, Any]:
     use = (base or api_base()).rstrip("/")
     if _use_mock(use):

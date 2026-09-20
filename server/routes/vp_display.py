@@ -146,6 +146,29 @@ def get_structure(
     return payload_response(request, payload, kind=kind, live=live)
 
 
+@router.get("/api/app/vp/v1/window/{target_symbol}")
+def get_window_profile(
+    request: Request,
+    target_symbol: str,
+    from_t: int = Query(...),
+    to_t: int = Query(...),
+    source: str | None = Query(default=None),
+    row: float | None = Query(default=None),
+):
+    from sa_dev.service import window_for
+
+    _require_member(request)
+    payload = window_for(
+        target_symbol,
+        from_t=from_t,
+        to_t=to_t,
+        source=source,
+        row=row,
+        headers=_computing_headers(),
+    )
+    return JSONResponse(content=payload)
+
+
 @router.get("/api/app/vp/v1/range/{target_symbol}")
 def get_range_profile(
     request: Request,

@@ -146,6 +146,30 @@ def structure_for(
     }
 
 
+def window_for(
+    target_symbol: str,
+    *,
+    from_t: int,
+    to_t: int,
+    source: str | None = None,
+    row: float | None = None,
+    headers: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    from sa_dev.vp_client import get_window
+
+    try:
+        return get_window(
+            target_symbol,
+            from_t=from_t,
+            to_t=to_t,
+            source=source,
+            row=row,
+            headers=headers,
+        )
+    except ContractMismatch as exc:
+        return _named("CONTRACT MISMATCH", detail=str(exc))
+
+
 def range_for(
     target_symbol: str,
     *,

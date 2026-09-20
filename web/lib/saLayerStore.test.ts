@@ -64,7 +64,9 @@ assert.deepEqual(lawfulFields("L2"), [
   "orientation",
   "profileWidthFrac",
   "profileOpacity",
+  "profileMode",
 ]);
+assert.equal(p.profileMode, "visible-range");
 assert.deepEqual(lawfulFields("LP"), []);
 assert.equal(SA_SURFACE_SCHEMA, 1);
 assert.equal(surfaceDoc(p).schema, 1);

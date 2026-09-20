@@ -241,6 +241,31 @@ def health(request: Request):
     )
 
 
+@app.get("/v1/profile/{target_symbol}/window")
+def profile_window(
+    request: Request,
+    target_symbol: str,
+    from_t: int = Query(...),
+    to_t: int = Query(...),
+    source: str | None = Query(default=None),
+    row: float | None = Query(default=None),
+):
+    """REQ-007 v2 — time-window bins. Coverage queried per contract."""
+    gate = _computing(request)
+    if isinstance(gate, JSONResponse):
+        return gate
+    target = target_symbol.upper()
+    if target not in SOURCE_FOR_TARGET:
+        return JSONResponse(status_code=404, content={"error": "unknown_target"})
+    src = (source or SOURCE_FOR_TARGET[target]).upper()
+    from market_data.vp_engine.window_bins import assemble_window
+
+    body = assemble_window(src, from_t=from_t, to_t=to_t, vp_row=row)
+    body["target_symbol"] = target
+    body["kind"] = "window"
+    return JSONResponse(content=body)
+
+
 @app.get("/v1/profile/{target_symbol}/range")
 def profile_range(
     request: Request,

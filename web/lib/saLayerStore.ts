@@ -92,6 +92,7 @@ export type ModeSlice = {
   profileWidthFrac: number;
   profileOpacity: number;
   priceLookbackDays: number;
+  profileMode: "visible-range" | "full-history";
 };
 
 export const MODE_SLICE_KEYS: (keyof ModeSlice)[] = [
@@ -133,6 +134,7 @@ export const MODE_SLICE_KEYS: (keyof ModeSlice)[] = [
   "profileWidthFrac",
   "profileOpacity",
   "priceLookbackDays",
+  "profileMode",
 ];
 
 export type SaPrefs = ModeSlice & {
@@ -197,6 +199,7 @@ export function houseDefaults(mode: WorkflowMode): ModeSlice {
     profileWidthFrac: 0.62,
     profileOpacity: 0.42,
     priceLookbackDays: 1,
+    profileMode: "visible-range",
   };
   if (mode === "entry") {
     return { ...base, visible: vis({ L0: true, L1: true, L2: true, L3: true }) };
@@ -272,6 +275,7 @@ export function applyMode(
     profileWidthFrac: over.profileWidthFrac ?? house.profileWidthFrac,
     profileOpacity: over.profileOpacity ?? house.profileOpacity,
     priceLookbackDays: over.priceLookbackDays ?? house.priceLookbackDays,
+    profileMode: over.profileMode ?? house.profileMode,
   };
 }
 
@@ -466,7 +470,13 @@ export function lawfulFields(part: DialogPart): string[] {
         "wickDown",
       ];
     case "L2":
-      return ["visible.L2", "orientation", "profileWidthFrac", "profileOpacity"];
+      return [
+        "visible.L2",
+        "orientation",
+        "profileWidthFrac",
+        "profileOpacity",
+        "profileMode",
+      ];
     case "L3":
       return ["visible.L3"];
     case "L4":

@@ -726,6 +726,26 @@ export default function SaPartDialog() {
 
             {has("orientation") ? (
               <Group label="Volume profile">
+                <Row label="Profile mode">
+                  <SelectWrap>
+                    <select
+                      className={SELECT}
+                      data-testid="sa-profile-mode-select"
+                      style={selectStyle}
+                      value={prefs.profileMode || "visible-range"}
+                      onChange={(e) =>
+                        patch({
+                          profileMode: e.target.value as
+                            | "visible-range"
+                            | "full-history",
+                        })
+                      }
+                    >
+                      <option value="visible-range">Visible Range</option>
+                      <option value="full-history">Full History</option>
+                    </select>
+                  </SelectWrap>
+                </Row>
                 <Row label="VP anchor">
                   <SelectWrap>
                     <select

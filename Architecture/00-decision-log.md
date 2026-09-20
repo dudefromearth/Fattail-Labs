@@ -4,6 +4,20 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-20 — DL-788 REQ-007 v2 · windowed-delivery kind (G-F) activated
+
+**Decision (Coach).** Visible Range is the default chart-profile **mode**. Bins are **server-owned** at vp_row grain. The client never assembles a histogram from bars. Visible Range is a **time-window query** (`from_t`/`to_t`) — the VPS windowed-delivery kind (surface spec §9.2 / G-F) is **activated**.
+
+**SRF-4 carve-out:** the STRUCTURAL layer never re-profiles by visible time; no visible-range output feeds C2/C3/SA/the model. Member chart-profile is a view convenience.
+
+**Coverage:** queried per contract at serve time. No capture-start date constant. `bin_source`: prints | aggs-derived.
+
+**HOLD:** TV-fidelity visual pass and POC/VA until `artifacts/references/REQ-007-vrvp-reference.png` is on main and Coach rules the POC lean.
+
+**Cites:** REQ-007 v2 · Coach “The server must always update the bins in real time.” · “Sep 6” retracted as spec language.
+
+---
+
 ## 2026-09-20 — DL-787 hop-secret rotation (DL-786 sensitivity)
 
 **Decision.** Secrets that transited the DL-786 diagnosis session log are rotated this weekend. **LABS_COMPUTING_SECRET** (hop family: StudioOne sidecar verify, MiniTwo hop mint, StudioTwo hop mint) generated on-box; values never in transcripts or artifacts. PP-1: new hop 200; token minted with the **old** secret 401.

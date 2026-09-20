@@ -135,6 +135,24 @@ export function rangeUrl(opts: {
   return `${base}/range/${encodeURIComponent(opts.target)}?${q}`;
 }
 
+export function windowUrl(opts: {
+  target: string;
+  source: string;
+  fromT: number;
+  toT: number;
+  row?: number;
+  apiBase?: string;
+}): string {
+  const q = new URLSearchParams({
+    source: opts.source,
+    from_t: String(Math.floor(opts.fromT)),
+    to_t: String(Math.floor(opts.toT)),
+  });
+  if (opts.row != null) q.set("row", String(opts.row));
+  const base = opts.apiBase || "/api/app/vp/v1";
+  return `${base}/window/${encodeURIComponent(opts.target)}?${q}`;
+}
+
 export type VpHitRect = { x0: number; y0: number; x1: number; y1: number };
 
 export function hitProfile(

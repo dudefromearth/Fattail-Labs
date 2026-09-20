@@ -10,6 +10,7 @@ REASONS: dict[str, str] = {
     "path-not-yet-verified": "path not yet verified",
     "stack-carries-no-futures-options": "This stack does not carry futures options",
     "needs-the-daily-volume-path": "needs the daily volume path",
+    "no-stocks-in-universe": "No stocks in the supported universe yet",
 }
 
 COMING_REASON = "path-not-yet-verified"

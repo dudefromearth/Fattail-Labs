@@ -407,7 +407,14 @@ export default function SymbolSearchDialog({
             />
           ) : null}
           {!loadError && !miss && groups.length === 0 && universe ? (
-            <p className="px-5 py-6 text-sm text-zinc-500">No symbols in this class.</p>
+            <p
+              className="px-5 py-6 text-sm text-zinc-500"
+              data-testid="symbol-search-empty-class"
+            >
+              {chip === "stocks"
+                ? "No stocks in the supported universe yet"
+                : "No symbols in this class."}
+            </p>
           ) : null}
           {!miss
             ? groups.map((g) => (

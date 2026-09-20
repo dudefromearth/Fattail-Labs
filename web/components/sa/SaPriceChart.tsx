@@ -36,6 +36,7 @@ import {
   hostToPane,
   panePriceWindow,
   rangeUrl,
+  windowUrl,
   vpBandEpoch,
   type BandFlight,
   type VpBand,
@@ -121,6 +122,7 @@ export default function SaPriceChart({
   const [histBars, setHistBars] = useState<number | null>(null);
   const [histWarn, setHistWarn] = useState<string | null>(null);
   const [histComplete, setHistComplete] = useState(false);
+  const [binSource, setBinSource] = useState<string | null>(null);
   const rawBarsRef = useRef<OhlcBar[]>([]);
   const atBirthRef = useRef(false);
   const pagingRef = useRef(false);
@@ -471,7 +473,8 @@ export default function SaPriceChart({
       bandEpochRef.current = epoch;
       clearHistogram();
     }
-    if (!from || !to) {
+    const vr = prefs.profileMode !== "full-history";
+    if (!vr && (!from || !to)) {
       return () => {
         cancelled = true;
       };
@@ -522,17 +525,31 @@ export default function SaPriceChart({
             tick || loaded?.row || 0.25,
           )
         : undefined;
-      const url = rangeUrl({
-        target: tgt,
-        source,
-        from,
-        to,
-        lo: band?.lo,
-        hi: band?.hi,
-        row,
-        harness,
-        apiBase,
-      });
+      const vis = chartRef.current?.timeScale().getVisibleRange();
+      const fromT =
+        vis && typeof vis.from === "number" ? Number(vis.from) * 1000 : 0;
+      const toT =
+        vis && typeof vis.to === "number" ? Number(vis.to) * 1000 : 0;
+      const url = vr && fromT && toT
+        ? windowUrl({
+            target: tgt,
+            source,
+            fromT,
+            toT,
+            row,
+            apiBase,
+          })
+        : rangeUrl({
+            target: tgt,
+            source,
+            from,
+            to,
+            lo: band?.lo,
+            hi: band?.hi,
+            row,
+            harness,
+            apiBase,
+          });
       const applyBins = (r: FetchGenResult, bins: VpBin[]) => {
         if (cancelled) return;
         const prices = bins.map((b) => b.price);
@@ -558,6 +575,8 @@ export default function SaPriceChart({
         paintRef.current.bins = bins;
         setVpBins(bins.length);
         setRangeMs(r.ms);
+        const srcLabel = String(r.body?.bin_source || "");
+        setBinSource(srcLabel || null);
         requestVpUpdate();
       };
       void fetchGen(url)
@@ -593,7 +612,7 @@ export default function SaPriceChart({
       cancelled = true;
       ts?.unsubscribeVisibleTimeRangeChange(onRange);
     };
-  }, [source, target, spanFloor, spanCeiling, tick, prefs.priceTf, prefs.visible.L2, harness, apiBase]);
+  }, [source, target, spanFloor, spanCeiling, tick, prefs.priceTf, prefs.visible.L2, prefs.profileMode, harness, apiBase]);
 
   useEffect(() => {
     if (!source) return;
@@ -748,6 +767,13 @@ export default function SaPriceChart({
       style={{ background: prefs.canvasBg }}
     >
       <div ref={hostRef} className="h-full min-h-0 w-full" />
+      <p
+        className="pointer-events-none absolute left-2 top-8 z-20 max-w-[28rem] rounded border border-zinc-600 bg-[#1e222d] px-2 py-1 text-[11px] text-zinc-300"
+        data-testid="sa-profile-mode"
+      >
+        {prefs.profileMode === "full-history" ? "Full History" : "Visible Range"}
+        {binSource ? ` · ${binSource}` : ""}
+      </p>
       {histWarn ? (
         <p
           className="pointer-events-none absolute left-2 top-2 z-20 max-w-[28rem] rounded border border-amber-700 bg-[#1e222d] px-2 py-1 text-[11px] text-amber-300"
