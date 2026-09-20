@@ -4,6 +4,18 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-19 — DL-783 SODP0 GO · spec v0.1.5 interim Massive both sets
+
+**Decision (Coach, SODP0 GO).** Spec **§12** interim combined standing Massive includes **StudioTwo `chain_feed` / `sym_feed` until SODP-MB**. Foxtrot SODP1 headroom counts **BOTH** sets. A number that omits a live writer does not satisfy SODP-8.
+
+**FI-052** (SODP-4 vs “all API on StudioOne”) stays flagged, not killed. Coach rules at stamp.
+
+SODP0 four seats run on v0.1.5. SODP1 census may run read-only in parallel. No history code on StudioOne until stamp + SODP2-W0.
+
+**Cites:** Coach SODP0 GO 2026-09-19 · **SODP-11** · **DL-781**.
+
+---
+
 ## 2026-09-19 — DL-782 WG-1 Weekly Grounds-keeping (standing)
 
 **Decision (Coach, 2026-09-19).** Refactor/hardening inventories run **weekly on a timer**, not on memory. Doctrine **§18**. Saturday post-RTH (16:05 ET), StudioTwo launchd like Evening Autorun, **R0 + H0 only**. Empty lists are a result. R1/H1 stay Coach-approved. Missed armed cycle is an RL-1 process defect. Every status report shows last completed cycle date.

@@ -1,7 +1,7 @@
 # FatTail Labs — StudioOne Data Plane & Remote UI
 
-**Spec v0.1.4**  
-**Status:** DRAFT — India R1 (SODP-MB hold) + Mike §6/§7 landed. Coach also names this migration **TOPO-1**. **NOT BUILD AUTHORITY.**  
+**Spec v0.1.5**  
+**Status:** DRAFT — SODP0 review object. Coach §12: interim standing Massive counts **both** StudioOne and StudioTwo writers until SODP-MB. **NOT BUILD AUTHORITY.**  
 **Date:** 2026-09-19  
 **Program:** SODP  
 **Author:** Juliet (from Coach intent)  
@@ -240,12 +240,15 @@ Citation of CP-1 without numbers is not a GO. All Massive talk on StudioOne shar
 | `vp-futures` capture | session trades | — | existing | existing |
 | **History provider (F3)** | **0 standing** | 1 paginated GET / (vendor ticker, tf) on **cache miss**; today-refresh 1 GET | disk under on-box store; idle FastAPI | `:4010` route or `:4012` |
 | **Recognition cache** (Coach-named) | SODP1 must **name the process** | if it polls Massive, count it here | must not be a second undocumented writer | SODP1 |
-| leftover StudioTwo Massive | **must go to 0** | — | — | StudioTwo `:4010` retired |
+| leftover StudioTwo `vp-api` / fill | **must go to 0 at SODP5** | — | not a standing Massive writer after fill delete | StudioTwo `:4010` |
+| **StudioTwo `chain_feed` / `sym_feed` (interim)** | **live until SODP-MB** | same intervals as StudioOne twins | **counted in combined standing** | StudioTwo launchd |
 
-**Combined vs chain_feed headroom (draft, Foxtrot measures at SODP1):**
+**Interim combined standing (until SODP-MB closes):** StudioOne (`chain_feed` + `sym_feed` + capture + recognition if standing) **plus StudioTwo (`chain_feed` + `sym_feed`)**. Foxtrot’s SODP1 headroom measurement **counts BOTH sets**. A number that omits a live writer does **not** satisfy SODP-8. After SODP-MB, StudioTwo feeds drop out of the standing set.
 
-- History is **on-demand + immutable day cache**. First ES+MES miss = **2** REST bursts, not a new interval. Saturday probe: chain_feed pid 538 at 0.3% CPU idle. Two historical GETs (ESZ6 ~5 pages) must run **post-close** or HOLD.
-- If SODP1 finds the recognition cache is a **standing** Massive poll, add its interval to this table **before** SODP2 GO. Combined standing connections = chain_feed + sym_feed + capture + (recognition if standing). History remains burst-only. If Foxtrot cannot show headroom, SODP2 is HOLD until after 16:00 ET **and** the standing set is unchanged.
+**Combined vs chain_feed headroom (draft, Foxtrot measures at SODP1 against both machines):**
+
+- History is **on-demand + immutable day cache**. First ES+MES miss = **2** REST bursts, not a new interval. Saturday probe: StudioOne chain_feed pid 538 at 0.3% CPU idle; StudioTwo chain_feed pid 99058 also live. Two historical GETs (ESZ6 ~5 pages) must run **post-close** or HOLD.
+- If SODP1 finds the recognition cache is a **standing** Massive poll, add its interval **before** SODP2 GO. History remains burst-only. If Foxtrot cannot show headroom against the **interim combined** set, SODP2 is HOLD until after 16:00 ET **and** the standing set is unchanged.
 - No `CONFIG SET` of Redis maxmemory. No chain-feed plist edit. Rollback = bootout history agent only.
 
 ---
@@ -289,3 +292,4 @@ MiniTwo does **not** run capture, vp-api, or Massive. It runs Next + product Lab
 | 0.1.2 | 2026-09-19 | RETURNED: F3=migration; CP-1 arithmetic; consumer census + deletion proofs; MiniTwo as designed consumer |
 | 0.1.3 | 2026-09-19 | Mike: hop token `issuer=internal`; Cookie request header only, never Set-Cookie; shared secret; sidecar `LABS_ENV=dev`; SSO callback per UI host |
 | 0.1.4 | 2026-09-19 | India R1: **SODP-MB hold**. TOPO-1 name. SODP-10 = REFACTOR then HARDEN after AP-1 (REQ-004/005) |
+| 0.1.5 | 2026-09-19 | Coach SODP0: interim combined standing Massive includes StudioTwo chain_feed/sym_feed until SODP-MB; SODP1 counts both |
