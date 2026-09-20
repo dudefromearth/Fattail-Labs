@@ -4,6 +4,16 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-20 — DL-786 SODP4 MiniTwo production hop to StudioOne
+
+**Decision (Coach):** MiniTwo is production and must consume StudioOne data APIs.
+
+**How:** MiniTwo Labs mints computing JWTs with **`LABS_COMPUTING_SECRET`** (StudioOne hop key). Member **`LABS_SESSION_SECRET` stays on MiniTwo only** — not copied onto StudioOne. Pins: Tailscale `http://100.74.220.38:4010|4011|4012`. Evidence: MiniTwo `GET /api/app/vp/v1/ohlc/ES?tf=5m&contract=ESZ2026` → 200 `price_source=massive_futures_aggs` `bars_served=5000` `vendor_ticker=ESZ6`; symbology `ES1!` → `ESZ2026`.
+
+**Cites:** Coach 2026-09-20 · SODP-3 · SODP-4 · Mike hop binds.
+
+---
+
 ## 2026-09-19 — DL-785 REQ-006 · TV lookback (N bars, pan pages); 90d DELETED
 
 **Decision (Coach, 2026-09-19).** Chart lookback is the **TV model**: fixed bar count at the interval, pan pages the next N, no calendar-window configuration. Reason, verbatim: *"It is intuitive, where ToS forces you to learn how it works."*
