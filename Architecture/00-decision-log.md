@@ -4,6 +4,18 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-20 — DL-789 REQ-009 v0.2 BUILD AUTHORITY · contract spec registry
+
+**Decision (Coach APPROVAL v2).** Spec v0.2 is BUILD AUTHORITY (`sha1 33675b0b6e76e86ef9d4ce8a09e9e4c73e5725e7`). Advisor review of v0.1 (`sha1 7147dc4c…`) adopted in full. No re-review unless v0.2 deviates.
+
+**Seated:** D7 split-author (futures `vp_row` reads `tick_size`; SPY 0.10 stays VPS); SPEC-5 forward-looking with ES/MES chart-kind grandfather (cards: Sessions pending); cash-index spec deferred; `months[]` = cycle only; REQ-008 must carry both ES daily stops before a session string is complete. P0-4 no new SYM state. SPEC-14 loader is CP-1 post-close; no hop scrape.
+
+**AP-1 remains Coach’s.** ZB stays unlisted. Watchdog both-stops rider is a separate instance.
+
+**Cites:** REQ-009 · Spec v0.2 · VPS errata `Specs/amendments/VPS-D7-split-author-REQ-009.md`.
+
+---
+
 ## 2026-09-20 — DL-788 REQ-007 v2 · windowed-delivery kind (G-F) activated
 
 **Decision (Coach).** Visible Range is the default chart-profile **mode**. Bins are **server-owned** at vp_row grain. The client never assembles a histogram from bars. Visible Range is a **time-window query** (`from_t`/`to_t`) — the VPS windowed-delivery kind (surface spec §9.2 / G-F) is **activated**.

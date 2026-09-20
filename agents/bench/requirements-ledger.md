@@ -1,6 +1,6 @@
 # Requirements Ledger (RL-1)
 
-Canonical capture of Coach requirements. Wording preserved. Close only by **AP-1** (Coach acceptance) or explicit withdraw. Hashable FINAL texts: `artifacts/reqs/REQ-001.md` · `REQ-002.md` · `REQ-003.md` · `REQ-004.md` · `REQ-005.md` · `REQ-006.md` · `REQ-007.md` (spec §0.8).
+Canonical capture of Coach requirements. Wording preserved. Close only by **AP-1** (Coach acceptance) or explicit withdraw. Hashable FINAL texts: `artifacts/reqs/REQ-001.md` · `REQ-002.md` · `REQ-003.md` · `REQ-004.md` · `REQ-005.md` · `REQ-006.md` · `REQ-007.md` · `REQ-009.md`.
 
 Status: `OPEN` · `AP-1` · `WITHDRAWN`  
 **WG-1 last cycle:** never (not armed — TOPO-1 backlog). Canonical `agents/bench/groundskeeping.json`.
@@ -16,6 +16,7 @@ Status: `OPEN` · `AP-1` · `WITHDRAWN`
 | **REQ-005** | 2026-09-19 | Hardening pass | OPEN · **HOLD** | After REQ-004. See row below. |
 | **REQ-006** | 2026-09-19 | Chart lookback | OPEN | N bars per interval; TV pan-page. See row below. |
 | **REQ-007** | 2026-09-20 | Visible Range VP | OPEN | Server bins; VR default. See `artifacts/reqs/REQ-007.md`. |
+| **REQ-009** | 2026-09-20 | Contract specs | OPEN · **BUILD** v0.2 | Registry is the instrument fact SoR. Spec v0.2 BUILD AUTHORITY (`sha1 33675b0b…`). AP-1 Coach. See `artifacts/reqs/REQ-009.md`. |
 
 ### REQ-001 — ≥ 90 days of price on the chart (VP confirmation blocker)
 
