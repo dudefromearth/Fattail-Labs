@@ -65,7 +65,7 @@ def get_structure(
         include_bins=include_bins,
     )
     if "bins" in payload and not include_bins:
-        raise HTTPException(status_code=500, detail="bins leaked into structure")
+        return JSONResponse(status_code=422, content={"error": "BINS_LEAKED"})
     live = harness == "live" and kind == "developing"
     return payload_response(request, payload, kind=kind, live=live)
 

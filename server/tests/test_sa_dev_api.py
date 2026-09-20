@@ -50,6 +50,43 @@ def test_include_bins_opt_in_for_display(client, admin_cookies):
     assert len(body["bins"]) == body["bin_count"]
 
 
+def test_sessionless_structure_opt_in_variants(client, admin_cookies):
+    off = client.get(
+        "/api/dev/sa/v1/structure/XSP",
+        params={"source": "SPY", "harness": "fixture"},
+        cookies=admin_cookies,
+    )
+    assert off.status_code == 200, off.text
+    body = off.json()
+    assert "bins" not in body
+    assert body["session_date"] == "2026-09-16"
+    on = client.get(
+        "/api/dev/sa/v1/structure/XSP",
+        params={"source": "SPY", "harness": "fixture", "include_bins": "true"},
+        cookies=admin_cookies,
+    )
+    assert on.status_code == 200, on.text
+    assert on.json()["bins"]
+    assert on.json()["session_date"] == "2026-09-16"
+
+
+def test_bins_leaked_is_422_not_500(client, admin_cookies, monkeypatch):
+    from routes import sa_dev as route
+
+    def leak(*_a, **_k):
+        return {"bins": [{"price": 1, "volume": 1}], "session_date": "x"}
+
+    monkeypatch.setattr(route, "structure_for", leak)
+    r = client.get(
+        "/api/dev/sa/v1/structure/XSP",
+        params={"source": "SPY", "harness": "fixture"},
+        cookies=admin_cookies,
+    )
+    assert r.status_code == 422, r.text
+    assert r.json()["error"] == "BINS_LEAKED"
+    assert r.status_code != 500
+
+
 def test_structure_stale_mapping_passthrough(client, admin_cookies):
     r = client.get(
         "/api/dev/sa/v1/structure/SPX",

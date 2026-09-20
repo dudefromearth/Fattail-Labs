@@ -20,7 +20,7 @@ from market_data.vp_engine.continuous import (
     provenance,
     shift_bins,
 )
-from market_data.vp_engine.coverage import VP_ROW, ceiling_of, floor_of, load_coverage
+from market_data.vp_engine.coverage import ceiling_of, floor_of, load_coverage
 from market_data.vp_engine.display_rebin import display_rebin
 from market_data.vp_engine.rebuild import histogram_path
 from market_data.vp_chunks import TFS, assemble_bars, ns_bars, parse_bound
@@ -69,6 +69,37 @@ def _coverage_pair(source: str) -> dict[str, str | None]:
     }
 
 
+def _native_or_hist_row(source: str, hist: dict[str, Any] | None = None) -> float:
+    from symbology.spec import assert_native_grain
+
+    claimed = None if hist is None else hist.get("vp_row")
+    return assert_native_grain(source, claimed)
+
+
+def _spec_reason(exc: BaseException) -> JSONResponse:
+    from symbology.spec import SpecGrainMismatch, SpecIncomplete
+
+    if isinstance(exc, SpecGrainMismatch):
+        return JSONResponse(
+            status_code=422,
+            content={
+                "error": "SPEC_GRAIN_MISMATCH",
+                "code": "SPEC_GRAIN_MISMATCH",
+                "message": str(exc),
+            },
+        )
+    if isinstance(exc, SpecIncomplete):
+        return JSONResponse(
+            status_code=422,
+            content={
+                "error": "SPEC INCOMPLETE",
+                "code": "SPEC_INCOMPLETE",
+                "message": str(exc),
+            },
+        )
+    raise exc
+
+
 def _envelope(hist: dict[str, Any], *, target: str, source: str) -> dict[str, Any]:
     now_ns = int(datetime.now(timezone.utc).timestamp() * 1_000_000_000)
     mapping = {
@@ -96,7 +127,7 @@ def _envelope(hist: dict[str, Any], *, target: str, source: str) -> dict[str, An
         "flags": flags,
         "gaps": hist.get("gaps") or [],
         "mapping": mapping,
-        "vp_row": hist.get("vp_row") or VP_ROW.get(source, 0.25),
+        "vp_row": _native_or_hist_row(source, hist),
         "bins": hist.get("bins") or [],
         "coverage": _coverage_pair(source),
         **(
@@ -183,6 +214,27 @@ def _load_hist_published(source: str, kind: str, session_date: date) -> tuple[di
     return _load_hist(source, kind, session_date), False
 
 
+def _session_day(source: str, session_date: str | None) -> date | JSONResponse:
+    """Dated request uses the query. Sessionless uses the store ceiling — queried, never configured."""
+    raw = (session_date or "").strip()
+    if raw:
+        try:
+            return date.fromisoformat(raw[:10])
+        except ValueError:
+            return JSONResponse(status_code=422, content={"error": "bad_range"})
+    ceil = ceiling_of(_root(), source)
+    if ceil is None:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "error": "UNAVAILABLE",
+                "status": "UNAVAILABLE",
+                "coverage": _coverage_pair(source),
+            },
+        )
+    return ceil
+
+
 def _apply_display_row(
     bins: list[dict[str, Any]],
     body: dict[str, Any],
@@ -259,11 +311,22 @@ def profile_window(
         return JSONResponse(status_code=404, content={"error": "unknown_target"})
     src = (source or SOURCE_FOR_TARGET[target]).upper()
     from market_data.vp_engine.window_bins import assemble_window
+    from symbology.spec import SpecGrainMismatch, SpecIncomplete
 
-    body = assemble_window(src, from_t=from_t, to_t=to_t, vp_row=row)
-    body["target_symbol"] = target
-    body["kind"] = "window"
-    return JSONResponse(content=body)
+    try:
+        body = assemble_window(src, from_t=from_t, to_t=to_t)
+        native = float(body.get("vp_row"))
+        applied = _apply_display_row(
+            list(body.get("bins") or []), body, native_row=native, requested=row
+        )
+    except (SpecGrainMismatch, SpecIncomplete) as exc:
+        return _spec_reason(exc)
+    body_out = applied if isinstance(applied, dict) else None
+    if body_out is None:
+        return applied
+    body_out["target_symbol"] = target
+    body_out["kind"] = "window"
+    return JSONResponse(content=body_out)
 
 
 @app.get("/v1/profile/{target_symbol}/range")
@@ -319,7 +382,14 @@ def profile_range(
     acc: dict[float, int] = {}
     gaps: list[Any] = []
     last = None
-    native_row = VP_ROW.get(src, 0.25)
+    try:
+        native_row = _native_or_hist_row(src)
+    except Exception as exc:
+        from symbology.spec import SpecGrainMismatch, SpecIncomplete
+
+        if isinstance(exc, (SpecGrainMismatch, SpecIncomplete)):
+            return _spec_reason(exc)
+        raise
     for iso in days:
         d = date.fromisoformat(iso)
         if d < a or d > b:
@@ -328,7 +398,14 @@ def profile_range(
         if not hist:
             continue
         last = hist
-        native_row = float(hist.get("vp_row") or native_row)
+        try:
+            native_row = _native_or_hist_row(src, hist)
+        except Exception as exc:
+            from symbology.spec import SpecGrainMismatch, SpecIncomplete
+
+            if isinstance(exc, (SpecGrainMismatch, SpecIncomplete)):
+                return _spec_reason(exc)
+            raise
         delta = 0.0 if already else (adjust_for(_root(), src, d) if src in FUTURES else 0.0)
         for bn in shift_bins(list(hist.get("bins") or []), delta):
             px = float(bn["price"])
@@ -341,7 +418,14 @@ def profile_range(
     if last is None:
         return JSONResponse(status_code=503, content={"error": "UNAVAILABLE", "status": "UNAVAILABLE"})
     bins = [{"price": p, "volume": acc[p]} for p in sorted(acc)]
-    body = _envelope(last, target=target, source=src)
+    try:
+        body = _envelope(last, target=target, source=src)
+    except Exception as exc:
+        from symbology.spec import SpecGrainMismatch, SpecIncomplete
+
+        if isinstance(exc, (SpecGrainMismatch, SpecIncomplete)):
+            return _spec_reason(exc)
+        raise
     body["kind"] = "range"
     body["gaps"] = gaps
     body["status"] = "GAPPED" if gaps else "COMPLETE"
@@ -389,17 +473,24 @@ def profile(
             cached = layer.get(ck)
             if cached and isinstance(cached.get("body"), dict) and layer.gen_matches(cached, gid):
                 return payload_response(request, cached["body"], kind="developing", live=True)
-        body = _envelope(hist, target=target, source=src)
-        native = float(hist.get("vp_row") or VP_ROW.get(src, 0.25))
+        try:
+            body = _envelope(hist, target=target, source=src)
+            native = _native_or_hist_row(src, hist)
+        except Exception as exc:
+            from symbology.spec import SpecGrainMismatch, SpecIncomplete
+
+            if isinstance(exc, (SpecGrainMismatch, SpecIncomplete)):
+                return _spec_reason(exc)
+            raise
         applied = _apply_display_row(
             list(body.get("bins") or []), body, native_row=native, requested=row
         )
         if layer.enabled and isinstance(applied, dict) and gid:
             layer.set(ck, applied, gen=gid)
         return payload_response(request, applied, kind="developing", live=True)
-    if not session_date:
-        return JSONResponse(status_code=422, content={"error": "bad_range"})
-    day = date.fromisoformat(session_date)
+    day = _session_day(src, session_date)
+    if isinstance(day, JSONResponse):
+        return day
     if in_rth() and day == date.today():
         return JSONResponse(
             status_code=503, content={"error": "UNAVAILABLE", "status": "UNAVAILABLE"}
@@ -409,8 +500,16 @@ def profile(
         return JSONResponse(
             status_code=503, content={"error": "UNAVAILABLE", "status": "UNAVAILABLE"}
         )
-    body = _envelope(hist, target=target, source=src)
-    native = float(hist.get("vp_row") or VP_ROW.get(src, 0.25))
+    try:
+        body = _envelope(hist, target=target, source=src)
+        native = _native_or_hist_row(src, hist)
+    except Exception as exc:
+        from symbology.spec import SpecGrainMismatch, SpecIncomplete
+
+        if isinstance(exc, (SpecGrainMismatch, SpecIncomplete)):
+            return _spec_reason(exc)
+        raise
+    body["session_date"] = day.isoformat()
     bins = list(body.get("bins") or [])
     if src in FUTURES and not already:
         bins = shift_bins(bins, adjust_for(_root(), src, day))
@@ -418,6 +517,8 @@ def profile(
     applied = _apply_display_row(
         bins, body, native_row=native, requested=row
     )
+    if isinstance(applied, dict):
+        applied["session_date"] = day.isoformat()
     return payload_response(request, applied, kind="session", live=False)
 
 
