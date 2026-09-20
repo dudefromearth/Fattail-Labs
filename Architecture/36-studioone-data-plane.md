@@ -124,10 +124,23 @@ Does not touch LIM, QFRIC, XS, PPL, Help Watch, IKI. Does not answer D6/D7/D8. D
 
 ---
 
-## 7. Related
+## 7. Hardening (after the move)
+
+Not a second product. Doctrine §13 round: after SODP5 + AP-1, **SODP-H** makes the plane purpose-built.
+
+- Data Services and APIs live only on StudioOne.  
+- Remote hosts (StudioTwo, MacBook, MiniTwo) **consume APIs** — they do not assemble series, call Massive, or keep a leftover vp-api.  
+- Consolidated unit tests for the StudioOne services. UI tests are hop-consumers.  
+- Dangling code is **deleted** (grep-proof), same standard as FIXTURE / TS-1.  
+- Audit spec v1.1 Simplify: accepted interface and performance do not regress.
+
+---
+
+## 8. Related
 
 - Arch **01** system overview (product Labs)  
 - Arch **28** Market Bus  
 - Arch **35** VP widget (OHLC URL stays `/api/app/vp/v1/ohlc` — hop behind it)  
 - Spec VPS v0.5 · Symbology v0.2.1  
-- Doctrine §17 TS-1 · CP-1 DL-707  
+- Doctrine §17 TS-1 · §13 rounds · CP-1 DL-707  
+- Audit & Hardening Round Spec v1.1  

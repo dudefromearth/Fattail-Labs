@@ -30,7 +30,7 @@
 | **TS-1** | doctrine §17. Fill design has two AP-1 strikes. Not repaired. Replacement on StudioOne. DL cites both strikes. |
 | **RL-1** | REQ-001 · REQ-002 · REQ-003 OPEN in every report |
 | **AP-1** | Coach browser. REQ-001 VP CONFIRMED only on his cross-check |
-| **SODP-1…9** | spec §2 |
+| **SODP-1…10** | spec §2 · **SODP-10** hardening after the move |
 | **D6 / D7 / D8** | stay open |
 | **VPS Q1** | ES/MES model ACTIVE blocked |
 | **MiniTwo** | not this tree until SODP4 names it |
@@ -59,6 +59,11 @@ SODP0-G   Advisor + design + infra + auth review  (India → Echo+Tango → Foxt
                     │
                     ▼
              AP-1        Coach: pan June 2026 on ES AND MES, StudioTwo
+                    │
+                    ▼
+             SODP-H-G    Hardening round (after the move, not during)
+                         Kilo consolidated tests · Alpha/Charlie delete dangle
+                         India MATCH · Echo re-gate · Delta grep-proof
 ```
 
 SODP0 is sequential (workflow Phases 2–4). SODP1 may run during SODP0 if read-only. **No `server/` history rewrite until Coach stamps BUILD and SODP2-W0.**
@@ -79,7 +84,7 @@ SODP0 is sequential (workflow Phases 2–4). SODP1 may run during SODP0 if read-
 | **Foxtrot** | StudioOne launchd, pins, Tailscale, retire StudioTwo leftovers, CP-1 install |
 | **Alpha** | History provider, hop wiring, delete fill, cache |
 | **Charlie** | Chart consumes `short_history`; no short localStorage win; MacBook site URL |
-| **Kilo** | Inventory, live contract tests, grep-proof, headed June artifact |
+| **Kilo** | Inventory, live contract tests, grep-proof, headed June artifact, **consolidated StudioOne data-service suite (SODP-H)** |
 | **Delta** | Every gate PASS/FAIL/BLOCKED with evidence. Never waived. |
 | **Lima** | DL same day; Arch 36 honesty; spec status |
 | **Sierra** | Not this tree (no catalog) unless a public route appears |
@@ -131,11 +136,28 @@ Named site URL + SSO callback. Same hop.
 
 Coach: tile → chart, pan to June 2026, ES **and** MES. REQ-001 range then VP cross-check. REQ-003/002 unchanged unless he marks them.
 
+### SODP-H — Hardening round (full bench, after the move)
+
+**Depends:** SODP5 + AP-1. **Forbidden during SODP2–6** (doctrine §13).  
+**Law:** spec SODP-10 · Audit & Hardening Round Spec v1.1 Simplify.  
+**Coach:** refactoring and hardening audit; bulletproof; consolidated unit tests; no dangling code; purpose-built; Data Services and APIs on StudioOne; remotes consume APIs.
+
+| Seat | Packet |
+|------|--------|
+| Kilo | One test suite for StudioOne data services. UI tests consume hops only. 0 warnings. |
+| Alpha + Charlie | Delete dangling (fill remnants, unused print-first OHLC, second Massive, dead launchd). Not disable. |
+| India | Architecture MATCH after deletes. |
+| Echo | Re-gate touched surfaces. |
+| Foxtrot | StudioTwo `lsof :4010` empty; StudioOne process set = spec §4 only. |
+| Delta | FAIL if dangle remains, tests assumed, or AP-1 interface moved. |
+
+**Seed:** `agents/p-studioone-data-plane/seeds/SODP-H.md` (HOLD until AP-1).
+
 ---
 
 ## 3. Isolation FAIL
 
-A seed that: repairs `_aggs_price_fill`; calls Massive from Next; forwards member cookies to StudioOne; git-pulls StudioOne Labs; answers D6/D7/D8; grants model ACTIVE; deploys MiniTwo without a named GO; stops StudioTwo `:3000`/`:4000` as a “fix.”
+A seed that: repairs `_aggs_price_fill`; calls Massive from Next; forwards member cookies to StudioOne; git-pulls StudioOne Labs; answers D6/D7/D8; grants model ACTIVE; deploys MiniTwo without a named GO; stops StudioTwo `:3000`/`:4000` as a “fix”; **streamlines SODP2–6 mid-build** (hardening is SODP-H only); leaves dangling data-plane code on a UI host.
 
 ---
 

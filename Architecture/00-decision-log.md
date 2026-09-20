@@ -4,6 +4,18 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-19 — DL-778 SODP-H · hardening round after the move (Coach-ruled)
+
+**Decision (Coach, 2026-09-19).** After the StudioOne move: a refactoring and hardening audit so the architecture is sound and bulletproof; **consolidated unit tests**; **no dangling code**; everything clean and purpose-built. **Data Services and APIs on StudioOne; remote services consuming the APIs.**
+
+**Sequencing:** SODP-H is **after** SODP5 + AP-1. Not during SODP2–6 (doctrine §13 · Audit spec v1.1 Simplify). Spec **SODP-10**. Plan packet SODP-H-G. Seed HOLD: `agents/p-studioone-data-plane/seeds/SODP-H.md`.
+
+**Does not.** Start the round now. Repair `_aggs_price_fill`. Streamline the move.
+
+**Cites:** Coach 2026-09-19 · **DL-777** · doctrine §13 · **TS-1**.
+
+---
+
 ## 2026-09-19 — DL-777 SODP intake · StudioOne data plane (DRAFT, not BUILD)
 
 **Decision.** Coach directed a **clean separation**: all data movement and data APIs on StudioOne; UI remote (StudioTwo / MacBook / MiniTwo). Filed for **full bench review**, not a build GO.

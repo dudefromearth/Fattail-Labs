@@ -21,5 +21,6 @@
 | SODP5-G | Retire StudioTwo leftovers | Foxtrot | StudioTwo | HOLD |
 | SODP6-G | MacBook UI host | Foxtrot + Charlie | MacBook **named** | HOLD |
 | AP-1 | Pan June ES+MES | Coach | StudioTwo browser | not "done" |
+| SODP-H-G | Hardening: tests, no dangle, purpose-built | Kilo + Alpha + Charlie + India + Echo + Foxtrot + Delta | after AP-1 | **HOLD** · SODP-10 |
 
 Juliet executes packets. Grok Build does not implement. Auto-GO on clean gates. Stop + GO/NO-GO on a problem.

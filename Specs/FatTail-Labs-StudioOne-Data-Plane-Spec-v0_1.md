@@ -1,6 +1,6 @@
 # FatTail Labs — StudioOne Data Plane & Remote UI
 
-**Spec v0.1**  
+**Spec v0.1.1**  
 **Status:** DRAFT — review object. **NOT BUILD AUTHORITY.**  
 **Date:** 2026-09-19  
 **Program:** SODP  
@@ -10,6 +10,8 @@
 Coach wording (RL-1, 2026-09-19):
 
 > I want a clean separation with serverside functionality including all data movement and api run from StudioOne, and then the UI is remote, where dev is studioTwo or my Macbook or production on MiniTwo.
+
+> After we make this move to StudioOne, we are going to do a refactoring and hardening audit and figure out how we can make sure this architecture is sound and bullet proof. I want consolidated unit tests. I do not want any dangling code, I want everything clean and purpose built. Data Services and APIs on StudioOne, and remote services consuming the APIs.
 
 ---
 
@@ -70,6 +72,7 @@ It does **not** silently relocate Labs identity, courses, or MySQL `labs`. That 
 | **SODP-7** | **TS-1** applies: the struck `_aggs_price_fill` design is deleted (grep-proof), not repaired. Both AP-1 strikes are cited in the DL. |
 | **SODP-8** | **CP-1** on every StudioOne packet (verbatim in the GO). |
 | **SODP-9** | REQ-001 / 002 / 003 stay OPEN until Coach AP-1. No report writes "done" before his line. |
+| **SODP-10** | After the move, a **hardening round** (not mid-build). Refactor + audit until the plane is purpose-built: Data Services and APIs on StudioOne only; remotes consume APIs only. Consolidated unit tests. **No dangling code** (grep-proof). Doctrine §13: rounds follow implementation; do not streamline SODP2–6 on the fly. |
 
 ---
 
@@ -171,8 +174,29 @@ LIM, QFRIC, XS, PPL, Help Watch. IKI. Moving MySQL `labs` / SSO issuers onto Stu
 
 ---
 
-## 10. Change table
+## 10. Hardening round (after the move · SODP-H)
+
+**When:** after SODP5 (StudioTwo leftovers retired) and AP-1 on the range. **Not** during SODP2–6 (doctrine §13 · Audit & Hardening Round Spec v1.1 Simplify).
+
+**Coach (verbatim):** refactoring and hardening audit; architecture sound and bulletproof; consolidated unit tests; no dangling code; clean and purpose-built; Data Services and APIs on StudioOne; remote services consuming the APIs.
+
+| Work | Seat | Proof |
+|------|------|--------|
+| Inventory of leftover Massive / OHLC / fill / second vp-api / dead hops | Kilo | grep + lsof artifact |
+| Delete dangling paths (not disable, not flag) | Alpha + Charlie | grep-proof close-out, FIXTURE standard |
+| Consolidate unit tests for StudioOne data services (history, VP, symbology, ticker translation) | Kilo | one suite, green, 0 warnings |
+| UI hosts test **consumption** only (hop + banner). No Massive in `web/` tests | Charlie + Kilo | grep Massive in `web/` = 0 |
+| Architecture still SODP-1…10 after deletes | India | MATCH |
+| Touched member surface | Echo | re-gate vs references |
+| CP-1 AFTER still undegraded | Foxtrot + Delta | chain_feed pid + last line |
+
+Simplify law (Audit spec v1.1 §2) binds: accepted interface and performance may not regress. A round that changes what Coach accepted at AP-1 fails.
+
+---
+
+## 11. Change table
 
 | Ver | Date | Change |
 |-----|------|--------|
 | 0.1 | 2026-09-19 | First draft from Coach clean-separation intent + TS-1 F3 |
+| 0.1.1 | 2026-09-19 | SODP-10 + §10 hardening round (Coach: tests, no dangle, purpose-built) |

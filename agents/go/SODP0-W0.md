@@ -24,3 +24,4 @@ India → Echo+Tango → Foxtrot → Mike on the review object. Juliet does not 
 - ES/MES model ACTIVE blocked on VPS Q1.
 - Product Labs (MySQL/SSO/courses) stays MiniTwo until Coach stamps SODP-LABS.
 - REQ-001 / 002 / 003 OPEN. No "done" before AP-1.
+- Hardening (SODP-H) is **after** the move + AP-1. Do not streamline SODP2–6.

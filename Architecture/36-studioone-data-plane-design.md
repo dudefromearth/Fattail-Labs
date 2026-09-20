@@ -58,7 +58,13 @@ Do not re-apply a localStorage OHLC cache when `short_history` is true or span <
 
 ---
 
-## 6. Tango / Echo binds
+## 6. After the move (SODP-H)
+
+The member should not be able to tell which UI host they are on except the URL. Hardening may delete dead paths; it may **not** change the chart, picker, or banner Coach accepted at AP-1. Echo re-gates any touched surface.
+
+---
+
+## 7. Tango / Echo binds
 
 - Capacity: one honest range, not a second “try another machine.”
 - No profit claim in banners.
