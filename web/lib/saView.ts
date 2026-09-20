@@ -47,16 +47,12 @@ export function resampleOhlc<
       bucket = k;
       cur = { ...b, t: k };
     } else {
-      cur = {
-        ...cur,
-        h: Math.max(cur.h, b.h),
-        l: Math.min(cur.l, b.l),
-        c: b.c,
-        v:
-          cur.v != null || b.v != null
-            ? (cur.v || 0) + (b.v || 0)
-            : cur.v,
-      };
+      cur.h = Math.max(cur.h, b.h);
+      cur.l = Math.min(cur.l, b.l);
+      cur.c = b.c;
+      if (cur.v != null || b.v != null) {
+        cur.v = (cur.v || 0) + (b.v || 0);
+      }
     }
   }
   if (cur) out.push(cur);
