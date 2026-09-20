@@ -1,6 +1,6 @@
 # StudioOne Data Plane & Remote UI — Juliet board
 
-**Spec:** `Specs/FatTail-Labs-StudioOne-Data-Plane-Spec-v0_1.md` **v0.1.2 DRAFT RETURNED**  
+**Spec:** `Specs/FatTail-Labs-StudioOne-Data-Plane-Spec-v0_1.md` **v0.1.5 DRAFT** · SODP0-G **PASS (GO)** — awaiting Coach stamp  
 **Arch:** `Architecture/36-studioone-data-plane.md`  
 **Design:** `Architecture/36-studioone-data-plane-design.md`  
 **Plan:** `docs/StudioOne-Data-Plane-Full-Agent-Bench-Plan-v1.0.md` **v1.1** (v1.0 “move then F3” void)  
@@ -14,8 +14,8 @@
 
 | Gate | Packet | Seat | Machine | Status |
 |------|--------|------|---------|--------|
-| SODP0-G | Advisor + design + infra + auth | India → Echo+Tango → Foxtrot → Mike + Hotel | StudioTwo read-only | Echo+Tango **APPROVED** · Foxtrot **APPROVED** · Hotel **APPROVED** · Mike **APPROVED** (v0.1.3) · India **RETURNED** (R1 → SODP-11 MB hold in v0.1.4) |
-| SODP1-G | Census: consumers, Massive writers, CP-1 budget | Kilo + Foxtrot | both, read-only | after stamp |
+| SODP0-G | Advisor + design + infra + auth | India → Echo+Tango → Foxtrot → Mike | StudioTwo read-only | **PASS (GO)** · stamp request |
+| SODP1-G | Census: consumers, Massive writers, CP-1 budget | Kilo + Foxtrot | both, read-only | **in flight** (read-only parallel) |
 | SODP2-G | **F3 = migration** — provider born on StudioOne | Alpha + Foxtrot + Kilo | StudioOne **CP-1 arithmetic** | HOLD stamp |
 | SODP3-G | Re-point every census row + attest | Alpha + Charlie + Kilo | StudioTwo | HOLD |
 | SODP5-G | Delete old OHLC server whole (process, plist, grep) | Foxtrot + Alpha + Delta | StudioTwo | HOLD |

@@ -1,35 +1,37 @@
 # SODP0-mike — hop / SSO / computing-class
 
 **Agent:** Mike  
-**Date:** 2026-09-19 (re-review)  
+**Date:** 2026-09-19 (v0.1.5 re-review)  
 **Machine:** StudioTwo, read-only besides this file  
 **Seed:** `agents/p-studioone-data-plane/seeds/SODP0-mike.md`  
-**Review object:** spec **v0.1.3** §6 hop + SODP-3 + §7 UI-host SSO  
+**Review object:** spec **v0.1.5** §6 hop + SODP-3 + §7 UI-host SSO  
 **Token:** `agents/go/SODP0-W0.md` (intake; **not BUILD**)  
-**DL:** **DL-780** (Juliet landed the RETURNED binds)
+**DL:** **DL-780** (v0.1.3 hop binds) · **DL-783** (v0.1.5 SODP0 GO; hop not in that delta)
 
-**Prior:** this report was **RETURNED** on v0.1 (incomplete §6 token / Cookie / secret / SSO host). That verdict is superseded below.
+**Prior:** this report **APPROVED** spec **v0.1.3**. This pass confirms v0.1.4 / v0.1.5 did not drop those binds.
 
 **Open REQs:** REQ-001 OPEN · REQ-002 OPEN · REQ-003 OPEN. Not AP-1. No "done."
+
+**Review bytes:** `Specs/FatTail-Labs-StudioOne-Data-Plane-Spec-v0_1.md` header **v0.1.5** · sha1 `dab97e4f19cb1fdc71a7b165dfadbc0d617876fd` · 295 lines.
 
 ---
 
 ## Verdict: **APPROVED**
 
-SODP-3 is still law. The three-host table is still present (now with Site URL / SSO callback / Hop pin columns). All four RETURNED binds are in the spec, not only in this report.
+v0.1.5 did **not** drop the v0.1.3 hop/SSO binds. SODP-3 is still law. The three-host table is still present. Changelog 0.1.4 is India **SODP-MB** (SODP-11); 0.1.5 is Coach interim Massive **both** writer sets until SODP-MB (**DL-783**). Neither rewrite touches §6 token class, Cookie direction, shared secret, sidecar env, or §7 per-host SSO.
 
-| Bind (RETURNED → land) | Spec v0.1.3 | Mike |
-|------------------------|-------------|------|
-| 1. `issue_session(identity_id=0, issuer="internal", role="administrator")` | §6 Hop paragraph | **landed** |
-| 2. Outbound request `Cookie:` only; never `Set-Cookie` computing JWT on the member response; never copy inbound member cookie | §6 Hop paragraph | **landed** |
-| 3. Same `LABS_SESSION_SECRET`; sidecar `LABS_ENV=dev`; `:4010` / `:4011` / history `:4012`; no second token class | §6 Sidecar | **landed** |
-| 4. SSO per UI host; localhost mismatch = 401 identity miss; MiniTwo/MacBook named packets; no MiniTwo session secret on the sidecar in this program | §7 table + **SSO per UI host** | **landed** |
+| Bind (v0.1.3 APPROVED · DL-780) | Spec v0.1.5 | Mike |
+|---------------------------------|-------------|------|
+| 1. `issue_session(identity_id=0, issuer="internal", role="administrator")` | §6 Hop paragraph | **held** |
+| 2. Outbound request `Cookie:` only; never `Set-Cookie` computing JWT on the member response; never copy inbound member cookie | §6 Hop paragraph | **held** |
+| 3. Same `LABS_SESSION_SECRET`; sidecar `LABS_ENV=dev`; `:4010` / `:4011` / history `:4012`; no second token class | §6 Sidecar | **held** |
+| 4. SSO per UI host; localhost mismatch = 401 identity miss; MiniTwo/MacBook named packets; no MiniTwo session secret on the sidecar in this program | §7 table + **SSO per UI host** | **held** |
 
 Coach Content Law: SODP-3, the member-route table, and the three-host list were not dropped.
 
 ---
 
-## Evidence (spec text)
+## Evidence (spec text · v0.1.5)
 
 **SODP-3** (spec §2, unchanged as law):
 
@@ -51,7 +53,15 @@ Coach Content Law: SODP-3, the member-route table, and the three-host list were 
 
 > Browser origin, `NEXT_PUBLIC_SITE_URL`, and `LABS_SSO_LOGIN_URL_*` `redirect=` are the **same** host. Mismatch (including `localhost` while the member is on `studiotwo` or a named MacBook host) is a 401 identity miss — page may load; `/api/auth/me` does not. Next never rewrites `/api/*` to StudioOne. Computing-class never in the browser.
 
-**DL-780** records the same four sentences. Matches the spec.
+**Change table (hop column unchanged after 0.1.3):**
+
+| Ver | Delta vs hop/SSO |
+|-----|------------------|
+| 0.1.3 | Landed the four binds (this seat). |
+| 0.1.4 | SODP-11 MB hold. Hop text not rewritten. |
+| 0.1.5 | Interim standing Massive counts both StudioOne and StudioTwo writers until SODP-MB. Hop text not rewritten. |
+
+**DL-780** still matches §6/§7. **DL-781** records “Mike hop binds remain APPROVED (v0.1.3)” through the v0.1.4 India pass. This file extends that hold to **v0.1.5**.
 
 ---
 
