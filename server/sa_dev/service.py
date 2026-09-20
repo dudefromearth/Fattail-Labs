@@ -212,13 +212,6 @@ def range_for(
 from market_data.vp_ohlc import bar_invariant, bars_from_prints, dominant_contract  # noqa: F401
 _TF_SECONDS = {"1m": 60, "5m": 300, "15m": 900, "1h": 3600, "1d": 86400}
 _REQ001_MIN_DAYS = 90
-_FUTURES_AGGS_RES = {
-    "1m": "minute",
-    "5m": "5min",
-    "15m": "15min",
-    "1h": "hour",
-    "1d": "day",
-}
 
 
 def contracts_for_source(source: str) -> list[dict[str, Any]]:
@@ -304,68 +297,6 @@ def contracts_for_source(source: str) -> list[dict[str, Any]]:
     return out
 
 
-def _aggs_price_fill(source: str, tf: str, *, min_days: int, ticker: str | None = None) -> list[dict[str, Any]]:
-    """REQ-001: Massive aggs when the print store is shorter than min_days."""
-    from datetime import datetime, timedelta, timezone
-
-    from market_data.massive_client import MassiveClient, MassiveClientError
-
-    src = (source or "").upper()
-    res = _FUTURES_AGGS_RES.get(tf)
-    if not res:
-        return []
-    end = datetime.now(timezone.utc).date()
-    start = end - timedelta(days=max(min_days + 10, 100))
-    try:
-        client = MassiveClient()
-    except Exception:
-        return []
-    bars: list[dict[str, Any]] = []
-    if src in ("ES", "MES"):
-        use = (ticker or ("ESZ6" if src == "ES" else "MESZ6")).upper()
-        try:
-            raw = client.fetch_futures_aggs(
-                use, resolution=res, start=start.isoformat(), end=end.isoformat()
-            )
-        except MassiveClientError:
-            return []
-        cutoff = int((datetime.now(timezone.utc) - timedelta(days=min_days + 5)).timestamp() * 1000)
-        bars = [b for b in raw if int(b["t"]) >= cutoff]
-    else:
-        spec = {"1m": (1, "minute"), "5m": (5, "minute"), "15m": (15, "minute"), "1h": (1, "hour"), "1d": (1, "day")}.get(tf)
-        if not spec:
-            return []
-        try:
-            raw = client.fetch_aggs(
-                src,
-                multiplier=spec[0],
-                timespan=spec[1],
-                start=datetime.combine(start, datetime.min.time(), tzinfo=timezone.utc),
-                end=datetime.now(timezone.utc),
-            )
-        except MassiveClientError:
-            return []
-        bars = [
-            {
-                "t": int(b["t"]),
-                "o": b.get("o"),
-                "h": b.get("h"),
-                "l": b.get("l"),
-                "c": b.get("c"),
-                "v": b.get("v") or 0,
-            }
-            for b in raw
-            if isinstance(b, dict) and b.get("t") is not None
-        ]
-    honest = []
-    from market_data.vp_ohlc import bar_invariant
-
-    for b in bars:
-        if bar_invariant(b):
-            honest.append(b)
-    return honest
-
-
 def ohlc_for_source(
     source: str,
     *,
@@ -409,21 +340,6 @@ def ohlc_for_source(
     if bars and len(bars) >= 2:
         span_days = max(0.0, (float(bars[-1]["t"]) - float(bars[0]["t"])) / 86400000.0)
     price_source = "vp_prints"
-    if requested or span_days < _REQ001_MIN_DAYS:
-        filled = _aggs_price_fill(
-            src, tf, min_days=_REQ001_MIN_DAYS, ticker=requested
-        )
-        if filled:
-            bars = filled
-            price_source = "massive_futures_aggs" if src in ("ES", "MES") else "massive_aggs"
-            if requested:
-                contract = requested
-            last_t = bars[-1]["t"] if bars else 0
-            span_days = (
-                max(0.0, (float(bars[-1]["t"]) - float(bars[0]["t"])) / 86400000.0)
-                if len(bars) >= 2
-                else 0.0
-            )
     gid = f"req001:{src}:{tf}:{contract or ''}:{last_t}:{len(bars)}:{price_source}"
     status = "COMPLETE" if not missing else ("WARMING" if not bars else "GAPPED")
     if span_days < _REQ001_MIN_DAYS:

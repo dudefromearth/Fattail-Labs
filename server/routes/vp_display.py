@@ -2,9 +2,17 @@
 
 Authenticated members receive health / OHLC / range / stream via Labs.
 Computing-class VP API stays off the browser.
+OHLC/contracts for ES/MES hop to StudioOne history :4012 (SODP3).
 """
 
 from __future__ import annotations
+
+import json
+import os
+import urllib.error
+import urllib.parse
+import urllib.request
+from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from starlette.responses import JSONResponse, StreamingResponse
@@ -36,6 +44,75 @@ def _computing_headers() -> dict[str, str]:
 
 def _require_member(request: Request) -> dict:
     return require_session(request)
+
+
+_INPROCESS = frozenset({"", "inprocess", "mock", "mock://"})
+_PIN_HOSTS = {"studioone.local": "192.168.1.111"}
+
+
+def _history_base() -> str:
+    env = (os.environ.get("LABS_HISTORY_API_BASE") or "").strip()
+    if env.lower() in _INPROCESS and env != "":
+        return ""
+    if env:
+        return _pin_url(env.rstrip("/"))
+    env_path = Path(__file__).resolve().parents[2] / ".env"
+    if not env_path.is_file():
+        return ""
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, _, v = line.partition("=")
+        if k.strip() == "LABS_HISTORY_API_BASE":
+            raw = v.strip().strip('"').strip("'")
+            if raw.lower() in _INPROCESS:
+                return ""
+            return _pin_url(raw.rstrip("/")) if raw else ""
+    return ""
+
+
+def _pin_url(url: str) -> str:
+    from urllib.parse import urlsplit, urlunsplit
+
+    u = urlsplit(url)
+    host = (u.hostname or "").lower()
+    if host not in _PIN_HOSTS:
+        return url
+    netloc = _PIN_HOSTS[host]
+    if u.port:
+        netloc = f"{netloc}:{u.port}"
+    return urlunsplit((u.scheme, netloc, u.path, u.query, u.fragment))
+
+
+def _history_hop(path: str, params: dict[str, str] | None = None) -> JSONResponse | None:
+    base = _history_base()
+    if not base:
+        return None
+    qs = urllib.parse.urlencode({k: v for k, v in (params or {}).items() if v})
+    url = f"{base}{path}" + (f"?{qs}" if qs else "")
+    headers = {**_computing_headers(), "Accept": "application/json"}
+    req = urllib.request.Request(url, headers=headers, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            raw = resp.read()
+            parsed = json.loads(raw.decode("utf-8")) if raw else {}
+            return JSONResponse(content=parsed, status_code=resp.status)
+    except urllib.error.HTTPError as exc:
+        raw = exc.read()
+        try:
+            parsed = json.loads(raw.decode("utf-8")) if raw else {"error": "upstream"}
+        except json.JSONDecodeError:
+            parsed = {"error": "upstream_non_json", "status": exc.code}
+        return JSONResponse(content=parsed, status_code=exc.code)
+    except urllib.error.URLError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "history_upstream_unavailable",
+                "message": f"StudioOne history unreachable: {exc}",
+            },
+        ) from exc
 
 
 @router.get("/api/app/vp/v1/health")
@@ -101,6 +178,9 @@ def get_range_profile(
 @router.get("/api/app/vp/v1/contracts/{source}")
 def get_contracts(request: Request, source: str):
     _require_member(request)
+    hopped = _history_hop(f"/history/v1/contracts/{source.upper()}")
+    if hopped is not None:
+        return hopped
     rows = contracts_for_source(source)
     return {"source": source.upper(), "contracts": rows}
 
@@ -117,6 +197,12 @@ def get_source_ohlc(
     _require_member(request)
     if tf not in ("1m", "5m", "15m", "1h", "1d"):
         raise HTTPException(status_code=422, detail="tf must be 1m|5m|15m|1h|1d")
+    params = {"tf": tf}
+    if contract:
+        params["contract"] = contract
+    hopped = _history_hop(f"/history/v1/ohlc/{source.upper()}", params)
+    if hopped is not None:
+        return hopped
     payload = ohlc_for_source(
         source, tf=tf, lookback_days=lookback_days, contract=contract
     )

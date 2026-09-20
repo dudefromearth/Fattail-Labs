@@ -16,12 +16,12 @@
 |------|--------|------|---------|--------|
 | SODP0-G | Advisor + design + infra + auth | India → Echo+Tango → Foxtrot → Mike | StudioTwo read-only | **PASS (GO)** · stamp request |
 | SODP1-G | Census: consumers, Massive writers, CP-1 budget | Kilo + Foxtrot | both, read-only | **filed** (read-only; not SODP2) |
-| SODP2-G | **F3 = migration** — provider born on StudioOne | Alpha + Foxtrot + Kilo | StudioOne **CP-1 arithmetic** | HOLD stamp |
-| SODP3-G | Re-point every census row + attest | Alpha + Charlie + Kilo | StudioTwo | HOLD |
-| SODP5-G | Delete old OHLC server whole (process, plist, grep) | Foxtrot + Alpha + Delta | StudioTwo | HOLD |
+| SODP2-G | **F3 = migration** — provider born on StudioOne | Alpha + Foxtrot + Kilo | StudioOne **CP-1 arithmetic** | **PASS (GO)** · `:4012` June ES+MES |
+| SODP3-G | Re-point every census row + attest | Alpha + Charlie + Kilo | StudioTwo | **PASS (GO)** · Labs hop June |
+| SODP5-G | Delete old OHLC server whole (process, plist, grep) | Foxtrot + Alpha + Delta | StudioTwo | **PASS (GO)** · `:4010` empty; chain_feed held |
 | SODP4-G | MiniTwo consumer (topology already spec §14) | Foxtrot + Mike | MiniTwo **named** | HOLD |
 | SODP6-G | MacBook consumer | Foxtrot + Charlie | MacBook **named** | HOLD |
-| AP-1 | Pan June ES+MES | Coach | StudioTwo browser | not "done" |
+| AP-1 | Pan June ES+MES | Coach | StudioTwo browser | **READY — call Coach** |
 | After AP-1 | REQ-004 REFACTOR → REQ-005 HARDEN | own boards | after TOPO-1 AP-1 | **HOLD** · SODP-10 · SODP-MB (SODP-11) |
 
 Juliet executes packets. Grok Build does not implement. Auto-GO on clean gates. Stop + GO/NO-GO on a problem.

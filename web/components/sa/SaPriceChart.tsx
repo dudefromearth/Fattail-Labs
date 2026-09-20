@@ -227,16 +227,17 @@ export default function SaPriceChart({
       const days =
         Number(r.body?.history_span_days) ||
         ohlcSpanDays(r.body?.bars as { t?: number }[] | undefined);
-      const need = Number(r.body?.req001_min_days) || 90;
-      if (Number.isFinite(days)) {
+      const need = Number(r.body?.requested_window_days || r.body?.req001_min_days) || 90;
+      if (r.body?.named_state === "MASSIVE EMPTY") {
+        setHistWarn("History unavailable. Price is not on this chart right now.");
+      } else if (r.body?.short_history === true) {
+        setHistDays(Number.isFinite(days) ? days : null);
+        setHistWarn(
+          `SHORT HISTORY: ${(Number.isFinite(days) ? days : 0).toFixed(0)} days of price (need ≥ ${need}). Not silent.`,
+        );
+      } else if (Number.isFinite(days)) {
         setHistDays(days);
-        if (days < need) {
-          setHistWarn(
-            `SHORT HISTORY: ${days.toFixed(0)} days of price (need ≥ ${need}). Not silent.`,
-          );
-        } else {
-          setHistWarn(null);
-        }
+        setHistWarn(null);
       }
     });
     return () => {
@@ -671,17 +672,16 @@ export default function SaPriceChart({
       style={{ background: prefs.canvasBg }}
     >
       <div ref={hostRef} className="h-full min-h-0 w-full" />
-      {histDays != null ? (
+      {histWarn ? (
         <p
-          className={`pointer-events-none absolute left-2 top-2 z-20 max-w-[28rem] rounded border px-2 py-1 text-[11px] ${
-            histWarn
-              ? "border-amber-700 bg-[#1e222d] text-amber-300"
-              : "border-zinc-600 bg-[#1e222d] text-zinc-300"
-          }`}
+          className="pointer-events-none absolute left-2 top-2 z-20 max-w-[28rem] rounded border border-amber-700 bg-[#1e222d] px-2 py-1 text-[11px] text-amber-300"
           data-testid="sa-short-history"
         >
-          {histWarn ||
-            `Price ${histDays.toFixed(0)}d · zoom out then pan left for June`}
+          {histWarn}
+        </p>
+      ) : histDays != null ? (
+        <p className="pointer-events-none absolute left-2 top-2 z-20 max-w-[28rem] rounded border border-zinc-600 bg-[#1e222d] px-2 py-1 text-[11px] text-zinc-300">
+          {`Price ${histDays.toFixed(0)}d · zoom out then pan left for June`}
         </p>
       ) : null}
       {err ? (

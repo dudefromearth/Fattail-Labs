@@ -1,0 +1,26 @@
+SODP2 BEFORE
+captured_at_et 2026-09-19 23:07:53 EDT
+HOST StudioOne.local
+NOW_ET 2026-09-19 23:07:53 EDT
+--- chain_feed ---
+  PID     ELAPSED  %CPU %MEM    RSS COMMAND
+  538 04-15:38:14   0.0  0.2  71088 /opt/homebrew/Cellar/python@3.12/3.12.12/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python -m market_data.chain_feed --interval 2
+LAST no interest keys; idle
+LOG_BYTES 38031239
+--- listen ---
+COMMAND   PID  USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+Python  26514 ernie    6u  IPv4 0x28abdee3d08d0e4e      0t0  TCP *:4011 (LISTEN)
+Python  74792 ernie    8u  IPv4 0x822ca5e3d5f4a064      0t0  TCP *:4010 (LISTEN)
+--- launchd ---
+26514	-15	ai.fattail.labs.symbology
+74792	-15	ai.fattail.labs.vp-api
+538	-15	ai.fattail.labs.chain-feed
+53424	-15	ai.fattail.labs.vp-futures
+-	0	ai.fattail.labs.ssr-od6-first-hour
+2712	1	ai.fattail.labs.ssr-live-capture
+-	0	ai.fattail.labs.ssr-archive-stats
+54391	-15	ai.fattail.labs.ssr-snapshot-dash
+82012	-15	ai.fattail.labs.sym-feed
+53072	0	ai.fattail.labs.vp-engine
+--- load ---
+23:07  up 23 days, 23:34, 2 users, load averages: 1.40 1.52 1.74

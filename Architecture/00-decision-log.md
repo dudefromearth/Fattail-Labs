@@ -4,6 +4,20 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-19 — DL-784 SODP BUILD stamp · FI-052 CLOSED · SODP2-W0 GO
+
+**Decision (Coach, 2026-09-19).** BUILD AUTHORITY on spec **v0.1.5** and **SODP2-W0**. SODP0-G accepted. SODP1 census accepted (both-sets standing count).
+
+**FI-052 CLOSED.** TOPO-1 governs market/data services. Product Labs (identity, courses, MySQL `labs`, SSO issuers) is the product plane, not data movement. **SODP-4 stands as written.** MiniTwo remains sole product host. **SODP-LABS** stays a later, named Coach decision.
+
+**SODP2:** F3 born on StudioOne **:4012**. Fill never copied. TS-1 strikes remain those in **DL-777**. CP-1 FULL DRESS + arithmetic; first ES+MES Massive bursts in the weekend/post-close window; rollback = bootout history agent only. Then SODP3 re-point → SODP5 delete whole (ghost FAIL; `chain_feed`/`sym_feed` held for SODP-MB).
+
+**AP-1:** Coach pan June 2026 on ES AND MES, StudioTwo. No “done” before that line.
+
+**Cites:** Coach STAMP 2026-09-19 · **DL-777** · **TS-1**.
+
+---
+
 ## 2026-09-19 — DL-783 SODP0 GO · spec v0.1.5 interim Massive both sets
 
 **Decision (Coach, SODP0 GO).** Spec **§12** interim combined standing Massive includes **StudioTwo `chain_feed` / `sym_feed` until SODP-MB**. Foxtrot SODP1 headroom counts **BOTH** sets. A number that omits a live writer does not satisfy SODP-8.

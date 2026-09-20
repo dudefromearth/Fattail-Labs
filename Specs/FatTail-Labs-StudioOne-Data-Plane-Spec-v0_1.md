@@ -1,7 +1,7 @@
 # FatTail Labs — StudioOne Data Plane & Remote UI
 
 **Spec v0.1.5**  
-**Status:** DRAFT — SODP0 review object. Coach §12: interim standing Massive counts **both** StudioOne and StudioTwo writers until SODP-MB. **NOT BUILD AUTHORITY.**  
+**Status:** **BUILD AUTHORITY** (Coach stamp 2026-09-19 · SODP2-W0). TOPO-1 / F3.  
 **Date:** 2026-09-19  
 **Program:** SODP  
 **Author:** Juliet (from Coach intent)  

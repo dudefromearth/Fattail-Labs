@@ -1,6 +1,13 @@
 """Member display path — Data-Delivery D4/D5."""
 
+import pytest
+
 from tests.conftest import cookie_for
+
+
+@pytest.fixture(autouse=True)
+def _history_inprocess(monkeypatch):
+    monkeypatch.setenv("LABS_HISTORY_API_BASE", "inprocess")
 
 
 def test_vp_display_unauth(client):
