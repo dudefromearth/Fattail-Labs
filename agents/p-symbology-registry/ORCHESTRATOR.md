@@ -17,6 +17,7 @@
 | SYM-SWAP-G | Delete fixture; live API | Alpha + Charlie + Delta | StudioOne + StudioTwo | **PASS (GO)** |
 | SYM-AT | SYM-AT-1…14 artifacts | Kilo + Delta | both | **PASS (GO)** · `artifacts/symbology/sym-at/` |
 | SYM3-F1-G | REQ-003 F1 clauses 2–3 (full search + strip order) | Echo + Charlie + Alpha | StudioTwo; StudioOne overlay if hop | **PASS (GO)** · **DL-776** · REQ-003 OPEN |
+| REQ-009 fold-in | `:4011` overlay + spec loader | FUTURES instance (sole StudioOne owner today) | StudioOne **CP-1** · post-close = weekend | **HANDED** · seed `seeds/REQ-009-FOLD-IN-4011.md` · spec instance **stands down** · **DL-790** |
 | AP-1 | Joint: tile → dialog → selection → chart LIVE | Coach | StudioTwo browser | after SYM3-F1-G — **not "done"** |
 
 Juliet executes packets. Grok Build does not implement. Auto-GO on clean gates. Stop + GO/NO-GO on a problem.

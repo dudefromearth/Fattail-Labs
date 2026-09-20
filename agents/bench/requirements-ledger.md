@@ -16,7 +16,7 @@ Status: `OPEN` · `AP-1` · `WITHDRAWN`
 | **REQ-005** | 2026-09-19 | Hardening pass | OPEN · **HOLD** | After REQ-004. See row below. |
 | **REQ-006** | 2026-09-19 | Chart lookback | OPEN | N bars per interval; TV pan-page. See row below. |
 | **REQ-007** | 2026-09-20 | Visible Range VP | OPEN | Server bins; VR default. See `artifacts/reqs/REQ-007.md`. |
-| **REQ-009** | 2026-09-20 | Contract specs | OPEN · **BUILD** v0.2 | Registry is the instrument fact SoR. Spec v0.2 BUILD AUTHORITY (`sha1 33675b0b…`). AP-1 Coach. See `artifacts/reqs/REQ-009.md`. |
+| **REQ-009** | 2026-09-20 | Contract specs | OPEN · **BUILD** v0.2 | Registry is the instrument fact SoR. Spec v0.2 BUILD AUTHORITY (`sha1 33675b0b…`). `:4011` overlay + loader **folded into futures deploy GO** (DL-790). AP-1 Coach. See `artifacts/reqs/REQ-009.md`. |
 
 ### REQ-001 — ≥ 90 days of price on the chart (VP confirmation blocker)
 

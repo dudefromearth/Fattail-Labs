@@ -4,6 +4,16 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-20 — DL-790 REQ-009 fold-in · :4011 overlay + loader in the futures deploy GO
+
+**Decision (Coach rider).** Spec overlay and `python -m symbology.load_specs` (ES, MES, ZB fixture) fold into the futures instance's commit/push/deploy GO. Deploying `origin/main` to StudioOne `:4011` brings `GET /spec` live; the member-card hop 404 resolves there. Loader runs immediately after the `:4011` restart in the same window. Weekend **is** the post-close window (market closed until Sunday 18:00). Cutoff 15:00 ET.
+
+**Single-owner today:** the futures instance owns StudioOne. Restarts and kill-and-watch drills never interleave on the same service. The spec instance stands down from StudioOne processes — paper and StudioTwo only.
+
+**Cites:** Coach RIDER 2026-09-20 · seed `agents/p-symbology-registry/seeds/REQ-009-FOLD-IN-4011.md` · **DL-789**.
+
+---
+
 ## 2026-09-20 — DL-789 REQ-009 v0.2 BUILD AUTHORITY · contract spec registry
 
 **Decision (Coach APPROVAL v2).** Spec v0.2 is BUILD AUTHORITY (`sha1 33675b0b6e76e86ef9d4ce8a09e9e4c73e5725e7`). Advisor review of v0.1 (`sha1 7147dc4c…`) adopted in full. No re-review unless v0.2 deviates.
