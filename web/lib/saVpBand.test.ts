@@ -11,9 +11,11 @@ import {
   hitProfile,
   hostToPane,
   panePriceWindow,
+  profileFetchPlan,
   rangeUrl,
   sliceVisible,
   vpBandEpoch,
+  windowUrl,
 } from "./saVpBand";
 
 assert.equal(displayRow(40, 400, 0.25), 0.25);
@@ -52,6 +54,57 @@ assert.match(url, /\/api\/app\/vp\/v1\/range\/SPX\?/);
 assert.match(url, /price_lo=6400/);
 assert.match(url, /row=0.25/);
 assert.match(url, /source=ES/);
+
+const wait = profileFetchPlan({
+  mode: "visible-range",
+  fromT: 0,
+  toT: 0,
+  target: "SPX",
+  source: "ES",
+});
+assert.equal(wait.kind, "wait");
+assert.equal(wait.url, undefined);
+
+const win = profileFetchPlan({
+  mode: "visible-range",
+  fromT: 1_000,
+  toT: 5_000,
+  target: "SPX",
+  source: "ES",
+});
+assert.equal(win.kind, "window");
+assert.match(win.url || "", /\/window\/SPX\?/);
+assert.match(win.url || "", /from_t=1000/);
+assert.doesNotMatch(win.url || "", /\/range\//);
+
+const fhWait = profileFetchPlan({
+  mode: "full-history",
+  fromT: 1,
+  toT: 2,
+  target: "SPX",
+  source: "ES",
+});
+assert.equal(fhWait.kind, "wait");
+const fh = profileFetchPlan({
+  mode: "full-history",
+  fromT: 1,
+  toT: 2,
+  target: "SPX",
+  source: "ES",
+  from: "2026-01-01",
+  to: "2026-09-18",
+});
+assert.equal(fh.kind, "range");
+assert.match(fh.url || "", /\/range\/SPX/);
+
+const wurl = windowUrl({
+  target: "SPX",
+  source: "ES",
+  fromT: 1000,
+  toT: 2000,
+});
+assert.match(wurl, /from_t=1000/);
+assert.match(wurl, /to_t=2000/);
 
 assert.equal(
   hitProfile([{ x0: 0, y0: 10, x1: 40, y1: 20 }], 10, 15),

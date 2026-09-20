@@ -17,6 +17,9 @@ import { bustSource, fetchGen, peek, prefetch } from "@/lib/saDelivery";
 import { adjacentIntervals, adjacentLookbacks, SA_THEME } from "@/lib/saTheme";
 import { honestBars, timeTicks, xFor } from "@/lib/saBars";
 import { formatTick, priceGrid, resolveTick, snapTick } from "@/lib/saTicks";
+import { formatByShape } from "@/lib/saDisplayShape";
+import { fetchSpec } from "@/lib/symbology/api";
+import type { DisplayShape } from "@/lib/symbology/types";
 import { clampWindow, defaultTimeWindow } from "@/lib/saView";
 
 const LEGEND = [
@@ -82,6 +85,8 @@ export default function SaStructureChart({
   const userTimePannedRef = useRef(false);
   const pqRef = useRef(profileQuery);
   pqRef.current = profileQuery;
+  const [specShape, setSpecShape] = useState<DisplayShape | null>(null);
+  const [specTickSize, setSpecTickSize] = useState<number | null>(null);
   const [bars, setBars] = useState<OhlcBar[]>([]);
   const [rangeBins, setRangeBins] = useState<{ price: number; volume: number }[]>(
     [],
@@ -108,6 +113,30 @@ export default function SaStructureChart({
   const mapPx = (p: number) => toCanvasPrice(p, data.mapping, space);
   const sourceSym = source || profileQuery?.source || data.source || "";
   const dataTRef = useRef({ lo: 0, hi: 1, pLo: 0, pHi: 1 });
+
+  useEffect(() => {
+    const root = sourceSym.toUpperCase();
+    if (root !== "ES" && root !== "MES") {
+      setSpecShape(null);
+      setSpecTickSize(null);
+      return;
+    }
+    let cancel = false;
+    void fetchSpec(root)
+      .then((s) => {
+        if (cancel) return;
+        setSpecShape(s.display_shape);
+        setSpecTickSize(s.tick_size);
+      })
+      .catch(() => {
+        if (cancel) return;
+        setSpecShape(null);
+        setSpecTickSize(null);
+      });
+    return () => {
+      cancel = true;
+    };
+  }, [sourceSym]);
 
   useEffect(() => {
     if (!vis.L1 || !sourceSym) return;
@@ -291,13 +320,19 @@ export default function SaStructureChart({
   const yPadPx = SA_THEME.yPadPx;
   const plotTop = (y: number) =>
     yPadPx + (y / H) * Math.max(1, hostSize.h - 2 * yPadPx);
-  const tick = resolveTick({
+  const tick = specTickSize ?? resolveTick({
     vpRow: data.vp_row,
     prices: [
       ...(data.bins || []).map((b) => b.price),
       ...honestRaw.map((b) => b.c),
     ],
   });
+  const axisLabel = (p: number) =>
+    specShape && specTickSize
+      ? formatByShape(p, specShape, specTickSize)
+      : tick
+        ? formatTick(p, tick)
+        : String(p);
   const grid = tick
     ? priceGrid(yLo ?? 0, yHi ?? 1, tick, Math.max(6, Math.round(hostSize.h / 70)))
     : { majors: [], minors: [] };
@@ -839,7 +874,7 @@ export default function SaStructureChart({
                     lineHeight: 1,
                   }}
                 >
-                  {tick ? formatTick(p, tick) : String(p)}
+                  {axisLabel(p)}
                 </div>
               ))
             : null}
@@ -864,7 +899,7 @@ export default function SaStructureChart({
                     lineHeight: 1,
                   }}
                 >
-                  {tick ? formatTick(p, tick) : String(p)}
+                  {axisLabel(p)}
                 </div>
               ))
             : null}
@@ -889,7 +924,7 @@ export default function SaStructureChart({
                 minWidth: LABEL_COL - 8,
               }}
             >
-              {tick ? formatTick(lastPx, tick) : lastPx.toFixed(2)}
+              {axisLabel(lastPx)}
             </div>
           ) : null}
           <div

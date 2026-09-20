@@ -14,6 +14,7 @@ import {
 import { fetchGen, fetchGenWait, ohlcSpanDays, peek, type FetchGenResult } from "@/lib/saDelivery";
 import { honestBars } from "@/lib/saBars";
 import { resolveTick, tickDecimals } from "@/lib/saTicks";
+import { fetchSpec } from "@/lib/symbology/api";
 import { useSaCanvas } from "./SaCanvasContext";
 import { openVpStream } from "@/lib/saStream";
 import type { OhlcBar } from "@/lib/marketOhlcApi";
@@ -35,8 +36,9 @@ import {
   expandBand,
   hostToPane,
   panePriceWindow,
-  rangeUrl,
-  windowUrl,
+  profileFetchPlan,
+  RANGE_DEBOUNCE_MS,
+  scheduleDebounced,
   vpBandEpoch,
   type BandFlight,
   type VpBand,
@@ -95,7 +97,7 @@ export default function SaPriceChart({
   apiBase?: string;
   contract?: string | null;
 }) {
-  const { prefs, setLiveFlag, open } = useSaCanvas();
+  const { prefs, patch, setLiveFlag, open } = useSaCanvas();
   const prefsRef = useRef(prefs);
   prefsRef.current = prefs;
   const lineRef = useRef<IPriceLine | null>(null);
@@ -116,6 +118,8 @@ export default function SaPriceChart({
   const bandEpochRef = useRef("");
   const [err, setErr] = useState<string | null>(null);
   const [tick, setTick] = useState<number | null>(null);
+  const [specTick, setSpecTick] = useState<number | null>(null);
+  const [specPrecision, setSpecPrecision] = useState<number | null>(null);
   const [rangeMs, setRangeMs] = useState<number | null>(null);
   const [vpBins, setVpBins] = useState(0);
   const [histDays, setHistDays] = useState<number | null>(null);
@@ -126,6 +130,9 @@ export default function SaPriceChart({
   const rawBarsRef = useRef<OhlcBar[]>([]);
   const atBirthRef = useRef(false);
   const pagingRef = useRef(false);
+  const intendedWindowRef = useRef<{ lo: number; hi: number } | null>(null);
+  const windowKickRef = useRef<((lo: number, hi: number) => void) | null>(null);
+  const debounceHoldRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const requestVpUpdate = () => {
     primitiveRef.current?.requestUpdate();
@@ -181,6 +188,42 @@ export default function SaPriceChart({
   }, []);
 
   useEffect(() => {
+    const root = source.toUpperCase();
+    if (root !== "ES" && root !== "MES") {
+      setSpecTick(null);
+      setSpecPrecision(null);
+      return;
+    }
+    let cancel = false;
+    void fetchSpec(root)
+      .then((s) => {
+        if (cancel) return;
+        setSpecTick(s.tick_size);
+        setSpecPrecision(s.display_shape?.precision ?? 2);
+      })
+      .catch(() => {
+        if (cancel) return;
+        setSpecTick(null);
+        setSpecPrecision(null);
+      });
+    return () => {
+      cancel = true;
+    };
+  }, [source]);
+
+  useEffect(() => {
+    if (!specTick || !seriesRef.current) return;
+    seriesRef.current.applyOptions({
+      priceFormat: {
+        type: "price",
+        minMove: specTick,
+        precision: specPrecision ?? tickDecimals(specTick),
+      },
+    });
+    setTick(specTick);
+  }, [specTick, specPrecision]);
+
+  useEffect(() => {
     if (!source) return;
     clearHistogram();
     atBirthRef.current = false;
@@ -217,18 +260,24 @@ export default function SaPriceChart({
         } catch {
           /* engine may reject empty */
         }
+        intendedWindowRef.current = { lo: w.lo, hi: w.hi };
+        if (prefsRef.current.profileMode !== "full-history") {
+          windowKickRef.current?.(w.lo, w.hi);
+        }
       }
       requestVpUpdate();
-      const t = resolveTick({
+      requestAnimationFrame(() => requestVpUpdate());
+      const derived = resolveTick({
         prices: candles.flatMap((c) => [c.open, c.high, c.low, c.close]),
       });
+      const t = specTick ?? derived;
       setTick(t);
       if (t && seriesRef.current) {
         seriesRef.current.applyOptions({
           priceFormat: {
             type: "price",
             minMove: t,
-            precision: tickDecimals(t),
+            precision: specPrecision ?? tickDecimals(t),
           },
         });
       }
@@ -474,11 +523,6 @@ export default function SaPriceChart({
       clearHistogram();
     }
     const vr = prefs.profileMode !== "full-history";
-    if (!vr && (!from || !to)) {
-      return () => {
-        cancelled = true;
-      };
-    }
 
     const readY = (): { lo: number; hi: number } | null => {
       const s = seriesRef.current;
@@ -505,7 +549,7 @@ export default function SaPriceChart({
       return paneH && paneH >= 8 ? paneH : 400;
     };
 
-    const ensure = () => {
+    const run = (fromT: number, toT: number) => {
       if (cancelled) return;
       const y = readY();
       if (y && y.hi > y.lo) {
@@ -514,10 +558,9 @@ export default function SaPriceChart({
       }
       const loaded = bandRef.current;
       if (y && loaded && loaded.bins.length && bandContains(loaded, y.lo, y.hi)) {
+        requestVpUpdate();
         return;
       }
-      if (beginBandFetch(flightRef.current) === "wait") return;
-      const band = y ? expandBand(y.lo, y.hi) : null;
       const row = y
         ? displayRow(
             y.hi - y.lo,
@@ -525,31 +568,21 @@ export default function SaPriceChart({
             tick || loaded?.row || 0.25,
           )
         : undefined;
-      const vis = chartRef.current?.timeScale().getVisibleRange();
-      const fromT =
-        vis && typeof vis.from === "number" ? Number(vis.from) * 1000 : 0;
-      const toT =
-        vis && typeof vis.to === "number" ? Number(vis.to) * 1000 : 0;
-      const url = vr && fromT && toT
-        ? windowUrl({
-            target: tgt,
-            source,
-            fromT,
-            toT,
-            row,
-            apiBase,
-          })
-        : rangeUrl({
-            target: tgt,
-            source,
-            from,
-            to,
-            lo: band?.lo,
-            hi: band?.hi,
-            row,
-            harness,
-            apiBase,
-          });
+      const plan = profileFetchPlan({
+        mode: vr ? "visible-range" : "full-history",
+        fromT,
+        toT,
+        target: tgt,
+        source,
+        from,
+        to,
+        row,
+        harness,
+        apiBase,
+      });
+      if (plan.kind === "wait" || !plan.url) return;
+      if (beginBandFetch(flightRef.current) === "wait") return;
+      const band = y ? expandBand(y.lo, y.hi) : null;
       const applyBins = (r: FetchGenResult, bins: VpBin[]) => {
         if (cancelled) return;
         const prices = bins.map((b) => b.price);
@@ -558,11 +591,23 @@ export default function SaPriceChart({
           hi: band?.hi ?? (prices.length ? Math.max(...prices) : 0),
           row: row ?? 0.25,
           bins,
-          floor: (r.body?.coverage as { floor_session?: string } | undefined)
-            ?.floor_session || from,
+          floor:
+            String(
+              (r.body as { coverage_floor?: string } | null)?.coverage_floor ||
+                (r.body?.coverage as { floor_session?: string } | undefined)
+                  ?.floor_session ||
+                from ||
+                "",
+            ) || null,
           ceiling:
-            (r.body?.coverage as { ceiling_session?: string } | undefined)
-              ?.ceiling_session || to,
+            String(
+              (r.body as { coverage_ceiling?: string } | null)
+                ?.coverage_ceiling ||
+                (r.body?.coverage as { ceiling_session?: string } | undefined)
+                  ?.ceiling_session ||
+                to ||
+                "",
+            ) || null,
           truncated: Boolean(
             (r.body?.coverage as { truncated?: boolean } | undefined)
               ?.truncated,
@@ -578,38 +623,50 @@ export default function SaPriceChart({
         const srcLabel = String(r.body?.bin_source || "");
         setBinSource(srcLabel || null);
         requestVpUpdate();
+        requestAnimationFrame(() => requestVpUpdate());
       };
-      void fetchGen(url)
+      void fetchGen(plan.url)
         .then((r) => {
           if (cancelled) return;
-          const bins = asVpBins(r.body?.bins);
-          if (bins.length || !band) {
-            applyBins(r, bins);
-            return;
-          }
-          return fetchGen(
-            rangeUrl({
-              target: tgt,
-              source,
-              from,
-              to,
-              harness,
-              apiBase,
-            }),
-          ).then((r2) => applyBins(r2, asVpBins(r2.body?.bins)));
+          applyBins(r, asVpBins(r.body?.bins));
         })
         .finally(() => {
           if (cancelled) return;
-          if (endBandFetch(flightRef.current) === "again") ensure();
+          if (endBandFetch(flightRef.current) === "again") {
+            const vis = chartRef.current?.timeScale().getVisibleRange();
+            const a =
+              vis && typeof vis.from === "number" ? Number(vis.from) * 1000 : fromT;
+            const b =
+              vis && typeof vis.to === "number" ? Number(vis.to) * 1000 : toT;
+            run(a, b);
+          }
         });
     };
 
-    ensure();
+    windowKickRef.current = (lo, hi) => run(lo, hi);
+    if (vr) {
+      const pending = intendedWindowRef.current;
+      if (pending) run(pending.lo, pending.hi);
+    } else {
+      run(0, 0);
+    }
+
     const ts = chartRef.current?.timeScale();
-    const onRange = () => ensure();
+    const onRange = () => {
+      if (!vr) return;
+      scheduleDebounced(debounceHoldRef, RANGE_DEBOUNCE_MS, () => {
+        const vis = ts?.getVisibleRange();
+        if (!vis || typeof vis.from !== "number" || typeof vis.to !== "number") {
+          return;
+        }
+        run(Number(vis.from) * 1000, Number(vis.to) * 1000);
+      });
+    };
     ts?.subscribeVisibleTimeRangeChange(onRange);
     return () => {
       cancelled = true;
+      windowKickRef.current = null;
+      if (debounceHoldRef.current) clearTimeout(debounceHoldRef.current);
       ts?.unsubscribeVisibleTimeRangeChange(onRange);
     };
   }, [source, target, spanFloor, spanCeiling, tick, prefs.priceTf, prefs.visible.L2, prefs.profileMode, harness, apiBase]);
@@ -731,6 +788,8 @@ export default function SaPriceChart({
       data-tick-ms={tickMs ?? ""}
       data-l2={prefs.visible.L2 ? "1" : "0"}
       data-vp-bins={vpBins}
+      data-bin-source={binSource ?? ""}
+      data-profile-mode={prefs.profileMode}
       data-history-days={histDays ?? ""}
       data-bar-count={candlesRef.current.length}
       data-range-ms={rangeMs ?? ""}
@@ -767,13 +826,22 @@ export default function SaPriceChart({
       style={{ background: prefs.canvasBg }}
     >
       <div ref={hostRef} className="h-full min-h-0 w-full" />
-      <p
-        className="pointer-events-none absolute left-2 top-8 z-20 max-w-[28rem] rounded border border-zinc-600 bg-[#1e222d] px-2 py-1 text-[11px] text-zinc-300"
+      <button
+        type="button"
+        className="absolute left-2 top-8 z-20 max-w-[28rem] rounded border border-zinc-600 bg-[#1e222d] px-2 py-1 text-left text-[11px] text-zinc-300"
         data-testid="sa-profile-mode"
+        onClick={() =>
+          patch({
+            profileMode:
+              prefs.profileMode === "full-history"
+                ? "visible-range"
+                : "full-history",
+          })
+        }
       >
         {prefs.profileMode === "full-history" ? "Full History" : "Visible Range"}
         {binSource ? ` · ${binSource}` : ""}
-      </p>
+      </button>
       {histWarn ? (
         <p
           className="pointer-events-none absolute left-2 top-2 z-20 max-w-[28rem] rounded border border-amber-700 bg-[#1e222d] px-2 py-1 text-[11px] text-amber-300"

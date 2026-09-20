@@ -10,6 +10,14 @@ BANNED_DATES = ("2026-09-06", "Sep 6", "September 6")
 CLIENT_BAN = ("histogramFromBars", "binFromCandle", "assembleHistogram")
 
 
+def test_r0_1_no_stale_90d_or_custom_series_comment():
+    text = (REPO / "web/lib/saChartStyle.ts").read_text(encoding="utf-8")
+    assert "90d" not in text
+    assert "90 d" not in text.lower()
+    assert "custom series" not in text.lower()
+    assert "REQ-001" not in text
+
+
 def test_no_date_constant_in_window_path():
     roots = [
         REPO / "server/market_data/vp_engine/window_bins.py",
@@ -23,6 +31,18 @@ def test_no_date_constant_in_window_path():
             if tok in text:
                 hits.append(f"{p.name}:{tok}")
     assert hits == []
+
+
+def test_first_load_range_fallback_deleted():
+    chart = REPO / "web/components/sa/SaPriceChart.tsx"
+    text = chart.read_text(encoding="utf-8")
+    assert "rangeUrl" not in text
+    assert "vr && fromT && toT" not in text
+    assert "profileFetchPlan" in text
+    assert "windowKickRef" in text
+    plan = (REPO / "web/lib/saVpBand.ts").read_text(encoding="utf-8")
+    assert "kind: \"wait\"" in plan or "kind: 'wait'" in plan
+    assert "visible-range" in plan
 
 
 def test_no_client_bin_assembly_helpers():

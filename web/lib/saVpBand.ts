@@ -153,6 +153,59 @@ export function windowUrl(opts: {
   return `${base}/window/${encodeURIComponent(opts.target)}?${q}`;
 }
 
+export const RANGE_DEBOUNCE_MS = 160;
+
+/** Visible Range never falls through to /range. Empty window → wait. */
+export function profileFetchPlan(opts: {
+  mode: "visible-range" | "full-history";
+  fromT: number;
+  toT: number;
+  target: string;
+  source: string;
+  from?: string | null;
+  to?: string | null;
+  row?: number;
+  harness?: "live" | "fixture";
+  apiBase?: string;
+}): { kind: "window" | "range" | "wait"; url?: string } {
+  if (opts.mode !== "full-history") {
+    if (!(opts.fromT > 0 && opts.toT > opts.fromT)) return { kind: "wait" };
+    return {
+      kind: "window",
+      url: windowUrl({
+        target: opts.target,
+        source: opts.source,
+        fromT: opts.fromT,
+        toT: opts.toT,
+        row: opts.row,
+        apiBase: opts.apiBase,
+      }),
+    };
+  }
+  if (!opts.from || !opts.to) return { kind: "wait" };
+  return {
+    kind: "range",
+    url: rangeUrl({
+      target: opts.target,
+      source: opts.source,
+      from: opts.from,
+      to: opts.to,
+      row: opts.row,
+      harness: opts.harness,
+      apiBase: opts.apiBase,
+    }),
+  };
+}
+
+export function scheduleDebounced(
+  hold: { current: ReturnType<typeof setTimeout> | null },
+  ms: number,
+  fn: () => void,
+): void {
+  if (hold.current) clearTimeout(hold.current);
+  hold.current = setTimeout(fn, ms);
+}
+
 export type VpHitRect = { x0: number; y0: number; x1: number; y1: number };
 
 export function hitProfile(
