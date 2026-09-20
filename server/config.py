@@ -82,6 +82,18 @@ class Config:
 
         # Session JWT
         self.session_secret = _require_secret("LABS_SESSION_SECRET")
+        # Hop-only HS256 key for StudioOne computing-class. Unset → session_secret
+        # (StudioTwo). Production MiniTwo MUST set this to the StudioOne hop secret
+        # and MUST NOT copy LABS_SESSION_SECRET onto StudioOne.
+        raw_compute = os.environ.get("LABS_COMPUTING_SECRET", "").strip()
+        if raw_compute:
+            if len(raw_compute) < 32:
+                raise ConfigError(
+                    "LABS_COMPUTING_SECRET must be at least 32 characters"
+                )
+            self.computing_secret = raw_compute
+        else:
+            self.computing_secret = self.session_secret
         self.session_cookie = "ft_session"
         self.session_ttl_seconds = _require_int("LABS_SESSION_TTL_SECONDS")
         # Cookie domain: ".fattail.ai" in staging/production; empty (host-only) in dev.

@@ -35,9 +35,7 @@ router = APIRouter(tags=["vp-display"])
 
 def _computing_headers() -> dict[str, str]:
     """Labs is the computing consumer (A2.6). Never forward the member cookie."""
-    token = auth.issue_session(
-        identity_id=0, issuer="internal", role="administrator"
-    )
+    token = auth.issue_computing_session()
     name = get_config().session_cookie
     return {"Cookie": f"{name}={token}"}
 

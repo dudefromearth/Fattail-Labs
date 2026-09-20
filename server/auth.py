@@ -35,6 +35,28 @@ def issue_session(identity_id: int, issuer: str, role: str) -> str:
     )
 
 
+def issue_computing_session() -> str:
+    """Mint a computing-class JWT for StudioOne sidecars.
+
+    Uses LABS_COMPUTING_SECRET when set (MiniTwo production hop) so the
+    member LABS_SESSION_SECRET never has to live on StudioOne.
+    """
+    cfg = get_config()
+    now = int(time.time())
+    return jwt.encode(
+        {
+            "identity_id": 0,
+            "iss": "labs.fattail.ai",
+            "sso_issuer": "internal",
+            "role": "administrator",
+            "iat": now,
+            "exp": now + cfg.session_ttl_seconds,
+        },
+        cfg.computing_secret,
+        algorithm="HS256",
+    )
+
+
 def verify_session(token: str) -> dict:
     try:
         return jwt.decode(
