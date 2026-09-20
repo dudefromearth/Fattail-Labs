@@ -8,13 +8,30 @@ export type DialogPart =
   | "legend"
   | "chips"
   | "range"
-  | "mode";
+  | "mode"
+  | "sessions";
 export type AxisSide = "left" | "right" | "both";
 export type BarOrient = "ltr" | "rtl";
 export type PriceFormat = "line" | "candle" | "bar";
-export type PriceTf = "1m" | "5m" | "15m" | "1h" | "1d";
+export type PriceTf =
+  | "1m"
+  | "2m"
+  | "5m"
+  | "10m"
+  | "15m"
+  | "30m"
+  | "1h"
+  | "2h"
+  | "4h"
+  | "1d"
+  | "2d"
+  | "7d";
 export type WorkflowMode = "morning" | "entry" | "management";
 export type CrosshairStyle = "solid" | "dotted" | "dashed" | "largeDashed";
+export type ProfileRowsLayout = "number-of-rows" | "ticks-per-row";
+export type ChartTimeZonePref = "exchange" | "local";
+export type SessionLineWidth = "thin" | "medium" | "thick";
+export type SessionLineStyle = "solid" | "dashed";
 
 export const AXIS_FONTS = [
   "Trebuchet MS",
@@ -91,8 +108,16 @@ export type ModeSlice = {
   loColor: string;
   profileWidthFrac: number;
   profileOpacity: number;
+  profileColor: string;
+  profileRowsLayout: ProfileRowsLayout;
+  profileRowSize: number;
   priceLookbackDays: number;
-  profileMode: "visible-range" | "full-history";
+  chartTimeZone: ChartTimeZonePref;
+  sessionLinesOn: boolean;
+  sessionLineWidth: SessionLineWidth;
+  sessionLineColor: string;
+  sessionLineOpacity: number;
+  sessionLineStyle: SessionLineStyle;
 };
 
 export const MODE_SLICE_KEYS: (keyof ModeSlice)[] = [
@@ -133,8 +158,16 @@ export const MODE_SLICE_KEYS: (keyof ModeSlice)[] = [
   "loColor",
   "profileWidthFrac",
   "profileOpacity",
+  "profileColor",
+  "profileRowsLayout",
+  "profileRowSize",
   "priceLookbackDays",
-  "profileMode",
+  "chartTimeZone",
+  "sessionLinesOn",
+  "sessionLineWidth",
+  "sessionLineColor",
+  "sessionLineOpacity",
+  "sessionLineStyle",
 ];
 
 export type SaPrefs = ModeSlice & {
@@ -198,8 +231,16 @@ export function houseDefaults(mode: WorkflowMode): ModeSlice {
     loColor: "#ef5350",
     profileWidthFrac: 0.62,
     profileOpacity: 0.42,
+    profileColor: "#2962ff",
+    profileRowsLayout: "number-of-rows",
+    profileRowSize: 24,
     priceLookbackDays: 1,
-    profileMode: "visible-range",
+    chartTimeZone: "exchange",
+    sessionLinesOn: true,
+    sessionLineWidth: "thin",
+    sessionLineColor: "#787b86",
+    sessionLineOpacity: 0.45,
+    sessionLineStyle: "dashed",
   };
   if (mode === "entry") {
     return { ...base, visible: vis({ L0: true, L1: true, L2: true, L3: true }) };
@@ -274,8 +315,16 @@ export function applyMode(
     loColor: over.loColor ?? house.loColor,
     profileWidthFrac: over.profileWidthFrac ?? house.profileWidthFrac,
     profileOpacity: over.profileOpacity ?? house.profileOpacity,
+    profileColor: over.profileColor ?? house.profileColor,
+    profileRowsLayout: over.profileRowsLayout ?? house.profileRowsLayout,
+    profileRowSize: over.profileRowSize ?? house.profileRowSize,
     priceLookbackDays: over.priceLookbackDays ?? house.priceLookbackDays,
-    profileMode: over.profileMode ?? house.profileMode,
+    chartTimeZone: over.chartTimeZone ?? house.chartTimeZone,
+    sessionLinesOn: over.sessionLinesOn ?? house.sessionLinesOn,
+    sessionLineWidth: over.sessionLineWidth ?? house.sessionLineWidth,
+    sessionLineColor: over.sessionLineColor ?? house.sessionLineColor,
+    sessionLineOpacity: over.sessionLineOpacity ?? house.sessionLineOpacity,
+    sessionLineStyle: over.sessionLineStyle ?? house.sessionLineStyle,
   };
 }
 
@@ -454,6 +503,15 @@ export function lawfulFields(part: DialogPart): string[] {
         "marginBottom",
         "rightOffsetBars",
       ];
+    case "sessions":
+      return [
+        "chartTimeZone",
+        "sessionLinesOn",
+        "sessionLineWidth",
+        "sessionLineColor",
+        "sessionLineOpacity",
+        "sessionLineStyle",
+      ];
     case "L1":
       return [
         "visible.L1",
@@ -475,7 +533,9 @@ export function lawfulFields(part: DialogPart): string[] {
         "orientation",
         "profileWidthFrac",
         "profileOpacity",
-        "profileMode",
+        "profileColor",
+        "profileRowsLayout",
+        "profileRowSize",
       ];
     case "L3":
       return ["visible.L3"];
@@ -511,7 +571,7 @@ export function spanChipText(opts: {
   spanPreset?: "coverage" | "full";
 }): string {
   const since = opts.floor ? fmtMd(opts.floor) : "coverage floor";
-  const core = `Full history · since ${since}`;
+  const core = `since ${since}`;
   return opts.truncated ? `${core} (truncated)` : core;
 }
 

@@ -11,16 +11,25 @@ import {
   hitProfile,
   hostToPane,
   panePriceWindow,
+  FORCE_VP_EVENT,
+  asUnixMs,
+  candlesInMsRange,
+  mockBinsFromCandles,
   profileFetchPlan,
+  profileRowGrain,
+  visibleCandleWindow,
   rangeUrl,
   sliceVisible,
   vpBandEpoch,
   windowUrl,
 } from "./saVpBand";
 
-assert.equal(displayRow(40, 400, 0.25), 0.25);
-assert.ok(displayRow(800, 400, 0.25) >= 2);
-assert.equal(displayRow(2, 400, 0.25), 0.25);
+assert.equal(profileRowGrain({ layout: "number-of-rows", rowSize: 24, span: 240, tick: 0.25 }), 10);
+assert.equal(profileRowGrain({ layout: "ticks-per-row", rowSize: 1, span: 240, tick: 0.25 }), 0.25);
+assert.equal(profileRowGrain({ layout: "ticks-per-row", rowSize: 4, span: 240, tick: 0.25 }), 1);
+assert.equal(displayRow(40, 400, 0.25), 0.1);
+assert.equal(displayRow(800, 400, 0.25), 0.25);
+assert.equal(displayRow(2, 400, 0.25), 2 / 400);
 
 const band = expandBand(100, 110);
 assert.equal(band.lo, 90);
@@ -56,7 +65,6 @@ assert.match(url, /row=0.25/);
 assert.match(url, /source=ES/);
 
 const wait = profileFetchPlan({
-  mode: "visible-range",
   fromT: 0,
   toT: 0,
   target: "SPX",
@@ -66,7 +74,6 @@ assert.equal(wait.kind, "wait");
 assert.equal(wait.url, undefined);
 
 const win = profileFetchPlan({
-  mode: "visible-range",
   fromT: 1_000,
   toT: 5_000,
   target: "SPX",
@@ -76,26 +83,41 @@ assert.equal(win.kind, "window");
 assert.match(win.url || "", /\/window\/SPX\?/);
 assert.match(win.url || "", /from_t=1000/);
 assert.doesNotMatch(win.url || "", /\/range\//);
+assert.equal(FORCE_VP_EVENT, "sa-vp-update");
 
-const fhWait = profileFetchPlan({
-  mode: "full-history",
-  fromT: 1,
-  toT: 2,
-  target: "SPX",
-  source: "ES",
+const mock = mockBinsFromCandles(
+  [
+    { high: 101, low: 100 },
+    { high: 100.5, low: 99.5 },
+    { high: 102, low: 101 },
+  ],
+  0.25,
+);
+assert.ok(mock.length > 3);
+assert.ok(mock.every((b) => b.volume > 0));
+assert.ok(mock.some((b) => b.price >= 100 && b.price <= 101));
+assert.equal(asUnixMs(1_700_000_000), 1_700_000_000_000);
+assert.equal(asUnixMs(1_700_000_000_000), 1_700_000_000_000);
+
+const times = [100, 400, 700, 1000, 1300];
+const vis = visibleCandleWindow({
+  logical: { from: 1.2, to: 3.1 },
+  times,
+  tfMs: 300_000,
 });
-assert.equal(fhWait.kind, "wait");
-const fh = profileFetchPlan({
-  mode: "full-history",
-  fromT: 1,
-  toT: 2,
-  target: "SPX",
-  source: "ES",
-  from: "2026-01-01",
-  to: "2026-09-18",
-});
-assert.equal(fh.kind, "range");
-assert.match(fh.url || "", /\/range\/SPX/);
+assert.ok(vis);
+assert.equal(vis.fromIdx, 1);
+assert.equal(vis.toIdx, 3);
+assert.equal(vis.count, 3);
+assert.equal(vis.fromT, 400_000);
+assert.equal(vis.toT, 1_000_000 + 300_000);
+
+const overlap = candlesInMsRange(times, 400_000, 1_000_000 + 1, 300_000);
+assert.ok(overlap);
+assert.equal(overlap.count, 3);
+assert.equal(overlap.fromIdx, 1);
+assert.equal(overlap.toIdx, 3);
+assert.equal(candlesInMsRange(times, 0, 10, 300_000), null);
 
 const wurl = windowUrl({
   target: "SPX",

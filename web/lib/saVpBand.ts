@@ -1,4 +1,6 @@
-/** A12 / Phase B — full-history /range band. X-invariant; y-pan re-slices locally. */
+/** Visible-range window fetch. Pan/zoom/force-event re-query; empty window waits. */
+
+export const FORCE_VP_EVENT = "sa-vp-update";
 
 export type VpBin = { price: number; volume: number };
 
@@ -17,15 +19,42 @@ export type VpBand = {
 /** Visible span padded 100% each side (loaded band ≈ 3× the view). */
 export const BAND_MARGIN = 1;
 
+export type ProfileRowsLayout = "number-of-rows" | "ticks-per-row";
+
+/**
+ * TV Volume Profile grain.
+ * Number of rows: visible price span / N (not rounded).
+ * Ticks per row: tick × N.
+ */
+export function profileRowGrain(opts: {
+  layout: ProfileRowsLayout;
+  rowSize: number;
+  span: number;
+  tick: number;
+}): number {
+  const t = opts.tick > 0 ? opts.tick : 0.25;
+  const size =
+    Number.isFinite(opts.rowSize) && opts.rowSize > 0 ? opts.rowSize : 1;
+  if (opts.layout === "number-of-rows") {
+    const n = Math.max(1, size);
+    return Math.max(opts.span, t) / n;
+  }
+  return t * size;
+}
+
+/**
+ * Fallback when prefs are absent: finer of one scale tick vs one canvas pixel.
+ * Never coarsen by rounding up to a tick multiple.
+ */
 export function displayRow(
   span: number,
   heightPx: number,
   tick: number,
 ): number {
   const t = tick > 0 ? tick : 0.25;
-  const raw = Math.max(span, t) / Math.max(1, heightPx);
-  const n = Math.max(1, Math.ceil(raw / t));
-  return n * t;
+  const pricePerPx = Math.max(span, t) / Math.max(1, heightPx);
+  if (!(pricePerPx > 0)) return t;
+  return Math.min(t, pricePerPx);
 }
 
 export function expandBand(
@@ -155,43 +184,121 @@ export function windowUrl(opts: {
 
 export const RANGE_DEBOUNCE_MS = 160;
 
-/** Visible Range never falls through to /range. Empty window → wait. */
+export type VisibleCandleWindow = {
+  fromT: number;
+  toT: number;
+  count: number;
+  fromIdx: number;
+  toIdx: number;
+};
+
+export type VpShapeClass = "rebuild" | "diff";
+
+export type VpShapeEvent = {
+  class: VpShapeClass;
+  reason: "load" | "symbol" | "timeframe" | "refresh" | "pan" | "zoom" | "resize";
+  window: VisibleCandleWindow;
+};
+
+/** Mock volume-at-price from the candles on screen. Used until the window API returns. */
+export function mockBinsFromCandles(
+  candles: { high: number; low: number }[],
+  tick: number,
+): VpBin[] {
+  const row = tick > 0 ? tick : 0.25;
+  const acc = new Map<number, number>();
+  for (const c of candles) {
+    const lo = Math.min(c.low, c.high);
+    const hi = Math.max(c.low, c.high);
+    if (!Number.isFinite(lo) || !Number.isFinite(hi) || hi < lo) continue;
+    const a = Math.floor(lo / row) * row;
+    const b = Math.ceil(hi / row) * row;
+    for (let p = a; p <= b + row * 0.5; p += row) {
+      const key = Math.round(p / row) * row;
+      acc.set(key, (acc.get(key) || 0) + 1);
+    }
+  }
+  return [...acc.entries()]
+    .map(([price, volume]) => ({ price, volume }))
+    .sort((x, y) => x.price - y.price);
+}
+
+export function asUnixMs(t: number): number {
+  if (!Number.isFinite(t) || t <= 0) return 0;
+  if (t > 1e12) return t;
+  return t * 1000;
+}
+
+/** Candles that intersect a millisecond window. times are unix seconds. */
+export function candlesInMsRange(
+  times: number[],
+  loMs: number,
+  hiMs: number,
+  barMs: number,
+): VisibleCandleWindow | null {
+  if (!times.length || !(barMs > 0) || !(hiMs > loMs)) return null;
+  let fromIdx = -1;
+  let toIdx = -1;
+  for (let i = 0; i < times.length; i++) {
+    const open = times[i] * 1000;
+    const close = open + barMs;
+    if (close > loMs && open < hiMs) {
+      if (fromIdx < 0) fromIdx = i;
+      toIdx = i;
+    }
+  }
+  if (fromIdx < 0 || toIdx < fromIdx) return null;
+  return {
+    fromIdx,
+    toIdx,
+    count: toIdx - fromIdx + 1,
+    fromT: times[fromIdx] * 1000,
+    toT: times[toIdx] * 1000 + barMs,
+  };
+}
+
+/**
+ * Exact candles on the canvas from LWC logical range.
+ * Partial bars at the edges count. Right-pad empty space does not.
+ */
+export function visibleCandleWindow(opts: {
+  logical: { from: number; to: number } | null;
+  times: number[];
+  tfMs: number;
+}): VisibleCandleWindow | null {
+  const times = opts.times;
+  const n = times.length;
+  if (!opts.logical || n === 0 || !(opts.tfMs > 0)) return null;
+  const fromIdx = Math.max(0, Math.floor(opts.logical.from));
+  const toIdx = Math.min(n - 1, Math.floor(opts.logical.to));
+  if (toIdx < fromIdx) return null;
+  return {
+    fromIdx,
+    toIdx,
+    count: toIdx - fromIdx + 1,
+    fromT: times[fromIdx] * 1000,
+    toT: times[toIdx] * 1000 + opts.tfMs,
+  };
+}
+
+/** Visible Range only. Empty window → wait. Never falls through to /range. */
 export function profileFetchPlan(opts: {
-  mode: "visible-range" | "full-history";
   fromT: number;
   toT: number;
   target: string;
   source: string;
-  from?: string | null;
-  to?: string | null;
   row?: number;
-  harness?: "live" | "fixture";
   apiBase?: string;
-}): { kind: "window" | "range" | "wait"; url?: string } {
-  if (opts.mode !== "full-history") {
-    if (!(opts.fromT > 0 && opts.toT > opts.fromT)) return { kind: "wait" };
-    return {
-      kind: "window",
-      url: windowUrl({
-        target: opts.target,
-        source: opts.source,
-        fromT: opts.fromT,
-        toT: opts.toT,
-        row: opts.row,
-        apiBase: opts.apiBase,
-      }),
-    };
-  }
-  if (!opts.from || !opts.to) return { kind: "wait" };
+}): { kind: "window" | "wait"; url?: string } {
+  if (!(opts.fromT > 0 && opts.toT > opts.fromT)) return { kind: "wait" };
   return {
-    kind: "range",
-    url: rangeUrl({
+    kind: "window",
+    url: windowUrl({
       target: opts.target,
       source: opts.source,
-      from: opts.from,
-      to: opts.to,
+      fromT: opts.fromT,
+      toT: opts.toT,
       row: opts.row,
-      harness: opts.harness,
       apiBase: opts.apiBase,
     }),
   };

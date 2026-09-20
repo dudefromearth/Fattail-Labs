@@ -6,8 +6,11 @@ import {
   AXIS_FONT_SIZES,
   LAYER_REGISTRY,
   lawfulFields,
+  type ChartTimeZonePref,
   type CrosshairStyle,
   type SaPrefs,
+  type SessionLineStyle,
+  type SessionLineWidth,
 } from "@/lib/saLayerStore";
 import {
   SETTINGS_SECTIONS,
@@ -114,6 +117,13 @@ function SectionIcon({
           <path d="M8 4v4M16 4v4M4 11h16" />
         </svg>
       );
+    case "sessions":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="8" />
+          <path d="M12 8v4l3 2" />
+        </svg>
+      );
     default:
       return null;
   }
@@ -200,6 +210,52 @@ function LinePreview({
         strokeDasharray={dash}
       />
     </svg>
+  );
+}
+
+function ColorAlpha({
+  color,
+  opacity,
+  fallback,
+  testId,
+  onChange,
+}: {
+  color: string;
+  opacity: number;
+  fallback: string;
+  testId?: string;
+  onChange: (color: string, opacity: number) => void;
+}) {
+  const pct = Math.round(Math.min(1, Math.max(0, opacity)) * 100);
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-lg border bg-white pl-1 pr-1.5"
+      style={{ height: CTRL_H, borderColor: BORDER }}
+      data-testid={testId}
+    >
+      <Swatch
+        value={color}
+        fallback={fallback}
+        onChange={(c) => onChange(c, opacity)}
+      />
+      <input
+        type="number"
+        min={0}
+        max={100}
+        value={pct}
+        aria-label="Opacity"
+        onChange={(e) =>
+          onChange(
+            color,
+            Math.min(1, Math.max(0, Number(e.target.value) / 100)),
+          )
+        }
+        className="w-12 border-0 bg-transparent text-right text-[13px] text-black outline-none"
+      />
+      <span className="text-[12px]" style={{ color: MUTED }}>
+        %
+      </span>
+    </span>
   );
 }
 
@@ -443,11 +499,14 @@ export default function SaPartDialog() {
                     </CheckLabel>
                   }
                 >
-                  <Swatch
+                  <ColorAlpha
                     testId="sa-grid-color"
-                    value={prefs.gridColor}
+                    color={prefs.gridColor}
+                    opacity={prefs.gridOpacity ?? 0.08}
                     fallback={SA_THEME.grid}
-                    onChange={(v) => patch({ gridColor: v })}
+                    onChange={(c, a) =>
+                      patch({ gridColor: c, gridOpacity: a })
+                    }
                   />
                 </Row>
                 <Row
@@ -461,23 +520,6 @@ export default function SaPartDialog() {
                   }
                 >
                   <span />
-                </Row>
-                <Row label="Grid opacity">
-                  <input
-                    type="number"
-                    min={0}
-                    max={40}
-                    data-testid="sa-grid-opacity"
-                    value={Math.round((prefs.gridOpacity ?? 0.08) * 100)}
-                    onChange={(e) =>
-                      patch({ gridOpacity: Number(e.target.value) / 100 })
-                    }
-                    className={INPUT}
-                    style={{ ...selectStyle, width: 72 }}
-                  />
-                  <span className="text-[13px]" style={{ color: MUTED }}>
-                    %
-                  </span>
                 </Row>
                 <Row label="Crosshair">
                   <SelectWrap>
@@ -502,6 +544,94 @@ export default function SaPartDialog() {
                     fallback="#758696"
                     style={prefs.crosshairStyle}
                     onChange={(v) => patch({ crosshairColor: v })}
+                  />
+                </Row>
+              </Group>
+            ) : null}
+
+            {has("chartTimeZone") ? (
+              <Group label="Time zone">
+                <Row label="Chart time">
+                  <SelectWrap>
+                    <select
+                      className={SELECT}
+                      data-testid="sa-chart-timezone"
+                      style={selectStyle}
+                      value={prefs.chartTimeZone || "exchange"}
+                      onChange={(e) =>
+                        patch({
+                          chartTimeZone: e.target.value as ChartTimeZonePref,
+                        })
+                      }
+                    >
+                      <option value="exchange">
+                        Exchange (Eastern)
+                      </option>
+                      <option value="local">My timezone</option>
+                    </select>
+                  </SelectWrap>
+                </Row>
+              </Group>
+            ) : null}
+
+            {has("sessionLinesOn") ? (
+              <Group label="Session">
+                <Row
+                  label={
+                    <CheckLabel
+                      testId="sa-session-lines"
+                      checked={prefs.sessionLinesOn !== false}
+                      onChange={(v) => patch({ sessionLinesOn: v })}
+                    >
+                      Open / close
+                    </CheckLabel>
+                  }
+                >
+                  <span />
+                </Row>
+                <Row label="Line">
+                  <SelectWrap>
+                    <select
+                      className={SELECT}
+                      style={{ ...selectStyle, minWidth: 96 }}
+                      value={prefs.sessionLineWidth || "thin"}
+                      onChange={(e) =>
+                        patch({
+                          sessionLineWidth: e.target.value as SessionLineWidth,
+                        })
+                      }
+                    >
+                      <option value="thin">Thin</option>
+                      <option value="medium">Medium</option>
+                      <option value="thick">Thick</option>
+                    </select>
+                  </SelectWrap>
+                  <SelectWrap>
+                    <select
+                      className={SELECT}
+                      style={{ ...selectStyle, minWidth: 96 }}
+                      value={prefs.sessionLineStyle || "dashed"}
+                      onChange={(e) =>
+                        patch({
+                          sessionLineStyle: e.target.value as SessionLineStyle,
+                        })
+                      }
+                    >
+                      <option value="solid">Solid</option>
+                      <option value="dashed">Dashed</option>
+                    </select>
+                  </SelectWrap>
+                  <ColorAlpha
+                    testId="sa-session-color"
+                    color={prefs.sessionLineColor || "#787b86"}
+                    opacity={prefs.sessionLineOpacity ?? 0.45}
+                    fallback="#787b86"
+                    onChange={(c, a) =>
+                      patch({
+                        sessionLineColor: c,
+                        sessionLineOpacity: a,
+                      })
+                    }
                   />
                 </Row>
               </Group>
@@ -726,25 +856,57 @@ export default function SaPartDialog() {
 
             {has("orientation") ? (
               <Group label="Volume profile">
-                <Row label="Profile mode">
+                <Row label="Rows layout">
                   <SelectWrap>
                     <select
                       className={SELECT}
-                      data-testid="sa-profile-mode-select"
+                      data-testid="sa-vp-rows-layout"
                       style={selectStyle}
-                      value={prefs.profileMode || "visible-range"}
-                      onChange={(e) =>
+                      value={prefs.profileRowsLayout || "number-of-rows"}
+                      onChange={(e) => {
+                        const layout = e.target.value as
+                          | "number-of-rows"
+                          | "ticks-per-row";
                         patch({
-                          profileMode: e.target.value as
-                            | "visible-range"
-                            | "full-history",
-                        })
-                      }
+                          profileRowsLayout: layout,
+                          profileRowSize:
+                            layout === "number-of-rows" ? 24 : 1,
+                        });
+                      }}
                     >
-                      <option value="visible-range">Visible Range</option>
-                      <option value="full-history">Full History</option>
+                      <option value="number-of-rows">Number of rows</option>
+                      <option value="ticks-per-row">Ticks per row</option>
                     </select>
                   </SelectWrap>
+                </Row>
+                <Row label="Row size">
+                  <input
+                    type="number"
+                    min={1}
+                    step={
+                      prefs.profileRowsLayout === "ticks-per-row" ? 1 : 1
+                    }
+                    value={prefs.profileRowSize ?? 24}
+                    data-testid="sa-vp-row-size"
+                    onChange={(e) =>
+                      patch({
+                        profileRowSize: Math.max(1, Number(e.target.value) || 1),
+                      })
+                    }
+                    className={INPUT}
+                    style={{ ...selectStyle, width: 72 }}
+                  />
+                </Row>
+                <Row label="VP color">
+                  <ColorAlpha
+                    testId="sa-vp-color"
+                    color={prefs.profileColor || "#2962ff"}
+                    opacity={prefs.profileOpacity || 0.42}
+                    fallback="#2962ff"
+                    onChange={(c, a) =>
+                      patch({ profileColor: c, profileOpacity: a })
+                    }
+                  />
                 </Row>
                 <Row label="VP anchor">
                   <SelectWrap>
@@ -771,24 +933,6 @@ export default function SaPartDialog() {
                     onChange={(e) =>
                       patch({
                         profileWidthFrac: Number(e.target.value) / 100,
-                      })
-                    }
-                    className={INPUT}
-                    style={{ ...selectStyle, width: 72 }}
-                  />
-                  <span className="text-[13px]" style={{ color: MUTED }}>
-                    %
-                  </span>
-                </Row>
-                <Row label="Opacity">
-                  <input
-                    type="number"
-                    min={35}
-                    max={50}
-                    value={Math.round((prefs.profileOpacity || 0.42) * 100)}
-                    onChange={(e) =>
-                      patch({
-                        profileOpacity: Number(e.target.value) / 100,
                       })
                     }
                     className={INPUT}
@@ -906,7 +1050,7 @@ export default function SaPartDialog() {
                   />
                 </Row>
                 <p className="text-[12px]" style={{ color: MUTED }}>
-                  Moves the price layer only — profile stays full-history (A12).
+                  Moves the price layer. Volume profile follows the visible range.
                 </p>
               </Group>
             ) : null}

@@ -19,7 +19,41 @@ export const SA_THEME = {
   candleDownStroke: "#b71c1c",
 } as const;
 
-export const SA_INTERVALS = ["1m", "5m", "15m", "1h", "1d"] as const;
+export const SA_INTERVAL_GROUPS: {
+  label: string;
+  items: { id: string; label: string }[];
+}[] = [
+  {
+    label: "Minutes",
+    items: [
+      { id: "1m", label: "1" },
+      { id: "2m", label: "2" },
+      { id: "5m", label: "5" },
+      { id: "10m", label: "10" },
+      { id: "30m", label: "30" },
+    ],
+  },
+  {
+    label: "Hours",
+    items: [
+      { id: "1h", label: "1" },
+      { id: "2h", label: "2" },
+      { id: "4h", label: "4" },
+    ],
+  },
+  {
+    label: "Days",
+    items: [
+      { id: "1d", label: "1" },
+      { id: "2d", label: "2" },
+      { id: "7d", label: "7" },
+    ],
+  },
+];
+
+export const SA_INTERVALS = SA_INTERVAL_GROUPS.flatMap((g) =>
+  g.items.map((i) => i.id),
+) as readonly string[];
 export type SaInterval = (typeof SA_INTERVALS)[number];
 
 export function adjacentIntervals(tf: string): SaInterval[] {

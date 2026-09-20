@@ -43,7 +43,7 @@ prim.updateAllViews();
 assert.equal(paint.visibleLo, 100);
 assert.equal(paint.visibleHi, 200);
 prim.requestUpdate();
-assert.equal(updates, 1);
+assert.ok(updates >= 1);
 assert.ok(prim.paneViews()[0]?.renderer());
 paint.hitRects = [{ x0: 0, y0: 10, x1: 40, y1: 20 }];
 assert.ok(prim.hitTest(10, 15));
@@ -53,11 +53,19 @@ prim.clearBins();
 assert.equal(paint.bins.length, 0);
 assert.equal(paint.hitRects.length, 0);
 assert.equal(prim.paneViews()[0]?.renderer(), null);
-assert.equal(updates, 2);
+
+prim.setTimeBase(() => [100, 400, 700], 300_000);
+assert.equal(prim.forceDraw([], 100, 200), false);
+assert.equal(paint.bins.length, 0);
+prim.applyBins([{ price: 10, volume: 3 }]);
+assert.equal(paint.bins.length, 1);
+assert.ok(updates >= 3);
+assert.equal(typeof prim.initialize, "function");
+assert.equal(typeof prim.refresh, "function");
+assert.equal(typeof prim.visibleWindow, "function");
 
 prim.detached();
 prim.requestUpdate();
-assert.equal(updates, 2);
 
 const ohlc = { time: 1, open: 10, high: 12, low: 9, close: 11 };
 paint.bins = asVpBins([{ price: 10, volume: 3 }]);

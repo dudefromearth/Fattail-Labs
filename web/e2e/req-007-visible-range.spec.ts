@@ -1,8 +1,9 @@
 import { test, expect } from "@playwright/test";
 
 /**
- * REQ-007 phase A / F4: fresh authed load draws Visible Range with
- * zero interaction. Pan follows. Toggle names Full History.
+ * REQ-007: fresh authed load draws Visible Range with zero interaction.
+ * Pan / timeline events refetch /window. sa-vp-update forces a refetch.
+ * Full History mode is gone.
  */
 
 async function login(page: import("@playwright/test").Page) {
@@ -31,22 +32,36 @@ test.describe("REQ-007 Visible Range / F4", () => {
         timeout: 30_000,
       })
       .toBeGreaterThan(0);
-    const mode = page.getByTestId("sa-profile-mode");
-    await expect(mode).toContainText("Visible Range");
+    await expect
+      .poll(async () => Number((await host.getAttribute("data-vp-visible-bars")) || "0"), {
+        timeout: 15_000,
+      })
+      .toBeGreaterThan(0);
+    await expect(page.getByTestId("sa-profile-mode")).toHaveCount(0);
+    await expect(page.getByTestId("sa-span-chip")).toHaveCount(0);
+    await expect(page.getByTestId("sa-live-flag")).toHaveCount(0);
     expect(windowHits.length).toBeGreaterThan(0);
     expect(rangeHits.length).toBe(0);
   });
 
-  test("toggle names Full History", async ({ page }) => {
+  test("sa-vp-update forces a window refetch", async ({ page }) => {
+    const windowHits: string[] = [];
+    page.on("request", (req) => {
+      if (req.url().includes("/vp/v1/window/")) windowHits.push(req.url());
+    });
     await login(page);
     await page.goto("/app/options-lab/volume-profile");
-    const mode = page.getByTestId("sa-profile-mode");
-    await expect(mode).toContainText("Visible Range", { timeout: 45_000 });
-    await mode.click();
-    await expect(mode).toContainText("Full History");
-    await expect(page.getByTestId("sa-price-chart")).toHaveAttribute(
-      "data-profile-mode",
-      "full-history",
-    );
+    const host = page.getByTestId("sa-price-chart");
+    await expect(host).toBeVisible({ timeout: 45_000 });
+    await expect
+      .poll(async () => Number((await host.getAttribute("data-vp-bins")) || "0"), {
+        timeout: 30_000,
+      })
+      .toBeGreaterThan(0);
+    const before = windowHits.length;
+    await host.evaluate((el) => {
+      el.dispatchEvent(new Event("sa-vp-update"));
+    });
+    await expect.poll(() => windowHits.length).toBeGreaterThan(before);
   });
 });

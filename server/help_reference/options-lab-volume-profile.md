@@ -23,11 +23,10 @@ It is **not** a separate “view” for each tool. Footprint and GEX arrive
 later as **layers** on this same chart. Replay, when it arrives, is a
 **view** (a different experience), not a layer.
 
-The profile is **full history**: each visible price row is all volume
-ever transacted in that row since the coverage floor, not “only what is
-on screen in time.” Panning time moves the candles; it does not rewrite
-the profile. The span chip reads **Full history · since &lt;date&gt;**
-and says so if coverage is truncated.
+The profile is **visible range**: each bar is volume at that price
+**inside the time window currently on the chart**. Pan or zoom the
+candles and the histogram refetches to match. There is no Full History
+mode.
 
 ## Three uses
 
@@ -63,8 +62,8 @@ configuration, so you can match his chart in one click.
 ## Honesty
 
 - **Admin / StudioTwo today:** the layered chart above is what you see
-  (tick-measured profile from the Volume Profile service, full-history
-  `/range`).
+  (tick-measured profile from the Volume Profile service, visible-range
+  `/window`).
 - **Members today:** the Volume Profile tab still shows the **residual
   OHLC-window estimate** (labelled as an approximation, not tick
   measurement). That residual dies when the layered chart ships to

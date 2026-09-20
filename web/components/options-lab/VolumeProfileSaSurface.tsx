@@ -1,37 +1,97 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { fetchGen, peek } from "@/lib/saDelivery";
-import { SA_DEV_TERRITORY, type TerritoryEntry } from "@/lib/saDevTerritory";
-import {
-  servedFromHealth,
-  sourceForUnderlier,
-  type SaStructure,
-} from "@/lib/saSurface";
+import { useEffect, useState, type ReactNode } from "react";
+import { fetchGen } from "@/lib/saDelivery";
+import { servedFromHealth, sourceForUnderlier } from "@/lib/saSurface";
 import SaPriceChart from "@/components/sa/SaPriceChart";
 import SaPartDialog from "@/components/sa/SaPartDialog";
-import SaUtilityBar from "@/components/sa/SaUtilityBar";
-import { SaCanvasProvider } from "@/components/sa/SaCanvasContext";
+import { SaCanvasProvider, useSaCanvas } from "@/components/sa/SaCanvasContext";
 import SymbolSearchTile from "@/components/symbology/SymbolSearchTile";
 import { useOptionsLab } from "@/lib/optionsLabContext";
 import { SYM_ROLES_VP, type SymbolBind } from "@/lib/symbology/types";
+import { SA_INTERVAL_GROUPS, SA_INTERVALS } from "@/lib/saTheme";
+import { FORCE_VP_EVENT } from "@/lib/saVpBand";
+import type { PriceTf } from "@/lib/saLayerStore";
 
 type Health = {
-  today?: string;
-  vp_api_base?: string;
   coverage?: Record<
     string,
     {
       floor_session?: string | null;
       ceiling_session?: string | null;
-      continuous?: {
-        adjusted?: boolean;
-        method?: string;
-        rolls?: number;
-      };
     }
   >;
 };
+
+function VpBar({
+  picker,
+}: {
+  picker: ReactNode;
+}) {
+  const { prefs, patch, open } = useSaCanvas();
+  return (
+    <div
+      className="flex h-12 shrink-0 items-center gap-2 border-b border-zinc-800 bg-[#131722] px-2"
+      data-testid="sa-utility-bar"
+    >
+      <span className="shrink-0 text-sm font-semibold text-zinc-100">
+        Volume Profile
+      </span>
+      {picker}
+      <select
+        className="h-8 shrink-0 rounded border border-zinc-700 bg-[#1e222d] px-1.5 text-xs text-zinc-200"
+        value={prefs.priceTf}
+        onChange={(e) => patch({ priceTf: e.target.value as PriceTf })}
+        aria-label="Interval"
+        data-testid="sa-interval"
+      >
+        {SA_INTERVALS.includes(prefs.priceTf) ? null : (
+          <option value={prefs.priceTf}>{prefs.priceTf}</option>
+        )}
+        {SA_INTERVAL_GROUPS.map((g) => (
+          <optgroup key={g.label} label={g.label}>
+            {g.items.map((i) => (
+              <option key={i.id} value={i.id}>
+                {i.label}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
+      <button
+        type="button"
+        data-testid="sa-vp-refresh"
+        className="h-8 shrink-0 rounded border border-zinc-700 bg-[#1e222d] px-2 text-xs text-zinc-200"
+        onClick={() =>
+          window.dispatchEvent(new Event(FORCE_VP_EVENT))
+        }
+      >
+        Refresh
+      </button>
+      <button
+        type="button"
+        aria-label="Settings"
+        title="Settings"
+        data-testid="sa-settings-open"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-zinc-700 bg-[#1e222d] text-zinc-200"
+        onClick={() => open("L0")}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <path
+            d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
+            stroke="currentColor"
+            strokeWidth="1.6"
+          />
+          <path
+            d="M19.4 13a7.8 7.8 0 0 0 .1-2l2-1.5-2-3.5-2.4 1a8 8 0 0 0-1.7-1L15 4h-6l-.4 2.5a8 8 0 0 0-1.7 1l-2.4-1-2 3.5 2 1.5a7.8 7.8 0 0 0 .1 2l-2 1.5 2 3.5 2.4-1a8 8 0 0 0 1.7 1L9 20h6l.4-2.5a8 8 0 0 0 1.7-1l2.4 1 2-3.5-2-1.5Z"
+            stroke="currentColor"
+            strokeWidth="1.6"
+          />
+        </svg>
+      </button>
+    </div>
+  );
+}
 
 export default function VolumeProfileSaSurface({
   paused = false,
@@ -41,29 +101,11 @@ export default function VolumeProfileSaSurface({
   const { symbol, setSymbol } = useOptionsLab();
   const pair = sourceForUnderlier(symbol);
   const [source, setSource] = useState(pair.source);
-  const [data, setData] = useState<SaStructure | null>(null);
-  const [shownLabel, setShownLabel] = useState<string | null>(null);
-  const [focus, setFocus] = useState<TerritoryEntry>(SA_DEV_TERRITORY[0]);
-  const [error, setError] = useState<string | null>(null);
   const [health, setHealth] = useState<Health | null>(null);
-  const [contracts, setContracts] = useState<{ id: string; label: string }[]>(
-    [],
-  );
   const [contract, setContract] = useState<string>("");
   const [pickerLabel, setPickerLabel] = useState<string>("");
-  const [pickerCaption, setPickerCaption] = useState<string>("");
 
   useEffect(() => {
-    setError(null);
-    const qs = new URLSearchParams({
-      harness: "live",
-      source: pair.source,
-      kind: "developing",
-      include_bins: "true",
-    });
-    const structUrl = `/api/app/vp/v1/structure/${pair.target}?${qs}`;
-    const hit = peek(structUrl);
-    if (hit?.body) setData(hit.body as SaStructure);
     void fetchGen("/api/app/vp/v1/health").then((r) => {
       if (r.body) {
         setHealth(r.body as Health);
@@ -75,16 +117,7 @@ export default function VolumeProfileSaSurface({
         );
       }
     });
-    void fetchGen(structUrl)
-      .then((r) => {
-        if (!r.body) throw new Error(`${r.status}`);
-        setData(r.body as SaStructure);
-        setShownLabel((r.body.session_date as string) || "Developing");
-      })
-      .catch((e) => {
-        setError(e instanceof Error ? e.message : "load failed");
-      });
-  }, [pair.source, pair.target]);
+  }, [pair.source]);
 
   useEffect(() => {
     let cancel = false;
@@ -96,21 +129,16 @@ export default function VolumeProfileSaSurface({
         if (cancel) return;
         const rows = (body.contracts || []) as {
           id: string;
-          label: string;
           last_trade_date?: string;
         }[];
-        setContracts(rows);
         const today = new Date().toISOString().slice(0, 10);
         setContract((cur) => {
           if (rows.some((x) => x.id === cur)) return cur;
-          if (cur) return cur;
           const live = rows.find((x) => (x.last_trade_date || "") >= today);
-          return live?.id || rows[0]?.id || "";
+          return live?.id || rows[0]?.id || cur;
         });
       })
-      .catch(() => {
-        if (!cancel) setContracts([]);
-      });
+      .catch(() => undefined);
     return () => {
       cancel = true;
     };
@@ -125,67 +153,41 @@ export default function VolumeProfileSaSurface({
       if (bind.root) setSource(bind.root);
       setContract(bind.boundSymbol);
       setPickerLabel(bind.boundSymbol);
-      setPickerCaption(bind.continuityCaption);
       return;
     }
     setSymbol(bind.boundSymbol);
     setPickerLabel(bind.boundSymbol);
-    setPickerCaption("");
   }
 
   const served = servedFromHealth(health);
   const cov = health?.coverage?.[source];
-  const spanFloor = cov?.floor_session ?? null;
-  const spanCeiling = cov?.ceiling_session ?? null;
-  const spanTruncated = Boolean(
-    spanCeiling && health?.today && spanCeiling < health.today,
-  );
 
   return (
     <SaCanvasProvider>
-    <div
-      className="relative flex min-h-0 flex-1 flex-col bg-[#131722] text-zinc-200"
-      data-testid="volume-profile-sa-surface"
-      data-paused={paused ? "1" : "0"}
-    >
-      <SaUtilityBar
-        title="Volume Profile"
-        pendingName
-        shownLabel={shownLabel}
-        leading={
-          <SymbolSearchTile
-            label={pickerLabel || contract || symbol}
-            caption={pickerCaption}
-            roles={SYM_ROLES_VP}
-            onBind={onSymbolBind}
-          />
-        }
-        data={data}
-        sources={served.map((s) => ({ id: s.id, label: s.label }))}
-        sourceId={source}
-        onSource={setSource}
-        contracts={contracts}
-        contractId={contract}
-        onContract={setContract}
-        focus={focus}
-        onFocus={setFocus}
-        spanFloor={spanFloor}
-        spanCeiling={spanCeiling}
-        spanTruncated={spanTruncated}
-        continuous={cov?.continuous}
-      />
-      {error ? (
-        <p className="px-2 text-xs text-[var(--color-label)]">{error}</p>
-      ) : null}
-      <SaPriceChart
-        source={source}
-        target={served.find((s) => s.source === source)?.target}
-        spanFloor={spanFloor}
-        spanCeiling={spanCeiling}
-        contract={contract || null}
-      />
-      <SaPartDialog />
-    </div>
+      <div
+        className="relative flex min-h-0 flex-1 flex-col bg-[#131722] text-zinc-200"
+        data-testid="volume-profile-sa-surface"
+        data-paused={paused ? "1" : "0"}
+      >
+        <VpBar
+          picker={
+            <SymbolSearchTile
+              label={pickerLabel || contract || symbol}
+              caption=""
+              roles={SYM_ROLES_VP}
+              onBind={onSymbolBind}
+            />
+          }
+        />
+        <SaPriceChart
+          source={source}
+          target={served.find((s) => s.source === source)?.target}
+          spanFloor={cov?.floor_session ?? null}
+          spanCeiling={cov?.ceiling_session ?? null}
+          contract={contract || null}
+        />
+        <SaPartDialog />
+      </div>
     </SaCanvasProvider>
   );
 }

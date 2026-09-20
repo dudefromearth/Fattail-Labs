@@ -2,10 +2,15 @@
 import {
   ColorType,
   LineStyle,
+  TickMarkType,
   type CandlestickData,
 } from "lightweight-charts";
 import { hexToRgba, SA_THEME } from "./saTheme";
 import type { CrosshairStyle, SaPrefs } from "./saLayerStore";
+import {
+  formatUnixInZone,
+  resolveChartTimeZone,
+} from "./saSession";
 
 const STYLE: Record<CrosshairStyle, LineStyle> = {
   solid: LineStyle.Solid,
@@ -55,6 +60,21 @@ export function canvasOptions(prefs: SaPrefs) {
       // N-bar lookback (REQ-006): default minBarSpacing 0.5 clips a full page
       // when zoomed out.
       minBarSpacing: 0.05,
+      tickMarkFormatter: (t: number, type: TickMarkType) => {
+        const tz = resolveChartTimeZone(prefs.chartTimeZone);
+        const sec = Number(t);
+        const withTime =
+          type === TickMarkType.Time || type === TickMarkType.TimeWithSeconds;
+        return formatUnixInZone(sec, tz, withTime);
+      },
+    },
+    localization: {
+      timeFormatter: (t: number) =>
+        formatUnixInZone(
+          Number(t),
+          resolveChartTimeZone(prefs.chartTimeZone),
+          true,
+        ),
     },
     leftPriceScale: {
       visible: prefs.axis === "left" || prefs.axis === "both",

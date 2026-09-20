@@ -482,9 +482,8 @@ export default function SaStructureChart({
             height: `calc(100% - ${2 * yPadPx}px)`,
           }}
           role="img"
-          aria-label="Full-history volume profile"
+          aria-label="Volume profile"
           data-testid="sa-histogram"
-          data-profile="full-history"
           viewBox={`0 0 ${W} ${H}`}
           preserveAspectRatio="none"
           onDoubleClick={() => {
@@ -737,7 +736,7 @@ export default function SaStructureChart({
           {vis.L2 ? (
             <g
               data-layer="L2"
-              data-testid="sa-profile-full-history"
+              data-testid="sa-profile"
               data-anchor={flushRight ? "right" : "left"}
               onClick={() => {
                 if (pannedRef.current) return;

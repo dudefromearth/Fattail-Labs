@@ -16,7 +16,8 @@ export type SettingsSectionIcon =
   | "analysis"
   | "axis"
   | "legend"
-  | "range";
+  | "range"
+  | "sessions";
 
 export type SettingsSection = {
   id: DialogPart;
@@ -31,6 +32,7 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   { id: "L2", label: "Profile", icon: "profile" },
   { id: "L3", label: "Analysis", icon: "analysis" },
   { id: "axis", label: "Scales and lines", icon: "axis" },
+  { id: "sessions", label: "Time zones and sessions", icon: "sessions" },
   { id: "legend", label: "Status line", icon: "legend" },
   { id: "range", label: "Range", icon: "range" },
 ];
@@ -41,6 +43,7 @@ export const SETTINGS_FIRST_SECTION: DialogPart = SETTINGS_SECTIONS[0].id;
 export function sectionForPart(part: DialogPart): DialogPart {
   if (part === "grid") return "L0";
   if (part === "chips") return "legend";
+  if (part === "sessions") return "sessions";
   if (part === "mode") return SETTINGS_FIRST_SECTION;
   if (SETTINGS_SECTIONS.some((s) => s.id === part)) return part;
   return SETTINGS_FIRST_SECTION;

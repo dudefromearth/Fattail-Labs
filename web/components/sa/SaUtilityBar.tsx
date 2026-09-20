@@ -187,7 +187,7 @@ export default function SaUtilityBar({
       />
       <Chip
         testId="sa-span-chip"
-        title="Full-history profile — click for price-layer x-range"
+        title="Coverage start — click for price-layer x-range"
         text={spanText}
         onClick={() => open("range")}
       />

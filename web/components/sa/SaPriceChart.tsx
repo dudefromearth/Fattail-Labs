@@ -11,7 +11,7 @@ import {
   type ISeriesApi,
   type UTCTimestamp,
 } from "lightweight-charts";
-import { fetchGen, fetchGenWait, ohlcSpanDays, peek, type FetchGenResult } from "@/lib/saDelivery";
+import { fetchGenWait, peek, type FetchGenResult } from "@/lib/saDelivery";
 import { honestBars } from "@/lib/saBars";
 import { resolveTick, tickDecimals } from "@/lib/saTicks";
 import { fetchSpec } from "@/lib/symbology/api";
@@ -29,18 +29,24 @@ import {
 } from "@/lib/saChartStyle";
 import { targetForSource } from "@/lib/saSurface";
 import {
-  bandContains,
+  FORCE_VP_EVENT,
+  RANGE_DEBOUNCE_MS,
+  asUnixMs,
   beginBandFetch,
-  displayRow,
+  candlesInMsRange,
+  mockBinsFromCandles,
+  profileRowGrain,
+  visibleCandleWindow,
+  type VpShapeClass,
   endBandFetch,
   expandBand,
   hostToPane,
   panePriceWindow,
   profileFetchPlan,
-  RANGE_DEBOUNCE_MS,
   scheduleDebounced,
   vpBandEpoch,
   type BandFlight,
+  type VisibleCandleWindow,
   type VpBand,
   type VpBin,
 } from "@/lib/saVpBand";
@@ -50,6 +56,14 @@ import {
   emptyPaint,
   VpHistogramPrimitive,
 } from "@/lib/saVpSeries";
+import {
+  emptySessionPaint,
+  SessionLinesPrimitive,
+} from "@/lib/saSessionLines";
+import {
+  sessionBoundaryUnix,
+  sessionHoursForSource,
+} from "@/lib/saSession";
 
 function toSec(t: number): UTCTimestamp {
   if (t > 1e16) return Math.floor(t / 1e9) as UTCTimestamp;
@@ -97,7 +111,7 @@ export default function SaPriceChart({
   apiBase?: string;
   contract?: string | null;
 }) {
-  const { prefs, patch, setLiveFlag, open } = useSaCanvas();
+  const { prefs, setLiveFlag, open } = useSaCanvas();
   const prefsRef = useRef(prefs);
   prefsRef.current = prefs;
   const lineRef = useRef<IPriceLine | null>(null);
@@ -111,6 +125,7 @@ export default function SaPriceChart({
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const primitiveRef = useRef<VpHistogramPrimitive | null>(null);
+  const sessionRef = useRef<SessionLinesPrimitive | null>(null);
   const paintRef = useRef(emptyPaint());
   const timesRef = useRef<UTCTimestamp[]>([]);
   const bandRef = useRef<VpBand | null>(null);
@@ -127,15 +142,21 @@ export default function SaPriceChart({
   const [histWarn, setHistWarn] = useState<string | null>(null);
   const [histComplete, setHistComplete] = useState(false);
   const [binSource, setBinSource] = useState<string | null>(null);
+  const [visibleBars, setVisibleBars] = useState(0);
   const rawBarsRef = useRef<OhlcBar[]>([]);
   const atBirthRef = useRef(false);
   const pagingRef = useRef(false);
   const intendedWindowRef = useRef<{ lo: number; hi: number } | null>(null);
-  const windowKickRef = useRef<((lo: number, hi: number) => void) | null>(null);
-  const debounceHoldRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const kickHoldRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const kickVpRef = useRef<
+    (mode?: "now" | "debounce", cls?: VpShapeClass) => void
+  >(() => {});
 
-  const requestVpUpdate = () => {
-    primitiveRef.current?.requestUpdate();
+  const syncPrimitiveTime = () => {
+    primitiveRef.current?.setTimeBase(
+      () => timesRef.current as number[],
+      tfMs(prefsRef.current.priceTf),
+    );
   };
 
   const clearHistogram = () => {
@@ -143,7 +164,7 @@ export default function SaPriceChart({
     if (primitiveRef.current) primitiveRef.current.clearBins();
     else clearPaint(paintRef.current);
     setVpBins(0);
-    requestVpUpdate();
+    setVisibleBars(0);
   };
 
   useEffect(() => {
@@ -168,12 +189,16 @@ export default function SaPriceChart({
     const primitive = new VpHistogramPrimitive(paintRef.current);
     series.attachPrimitive(primitive);
     primitiveRef.current = primitive;
+    const session = new SessionLinesPrimitive(emptySessionPaint());
+    series.attachPrimitive(session);
+    sessionRef.current = session;
     const ro = new ResizeObserver(() => {
       if (!hostRef.current || !chartRef.current) return;
       chartRef.current.resize(
         hostRef.current.clientWidth,
         hostRef.current.clientHeight,
       );
+      kickVpRef.current("now", "diff");
     });
     ro.observe(el);
     return () => {
@@ -181,6 +206,9 @@ export default function SaPriceChart({
       const attached = primitiveRef.current;
       if (attached) series.detachPrimitive(attached);
       primitiveRef.current = null;
+      const sess = sessionRef.current;
+      if (sess) series.detachPrimitive(sess);
+      sessionRef.current = null;
       chart.remove();
       chartRef.current = null;
       seriesRef.current = null;
@@ -261,12 +289,16 @@ export default function SaPriceChart({
           /* engine may reject empty */
         }
         intendedWindowRef.current = { lo: w.lo, hi: w.hi };
-        if (prefsRef.current.profileMode !== "full-history") {
-          windowKickRef.current?.(w.lo, w.hi);
-        }
+        syncPrimitiveTime();
+        primitiveRef.current?.refresh();
+        requestAnimationFrame(() => {
+          kickVpRef.current("now", "rebuild");
+          syncSession();
+        });
+      } else {
+        syncPrimitiveTime();
+        kickVpRef.current("now", "rebuild");
       }
-      requestVpUpdate();
-      requestAnimationFrame(() => requestVpUpdate());
       const derived = resolveTick({
         prices: candles.flatMap((c) => [c.open, c.high, c.low, c.close]),
       });
@@ -356,6 +388,8 @@ export default function SaPriceChart({
           timesRef.current = candles.map((c) => c.time as UTCTimestamp);
           seriesRef.current?.setData(candles);
           setHistBars(combined.length);
+          syncPrimitiveTime();
+          kickVpRef.current("now", "rebuild");
           if (r.body?.short_history === true) {
             setHistWarn(
               `SHORT HISTORY: ${combined.length} bars (need ${Number(r.body?.bars_rule) || 5000}). Not silent.`,
@@ -377,13 +411,50 @@ export default function SaPriceChart({
     paint.orientation = prefs.orientation;
     paint.widthFrac = prefs.profileWidthFrac || 0.62;
     paint.opacity = prefs.profileOpacity || 0.42;
+    paint.color = prefs.profileColor || "#2962ff";
     paint.visible = prefs.visible.L2 !== false;
-    requestVpUpdate();
+    primitiveRef.current?.refresh();
   }, [
     prefs.orientation,
     prefs.profileWidthFrac,
     prefs.profileOpacity,
+    prefs.profileColor,
     prefs.visible.L2,
+  ]);
+
+  const syncSession = () => {
+    const sess = sessionRef.current;
+    const chart = chartRef.current;
+    if (!sess || !chart) return;
+    const p = sess.paint;
+    p.visible = prefsRef.current.sessionLinesOn !== false;
+    p.color = prefsRef.current.sessionLineColor || "#787b86";
+    p.opacity = prefsRef.current.sessionLineOpacity ?? 0.45;
+    p.width = prefsRef.current.sessionLineWidth || "thin";
+    p.style = prefsRef.current.sessionLineStyle || "dashed";
+    const vis = chart.timeScale().getVisibleRange();
+    if (vis && typeof vis.from === "number" && typeof vis.to === "number") {
+      const hours = sessionHoursForSource(source);
+      p.times = sessionBoundaryUnix({
+        fromSec: Number(vis.from),
+        toSec: Number(vis.to),
+        openHm: hours.openHm,
+        closeHm: hours.closeHm,
+      });
+    }
+    sess.refresh();
+  };
+
+  useEffect(() => {
+    syncSession();
+  }, [
+    source,
+    prefs.sessionLinesOn,
+    prefs.sessionLineColor,
+    prefs.sessionLineOpacity,
+    prefs.sessionLineWidth,
+    prefs.sessionLineStyle,
+    prefs.chartTimeZone,
   ]);
 
   useEffect(() => {
@@ -392,7 +463,7 @@ export default function SaPriceChart({
     chart.applyOptions(canvasOptions(prefs));
     seriesRef.current?.applyOptions(candleOptions(prefs));
     paintRef.current.visible = prefs.visible.L2 !== false;
-    requestVpUpdate();
+    primitiveRef.current?.refresh();
     if (hostRef.current) hostRef.current.style.background = prefs.canvasBg;
     if (candlesRef.current.length && seriesRef.current) {
       const stripped = candlesRef.current.map((c) => ({
@@ -522,8 +593,6 @@ export default function SaPriceChart({
       bandEpochRef.current = epoch;
       clearHistogram();
     }
-    const vr = prefs.profileMode !== "full-history";
-
     const readY = (): { lo: number; hi: number } | null => {
       const s = seriesRef.current;
       const chart = chartRef.current;
@@ -549,127 +618,159 @@ export default function SaPriceChart({
       return paneH && paneH >= 8 ? paneH : 400;
     };
 
-    const run = (fromT: number, toT: number) => {
+    const barMs = tfMs(prefs.priceTf);
+    let lastSent = "";
+
+    const computeWindow = (): VisibleCandleWindow | null => {
+      syncPrimitiveTime();
+      const times = timesRef.current as number[];
+      if (!times.length) return null;
+      const chart = chartRef.current;
+      const series = seriesRef.current;
+      const ts = chart?.timeScale();
+      const logical = ts?.getVisibleLogicalRange() ?? null;
+      if (series && logical) {
+        const info = series.barsInLogicalRange(logical);
+        if (info && info.from != null && info.to != null) {
+          const fromT = asUnixMs(Number(info.from));
+          const toT = asUnixMs(Number(info.to)) + barMs;
+          const w = candlesInMsRange(times, fromT, toT, barMs);
+          if (w) return w;
+        }
+      }
+      const fromPrim = primitiveRef.current?.visibleWindow();
+      if (fromPrim && fromPrim.count > 0) return fromPrim;
+      if (logical) {
+        const w = visibleCandleWindow({ logical, times, tfMs: barMs });
+        if (w) return w;
+      }
+      const vis = ts?.getVisibleRange();
+      if (vis && typeof vis.from === "number" && typeof vis.to === "number") {
+        return candlesInMsRange(
+          times,
+          asUnixMs(Number(vis.from)),
+          asUnixMs(Number(vis.to)) + barMs,
+          barMs,
+        );
+      }
+      const pending = intendedWindowRef.current;
+      if (pending) return candlesInMsRange(times, pending.lo, pending.hi, barMs);
+      return null;
+    };
+
+    const candleRange = (): { lo: number; hi: number } => {
+      const y = readY();
+      if (y && y.hi > y.lo) return y;
+      const bars = candlesRef.current;
+      let lo = Infinity;
+      let hi = -Infinity;
+      for (const b of bars) {
+        if (b.low < lo) lo = b.low;
+        if (b.high > hi) hi = b.high;
+      }
+      return hi > lo ? { lo, hi } : { lo: 0, hi: 1 };
+    };
+
+    const tick = specTick || 0.25;
+    const rowForView = (): number => {
+      const y = readY();
+      const span = y && y.hi > y.lo ? y.hi - y.lo : tick;
+      return profileRowGrain({
+        layout: prefs.profileRowsLayout || "number-of-rows",
+        rowSize: prefs.profileRowSize ?? 24,
+        span,
+        tick,
+      });
+    };
+    const paintBins = (bins: VpBin[], sourceLabel: string | null) => {
+      const scale = candleRange();
+      const row = rowForView();
+      paintRef.current.row = row;
+      primitiveRef.current?.forceDraw(bins, scale.lo, scale.hi, row);
+      setVpBins(bins.length);
+      setBinSource(sourceLabel);
+      requestAnimationFrame(() => primitiveRef.current?.refresh());
+    };
+
+    const run = (cls: VpShapeClass = "diff") => {
       if (cancelled) return;
+      if (!timesRef.current.length) return;
+      const w = computeWindow();
+      if (!w) return;
+      const sent = `${w.fromT}:${w.toT}:${w.count}:${cls}`;
+      if (cls === "diff" && sent === lastSent) return;
+      lastSent = sent;
+      setVisibleBars(w.count);
+      const row = rowForView();
+      const visCandles = candlesRef.current.slice(w.fromIdx, w.toIdx + 1);
+      const mock = mockBinsFromCandles(visCandles, row);
+      if (mock.length) paintBins(mock, "mock");
       const y = readY();
       if (y && y.hi > y.lo) {
         paintRef.current.visibleLo = y.lo;
         paintRef.current.visibleHi = y.hi;
       }
-      const loaded = bandRef.current;
-      if (y && loaded && loaded.bins.length && bandContains(loaded, y.lo, y.hi)) {
-        requestVpUpdate();
-        return;
-      }
-      const row = y
-        ? displayRow(
-            y.hi - y.lo,
-            paneHeightPx(),
-            tick || loaded?.row || 0.25,
-          )
-        : undefined;
       const plan = profileFetchPlan({
-        mode: vr ? "visible-range" : "full-history",
-        fromT,
-        toT,
+        fromT: w.fromT,
+        toT: w.toT,
         target: tgt,
         source,
-        from,
-        to,
         row,
-        harness,
         apiBase,
       });
       if (plan.kind === "wait" || !plan.url) return;
       if (beginBandFetch(flightRef.current) === "wait") return;
-      const band = y ? expandBand(y.lo, y.hi) : null;
-      const applyBins = (r: FetchGenResult, bins: VpBin[]) => {
-        if (cancelled) return;
-        const prices = bins.map((b) => b.price);
-        bandRef.current = {
-          lo: band?.lo ?? (prices.length ? Math.min(...prices) : 0),
-          hi: band?.hi ?? (prices.length ? Math.max(...prices) : 0),
-          row: row ?? 0.25,
-          bins,
-          floor:
-            String(
-              (r.body as { coverage_floor?: string } | null)?.coverage_floor ||
-                (r.body?.coverage as { floor_session?: string } | undefined)
-                  ?.floor_session ||
-                from ||
-                "",
-            ) || null,
-          ceiling:
-            String(
-              (r.body as { coverage_ceiling?: string } | null)
-                ?.coverage_ceiling ||
-                (r.body?.coverage as { ceiling_session?: string } | undefined)
-                  ?.ceiling_session ||
-                to ||
-                "",
-            ) || null,
-          truncated: Boolean(
-            (r.body?.coverage as { truncated?: boolean } | undefined)
-              ?.truncated,
-          ),
-          generation: r.body?.profile_generation_id
-            ? String(r.body.profile_generation_id)
-            : null,
-          ms: r.ms,
-        };
-        paintRef.current.bins = bins;
-        setVpBins(bins.length);
-        setRangeMs(r.ms);
-        const srcLabel = String(r.body?.bin_source || "");
-        setBinSource(srcLabel || null);
-        requestVpUpdate();
-        requestAnimationFrame(() => requestVpUpdate());
-      };
-      void fetchGen(plan.url)
+      void fetchGenWait(plan.url)
         .then((r) => {
           if (cancelled) return;
-          applyBins(r, asVpBins(r.body?.bins));
+          const bins = asVpBins(r.body?.bins);
+          if (!bins.length) return;
+          paintBins(bins, String(r.body?.bin_source || "window"));
+          setRangeMs(r.ms);
         })
         .finally(() => {
           if (cancelled) return;
-          if (endBandFetch(flightRef.current) === "again") {
-            const vis = chartRef.current?.timeScale().getVisibleRange();
-            const a =
-              vis && typeof vis.from === "number" ? Number(vis.from) * 1000 : fromT;
-            const b =
-              vis && typeof vis.to === "number" ? Number(vis.to) * 1000 : toT;
-            run(a, b);
-          }
+          if (endBandFetch(flightRef.current) === "again") run(cls);
         });
     };
 
-    windowKickRef.current = (lo, hi) => run(lo, hi);
-    if (vr) {
-      const pending = intendedWindowRef.current;
-      if (pending) run(pending.lo, pending.hi);
-    } else {
-      run(0, 0);
-    }
+    const kick = (
+      mode: "now" | "debounce" = "debounce",
+      cls: VpShapeClass = "diff",
+    ) => {
+      if (mode === "now") {
+        if (kickHoldRef.current) clearTimeout(kickHoldRef.current);
+        run(cls);
+        return;
+      }
+      scheduleDebounced(kickHoldRef, RANGE_DEBOUNCE_MS, () => run(cls));
+    };
+    kickVpRef.current = kick;
+    syncPrimitiveTime();
+    primitiveRef.current?.onNeedWindow(() => kick("debounce", "diff"));
 
     const ts = chartRef.current?.timeScale();
-    const onRange = () => {
-      if (!vr) return;
-      scheduleDebounced(debounceHoldRef, RANGE_DEBOUNCE_MS, () => {
-        const vis = ts?.getVisibleRange();
-        if (!vis || typeof vis.from !== "number" || typeof vis.to !== "number") {
-          return;
-        }
-        run(Number(vis.from) * 1000, Number(vis.to) * 1000);
-      });
+    const onTimeline = () => {
+      kick("debounce", "diff");
+      syncSession();
     };
-    ts?.subscribeVisibleTimeRangeChange(onRange);
+    ts?.subscribeVisibleTimeRangeChange(onTimeline);
+    ts?.subscribeVisibleLogicalRangeChange(onTimeline);
+    const host = wrapRef.current;
+    const onForce = () => kick("now", "rebuild");
+    host?.addEventListener(FORCE_VP_EVENT, onForce);
+    window.addEventListener(FORCE_VP_EVENT, onForce);
+    kick("now", "rebuild");
     return () => {
       cancelled = true;
-      windowKickRef.current = null;
-      if (debounceHoldRef.current) clearTimeout(debounceHoldRef.current);
-      ts?.unsubscribeVisibleTimeRangeChange(onRange);
+      if (kickHoldRef.current) clearTimeout(kickHoldRef.current);
+      primitiveRef.current?.onNeedWindow(null);
+      ts?.unsubscribeVisibleTimeRangeChange(onTimeline);
+      ts?.unsubscribeVisibleLogicalRangeChange(onTimeline);
+      host?.removeEventListener(FORCE_VP_EVENT, onForce);
+      window.removeEventListener(FORCE_VP_EVENT, onForce);
     };
-  }, [source, target, spanFloor, spanCeiling, tick, prefs.priceTf, prefs.visible.L2, prefs.profileMode, harness, apiBase]);
+  }, [source, target, spanFloor, spanCeiling, prefs.priceTf, prefs.visible.L2, prefs.profileRowsLayout, prefs.profileRowSize, harness, apiBase, specTick]);
 
   useEffect(() => {
     if (!source) return;
@@ -715,6 +816,8 @@ export default function SaPriceChart({
               };
         developingRef.current = next;
         seriesRef.current.update(next);
+        primitiveRef.current?.refresh();
+        kickVpRef.current("debounce", "diff");
         if (!p.lastPriceOn) {
           if (lineRef.current) {
             seriesRef.current.removePriceLine(lineRef.current);
@@ -749,6 +852,8 @@ export default function SaPriceChart({
         };
         developingRef.current = candle;
         seriesRef.current?.update(candle);
+        syncPrimitiveTime();
+        kickVpRef.current("now", "diff");
       },
       onGen: () => {
         markLive();
@@ -762,7 +867,8 @@ export default function SaPriceChart({
             candlesRef.current = candles;
             timesRef.current = candles.map((c) => c.time as UTCTimestamp);
             seriesRef.current.setData(candles);
-            requestVpUpdate();
+            syncPrimitiveTime();
+            kickVpRef.current("now", "rebuild");
           }
         });
       },
@@ -788,8 +894,9 @@ export default function SaPriceChart({
       data-tick-ms={tickMs ?? ""}
       data-l2={prefs.visible.L2 ? "1" : "0"}
       data-vp-bins={vpBins}
+      data-vp-visible-bars={visibleBars}
       data-bin-source={binSource ?? ""}
-      data-profile-mode={prefs.profileMode}
+      data-profile-mode="visible-range"
       data-history-days={histDays ?? ""}
       data-bar-count={candlesRef.current.length}
       data-range-ms={rangeMs ?? ""}
@@ -826,42 +933,6 @@ export default function SaPriceChart({
       style={{ background: prefs.canvasBg }}
     >
       <div ref={hostRef} className="h-full min-h-0 w-full" />
-      <button
-        type="button"
-        className="absolute left-2 top-8 z-20 max-w-[28rem] rounded border border-zinc-600 bg-[#1e222d] px-2 py-1 text-left text-[11px] text-zinc-300"
-        data-testid="sa-profile-mode"
-        onClick={() =>
-          patch({
-            profileMode:
-              prefs.profileMode === "full-history"
-                ? "visible-range"
-                : "full-history",
-          })
-        }
-      >
-        {prefs.profileMode === "full-history" ? "Full History" : "Visible Range"}
-        {binSource ? ` · ${binSource}` : ""}
-      </button>
-      {histWarn ? (
-        <p
-          className="pointer-events-none absolute left-2 top-2 z-20 max-w-[28rem] rounded border border-amber-700 bg-[#1e222d] px-2 py-1 text-[11px] text-amber-300"
-          data-testid="sa-short-history"
-        >
-          {histWarn}
-        </p>
-      ) : histComplete ? (
-        <p className="pointer-events-none absolute left-2 top-2 z-20 max-w-[28rem] rounded border border-zinc-600 bg-[#1e222d] px-2 py-1 text-[11px] text-zinc-300">
-          Max available
-        </p>
-      ) : histBars != null ? (
-        <p className="pointer-events-none absolute left-2 top-2 z-20 max-w-[28rem] rounded border border-zinc-600 bg-[#1e222d] px-2 py-1 text-[11px] text-zinc-300">
-          {`${histBars} bars`}
-        </p>
-      ) : histDays != null ? (
-        <p className="pointer-events-none absolute left-2 top-2 z-20 max-w-[28rem] rounded border border-zinc-600 bg-[#1e222d] px-2 py-1 text-[11px] text-zinc-300">
-          {`Price ${histDays.toFixed(0)}d`}
-        </p>
-      ) : null}
       {err ? (
         <p className="relative z-10 p-3 text-sm text-zinc-400" data-testid="sa-price-chart-empty">
           {err}
