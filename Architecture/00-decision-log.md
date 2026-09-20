@@ -4,6 +4,18 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-20 — DL-787 hop-secret rotation (DL-786 sensitivity)
+
+**Decision.** Secrets that transited the DL-786 diagnosis session log are rotated this weekend. **LABS_COMPUTING_SECRET** (hop family: StudioOne sidecar verify, MiniTwo hop mint, StudioTwo hop mint) generated on-box; values never in transcripts or artifacts. PP-1: new hop 200; token minted with the **old** secret 401.
+
+MiniTwo member `LABS_SESSION_SECRET` and `LABS_DB_PASSWORD` rotated on-box (plist + MySQL). Vendor-held keys that also appeared (SSO, SMTP, Massive, XAI, ActiveCampaign) cannot be rotated without those dashboards — named in the gate report, not replaced with invented values.
+
+**H0 standing:** any secret that appears in a log is rotated as a matter of course, not judgment.
+
+**Cites:** Coach ROTATE 2026-09-20 · **DL-786**.
+
+---
+
 ## 2026-09-20 — DL-786 SODP4 MiniTwo production hop to StudioOne
 
 **Decision (Coach):** MiniTwo is production and must consume StudioOne data APIs.

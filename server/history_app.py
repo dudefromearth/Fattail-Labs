@@ -11,15 +11,19 @@ from fastapi import FastAPI, Query, Request
 from fastapi.responses import JSONResponse
 
 import auth
-from guards import require_session
 from sa_dev.futures_history import serve as serve_history
 
 app = FastAPI(title="Futures History", docs_url=None, redoc_url=None)
 
 
 def _computing(request: Request) -> JSONResponse | dict:
+    from config import get_config
+
+    token = request.cookies.get(get_config().session_cookie)
+    if not token:
+        return JSONResponse(status_code=401, content={"error": "unauthenticated"})
     try:
-        claims = require_session(request)
+        claims = auth.verify_computing_session(token)
     except Exception:
         return JSONResponse(status_code=401, content={"error": "unauthenticated"})
     role = str(claims.get("role") or "observer")

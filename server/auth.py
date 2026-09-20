@@ -69,6 +69,18 @@ def verify_session(token: str) -> dict:
         raise AuthError(f"Session invalid: {exc}") from exc
 
 
+def verify_computing_session(token: str) -> dict:
+    try:
+        return jwt.decode(
+            token,
+            get_config().computing_secret,
+            algorithms=["HS256"],
+            issuer="labs.fattail.ai",
+        )
+    except jwt.InvalidTokenError as exc:
+        raise AuthError(f"Computing session invalid: {exc}") from exc
+
+
 def role_at_least(role: str, minimum: str) -> bool:
     try:
         return ROLE_ORDER.index(role) >= ROLE_ORDER.index(minimum)

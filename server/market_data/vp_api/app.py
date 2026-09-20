@@ -12,7 +12,6 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 import auth
 from config import get_config
-from guards import require_session
 from market_data.vp_api.range_gate import range_decision
 from market_data.vp_engine.continuous import (
     FUTURES,
@@ -42,8 +41,11 @@ def _root() -> Path:
 
 
 def _computing(request: Request) -> JSONResponse | dict:
+    token = request.cookies.get(get_config().session_cookie)
+    if not token:
+        return JSONResponse(status_code=401, content={"error": "unauthenticated"})
     try:
-        claims = require_session(request)
+        claims = auth.verify_computing_session(token)
     except Exception:
         return JSONResponse(status_code=401, content={"error": "unauthenticated"})
     role = str(claims.get("role") or "observer")
