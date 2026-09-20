@@ -60,6 +60,41 @@ export type ResolvePayload = {
   miss?: GrayReason;
 };
 
+export type DisplayShape = {
+  kind: "decimal" | "fractional";
+  precision: number;
+  fraction?: { denominator: number; separator: string; width: number };
+};
+
+export type ContractSpec = {
+  symbol: string;
+  queried_symbol: string;
+  title: string;
+  spec_version: number;
+  as_of: string;
+  citation: {
+    exchange: string;
+    title: string;
+    url: string;
+    retrieved_at: string;
+    snapshot: string;
+  };
+  exchange: string;
+  product_codes: { globex: string; clearport: string; clearing: string };
+  tick_size: number;
+  big_point_value: number;
+  tick_value: number;
+  display_shape: DisplayShape;
+  months: string[];
+  periodicity: string;
+  settlement: string;
+  calendar_id: string;
+  state: string | null;
+  roles: string[];
+  member_visible: boolean;
+  session_summary?: string;
+};
+
 export type SymbolBind = {
   /** Dated long form or cash/index identity the surface may mount. */
   boundSymbol: string;

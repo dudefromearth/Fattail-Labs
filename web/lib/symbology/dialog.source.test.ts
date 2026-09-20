@@ -50,6 +50,7 @@ test("consumes live universe + resolve; no tagged picker", () => {
   assert.match(api, /const BASE = "\/api\/symbology\/v1"/);
   assert.match(api, /\$\{BASE\}\/universe/);
   assert.match(api, /\$\{BASE\}\/resolve/);
+  assert.match(api, /\$\{BASE\}\/spec\//);
   assert.match(proxy, /\/symbology\/v1\//);
   assert.doesNotMatch(api, /\bFIXTURE\b/);
   assert.doesNotMatch(dialog, /\bFIXTURE\b/);
@@ -79,6 +80,15 @@ test("continuity caption and pair badge hooks exist", () => {
   assert.match(dialog, /symbol-search-continuity-label/);
   assert.match(dialog, /symbol-search-pair-badge/);
   assert.match(dialog, /symbol-search-miss/);
+});
+
+test("REQ-009 spec card is one click from the picker", () => {
+  assert.match(dialog, /symbol-search-spec-\$\{row\.symbol\}/);
+  assert.match(dialog, /ContractSpecCard/);
+  const card = read("components/symbology/ContractSpecCard.tsx");
+  assert.match(card, /Sessions pending/);
+  assert.match(card, /contract-spec-bpv/);
+  assert.doesNotMatch(card, /session_summary is/);
 });
 
 test("F1 highlight mark and alias-against chrome exist; no month-code table", () => {

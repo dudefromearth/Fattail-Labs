@@ -1,4 +1,4 @@
-import type { ResolvePayload, UniversePayload } from "./types";
+import type { ContractSpec, ResolvePayload, UniversePayload } from "./types";
 
 const BASE = "/api/symbology/v1";
 
@@ -45,6 +45,20 @@ export async function fetchResolve(
     cache: "no-store",
   });
   return readJson<ResolvePayload>(res, "resolve");
+}
+
+export async function fetchSpec(
+  symbol: string,
+  asOf?: string,
+): Promise<ContractSpec> {
+  const qs = new URLSearchParams();
+  if (asOf) qs.set("as_of", asOf);
+  const suffix = qs.toString() ? `?${qs}` : "";
+  const res = await fetch(`${BASE}/spec/${encodeURIComponent(symbol)}${suffix}`, {
+    credentials: "same-origin",
+    cache: "no-store",
+  });
+  return readJson<ContractSpec>(res, "spec");
 }
 
 export async function postGrayTelemetry(

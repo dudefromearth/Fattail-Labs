@@ -1,0 +1,30 @@
+{
+  "symbol": "MES",
+  "title": "Micro E-mini S&P 500 Futures",
+  "spec_version": 1,
+  "as_of": "2026-09-18",
+  "citation": {
+    "exchange": "CME",
+    "title": "Micro E-mini S&P 500 Futures Contract Specs",
+    "url": "https://www.cmegroup.com/markets/equities/sp/micro-e-mini-sandp500.contractSpecs.html",
+    "retrieved_at": "2026-09-18T15:42:25-05:00",
+    "snapshot": "server/symbology/spec_snapshots/MES.json"
+  },
+  "exchange": "CME",
+  "product_codes": {
+    "globex": "MES",
+    "clearport": "MES",
+    "clearing": "MES"
+  },
+  "tick_size": 0.25,
+  "big_point_value": 5,
+  "display_shape": {
+    "kind": "decimal",
+    "precision": 2
+  },
+  "months": ["H", "M", "U", "Z"],
+  "periodicity": "quarterly",
+  "settlement": "cash",
+  "calendar_id": "cme-equity-index-globex",
+  "member_visible": true
+}

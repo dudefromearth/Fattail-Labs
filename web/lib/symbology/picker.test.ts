@@ -285,6 +285,13 @@ test("pair badge ES → SPX only when both groups are in the payload; dark while
   assert.equal(spxOnly.length, 0);
 });
 
+test("SPEC-13: no client title map on ROOT_CHROME", () => {
+  const src = readFileSync(join(here, "picker.ts"), "utf8");
+  assert.equal(src.includes('title: "E-mini S&P 500 Futures"'), false);
+  assert.equal(src.includes("ROOT_CHROME.title"), false);
+  assert.match(src, /Titles come from registry display_name/);
+});
+
 test("production picker sources do not contain the tagged-picker token or a month-code table", () => {
   const files = ["picker.ts", "api.ts", "types.ts"].map((name) =>
     readFileSync(join(here, name), "utf8"),

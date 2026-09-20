@@ -1,0 +1,35 @@
+{
+  "symbol": "ZB",
+  "title": "U.S. Treasury Bond Futures",
+  "spec_version": 1,
+  "as_of": "2026-09-18",
+  "citation": {
+    "exchange": "CBOT",
+    "title": "U.S. Treasury Bond Futures Contract Specs",
+    "url": "https://www.cmegroup.com/markets/interest-rates/us-treasury/30-year-us-treasury-bond.contractSpecs.html",
+    "retrieved_at": "2026-09-18T15:42:25-05:00",
+    "snapshot": "server/symbology/spec_snapshots/ZB.json"
+  },
+  "exchange": "CBOT",
+  "product_codes": {
+    "globex": "ZB",
+    "clearport": "17",
+    "clearing": "17"
+  },
+  "tick_size": 0.03125,
+  "big_point_value": 1000,
+  "display_shape": {
+    "kind": "fractional",
+    "precision": 0,
+    "fraction": {
+      "denominator": 32,
+      "separator": "'",
+      "width": 2
+    }
+  },
+  "months": ["H", "M", "U", "Z"],
+  "periodicity": "quarterly",
+  "settlement": "physical",
+  "calendar_id": "cbot-treasury-globex",
+  "member_visible": false
+}

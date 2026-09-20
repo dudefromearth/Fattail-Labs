@@ -22,6 +22,14 @@ from symbology.service import (
     universe,
     write_strip_after_close,
 )
+from symbology.spec import (
+    SpecGrainMismatch,
+    SpecIncomplete,
+    SpecLoadRefused,
+    grain_for,
+    load_specs,
+    reset_specs_for_tests,
+)
 
 __all__ = [
     "AliasIngestRefused",
@@ -39,4 +47,10 @@ __all__ = [
     "row_state_from_artifact",
     "universe",
     "write_strip_after_close",
+    "SpecGrainMismatch",
+    "SpecIncomplete",
+    "SpecLoadRefused",
+    "grain_for",
+    "load_specs",
+    "reset_specs_for_tests",
 ]

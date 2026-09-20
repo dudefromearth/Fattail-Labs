@@ -152,9 +152,10 @@ must be the vendor's, not a choice.
 
 ## 5. Part 2 — Profile Engine
 
-**5.1 Row assignment.** Grid from symbol-metadata `vp_row` (SPY 0.10,
-ES 0.25, MES 0.25). A print at price p lands in row
-floor(p / vp_row) × vp_row — half-open [row, row + vp_row).
+**5.1 Row assignment.** Grid from symbol-metadata `vp_row` for **SPY 0.10**.
+Futures (ES, MES) grid **reads** registry `tick_size` (REQ-009 D7 split-author;
+errata `Specs/amendments/VPS-D7-split-author-REQ-009.md`). A print at price p
+lands in row floor(p / vp_row) × vp_row — half-open [row, row + vp_row).
 **5.2 Histogram.** Integer volume per row over the eligible window
 (eligible prints per §4; gap intervals excluded and listed). Zero rows
 served as zero across the traded span — never dropped, never

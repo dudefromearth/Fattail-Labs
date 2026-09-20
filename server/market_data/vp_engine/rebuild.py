@@ -8,7 +8,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from market_data.vp_engine.coverage import VP_ROW, mark_session
+from market_data.vp_engine.coverage import mark_session
 from market_data.vp_engine.histogram import build_histogram, canonical_bytes
 from market_data.vp_ingest.store import archive_root, gaps_path, prints_path
 
@@ -65,7 +65,9 @@ def rebuild_session(
         raise ValueError("composite is fenced on VPS2 (session|developing only)")
     ar = root or archive_root()
     symbol = symbol.upper()
-    row = float(vp_row if vp_row is not None else VP_ROW.get(symbol, 0.10))
+    from symbology.spec import assert_native_grain
+
+    row = assert_native_grain(symbol, vp_row)
     prints = load_prints(ar, symbol, session_date)
     gaps = load_gaps(ar, symbol, session_date)
     payload = build_histogram(
@@ -101,7 +103,9 @@ def rebuild_continuous(root: Path, symbol: str, *, vp_row: float | None = None) 
     from market_data.vp_engine.coverage import load_coverage
 
     symbol = symbol.upper()
-    row = float(vp_row if vp_row is not None else VP_ROW.get(symbol, 0.25))
+    from symbology.spec import assert_native_grain
+
+    row = assert_native_grain(symbol, vp_row)
     doc = build_roll_table(root, symbol, load_prints=load_prints)
     cadj = {str(k): float(v) for k, v in (doc.get("contract_adjust") or {}).items()}
     days = load_coverage(root).get(symbol, {}).get("sessions_binned") or []

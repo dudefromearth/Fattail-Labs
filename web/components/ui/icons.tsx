@@ -310,6 +310,16 @@ export function IconMagnifyingGlass(p: IconProps) {
   );
 }
 
+export function IconInfo(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 10v6" />
+      <circle cx="12" cy="7" r="0.75" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 export function IconGlobe(p: IconProps) {
   return (
     <svg {...base(p)}>

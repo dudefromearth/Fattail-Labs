@@ -12,34 +12,29 @@ import type {
 import { CONTINUITY_CAPTION } from "./types";
 
 export type RootChrome = {
-  title: string;
   exchange: string;
   badge: string;
   badgeBg: string;
 };
 
-/** Layout labels for known roots. Not a symbol list — unknown roots still render. */
+/** Layout chrome only (SPEC-13). Titles come from registry display_name. */
 const ROOT_CHROME: Record<string, RootChrome> = {
   ES: {
-    title: "E-mini S&P 500 Futures",
     exchange: "CME",
     badge: "500",
     badgeBg: "#e53935",
   },
   MES: {
-    title: "Micro E-mini S&P 500 Futures",
     exchange: "CME",
     badge: "500",
     badgeBg: "#e53935",
   },
   SPX: {
-    title: "S&P 500 Index",
     exchange: "CBOE",
     badge: "500",
     badgeBg: "#1a237e",
   },
   XSP: {
-    title: "Mini-SPX Index",
     exchange: "CBOE",
     badge: "50",
     badgeBg: "#1a237e",
@@ -57,7 +52,6 @@ export function chromeForRoot(root: string): RootChrome {
   if (hit) return hit;
   const badge = root.slice(0, 3) || "?";
   return {
-    title: root,
     exchange: "",
     badge,
     badgeBg: "#546e7a",

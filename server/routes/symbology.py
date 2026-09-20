@@ -219,3 +219,23 @@ def get_roll_catalog(request: Request):
     if hopped is not None:
         return hopped
     return catalog.catalog_public()
+
+
+@router.get("/symbology/v1/spec/{symbol}")
+@router.get("/api/symbology/v1/spec/{symbol}")
+def get_spec(request: Request, symbol: str, as_of: str | None = Query(default=None)):
+    """REQ-009 — member hop. Reads the registry. Never scrapes CME (SPEC-14)."""
+    require_session(request)
+    params = {"as_of": as_of} if as_of else None
+    hopped = _maybe_hop("GET", f"/symbology/v1/spec/{symbol}", params)
+    if hopped is not None:
+        return hopped
+    from symbology.spec import BadAsOf, lookup_for_http
+
+    try:
+        body = lookup_for_http(symbol, as_of=as_of, member_surface=True)
+    except BadAsOf as exc:
+        raise _http_exc(422, "invalid_as_of", str(exc)) from exc
+    if body is None:
+        raise _http_exc(404, "not_found", "spec not found")
+    return body

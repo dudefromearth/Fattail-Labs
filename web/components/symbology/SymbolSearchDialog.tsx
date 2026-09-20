@@ -13,9 +13,11 @@ import {
   IconChevronUp,
   IconGlobe,
   IconGrid,
+  IconInfo,
   IconMagnifyingGlass,
   IconXMark,
 } from "@/components/ui/icons";
+import ContractSpecCard from "./ContractSpecCard";
 import { fetchResolve, fetchUniverse, postGrayTelemetry } from "@/lib/symbology/api";
 import {
   aliasAgainst,
@@ -70,6 +72,7 @@ export default function SymbolSearchDialog({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [focusKey, setFocusKey] = useState<string | null>(null);
+  const [specSymbol, setSpecSymbol] = useState<string | null>(null);
   const telRef = useRef<string>("");
 
   const rolesKey = roles.join(",");
@@ -82,6 +85,7 @@ export default function SymbolSearchDialog({
     setLoadError(null);
     setExpanded({});
     setFocusKey(null);
+    setSpecSymbol(null);
     let cancel = false;
     void fetchUniverse(roles)
       .then((body) => {
@@ -394,19 +398,27 @@ export default function SymbolSearchDialog({
           className="mt-3 min-h-0 flex-1 overflow-y-auto border-t border-zinc-200"
           data-testid="symbol-search-list"
         >
-          {loadError ? (
+          {specSymbol ? (
+            <ContractSpecCard
+              symbol={specSymbol}
+              onClose={() => setSpecSymbol(null)}
+            />
+          ) : null}
+          {specSymbol ? null : loadError ? (
             <p className="px-5 py-6 text-sm text-zinc-700" role="alert">
               {loadError}
             </p>
           ) : null}
-          {miss ? (
+          {specSymbol ? null : miss ? (
             <MissRow
               q={query.trim()}
               miss={miss}
               focused={focusKey === `miss:${query.trim()}`}
             />
           ) : null}
-          {!loadError && !miss && groups.length === 0 && universe ? (
+          {specSymbol
+            ? null
+            : !loadError && !miss && groups.length === 0 && universe ? (
             <p
               className="px-5 py-6 text-sm text-zinc-500"
               data-testid="symbol-search-empty-class"
@@ -416,8 +428,9 @@ export default function SymbolSearchDialog({
                 : "No symbols in this class."}
             </p>
           ) : null}
-          {!miss
-            ? groups.map((g) => (
+          {specSymbol || miss
+            ? null
+            : groups.map((g) => (
                 <FamilyBlock
                   key={g.root}
                   group={g}
@@ -430,10 +443,14 @@ export default function SymbolSearchDialog({
                   focusKey={focusKey}
                   onFocus={setFocusKey}
                   onBind={bindRow}
+                  onSpec={(row) =>
+                    setSpecSymbol(
+                      row.type === "continuity-alias" ? row.root : row.symbol,
+                    )
+                  }
                   pair={pairBadgeForRoot(g.root, pairBadges)}
                 />
-              ))
-            : null}
+              ))}
         </div>
       </div>
     </div>
@@ -449,6 +466,7 @@ function FamilyBlock({
   focusKey,
   onFocus,
   onBind,
+  onSpec,
   pair,
 }: {
   group: UniverseGroup;
@@ -459,6 +477,7 @@ function FamilyBlock({
   focusKey: string | null;
   onFocus: (key: string) => void;
   onBind: (row: SymbologyRow) => void;
+  onSpec: (row: SymbologyRow) => void;
   pair: ReturnType<typeof pairBadgeForRoot>;
 }) {
   const parent = group.rows.find((r) => r.type === "root") || null;
@@ -502,6 +521,7 @@ function FamilyBlock({
         pair={pair}
         onFocus={() => onFocus(parentKey)}
         onActivate={() => onBind(headerRow)}
+        onSpec={() => onSpec(headerRow)}
       />
     );
   }
@@ -525,6 +545,7 @@ function FamilyBlock({
           if (showingSearch || !expandable) return;
           onToggle();
         }}
+        onSpec={() => onSpec(headerRow)}
       />
       {openFamily
         ? kids.map((row) => {
@@ -540,6 +561,7 @@ function FamilyBlock({
                 focused={focusKey === key}
                 onFocus={() => onFocus(key)}
                 onActivate={() => onBind(row)}
+                onSpec={() => onSpec(row)}
               />
             );
           })
@@ -581,6 +603,7 @@ function Row({
   expandable,
   onFocus,
   onActivate,
+  onSpec,
 }: {
   row: SymbologyRow;
   group: UniverseGroup;
@@ -593,17 +616,19 @@ function Row({
   expandable?: boolean;
   onFocus: () => void;
   onActivate: () => void;
+  onSpec: () => void;
 }) {
   const gray = rowIsGray(row);
   const caption = continuityCaptionFor(row, group);
   const reason = rowGrayCopy(row);
   const alias = depth === "child" ? aliasAgainst(row, group) : null;
   const stripRole = depth === "child" ? stripRoleFor(row, group) : null;
-  const name = row.display_name || chrome.title;
+  const name = row.display_name || row.symbol;
   const tickerCls = gray
     ? "text-zinc-400"
     : "text-[#2962ff]";
   return (
+    <div className="relative flex items-stretch border-b border-zinc-100">
     <button
       type="button"
       data-testid={`symbol-search-row-${row.symbol}`}
@@ -617,7 +642,7 @@ function Row({
       onFocus={onFocus}
       onClick={onActivate}
       className={[
-        "flex w-full items-center gap-3 border-b border-zinc-100 px-5 text-left",
+        "flex min-w-0 flex-1 items-center gap-3 px-5 text-left",
         depth === "child" ? "h-12 pl-16" : "h-[52px]",
         focused ? "rounded-[4px] ring-1 ring-inset ring-black" : "",
         gray ? "bg-white" : focused ? "bg-white" : "bg-white hover:bg-zinc-50",
@@ -704,6 +729,20 @@ function Row({
         <span className="w-4" aria-hidden />
       )}
     </button>
+    <button
+      type="button"
+      data-testid={`symbol-search-spec-${row.symbol}`}
+      aria-label={`Contract specification for ${row.symbol}`}
+      className="inline-flex h-auto w-10 shrink-0 items-center justify-center text-zinc-500 hover:bg-zinc-100 hover:text-black"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onSpec();
+      }}
+    >
+      <IconInfo size={16} />
+    </button>
+    </div>
   );
 }
 

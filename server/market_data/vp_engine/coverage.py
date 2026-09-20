@@ -11,7 +11,9 @@ from pathlib import Path
 from typing import Any
 
 SOURCES = ("ES", "MES", "SPY")
-VP_ROW = {"SPY": 0.10, "ES": 0.25, "MES": 0.25}
+# D7 split-author (REQ-009): SPY 0.10 stays VPS metadata. Futures grain is
+# spec.tick_size via symbology.spec.grain_for — no ES/MES keys here.
+VP_ROW = {"SPY": 0.10}
 
 
 def coverage_path(root: Path) -> Path:

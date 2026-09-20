@@ -144,6 +144,23 @@ def get_roll_catalog(request: Request):
     return catalog.catalog_public()
 
 
+@app.get("/symbology/v1/spec/{symbol}")
+@app.get("/api/symbology/v1/spec/{symbol}")
+def get_spec(request: Request, symbol: str, as_of: str | None = Query(default=None)):
+    blocked = _gate(request)
+    if blocked is not None:
+        return blocked
+    from symbology.spec import BadAsOf, lookup_for_http
+
+    try:
+        body = lookup_for_http(symbol, as_of=as_of, member_surface=True)
+    except BadAsOf as exc:
+        raise _http_exc(422, "invalid_as_of", str(exc)) from exc
+    if body is None:
+        raise _http_exc(404, "not_found", "spec not found")
+    return body
+
+
 def main() -> int:
     host = (os.environ.get("LABS_SYMBOLOGY_API_HOST") or "").strip()
     port_raw = (os.environ.get("LABS_SYMBOLOGY_API_PORT") or "").strip()

@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
-from market_data.vp_engine.coverage import VP_ROW, floor_of, load_coverage
+from market_data.vp_engine.coverage import floor_of, load_coverage
 from market_data.vp_engine.eligibility import print_eligible, size_int
 from market_data.vp_engine.rebuild import load_prints
 from market_data.vp_engine.rows import row_price
@@ -38,7 +38,9 @@ def assemble_window(
         from_t, to_t = to_t, from_t
     root = archive_root()
     floor = floor_of(root, src)
-    row = float(vp_row or VP_ROW.get(src, 0.25))
+    from symbology.spec import assert_native_grain
+
+    row = assert_native_grain(src, vp_row)
     d0 = _day_of(from_t)
     d1 = _day_of(to_t)
     print_acc: dict[float, int] = {}

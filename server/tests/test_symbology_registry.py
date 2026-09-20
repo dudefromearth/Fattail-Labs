@@ -18,6 +18,7 @@ PATHS = (
     "/symbology/v1/resolve?q=ES",
     "/symbology/v1/roll-catalog",
     "/symbology/v1/eligibility-report",
+    "/symbology/v1/spec/ES",
 )
 
 

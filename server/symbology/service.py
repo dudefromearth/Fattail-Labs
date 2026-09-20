@@ -27,14 +27,8 @@ ALL_ROOTS = FUTURES_ROOTS + INDEX_ROOTS + STOCK_ROOTS
 # Picker group order (hashed four, then volume-source).
 GROUP_ORDER = ("SPX", "XSP", "ES", "MES", "SPY")
 
-# Plain-English titles on the wire (SYM3-F1). Surfaces do not invent names.
-DISPLAY_TITLES: dict[str, str] = {
-    "ES": "E-mini S&P 500 Futures",
-    "MES": "Micro E-mini S&P 500 Futures",
-    "SPX": "S&P 500 Index",
-    "XSP": "Mini-SPX Index",
-    "SPY": "SPDR S&P 500 ETF Trust",
-}
+# Titles: futures from the spec snapshot (SPEC-13); cash/ETF from the
+# registry table in symbology.spec.REGISTRY_TITLES. No client title map.
 
 # Frozen intake generation (SYM-4). Not date.today() — tests stay deterministic.
 INITIAL_AS_OF = date(2026, 9, 19)
@@ -143,7 +137,9 @@ def _contracts_for_root(root: str, as_of: date) -> list[str]:
 
 
 def _display_name(row: Row) -> str:
-    title = DISPLAY_TITLES.get(row.root, row.root)
+    from symbology.spec import title_for_root
+
+    title = title_for_root(row.root)
     if row.type == "contract":
         label = catalog.month_year_label(row.symbol)
         if label:
@@ -199,6 +195,9 @@ def reset_runtime_for_tests() -> None:
     global _runtime
     with _lock:
         _runtime = Runtime(strip=_initial_strip())
+    from symbology.spec import reset_specs_for_tests
+
+    reset_specs_for_tests()
 
 
 def current_strip() -> Strip:
