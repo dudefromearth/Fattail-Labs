@@ -68,6 +68,13 @@ def test_empty_massive_is_named_not_short_history(monkeypatch, tmp_path):
     assert body["bars"] == []
 
 
+def test_daily_and_hour_resolutions_map():
+    from sa_dev.futures_history import _RES
+
+    assert _RES["1d"] == "1day"
+    assert _RES["1h"] == "1hour"
+
+
 def test_fill_module_not_imported():
     import sa_dev.futures_history as fh
 

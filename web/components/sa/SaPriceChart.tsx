@@ -148,6 +148,9 @@ export default function SaPriceChart({
       priceScaleId: "left",
     });
     seriesRef.current = series;
+    if (candlesRef.current.length) {
+      series.setData(candlesRef.current);
+    }
     const primitive = new VpHistogramPrimitive(paintRef.current);
     series.attachPrimitive(primitive);
     primitiveRef.current = primitive;
@@ -222,7 +225,12 @@ export default function SaPriceChart({
     let cancel = false;
     void fetchGenWait(url).then((r) => {
       if (cancel) return;
-      if (Array.isArray(r.body?.bars)) apply(r.body.bars as OhlcBar[]);
+      const named = String(r.body?.named_state || "");
+      if (named && named !== "SHORT HISTORY" && !(Array.isArray(r.body?.bars) && r.body.bars.length)) {
+        setErr(named === "MASSIVE EMPTY" ? "History unavailable" : named);
+        return;
+      }
+      if (Array.isArray(r.body?.bars) && r.body.bars.length) apply(r.body.bars as OhlcBar[]);
       else if (!cachedBars.length) setErr("No OHLC");
       const days =
         Number(r.body?.history_span_days) ||

@@ -19,7 +19,13 @@ FUTURES_SOURCES = frozenset({"ES", "MES"})
 REQUESTED_WINDOW_DAYS = 90
 _FETCH_BUFFER_DAYS = 20
 _DECADE = re.compile(r"^([A-Z]+)([FGHJKMNQUVXZ])(\d)$")
-_RES = {"1m": "1min", "5m": "5min", "15m": "15min"}
+_RES = {
+    "1m": "1min",
+    "5m": "5min",
+    "15m": "15min",
+    "1h": "1hour",
+    "1d": "1day",
+}
 
 
 def vendor_ticker(bound: str) -> str:
