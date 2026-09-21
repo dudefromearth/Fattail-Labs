@@ -20,7 +20,7 @@ import { openVpStream } from "@/lib/saStream";
 import type { OhlcBar } from "@/lib/marketOhlcApi";
 import { partFromPointer } from "@/lib/saLayerStore";
 import { liveFromPrintAge } from "@/lib/saLive";
-import { defaultTimeWindow, tfMs } from "@/lib/saView";
+import { defaultTimeWindow, nativeOhlcTf, resampleOhlc, tfMs } from "@/lib/saView";
 import {
   canvasOptions,
   candleOptions,
@@ -259,7 +259,7 @@ export default function SaPriceChart({
     rawBarsRef.current = [];
     setHistComplete(false);
     const qs = new URLSearchParams({
-      tf: prefs.priceTf,
+      tf: nativeOhlcTf(prefs.priceTf),
     });
     if (contract) qs.set("contract", contract);
     const url = `${apiBase}/ohlc/${source}?${qs}`;
@@ -314,7 +314,9 @@ export default function SaPriceChart({
         });
       }
     };
-    if (cachedBars.length && cacheComplete) apply(cachedBars, true);
+    if (cachedBars.length && cacheComplete) {
+      apply(resampleOhlc(cachedBars, tfMs(prefs.priceTf)), true);
+    }
     let cancel = false;
     const ingest = (r: FetchGenResult, resetView: boolean) => {
       const named = String(r.body?.named_state || "");
@@ -322,11 +324,16 @@ export default function SaPriceChart({
         setErr(named === "MASSIVE EMPTY" ? "History unavailable" : named);
         return;
       }
-      const incoming = Array.isArray(r.body?.bars) ? (r.body.bars as OhlcBar[]) : [];
+      const native = Array.isArray(r.body?.bars) ? (r.body.bars as OhlcBar[]) : [];
+      // Server serves native tf only (1m|5m|15m|1h|1d) — grouped display
+      // intervals (10m, 2h, ...) resample client-side from that native fetch.
+      const incoming = resampleOhlc(native, tfMs(prefsRef.current.priceTf));
       if (incoming.length) {
         rawBarsRef.current = incoming;
         apply(incoming, resetView);
-      } else if (!cachedBars.length) setErr("No OHLC");
+      } else if (!cachedBars.length) {
+        setErr(r.status && r.status !== 200 ? `No OHLC (HTTP ${r.status})` : "No OHLC");
+      }
       atBirthRef.current = Boolean(r.body?.at_contract_birth);
       setHistComplete(Boolean(r.body?.at_contract_birth));
       const served = Number(r.body?.bars_served);
@@ -363,14 +370,15 @@ export default function SaPriceChart({
       const head = rawBarsRef.current[0];
       if (!head?.t) return;
       pagingRef.current = true;
-      const qs = new URLSearchParams({ tf: prefsRef.current.priceTf });
+      const qs = new URLSearchParams({ tf: nativeOhlcTf(prefsRef.current.priceTf) });
       if (contract) qs.set("contract", contract);
       qs.set("before_t", String(head.t));
       void fetchGenWait(`${apiBase}/ohlc/${source}?${qs}`)
         .then((r) => {
-          const older = Array.isArray(r.body?.bars)
+          const olderNative = Array.isArray(r.body?.bars)
             ? (r.body.bars as OhlcBar[])
             : [];
+          const older = resampleOhlc(olderNative, tfMs(prefsRef.current.priceTf));
           atBirthRef.current = Boolean(r.body?.at_contract_birth);
           setHistComplete(Boolean(r.body?.at_contract_birth));
           if (!older.length) return;
@@ -857,13 +865,15 @@ export default function SaPriceChart({
       },
       onGen: () => {
         markLive();
-        const url = `${apiBase}/ohlc/${source}?tf=${prefs.priceTf}&lookback_days=0`;
+        const url = `${apiBase}/ohlc/${source}?tf=${nativeOhlcTf(prefs.priceTf)}&lookback_days=0`;
         void fetchGenWait(url).then((r) => {
           if (Array.isArray(r.body?.bars) && seriesRef.current) {
-            const candles = colorBars(
-              toCandles(r.body.bars as OhlcBar[]),
-              prefsRef.current,
+            const resampled = resampleOhlc(
+              r.body.bars as OhlcBar[],
+              tfMs(prefsRef.current.priceTf),
             );
+            const candles = colorBars(toCandles(resampled), prefsRef.current);
+            rawBarsRef.current = resampled;
             candlesRef.current = candles;
             timesRef.current = candles.map((c) => c.time as UTCTimestamp);
             seriesRef.current.setData(candles);

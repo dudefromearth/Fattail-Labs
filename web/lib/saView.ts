@@ -29,9 +29,9 @@ export function nativeOhlcTf(tf: string): string {
 export function resampleOhlc<
   T extends {
     t: number;
-    o: number;
-    h: number;
-    l: number;
+    o: number | null;
+    h: number | null;
+    l: number | null;
     c: number;
     v?: number | null;
   },
@@ -47,8 +47,8 @@ export function resampleOhlc<
       bucket = k;
       cur = { ...b, t: k };
     } else {
-      cur.h = Math.max(cur.h, b.h);
-      cur.l = Math.min(cur.l, b.l);
+      cur.h = cur.h == null ? b.h : b.h == null ? cur.h : Math.max(cur.h, b.h);
+      cur.l = cur.l == null ? b.l : b.l == null ? cur.l : Math.min(cur.l, b.l);
       cur.c = b.c;
       if (cur.v != null || b.v != null) {
         cur.v = (cur.v || 0) + (b.v || 0);

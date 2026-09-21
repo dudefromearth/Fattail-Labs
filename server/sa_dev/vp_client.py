@@ -7,6 +7,7 @@ Mismatch → ContractMismatch (report to Coach), never coerce.
 from __future__ import annotations
 
 import os
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -136,6 +137,18 @@ def is_coverage_response(body: dict[str, Any]) -> bool:
 
 
 _POOL: dict[tuple[str, int], Any] = {}
+# http.client.HTTPConnection keeps request/response state on the socket
+# (Idle vs Request-sent) and is not safe for concurrent use. FastAPI runs
+# this in a thread pool, and the VP widget fires several concurrent hop
+# calls per interaction — without this lock, two threads racing on the
+# same pooled connection raise http.client.CannotSendRequest. One lock
+# per (host, port) serializes access to that host's connection only;
+# different hosts still proceed independently.
+_POOL_LOCKS: dict[tuple[str, int], threading.Lock] = {}
+
+
+def _pool_lock(key: tuple[str, int]) -> threading.Lock:
+    return _POOL_LOCKS.setdefault(key, threading.Lock())
 
 
 def fetch_v1(
@@ -176,7 +189,6 @@ def _http_json_full(
     if parts.query:
         path = f"{path}?{parts.query}"
     key = (host, port)
-    conn = _POOL.get(key)
     hdrs = dict(headers or {})
     hdrs.setdefault("Connection", "keep-alive")
     hdrs.setdefault("Accept", "application/json")
@@ -192,25 +204,27 @@ def _http_json_full(
     raw_b = b""
     rh: dict[str, str] = {}
     status = 0
-    for attempt in range(2):
-        try:
-            if conn is None:
-                conn = http.client.HTTPConnection(host, port, timeout=10)
-                _POOL[key] = conn
-            status, raw_b, rh = _once(conn)
-            break
-        except (http.client.RemoteDisconnected, ConnectionError, OSError) as exc:
-            last_exc = exc
+    with _pool_lock(key):
+        conn = _POOL.get(key)
+        for attempt in range(2):
             try:
-                conn.close()
-            except Exception:
-                pass
-            _POOL.pop(key, None)
-            conn = None
-            if attempt == 1:
-                raise ContractMismatch(f"HTTP connect failed: {exc}") from exc
-    else:
-        raise ContractMismatch(f"HTTP connect failed: {last_exc}")
+                if conn is None:
+                    conn = http.client.HTTPConnection(host, port, timeout=10)
+                    _POOL[key] = conn
+                status, raw_b, rh = _once(conn)
+                break
+            except (http.client.RemoteDisconnected, ConnectionError, OSError) as exc:
+                last_exc = exc
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+                _POOL.pop(key, None)
+                conn = None
+                if attempt == 1:
+                    raise ContractMismatch(f"HTTP connect failed: {exc}") from exc
+        else:
+            raise ContractMismatch(f"HTTP connect failed: {last_exc}")
     if status == 304:
         return 304, {}, rh
     raw = raw_b.decode("utf-8") if raw_b else ""

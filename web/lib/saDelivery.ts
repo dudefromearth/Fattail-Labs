@@ -118,6 +118,10 @@ async function network(
     };
   }
   if (!r.ok) {
+    // Never fail silently (VP-L18 elegant-failure doctrine) — a 4xx/5xx here
+    // used to vanish into a normally-resolved result with body:null, which
+    // is why an interval switch could look like "nothing happened."
+    console.error(`[saDelivery] ${r.status} ${url}`);
     if (hit) {
       return {
         body: hit.body,
