@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Chain Snapshot dashboard — StudioOne localhost only.
+"""StudioOne ops dashboard — one process, one port, four pages.
 
 Read-only view of the gold archive on disk. Does not call Massive.
 Does not load Labs boot Config.
@@ -7,7 +7,10 @@ Does not load Labs boot Config.
   LABS_MARKET_DATA_ROOT=/Volumes/FatTail2TB/fattail-market-data \\
     .venv/bin/python -m market_data.ssr_snapshot_dash
 
-  open http://127.0.0.1:5055
+  open http://127.0.0.1:5055        # home — summary + links
+  open http://127.0.0.1:5055/chain  # Chain Snapshot
+  open http://127.0.0.1:5055/vp     # Futures / VP
+  open http://127.0.0.1:5055/docs   # API docs (live Markdown)
 """
 
 from __future__ import annotations
@@ -15,6 +18,8 @@ from __future__ import annotations
 import gzip
 import json
 import os
+import posixpath
+import re
 import secrets
 import subprocess
 import threading
@@ -514,12 +519,134 @@ def live_status(*, archive_root: Path | None = None) -> dict[str, Any]:
     }
 
 
-PAGE = """<!DOCTYPE html>
+PAGE_HOME = """<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Chain Snapshot</title>
+<title>StudioOne ops</title>
+<style>
+  :root {
+    --bg: #0b0d10;
+    --panel: #14181e;
+    --line: #262c36;
+    --text: #e8edf4;
+    --muted: #8b95a5;
+    --ext: #f5c542;
+    --ok: #3dd68c;
+    --bad: #ff6b6b;
+    --idle: #8b95a5;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.45 ui-sans-serif, system-ui, -apple-system, sans-serif; }
+  header { padding: 20px 24px 12px; border-bottom: 1px solid var(--line); }
+  h1 { font-size: 20px; font-weight: 620; margin: 0 0 4px; letter-spacing: .02em; }
+  .sub { color: var(--muted); font-size: 12px; }
+  main { padding: 20px 24px 48px; display: grid; gap: 24px; max-width: 96ch; }
+  h2.section { font-size: 12px; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--muted); margin: 0 0 12px; }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+  .v { font-size: 20px; font-variant-numeric: tabular-nums; margin-top: 4px; }
+  .LIVE, .CURRENT, .UP, .OK { color: var(--ok); }
+  .STALE, .HELD, .HOLD, .MIGRATION { color: var(--ext); }
+  .DOWN, .GAPPED, .BAD { color: var(--bad); }
+  .NO, .UNKNOWN { color: var(--idle); }
+  .links { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+  a.linkcard { display: block; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; padding: 18px 20px; text-decoration: none; color: var(--text); }
+  a.linkcard:hover { border-color: #3a4250; }
+  a.linkcard h3 { margin: 0 0 6px; font-size: 15px; font-weight: 620; }
+  a.linkcard .sub { margin-bottom: 8px; }
+  a.linkcard .status { font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>StudioOne ops</h1>
+  <div class="sub" id="asof">as of &mdash; · read-only · no bins · no commands</div>
+</header>
+<main>
+  <section>
+    <h2 class="section">At a glance</h2>
+    <div class="row" id="tiles">
+      <div class="card"><div class="k">Phase</div><div class="v" id="t-phase">&mdash;</div></div>
+      <div class="card"><div class="k">chain_feed</div><div class="v" id="t-chain">&mdash;</div></div>
+      <div class="card"><div class="k">VP API</div><div class="v" id="t-api">&mdash;</div></div>
+      <div class="card"><div class="k">ES</div><div class="v" id="t-es">&mdash;</div></div>
+      <div class="card"><div class="k">MES</div><div class="v" id="t-mes">&mdash;</div></div>
+      <div class="card"><div class="k">SPY</div><div class="v" id="t-spy">&mdash;</div></div>
+    </div>
+  </section>
+  <section>
+    <h2 class="section">Services</h2>
+    <div class="links">
+      <a class="linkcard" href="/chain">
+        <h3>Chain Snapshot</h3>
+        <div class="sub">Capture tap health &middot; day/coverage browsing &middot; symbols table</div>
+        <div class="status" id="l-chain">&mdash;</div>
+      </a>
+      <a class="linkcard" href="/vp">
+        <h3>Futures / VP</h3>
+        <div class="sub">chain_feed &middot; collectors &middot; engine &middot; VP API &middot; backfill &middot; consumers</div>
+        <div class="status" id="l-vp">&mdash;</div>
+      </a>
+      <a class="linkcard" href="/docs">
+        <h3>API docs</h3>
+        <div class="sub">Ports, routes, auth &mdash; live from the checked-in reference doc</div>
+        <div class="status">&mdash;</div>
+      </a>
+    </div>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+function cls(s){
+  const t = String(s || "");
+  if (t.indexOf("NO ") === 0) return "NO";
+  if (t.indexOf("NOT ") === 0) return "UNKNOWN";
+  return t.split(/[^A-Z]/)[0] || "UNKNOWN";
+}
+function cell(v){ return v == null || v === "" ? "&mdash;" : v; }
+async function load(){
+  try {
+    const st = await (await fetch('/api/status')).json();
+    $('t-phase').textContent = cell(st.phase);
+  } catch (e) { /* leave dash */ }
+  try {
+    const d = await (await fetch('/api/vp-ops')).json();
+    if (d.named_state === 'UNAVAILABLE') {
+      $('asof').textContent = 'VP pane UNAVAILABLE · ' + (d.error || '');
+      return;
+    }
+    $('asof').textContent = 'as of ' + (d.as_of || '—') + ' · ' + (d.host || '') + ' · read-only · no bins · no commands';
+    const ch = d.chain_feed || {};
+    const chEl = $('t-chain'); chEl.textContent = cell(ch.state); chEl.className = 'v ' + cls(ch.state);
+    const a = d.api || {};
+    const apiEl = $('t-api'); apiEl.textContent = cell(a.state); apiEl.className = 'v ' + cls(a.state);
+    for (const [id, src] of [['t-es','ES'],['t-mes','MES'],['t-spy','SPY']]) {
+      const c = (d.collectors || {})[src] || {};
+      const el = $(id); el.textContent = cell(c.state); el.className = 'v ' + cls(c.state);
+    }
+    $('l-chain').innerHTML = 'chain_feed <span class="'+cls(ch.state)+'">'+cell(ch.state)+'</span>';
+    $('l-vp').innerHTML = 'VP API <span class="'+cls(a.state)+'">'+cell(a.state)+'</span> &middot; ES '+cell(((d.collectors||{}).ES||{}).state)+' &middot; MES '+cell(((d.collectors||{}).MES||{}).state);
+  } catch (e) { /* leave dashes */ }
+}
+load();
+setInterval(load, 5000);
+</script>
+</body>
+</html>
+"""
+
+PAGE_CHAIN = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Chain Snapshot — StudioOne</title>
 <style>
   :root {
     --bg: #0b0d10;
@@ -566,19 +693,13 @@ PAGE = """<!DOCTYPE html>
     border-radius: 8px; padding: 6px 10px; }
   .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
   .dot.on { background: var(--ok); } .dot.off { background: var(--bad); }
-  .pipe { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
-  h2.vp { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; }
-  .LIVE, .CURRENT, .UP { color: var(--ok); }
-  .STALE, .HELD, .HOLD, .MIGRATION { color: var(--ext); }
-  .DOWN, .GAPPED { color: var(--bad); }
-  .NO, .UNKNOWN { color: var(--idle); }
 </style>
 </head>
 <body>
 <header>
   <div>
     <h1>Chain Snapshot</h1>
-    <div class="sub">StudioOne live counts · Redis + COUNTS.json · VP data-end · one pane · read-only</div>
+    <div class="sub">StudioOne live counts · Redis + COUNTS.json · read-only</div>
     <div class="sub path" id="write-root">writing —</div>
   </div>
   <div class="chips">
@@ -587,7 +708,8 @@ PAGE = """<!DOCTYPE html>
     <span id="cadence" class="chip">—</span>
     <span id="wake" class="chip">—</span>
     <label class="sub">Day <select id="day"></select></label>
-    <a class="chip" href="/vp" style="text-decoration:none">VP + Futures →</a>
+    <a class="chip" href="/" style="text-decoration:none">&larr; Home</a>
+    <a class="chip" href="/vp" style="text-decoration:none">Futures / VP →</a>
     <a class="chip" href="/docs" style="text-decoration:none">API docs →</a>
   </div>
 </header>
@@ -605,42 +727,6 @@ PAGE = """<!DOCTYPE html>
       </thead>
       <tbody id="syms"></tbody>
     </table>
-  </section>
-  <section class="card" data-panel="vp-ops">
-    <h2 class="vp">VP data-end (ops · no bins · never commands)</h2>
-    <div class="sub" id="vp-asof">as of —</div>
-    <div class="pipe" style="margin-top:12px">
-      <div>
-        <h2 class="vp">1 · chain_feed (CP-1)</h2>
-        <div id="vp-chain">—</div>
-      </div>
-      <div>
-        <h2 class="vp">2 · collectors</h2>
-        <table><thead><tr><th>src</th><th>state</th><th>pid</th><th>age s</th><th>gaps</th></tr></thead>
-        <tbody id="vp-collectors"></tbody></table>
-      </div>
-      <div>
-        <h2 class="vp">3 · engine</h2>
-        <table><thead><tr><th>src</th><th>state</th><th>binned</th><th>floor</th><th>ceil</th></tr></thead>
-        <tbody id="vp-engine"></tbody></table>
-      </div>
-      <div>
-        <h2 class="vp">4 · API</h2>
-        <div id="vp-api">—</div>
-      </div>
-      <div>
-        <h2 class="vp">5 · backfill</h2>
-        <div id="vp-backfill">—</div>
-      </div>
-      <div>
-        <h2 class="vp">6 · consumers</h2>
-        <div id="vp-consumers">—</div>
-      </div>
-      <div>
-        <h2 class="vp">7 · last autorun</h2>
-        <div id="vp-autorun">—</div>
-      </div>
-    </div>
   </section>
 </main>
 <script>
@@ -738,56 +824,6 @@ async function load(){
     dayDoc = await (await fetch('/api/day?day=' + encodeURIComponent(day))).json();
   } catch (e) { /* keep counts */ }
   paint(st, dayDoc);
-  loadVp();
-}
-function vpCls(s){
-  const t = String(s || "");
-  if (t.indexOf("NO ") === 0) return "NO";
-  if (t.indexOf("NOT ") === 0) return "UNKNOWN";
-  return t.split(/[^A-Z]/)[0] || "UNKNOWN";
-}
-function vpCell(v){ return v == null || v === "" ? "—" : v; }
-async function loadVp(){
-  const el = $('vp-asof');
-  if (!el) return;
-  try {
-    const d = await (await fetch('/api/vp-ops')).json();
-    if (d.named_state === 'UNAVAILABLE') {
-      el.textContent = 'VP pane UNAVAILABLE · ' + (d.error || '');
-      return;
-    }
-    el.textContent = 'as of ' + (d.as_of || '—') + ' · ' + (d.store || '');
-    const ch = d.chain_feed || {};
-    $('vp-chain').innerHTML = '<span class="'+vpCls(ch.state)+'">'+vpCell(ch.state)+'</span> · pid '+vpCell(ch.pid)+' · freshness '+vpCell(ch.freshness_s)+'s<div class="sub">'+vpCell(ch.last_snapshot)+'</div>';
-    const tb = $('vp-collectors'); tb.innerHTML = '';
-    for (const src of ['SPY','ES','MES']) {
-      const c = (d.collectors || {})[src] || {};
-      const tr = document.createElement('tr');
-      tr.innerHTML = '<td>'+src+'</td><td class="'+vpCls(c.state)+'">'+vpCell(c.state)+'</td><td>'+vpCell(c.pid)+'</td><td>'+vpCell(c.last_print_age_s)+'</td><td>'+vpCell(c.gaps_today)+'</td>';
-      tb.appendChild(tr);
-    }
-    const eb = $('vp-engine'); eb.innerHTML = '';
-    for (const src of ['SPY','ES','MES']) {
-      const e = (d.engine || {})[src] || {};
-      const tr = document.createElement('tr');
-      tr.innerHTML = '<td>'+src+'</td><td class="'+vpCls(e.state)+'">'+vpCell(e.state)+'</td><td>'+vpCell(e.sessions_binned)+'</td><td>'+vpCell(e.floor)+'</td><td>'+vpCell(e.ceiling)+'</td>';
-      eb.appendChild(tr);
-    }
-    const a = d.api || {};
-    const cov = a.coverage || {};
-    $('vp-api').innerHTML = '<span class="'+vpCls(a.state)+'">'+vpCell(a.state)+'</span> · '+vpCell(a.contract)+'<div class="sub">'+vpCell(a.base)+' · ES '+vpCell((cov.ES||{}).floor_session)+'…'+vpCell((cov.ES||{}).ceiling_session)+'</div>';
-    const b = d.backfill || {};
-    $('vp-backfill').innerHTML = '<span class="'+vpCls(b.state)+'">'+vpCell(b.state)+'</span> · '+vpCell(b.tranche)+'<div class="sub">integrity '+vpCell(b.integrity)+'</div>';
-    const cons = d.consumers || {};
-    const m = cons.minitwo_labs || {};
-    const s = cons.studiotwo_dev || {};
-    $('vp-consumers').innerHTML = 'MiniTwo → S1 API: <span class="'+vpCls(m.state)+'">'+vpCell(m.state)+'</span><div class="sub">'+vpCell(m.last_success)+'</div>StudioTwo DEV: <span class="'+vpCls(s.state)+'">'+vpCell(s.state)+'</span>';
-    const au = d.autorun || {};
-    const tn = d.tonight || {};
-    $('vp-autorun').innerHTML = '<span class="'+vpCls(au.state)+'">'+vpCell(au.state)+'</span> · '+vpCell(au.last)+'<div class="sub">queue '+vpCell((tn.queue||[]).join(", "))+' · next '+vpCell(tn.next)+'</div>';
-  } catch (e) {
-    el.textContent = 'VP pane UNAVAILABLE';
-  }
 }
 $('day').addEventListener('change', (e) => { selected = e.target.value; load(); });
 load();
@@ -797,10 +833,9 @@ setInterval(load, 2000);
 </html>
 """
 
-# Same tokens/panel markup as the vp-ops section of PAGE (data-panel="vp-ops")
-# so the two never drift into two different renderings of one API. Additive
-# only — PAGE's inline panel is untouched; this is a second door to the same
-# room, not a second dashboard (OPS-DASH.md: one API, one process, port 5055).
+# The full-page rendering of GET /api/vp-ops — one API, one dedicated page.
+# Not a second dashboard (OPS-DASH.md): same port, same process as
+# PAGE_CHAIN and PAGE_HOME below.
 PAGE_VP = """<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -851,7 +886,8 @@ PAGE_VP = """<!DOCTYPE html>
     <div class="sub">StudioOne · GET /api/vp-ops · read-only · no bins · never commands</div>
   </div>
   <nav>
-    <a class="back" href="/">&larr; Chain Snapshot</a>
+    <a class="back" href="/">&larr; Home</a>
+    <a class="back" href="/chain">Chain Snapshot</a>
     <a class="back" href="/docs">API docs</a>
   </nav>
 </header>
@@ -950,8 +986,21 @@ setInterval(loadVp, 2000);
 """
 
 
-_DOCS_PATH = (
-    Path(__file__).resolve().parents[2] / "docs" / "ops" / "StudioOne-Services-API-Reference.md"
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_DOCS_DEFAULT_REL = "docs/ops/StudioOne-Services-API-Reference.md"
+# Every doc reachable at /docs/<path>. Deliberately an allowlist, not "any
+# .md under the repo" — this box is LAN-reachable and a path-traversal-style
+# open file read is not a risk worth taking for an ops convenience page.
+# Add a path here when a doc's cross-references need it to resolve.
+_ALLOWED_DOCS = frozenset(
+    {
+        _DOCS_DEFAULT_REL,
+        "Architecture/37-visible-range-volume-profile-api.md",
+        "Architecture/36-studioone-data-plane.md",
+        "Architecture/35-options-lab-volume-profile.md",
+        "docs/ops/StudioOne-SSH-Reachability.md",
+        "docs/ops/StudioOne-SSR-Live-Capture.md",
+    }
 )
 
 _DOCS_SHELL = """<!DOCTYPE html>
@@ -959,7 +1008,7 @@ _DOCS_SHELL = """<!DOCTYPE html>
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>API docs</title>
+<title>{title} — StudioOne</title>
 <style>
   :root {{
     --bg: #0b0d10;
@@ -1011,12 +1060,14 @@ _DOCS_SHELL = """<!DOCTYPE html>
 <body>
 <header>
   <div>
-    <h1>API docs</h1>
+    <h1>{title}</h1>
     <div class="sub">{source_note}</div>
   </div>
   <nav>
-    <a href="/">&larr; Chain Snapshot</a>
-    <a href="/vp">VP + Futures</a>
+    <a href="/">&larr; Home</a>
+    <a href="/chain">Chain Snapshot</a>
+    <a href="/vp">Futures / VP</a>
+    <a href="/docs">API docs index</a>
   </nav>
 </header>
 <main>
@@ -1026,27 +1077,75 @@ _DOCS_SHELL = """<!DOCTYPE html>
 </html>
 """
 
+_HREF_RE = re.compile(r'href="([^"]+)"')
 
-def _docs_page() -> str:
-    """Live read of the checked-in reference doc, rendered as real Markdown —
-    one source of truth, no copy to drift, and tables/code blocks/headers
-    format instead of showing up as raw pipe-and-hash text."""
+
+def _rewrite_doc_links(html: str, source_rel: str) -> str:
+    """A relative link from one allowlisted doc to another becomes an
+    in-dashboard /docs/<path> link, so clicking a cross-reference lands on
+    the actual rendered doc instead of a dead relative file path. Anything
+    else (external URLs, #anchors, mailto:, already-absolute links) is
+    left untouched."""
+    source_dir = posixpath.dirname(source_rel)
+
+    def repl(match):
+        href = match.group(1)
+        if href.startswith(("#", "/", "mailto:")) or "://" in href:
+            return match.group(0)
+        resolved = posixpath.normpath(posixpath.join(source_dir, href))
+        if resolved in _ALLOWED_DOCS:
+            return f'href="/docs/{resolved}"'
+        return match.group(0)
+
+    return _HREF_RE.sub(repl, html)
+
+
+def _extract_title(raw: str, fallback: str) -> tuple[str, str]:
+    """Pull the doc's leading `# Title` into the page header and drop it from
+    the body — otherwise it renders twice (once as {title}, once as the
+    body's own first <h1>). Only strips when it's truly the first line;
+    a stray '# ' further down (inside a fence, say) is left alone."""
+    lines = raw.splitlines()
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("# "):
+            return stripped[2:].strip(), "\n".join(lines[:i] + lines[i + 1 :])
+        break
+    return fallback, raw
+
+
+def _docs_page(rel_path: str = _DOCS_DEFAULT_REL) -> str:
+    """Live read of an allowlisted repo doc, rendered as real Markdown —
+    one source of truth, no copy to drift, tables/code blocks/headers
+    format instead of showing up as raw pipe-and-hash text, and
+    cross-references between allowlisted docs resolve inside the
+    dashboard instead of pointing at dead relative file paths."""
     import markdown
 
-    try:
-        raw = _DOCS_PATH.read_text(encoding="utf-8")
-        body = markdown.markdown(
-            raw, extensions=["tables", "fenced_code", "sane_lists"]
+    if rel_path not in _ALLOWED_DOCS:
+        return _DOCS_SHELL.format(
+            title="API docs",
+            source_note="NOT ALLOWLISTED — showing a named failure, not a blank page",
+            body=f"<p>Not a recognized doc path: <code>{rel_path}</code>.</p>"
+            f"<p>Allowlisted: {', '.join(f'<code>{p}</code>' for p in sorted(_ALLOWED_DOCS))}</p>",
         )
-        note = f"live from {_DOCS_PATH.name} · re-reads on every request"
+    doc_path = _REPO_ROOT / rel_path
+    try:
+        raw = doc_path.read_text(encoding="utf-8")
+        title, body_raw = _extract_title(raw, doc_path.stem)
+        html = markdown.markdown(body_raw, extensions=["tables", "fenced_code", "sane_lists"])
+        body = _rewrite_doc_links(html, rel_path)
+        note = f"live from {rel_path} · re-reads on every request"
     except OSError as exc:
         body = (
-            f"<p>Reference doc not found at <code>{_DOCS_PATH}</code>.</p>"
+            f"<p>Doc not found at <code>{doc_path}</code>.</p>"
             f"<p>({exc})</p>"
-            "<p>See <code>docs/ops/StudioOne-Services-API-Reference.md</code> in the repo.</p>"
         )
         note = "NOT FOUND — showing a named failure, not a blank page"
-    return _DOCS_SHELL.format(source_note=note, body=body)
+        title = "API docs"
+    return _DOCS_SHELL.format(title=title, source_note=note, body=body)
 
 
 class QuietHTTPServer(ThreadingHTTPServer):
@@ -1197,13 +1296,20 @@ class Handler(BaseHTTPRequestHandler):
                         _ARCHIVE_GATE.release()
                 return
             if path in ("/", "/index.html"):
-                self._send(200, PAGE.encode("utf-8"), "text/html; charset=utf-8")
+                self._send(200, PAGE_HOME.encode("utf-8"), "text/html; charset=utf-8")
+                return
+            if path in ("/chain", "/chain.html"):
+                self._send(200, PAGE_CHAIN.encode("utf-8"), "text/html; charset=utf-8")
                 return
             if path in ("/vp", "/vp.html"):
                 self._send(200, PAGE_VP.encode("utf-8"), "text/html; charset=utf-8")
                 return
             if path in ("/docs", "/docs.html"):
                 self._send(200, _docs_page().encode("utf-8"), "text/html; charset=utf-8")
+                return
+            if path.startswith("/docs/"):
+                rel = path[len("/docs/") :]
+                self._send(200, _docs_page(rel).encode("utf-8"), "text/html; charset=utf-8")
                 return
             if path == "/api/status":
                 self._json(200, live_status())

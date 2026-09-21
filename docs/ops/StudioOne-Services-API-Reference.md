@@ -13,25 +13,33 @@ This is the StudioOne-side mirror of [`Architecture/37-visible-range-volume-prof
 
 | Service | Port | launchd job | Auth | What it's for |
 |---|---|---|---|---|
-| **Chain snapshot dashboard** | **5055** | `ai.fattail.labs.ssr-snapshot-dash` | Mixed — see §1 | Human ops view of the capture tap (chain snapshot health, day/coverage browsing) **plus** a bolted-on VP/futures collector-status panel |
+| **StudioOne ops dashboard** | **5055** | `ai.fattail.labs.ssr-snapshot-dash` | Mixed — see §1 | Four pages, one process: `/` home (summary + links), `/chain` (capture tap health, day/coverage browsing), `/vp` (VP/futures ops panel), `/docs` (this reference, rendered live) |
 | **VP Profile API** | **4010** | `ai.fattail.labs.vp-api` | Computing session cookie, role ≥ administrator | Volume-profile histogram bins (Visible Range window, full range, session/developing), computing-side futures OHLC, SSE stream |
 | **Symbology Registry** | **4011** | `ai.fattail.labs.symbology` | Computing session cookie, role ≥ administrator | Contract spec registry: universe, resolve/roll, per-symbol spec, telemetry |
 | **Futures History** | **4012** | `ai.fattail.labs.history` | Computing session cookie, role ≥ administrator | Futures OHLC candles + contract listing (Massive-first). **This is what backs the member chart's candles** — REQ-006/007. |
 | `chain_feed` / `sym_feed` / `vp-futures` / `vp-engine` / `vp-watchdog` / `ssr-live-capture` | — (no HTTP) | `ai.fattail.labs.*` | n/a | Background writers only (Massive → Redis / on-disk store). Never call these directly — they publish, they don't serve. |
 
-**"Is there a dashboard for futures/VP?"** Not a dedicated one. The :5055 dashboard's `vp-ops` panel (§1.3) shows collector liveness for ES/MES/SPY plus `chain_feed` state — that's the closest thing today. An unfinished, **uncommitted, unwired** draft exists at `server/market_data/ops_dash/page.py` ("GBI ops · VP + chain (interim)") — it renders nothing because no route imports it. If a real VP/futures ops dashboard is wanted, that file is the starting sketch, not a green field. Actual VP histogram data is visible today only through the member-facing Options Lab chart (Arch 35) or by calling the VP Profile API directly (§2).
+**"Is there a dashboard for futures/VP?"** Yes — `http://studioone.local:5055/vp`, a dedicated page for the same `/api/vp-ops` panel (§1.3): collector liveness for ES/MES/SPY, chain_feed, engine, VP API, backfill, consumers, last autorun. It's a status view (named states, no bins), not a histogram/chart viewer — actual VP histogram data is visible only through the member-facing Options Lab chart (Arch 35) or by calling the VP Profile API directly (§2). The old unwired draft at `server/market_data/ops_dash/page.py` ("GBI ops · VP + chain (interim)") is superseded by this page and can be deleted whenever someone's next in that file.
 
 ---
 
-## 1. Chain snapshot dashboard — `:5055`
+## 1. StudioOne ops dashboard — `:5055`
 
-`server/market_data/ssr_snapshot_dash.py` — a raw `http.server` handler (not FastAPI), bound `0.0.0.0` on purpose so `http://studioone.local:5055` works from the LAN/Tailscale. Port comes from `LABS_SSR_DASH_PORT` (default `5055`); host from `LABS_SSR_DASH_HOST` (default `0.0.0.0`, restricted to `{0.0.0.0, 127.0.0.1, localhost, ::}`).
+`server/market_data/ssr_snapshot_dash.py` — a raw `http.server` handler (not FastAPI), bound `0.0.0.0` on purpose so `http://studioone.local:5055` works from the LAN/Tailscale. Port comes from `LABS_SSR_DASH_PORT` (default `5055`); host from `LABS_SSR_DASH_HOST` (default `0.0.0.0`, restricted to `{0.0.0.0, 127.0.0.1, localhost, ::}`). One process serves four HTML pages plus the JSON API below — not four dashboards (OPS-DASH.md's "no second dashboard" rule is about ports/processes, not pages).
 
-### 1.1 Open routes (no auth)
+### 1.0 Pages
+
+| Path | Page | Notes |
+|---|---|---|
+| `GET /`, `/index.html` | **Home** | Summary tiles (phase, chain_feed, VP API, ES/MES/SPY state) pulled from `/api/status` + `/api/vp-ops`, plus link cards to the three pages below |
+| `GET /chain`, `/chain.html` | **Chain Snapshot** | Capture tap health, day/coverage browsing, symbols table — the original dashboard content, moved off `/` |
+| `GET /vp`, `/vp.html` | **Futures / VP** | Full-page render of `/api/vp-ops` (§1.3) |
+| `GET /docs`, `/docs.html` | **API docs** | This file, re-read from disk and run through `python-Markdown` (`tables`, `fenced_code`, `sane_lists`) on every request — edit the `.md`, refresh the page, no redeploy |
+
+### 1.1 Open JSON routes (no auth)
 
 | Path | Returns |
 |---|---|
-| `GET /` , `/index.html` | The dashboard HTML page |
 | `GET /api/status` | `live_status()` — phase (weekend/RTH/etc.), data root, per-day process map |
 | `GET /api/vp-ops` | See §1.3 |
 | `GET /api/procs` | Process bits (`process_bits()`) |
@@ -56,7 +64,7 @@ Require header `Authorization: Bearer <LABS_SSR_ARCHIVE_TOKEN>` (env var, ≥32 
 
 **Named holes stay holes** (FTI/SSR law) — these endpoints report gaps explicitly (`hole`, `n_gaps`, `first_gap`), never interpolate.
 
-### 1.3 The `vp-ops` panel (closest thing to a VP/futures dashboard)
+### 1.3 The `vp-ops` panel (the `/vp` page's data source)
 
 `GET /api/vp-ops` → `market_data.ops_dash.snapshot.build_snapshot()` (falls back to a `named_state: UNAVAILABLE` JSON blob on any exception — never a 500). Live sample shape:
 
@@ -74,7 +82,7 @@ Require header `Authorization: Bearer <LABS_SSR_ARCHIVE_TOKEN>` (env var, ≥32 
 }
 ```
 
-This is rendered in the dashboard HTML itself (`data-panel="vp-ops"`, fetched client-side) — it's a real panel on the page, just easy to miss among the chain-snapshot chrome. It's read-only status (collector liveness), **not** a histogram/chart viewer.
+Rendered full-page at `/vp` (client-side fetch, `data-panel="vp-ops"`) and no longer duplicated on `/chain` — one panel, one page, one API. Read-only status (collector liveness), **not** a histogram/chart viewer.
 
 ---
 
