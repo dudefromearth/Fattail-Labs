@@ -587,6 +587,8 @@ PAGE = """<!DOCTYPE html>
     <span id="cadence" class="chip">—</span>
     <span id="wake" class="chip">—</span>
     <label class="sub">Day <select id="day"></select></label>
+    <a class="chip" href="/vp" style="text-decoration:none">VP + Futures →</a>
+    <a class="chip" href="/docs" style="text-decoration:none">API docs →</a>
   </div>
 </header>
 <main>
@@ -795,6 +797,257 @@ setInterval(load, 2000);
 </html>
 """
 
+# Same tokens/panel markup as the vp-ops section of PAGE (data-panel="vp-ops")
+# so the two never drift into two different renderings of one API. Additive
+# only — PAGE's inline panel is untouched; this is a second door to the same
+# room, not a second dashboard (OPS-DASH.md: one API, one process, port 5055).
+PAGE_VP = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>VP + Futures</title>
+<style>
+  :root {
+    --bg: #0b0d10;
+    --panel: #14181e;
+    --line: #262c36;
+    --text: #e8edf4;
+    --muted: #8b95a5;
+    --ext: #f5c542;
+    --ok: #3dd68c;
+    --bad: #ff6b6b;
+    --idle: #8b95a5;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.45 ui-sans-serif, system-ui, -apple-system, sans-serif; }
+  header { padding: 20px 24px 12px; border-bottom: 1px solid var(--line);
+    display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; align-items: baseline; }
+  h1 { font-size: 18px; font-weight: 620; margin: 0 0 4px; letter-spacing: .02em; }
+  .sub { color: var(--muted); font-size: 12px; }
+  nav { display: flex; gap: 8px; }
+  a.back { color: var(--muted); font-size: 12px; text-decoration: none; border: 1px solid var(--line);
+    border-radius: 999px; padding: 4px 10px; background: var(--panel); }
+  a.back:hover { color: var(--text); }
+  main { padding: 16px 24px 40px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line);
+    font-variant-numeric: tabular-nums; }
+  th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+  .pipe { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 14px; }
+  h2.vp { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; }
+  .LIVE, .CURRENT, .UP { color: var(--ok); }
+  .STALE, .HELD, .HOLD, .MIGRATION { color: var(--ext); }
+  .DOWN, .GAPPED { color: var(--bad); }
+  .NO, .UNKNOWN { color: var(--idle); }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>VP + Futures</h1>
+    <div class="sub">StudioOne · GET /api/vp-ops · read-only · no bins · never commands</div>
+  </div>
+  <nav>
+    <a class="back" href="/">&larr; Chain Snapshot</a>
+    <a class="back" href="/docs">API docs</a>
+  </nav>
+</header>
+<main>
+  <section class="card" data-panel="vp-ops">
+    <div class="sub" id="vp-asof">as of &mdash;</div>
+    <div class="pipe">
+      <div>
+        <h2 class="vp">1 &middot; chain_feed (CP-1)</h2>
+        <div id="vp-chain">&mdash;</div>
+      </div>
+      <div>
+        <h2 class="vp">2 &middot; collectors</h2>
+        <table><thead><tr><th>src</th><th>state</th><th>pid</th><th>age s</th><th>gaps</th></tr></thead>
+        <tbody id="vp-collectors"></tbody></table>
+      </div>
+      <div>
+        <h2 class="vp">3 &middot; engine</h2>
+        <table><thead><tr><th>src</th><th>state</th><th>binned</th><th>floor</th><th>ceil</th></tr></thead>
+        <tbody id="vp-engine"></tbody></table>
+      </div>
+      <div>
+        <h2 class="vp">4 &middot; API</h2>
+        <div id="vp-api">&mdash;</div>
+      </div>
+      <div>
+        <h2 class="vp">5 &middot; backfill</h2>
+        <div id="vp-backfill">&mdash;</div>
+      </div>
+      <div>
+        <h2 class="vp">6 &middot; consumers</h2>
+        <div id="vp-consumers">&mdash;</div>
+      </div>
+      <div>
+        <h2 class="vp">7 &middot; last autorun</h2>
+        <div id="vp-autorun">&mdash;</div>
+      </div>
+    </div>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+function vpCls(s){
+  const t = String(s || "");
+  if (t.indexOf("NO ") === 0) return "NO";
+  if (t.indexOf("NOT ") === 0) return "UNKNOWN";
+  return t.split(/[^A-Z]/)[0] || "UNKNOWN";
+}
+function vpCell(v){ return v == null || v === "" ? "&mdash;" : v; }
+async function loadVp(){
+  const el = $('vp-asof');
+  try {
+    const d = await (await fetch('/api/vp-ops')).json();
+    if (d.named_state === 'UNAVAILABLE') {
+      el.textContent = 'VP pane UNAVAILABLE · ' + (d.error || '');
+      return;
+    }
+    el.textContent = 'as of ' + (d.as_of || '—') + ' · ' + (d.store || '');
+    const ch = d.chain_feed || {};
+    $('vp-chain').innerHTML = '<span class="'+vpCls(ch.state)+'">'+vpCell(ch.state)+'</span> · pid '+vpCell(ch.pid)+' · freshness '+vpCell(ch.freshness_s)+'s<div class="sub">'+vpCell(ch.last_snapshot)+'</div>';
+    const tb = $('vp-collectors'); tb.innerHTML = '';
+    for (const src of ['SPY','ES','MES']) {
+      const c = (d.collectors || {})[src] || {};
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td>'+src+'</td><td class="'+vpCls(c.state)+'">'+vpCell(c.state)+'</td><td>'+vpCell(c.pid)+'</td><td>'+vpCell(c.last_print_age_s)+'</td><td>'+vpCell(c.gaps_today)+'</td>';
+      tb.appendChild(tr);
+    }
+    const eb = $('vp-engine'); eb.innerHTML = '';
+    for (const src of ['SPY','ES','MES']) {
+      const e = (d.engine || {})[src] || {};
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td>'+src+'</td><td class="'+vpCls(e.state)+'">'+vpCell(e.state)+'</td><td>'+vpCell(e.sessions_binned)+'</td><td>'+vpCell(e.floor)+'</td><td>'+vpCell(e.ceiling)+'</td>';
+      eb.appendChild(tr);
+    }
+    const a = d.api || {};
+    const cov = a.coverage || {};
+    $('vp-api').innerHTML = '<span class="'+vpCls(a.state)+'">'+vpCell(a.state)+'</span> · '+vpCell(a.contract)+'<div class="sub">'+vpCell(a.base)+' · ES '+vpCell((cov.ES||{}).floor_session)+'…'+vpCell((cov.ES||{}).ceiling_session)+'</div>';
+    const b = d.backfill || {};
+    $('vp-backfill').innerHTML = '<span class="'+vpCls(b.state)+'">'+vpCell(b.state)+'</span> · '+vpCell(b.tranche)+'<div class="sub">integrity '+vpCell(b.integrity)+'</div>';
+    const cons = d.consumers || {};
+    const m = cons.minitwo_labs || {};
+    const s = cons.studiotwo_dev || {};
+    $('vp-consumers').innerHTML = 'MiniTwo → S1 API: <span class="'+vpCls(m.state)+'">'+vpCell(m.state)+'</span><div class="sub">'+vpCell(m.last_success)+'</div>StudioTwo DEV: <span class="'+vpCls(s.state)+'">'+vpCell(s.state)+'</span>';
+    const au = d.autorun || {};
+    const tn = d.tonight || {};
+    $('vp-autorun').innerHTML = '<span class="'+vpCls(au.state)+'">'+vpCell(au.state)+'</span> · '+vpCell(au.last)+'<div class="sub">queue '+vpCell((tn.queue||[]).join(", "))+' · next '+vpCell(tn.next)+'</div>';
+  } catch (e) {
+    el.textContent = 'VP pane UNAVAILABLE';
+  }
+}
+loadVp();
+setInterval(loadVp, 2000);
+</script>
+</body>
+</html>
+"""
+
+
+_DOCS_PATH = (
+    Path(__file__).resolve().parents[2] / "docs" / "ops" / "StudioOne-Services-API-Reference.md"
+)
+
+_DOCS_SHELL = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>API docs</title>
+<style>
+  :root {{
+    --bg: #0b0d10;
+    --panel: #14181e;
+    --line: #262c36;
+    --text: #e8edf4;
+    --muted: #8b95a5;
+  }}
+  * {{ box-sizing: border-box; }}
+  html, body {{ margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.45 ui-sans-serif, system-ui, -apple-system, sans-serif; }}
+  header {{ padding: 20px 24px 12px; border-bottom: 1px solid var(--line);
+    display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; align-items: baseline; }}
+  h1 {{ font-size: 18px; font-weight: 620; margin: 0 0 4px; letter-spacing: .02em; }}
+  .sub {{ color: var(--muted); font-size: 12px; }}
+  nav a {{ color: var(--muted); font-size: 12px; text-decoration: none; border: 1px solid var(--line);
+    border-radius: 999px; padding: 4px 10px; background: var(--panel); margin-left: 8px; }}
+  nav a:hover {{ color: var(--text); }}
+  main {{ padding: 16px 24px 48px; max-width: 96ch; }}
+  .md {{ background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 24px 28px; }}
+  .md h1, .md h2, .md h3, .md h4 {{ font-weight: 620; letter-spacing: .01em;
+    margin: 1.6em 0 .6em; }}
+  .md h1 {{ font-size: 20px; padding-bottom: .3em; border-bottom: 1px solid var(--line); }}
+  .md h2 {{ font-size: 16px; padding-bottom: .3em; border-bottom: 1px solid var(--line); }}
+  .md h3 {{ font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }}
+  .md h1:first-child, .md h2:first-child {{ margin-top: 0; }}
+  .md p, .md ul, .md ol {{ margin: 0 0 1em; }}
+  .md li {{ margin: .25em 0; }}
+  .md a {{ color: #6ea8fe; }}
+  .md hr {{ border: none; border-top: 1px solid var(--line); margin: 1.8em 0; }}
+  .md code {{ font: 12.5px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 4px;
+    padding: .1em .35em; }}
+  .md pre {{ background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+    padding: 14px 16px; overflow-x: auto; }}
+  .md pre code {{ background: none; border: none; padding: 0; }}
+  .md table {{ width: 100%; border-collapse: collapse; margin: 0 0 1.2em;
+    display: block; overflow-x: auto; }}
+  .md th, .md td {{ text-align: left; padding: 7px 12px; border-bottom: 1px solid var(--line);
+    vertical-align: top; }}
+  .md th {{ color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
+    white-space: nowrap; }}
+  .md td {{ font-size: 13px; }}
+  .md blockquote {{ margin: 0 0 1em; padding: .2em 1em; border-left: 3px solid var(--line);
+    color: var(--muted); }}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>API docs</h1>
+    <div class="sub">{source_note}</div>
+  </div>
+  <nav>
+    <a href="/">&larr; Chain Snapshot</a>
+    <a href="/vp">VP + Futures</a>
+  </nav>
+</header>
+<main>
+<div class="md">{body}</div>
+</main>
+</body>
+</html>
+"""
+
+
+def _docs_page() -> str:
+    """Live read of the checked-in reference doc, rendered as real Markdown —
+    one source of truth, no copy to drift, and tables/code blocks/headers
+    format instead of showing up as raw pipe-and-hash text."""
+    import markdown
+
+    try:
+        raw = _DOCS_PATH.read_text(encoding="utf-8")
+        body = markdown.markdown(
+            raw, extensions=["tables", "fenced_code", "sane_lists"]
+        )
+        note = f"live from {_DOCS_PATH.name} · re-reads on every request"
+    except OSError as exc:
+        body = (
+            f"<p>Reference doc not found at <code>{_DOCS_PATH}</code>.</p>"
+            f"<p>({exc})</p>"
+            "<p>See <code>docs/ops/StudioOne-Services-API-Reference.md</code> in the repo.</p>"
+        )
+        note = "NOT FOUND — showing a named failure, not a blank page"
+    return _DOCS_SHELL.format(source_note=note, body=body)
+
 
 class QuietHTTPServer(ThreadingHTTPServer):
     allow_reuse_address = True
@@ -945,6 +1198,12 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if path in ("/", "/index.html"):
                 self._send(200, PAGE.encode("utf-8"), "text/html; charset=utf-8")
+                return
+            if path in ("/vp", "/vp.html"):
+                self._send(200, PAGE_VP.encode("utf-8"), "text/html; charset=utf-8")
+                return
+            if path in ("/docs", "/docs.html"):
+                self._send(200, _docs_page().encode("utf-8"), "text/html; charset=utf-8")
                 return
             if path == "/api/status":
                 self._json(200, live_status())
