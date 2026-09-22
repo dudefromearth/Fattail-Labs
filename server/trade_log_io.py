@@ -216,6 +216,8 @@ _HEADER_MAP = {
     "time": "exec_at",
     "datetime": "exec_at",
     "filltime": "exec_at",
+    "tradedate": "exec_at",
+    "transactiondate": "exec_at",
     "spread": "strategy",
     "strategy": "strategy",
     "side": "side",
@@ -227,6 +229,8 @@ _HEADER_MAP = {
     "symbol": "symbol",
     "underlier": "underlier",
     "underlying": "underlier",
+    "underlyingsymbol": "underlier",
+    "rootsymbol": "underlier",
     "exp": "expiry",
     "expiry": "expiry",
     "expiration": "expiry",
@@ -235,9 +239,12 @@ _HEADER_MAP = {
     "expire": "expiry",
     "expiredate": "expiry",
     "strike": "strike",
+    "strikeprice": "strike",
     "type": "right",
     "callput": "right",
     "putcall": "right",
+    "callorput": "right",
+    "putorcall": "right",
     "price": "fill_price",
     "fillprice": "fill_price",
     "avgprice": "fill_price",
@@ -260,6 +267,9 @@ _HEADER_MAP = {
     "pnl": "pnl_amount",
     "pnlamount": "pnl_amount",
     "assetclass": "asset_class",
+    "instrumenttype": "asset_class",
+    "action": "action",
+    "subtype": "action",
 }
 
 
@@ -330,7 +340,16 @@ def _strategy_code(raw: str) -> str:
 
 
 def _leg_from_mapped(m: dict[str, str], index: int) -> dict:
-    side = (m.get("side") or "BUY").upper()
+    # A broker "Action" / "Sub Type" column carries direction + open/close in one
+    # token (Tastytrade "BUY_TO_OPEN" / "Sell to Close"). Use it only to fill a
+    # side / pos_effect the explicit columns didn't already give us.
+    action = (m.get("action") or "").upper().replace(" ", "_")
+    side = (m.get("side") or "").upper()
+    if side not in ("BUY", "SELL") and action:
+        if "BUY" in action or "BOT" in action:
+            side = "BUY"
+        elif "SELL" in action or "SLD" in action or "SOLD" in action:
+            side = "SELL"
     if side not in ("BUY", "SELL"):
         side = "BUY"
     qty_raw = (m.get("quantity") or "1").replace("+", "").strip()
@@ -339,6 +358,11 @@ def _leg_from_mapped(m: dict[str, str], index: int) -> dict:
     except ValueError:
         qty = 1
     pe = (m.get("pos_effect") or "").upper().replace(" ", "_")
+    if not pe and action:
+        if "OPEN" in action:
+            pe = "TO_OPEN"
+        elif "CLOSE" in action:
+            pe = "TO_CLOSE"
     if _is_expire_pos_effect(pe):
         pe = "TO_CLOSE"
     elif pe in ("OPEN",):
@@ -350,28 +374,53 @@ def _leg_from_mapped(m: dict[str, str], index: int) -> dict:
     right = (m.get("right") or "").upper() or None
     if right and right not in ("PUT", "CALL"):
         right = None
-    underlier = m.get("underlier") or m.get("symbol") or "SPX"
-    # OCC-style symbol often is underlier for index options in ToS export
-    if underlier and len(underlier) > 8 and not m.get("underlier"):
-        underlier = underlier[:6]
+    strike = _dec(m.get("strike"))
+    expiry = _parse_expiry(m.get("expiry") or "")
+    underlier = m.get("underlier") or None
+    # Self-heal from an OCC option symbol (e.g. "SPXW  260811C07700000") whenever
+    # the export omitted an explicit strike / right / underlier / expiry column, or
+    # gave an unusable one. Only fills gaps — never overrides a good explicit value.
+    occ = None
+    if strike is None or right is None or not underlier or not expiry:
+        occ = _occ_parse(m.get("symbol") or "")
+    if occ:
+        if strike is None:
+            strike = _dec(occ["strike"])
+        if right is None:
+            right = occ["right"]
+        if not underlier:
+            underlier = occ["underlier"]
+        if not expiry:
+            expiry = occ["expiry"]
+    if not underlier:
+        underlier = m.get("symbol") or "SPX"
+        # A bare OCC symbol as the only identifier: trim to the (space-padded) root.
+        if len(underlier) > 8:
+            underlier = underlier[:6].strip()
+    if not expiry:
+        # ToS futures options: `/ESU25 1/50 4 AUG 25 (Monday) (Wk2)`
+        expiry = _parse_expiry(m.get("symbol") or "")
     ac = (m.get("asset_class") or "equity_option").strip().lower()
     # Normalize aliases seen in broker books / older exports
     ac_aliases = {
         "futures": "future",
         "futures_option": "future_option",
         "fut_opt": "future_option",
+        "future option": "future_option",
         "option": "equity_option",
         "options": "equity_option",
+        "equity option": "equity_option",
+        "equity or etf option": "equity_option",
         "stock": "equity",
+        "equity or etf": "equity",
         "etf": "equity",
     }
     ac = ac_aliases.get(ac, ac)
     if ac not in cat.ASSET_CLASSES:
         ac = "equity_option"
-    expiry = _parse_expiry(m.get("expiry") or "")
-    if not expiry:
-        # ToS futures options: `/ESU25 1/50 4 AUG 25 (Monday) (Wk2)`
-        expiry = _parse_expiry(m.get("symbol") or "")
+    # A leg that carries a strike or right is an option, never plain equity.
+    if ac == "equity" and (strike is not None or right is not None):
+        ac = "equity_option"
     return {
         "leg_index": index,
         "side": side,
@@ -381,7 +430,7 @@ def _leg_from_mapped(m: dict[str, str], index: int) -> dict:
         "underlier": underlier[:64] if underlier else None,
         "symbol": m.get("symbol"),
         "expiry": expiry,
-        "strike": _dec(m.get("strike")),
+        "strike": strike,
         "right": right,
         "fill_price": _dec(m.get("fill_price")) or 0.0,
         "fees": _dec(m.get("fees")) if m.get("fees") not in (None, "") else None,
@@ -1305,7 +1354,9 @@ def export_thinkorswim(trades: list[dict], *, account_label: str = "") -> str:
 # so FatTail→Tradier→FatTail reconstructs multi-leg trades; direction (open/close)
 # follows Tradier's own limitation (inferred from buy/sell).
 
-_OCC_RE_IO = re.compile(r"^([A-Z0-9./]{1,6})\s?(\d{2})(\d{2})(\d{2})([CP])(\d{8})$")
+# Root is space-padded to 6 chars in the OCC 21-char standard (e.g. "SPXW  260811C07700000",
+# "SPX   260811P..."), so allow ANY run of spaces between root and date — not just one.
+_OCC_RE_IO = re.compile(r"^([A-Z0-9./]{1,6})\s*(\d{2})(\d{2})(\d{2})([CP])(\d{8})$")
 
 
 def _occ_build(underlier, expiry, strike, right) -> str:
