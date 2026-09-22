@@ -131,6 +131,7 @@ def match_open_close(
     )
     queues: dict[str, list[dict[str, Any]]] = {}
     result: list[dict[str, Any]] = []
+    leftover_closes: list[dict[str, Any]] = []
 
     for t in sorted_t:
         day = ymd_from_exec(t.get("exec_at"))
@@ -178,6 +179,45 @@ def match_open_close(
             if slot_remaining(open_slot) <= 0:
                 open_slot["close"] = t
                 open_slot["close_day"] = day
+
+        if remaining_close > 0:
+            # Units strict-FIFO couldn't place (no *earlier* open of this
+            # structure was queued). Held for the reclaim pass below.
+            leftover_closes.append(
+                {"close": t, "day": day, "key": key, "remaining": remaining_close}
+            )
+
+    # --- Reclaim pass -------------------------------------------------------
+    # Pair otherwise-orphaned closes with a same-structure / same-account open
+    # within the hold window, IGNORING intra-window time order. Strict FIFO
+    # above pairs a close only to an *earlier* open, so a close stamped before
+    # its open — e.g. a member outside US Eastern whose local clock lags the
+    # open's — gets dropped as an orphan even though the open exists. This pass
+    # only touches closes that would otherwise orphan; every correct pairing and
+    # the net P&L are unchanged.
+    for lc in leftover_closes:
+        if lc["remaining"] <= 0:
+            continue
+        for open_slot in queues.get(lc["key"], []):
+            if lc["remaining"] <= 0:
+                break
+            leftover = slot_remaining(open_slot)
+            if leftover <= 0:
+                continue
+            span = calendar_days_between(str(open_slot["open_day"]), lc["day"])
+            if hold_window_applies(open_slot["open"]) and (
+                span is None or abs(span) > MAX_STRUCTURE_HOLD_DAYS
+            ):
+                continue
+            take = min(leftover, lc["remaining"])
+            open_slot["closed_units"] = int(open_slot["closed_units"]) + take
+            lc["remaining"] -= take
+            open_slot["closes"].append(
+                {"close": lc["close"], "close_day": lc["day"], "units": take}
+            )
+            if slot_remaining(open_slot) <= 0:
+                open_slot["close"] = lc["close"]
+                open_slot["close_day"] = lc["day"]
 
     for m in result:
         leftover = slot_remaining(m)
