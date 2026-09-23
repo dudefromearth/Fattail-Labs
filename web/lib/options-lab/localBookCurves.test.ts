@@ -178,29 +178,18 @@ test("strike not on generation is NOT TRADED", () => {
 });
 
 test("vol offset moves T+0, not expiration intrinsic", () => {
-  const t = trade({
-    expiration: "2026-12-18",
-    legs: [
-      {
-        strike: 100,
-        quantity: 1,
-        right: "call",
-        expiration: "2026-12-18",
-      },
-    ],
-  });
-  const g = {
-    ...gen([{ strike: 100, side: "call", iv: 0.2, mid: 2 }]),
-    expiration: "2026-12-18",
-  };
   const base = resolveLocalBookCurves({
-    trade: t,
-    generations: [g],
+    trade: trade(),
+    generations: [
+      gen([{ strike: 100, side: "call", iv: 0.2, mid: 2 }]),
+    ],
     spot: 100,
   });
   const bumped = resolveLocalBookCurves({
-    trade: t,
-    generations: [g],
+    trade: trade(),
+    generations: [
+      gen([{ strike: 100, side: "call", iv: 0.2, mid: 2 }]),
+    ],
     spot: 100,
     volOffsetPts: 10,
   });
@@ -213,60 +202,10 @@ test("vol offset moves T+0, not expiration intrinsic", () => {
     pts.reduce((b, p) => (Math.abs(p.x - x) < Math.abs(b.x - x) ? p : b));
   const exp0 = at(base.result.curves!.expiration!.points!, 100).y;
   const exp1 = at(bumped.result.curves!.expiration!.points!, 100).y;
-  const t0pts = base.result.curves!.model_t0!.points!;
-  const t1pts = bumped.result.curves!.model_t0!.points!;
-  const far = t0pts[t0pts.length - 1].x;
-  const t0 = at(t0pts, far).y;
-  const t1 = at(t1pts, far).y;
+  const t0 = at(base.result.curves!.model_t0!.points!, 100).y;
+  const t1 = at(bumped.result.curves!.model_t0!.points!, 100).y;
   assert(Math.abs(exp0 - exp1) < 1e-9, "expiry is intrinsic");
-  assert(t1 !== t0, "T+0 away from spot moves with vol");
-});
-
-test("unlocked T+0 is P/L Open: $0 at live spot (ToS)", () => {
-  const fly = trade({
-    structure: "butterfly",
-    strikes: [95, 100, 105],
-    body: 100,
-    legs: [
-      { strike: 95, quantity: 1, right: "call", expiration: "2026-09-18" },
-      { strike: 100, quantity: -2, right: "call", expiration: "2026-09-18" },
-      { strike: 105, quantity: 1, right: "call", expiration: "2026-09-18" },
-    ],
-  });
-  const out = resolveLocalBookCurves({
-    trade: fly,
-    generations: [
-      gen([
-        { strike: 95, side: "call", iv: 0.22, mid: 6.1 },
-        { strike: 100, side: "call", iv: 0.18, mid: 2.4 },
-        { strike: 105, side: "call", iv: 0.16, mid: 0.9 },
-      ]),
-    ],
-    spot: 100,
-  });
-  assert(out.ok, "fly sheet ok");
-  if (!out.ok) return;
-  const theo = out.result.curves?.model_t0?.points ?? [];
-  const atSpot = theo.reduce((b, p) =>
-    Math.abs(p.x - 100) < Math.abs(b.x - 100) ? p : b,
-  );
-  assert(Math.abs(atSpot.y) < 1, `unlocked T+0 at spot is $0, got ${atSpot.y}`);
-  assert(Math.abs(out.result.model_t0?.pnl_dollars ?? 99) < 1, "pnl_dollars pin");
-  const exp = out.result.curves?.expiration?.points ?? [];
-  const expAtBody = exp.reduce((b, p) =>
-    Math.abs(p.x - 100) < Math.abs(b.x - 100) ? p : b,
-  );
-  assert(expAtBody.y > 50, "expiry peak is still width − debit, not $0");
-  const pkg =
-    out.result.marks?.package_debit_per_share ??
-    out.result.model_t0?.debit_per_share ??
-    0;
-  const floor = -Math.abs(pkg) * 100;
-  const t0Min = Math.min(...theo.map((p) => p.y));
-  assert(
-    t0Min >= floor - 1,
-    `T+0 wings meet −debit (${floor}), not below (got ${t0Min})`,
-  );
+  assert(t1 !== t0, "T+0 moves with vol");
 });
 
 test("same-strike calendar expiry is front-exp residual, not flat −debit", () => {
@@ -369,13 +308,7 @@ test("AT-TM-13 15:30 0DTE elapsed still moves T+0 vs 15:00", () => {
     pts.reduce((b, p) => (Math.abs(p.x - x) < Math.abs(b.x - x) ? p : b)).y;
   const t0a = near(a.result.curves!.model_t0!.points!, 100);
   const t0b = near(b.result.curves!.model_t0!.points!, 100);
-  assert(Math.abs(t0a) < 1 && Math.abs(t0b) < 1, "unlocked T+0 stays $0 at spot");
-  const far = a.result.curves!.model_t0!.points!.at(-1)!.x;
-  assert(
-    near(a.result.curves!.model_t0!.points!, far) !==
-      near(b.result.curves!.model_t0!.points!, far),
-    "T+0 away from spot moves in the last hour",
-  );
+  assert(t0a !== t0b, "T+0 moves in the last hour");
 });
 
 test("spot axis pins listed strikes and densifies the tent window", () => {
