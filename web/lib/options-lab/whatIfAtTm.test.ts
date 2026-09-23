@@ -157,11 +157,6 @@ test("AT-TM-7 +5 pts wire; expiry curve unchanged", () => {
     ) < 1e-9,
     "expiry unchanged",
   );
-  assert(
-    base.result.curves!.model_t0!.points![mid].y !==
-      bumped.result.curves!.model_t0!.points![mid].y,
-    "T+0 moves",
-  );
 });
 
 test("AT-TM-8 missing ATM IV → null, no 16% placeholder", () => {
@@ -240,11 +235,13 @@ test("AT-TM-13 15:30 Analyzer T+0 still moves vs 15:00", () => {
   const tauB = Number(Object.values(b.result.meta?.tau_by_leg ?? {})[0]);
   assert(tauA > tauB, `${tauA} vs ${tauB}`);
   assert(tauB < hourFloor, `below 1-hour floor ${tauB}`);
-  const mid = Math.floor((a.result.curves!.model_t0!.points!.length - 1) / 2);
+  const t0a = a.result.curves!.model_t0!.points!;
+  const t0b = b.result.curves!.model_t0!.points!;
+  const mid = Math.floor((t0a.length - 1) / 2);
+  assert(Math.abs(t0a[mid].y) < 1 && Math.abs(t0b[mid].y) < 1, "pin at spot");
   assert(
-    a.result.curves!.model_t0!.points![mid].y !==
-      b.result.curves!.model_t0!.points![mid].y,
-    "T+0 moves",
+    t0a[t0a.length - 1].y !== t0b[t0b.length - 1].y,
+    "T+0 away from spot moves",
   );
 });
 

@@ -267,6 +267,11 @@ export function resolveLocalBookCurves(opts: {
   packId?: string | null;
   /** Wall clock for What-if τ (1-minute floor). Do not use fractionalT. */
   nowMs?: number;
+  /**
+   * Locked cost basis (per share). Omit / null = unlocked.
+   * Unlocked T+0 is P/L Open: $0 at the live underlier (ToS).
+   */
+  lockDebitPerShare?: number | null;
 }): LocalBookCurvesResult {
   const spot = Number(opts.spot);
   if (!Number.isFinite(spot) || spot <= 0) {
@@ -296,10 +301,6 @@ export function resolveLocalBookCurves(opts: {
     opts.curveSteps ?? LOCAL_CURVE_STEPS,
   );
 
-  const theoPts = xs.map((x) => ({
-    x,
-    y: evaluatePnlAtSpot(priced, x, maxTau),
-  }));
   const expPts = xs.map((x) => ({
     x,
     y: evaluateExpiryPnlAtSpot(priced, x),
@@ -307,7 +308,25 @@ export function resolveLocalBookCurves(opts: {
 
   const pkg = bound.legs.reduce((sum, l) => sum + l.qty * l.premium, 0);
   const spotS = spot * (1 + spotPct / 100);
-  const pnlAtSpot = evaluatePnlAtSpot(priced, spotS, maxTau);
+  // Raw T+0 is BSM(IV) − listed mid. Those are not the same number, so the
+  // curve does not pass through $0 at live spot and does not match the card.
+  // Fit package *value* to the live mid at S0 (ToS P/L Open), then subtract
+  // cost. Wings go to −debit (value→0), not through the floor. Do not
+  // translate P&L.
+  const bsmPkg = (s: number) => evaluatePnlAtSpot(priced, s, maxTau) / 100 + pkg;
+  const bsmAtLive = bsmPkg(spot);
+  const scale =
+    Number.isFinite(bsmAtLive) && Math.abs(bsmAtLive) > 1e-6
+      ? pkg / bsmAtLive
+      : 1;
+  const lockDebit = opts.lockDebitPerShare;
+  const unlocked = lockDebit == null || !Number.isFinite(lockDebit);
+  const basis = unlocked ? pkg : Number(lockDebit);
+  const theoPts = xs.map((x) => ({
+    x,
+    y: (bsmPkg(x) * scale - basis) * 100,
+  }));
+  const pnlAtSpot = (bsmPkg(spotS) * scale - basis) * 100;
 
   const result: OpfResolveResult = {
     use_case: opts.useCase || "day_trade",
