@@ -15,6 +15,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const files = [
   join(here, "gexCal.ts"),
   join(here, "registry.ts"),
+  join(here, "../useGexCalPack.ts"),
   join(here, "../../../components/options-lab/HeatmapGexCalendar.tsx"),
 ];
 

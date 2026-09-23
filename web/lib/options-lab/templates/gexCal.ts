@@ -238,7 +238,9 @@ export function computeGexCal(
   const cells: GexCalCell[][] = rows.map((row) =>
     cols.map((col) => {
       const book = pack.books.get(col.expiration)!;
-      return cellFor(book.ctx, row.strike, col.expiration, mode);
+      const ctx =
+        pack.spot != null ? { ...book.ctx, spot: pack.spot } : book.ctx;
+      return cellFor(ctx, row.strike, col.expiration, mode);
     }),
   );
   assignMarks(cells);

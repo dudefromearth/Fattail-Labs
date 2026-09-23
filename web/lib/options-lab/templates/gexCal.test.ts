@@ -109,6 +109,11 @@ assert(r1.cells.find((row) => row[0].strike === 105)![0].value === 75000, "g1 10
 assert(r1.cells.find((row) => row[0].strike === 100)![0].value === 0, "g1 100");
 assert(r1.cells.find((row) => row[0].strike === 95)![0].value === -75000, "g1 95");
 assert(r1.rows.find((row) => row.strike === 100)?.isSpot === true, "AT-GC3 spot");
+{
+  const live = computeGexCal({ ...p1, spot: 200 }, "gex_net");
+  const cell = live.cells.find((row) => row[0].strike === 105)![0];
+  assert(cell.value === 300000, `live S² uses pack.spot, got ${cell.value}`);
+}
 const prof1 = buildGexProfile(ctx1, "gex_net");
 for (const pt of prof1) {
   const cell = r1.cells.find((row) => row[0].strike === pt.strike)![0];
