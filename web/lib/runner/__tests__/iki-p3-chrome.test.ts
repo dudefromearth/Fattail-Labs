@@ -48,6 +48,12 @@ if (!host.includes("bg-[#16161c]") && !host.includes("sticky left-0")) {
 if (!rail.includes('data-testid="iki-runner-rail"')) {
   throw new Error("rail testid missing");
 }
+if (!rail.includes("heatmap-matrix-view")) {
+  throw new Error("rail must offer vertical/horizontal matrix toggle");
+}
+if (!page.includes("heatmap-matrix-view-panel")) {
+  throw new Error("runner view header must offer matrix toggle");
+}
 if (!rail.includes("@/components/options-lab/inspectorChrome")) {
   throw new Error("rail must import inspectorChrome as-is");
 }

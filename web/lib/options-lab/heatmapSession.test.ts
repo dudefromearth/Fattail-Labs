@@ -64,6 +64,14 @@ const vert = parseHeatmapSession({
 });
 assert(vert?.verticalKind === "credit", "vertical kind with %");
 assert(vert?.valueMode === "pct_change", "vertical %");
+assert(ok?.matrixView === "vertical", "matrix view default");
+const horiz = parseHeatmapSession({
+  symbol: "SPX",
+  templateId: "sym-fly",
+  valueMode: "debit",
+  matrixView: "horizontal",
+});
+assert(horiz?.matrixView === "horizontal", "matrix view horizontal");
 
 writeHeatmapSession(ok!, store);
 const round = readHeatmapSession(store);
@@ -86,6 +94,19 @@ const controls = readFileSync(
 );
 assert(!controls.includes("runner-cache-budget"), "Cache slider is gone");
 assert(controls.includes("heatmap-tm-hold"), "horizon readout is present");
+assert(controls.includes("heatmap-matrix-view"), "vertical/horizontal toggle");
+const panel = readFileSync(
+  join(
+    dirname(fileURLToPath(import.meta.url)),
+    "../../components/options-lab/HeatmapChainPanel.tsx",
+  ),
+  "utf8",
+);
+assert(panel.includes("heatmap-expected-move"), "EM chip");
+assert(panel.includes("data-em"), "EM strike mark");
+assert(panel.includes("heatmap-width-col-right-head"), "width col right");
+assert(panel.includes("sticky right-0"), "right width sticky");
+assert(panel.includes("data-col-hover"), "horizontal column hover");
 assert(!/Instant Replay/i.test(controls), "member copy is Time Machine");
 assert(!/from the open/.test(controls), "hold line is not an open-bell story");
 

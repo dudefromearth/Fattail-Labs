@@ -40,7 +40,7 @@ export type ControlDef = {
 export type ControlValues = Record<string, string | number | boolean>;
 
 export type HeatmapTiles = {
-  rows: { strike: number; label: string; isSpot?: boolean }[];
+  rows: { strike: number; label: string; isSpot?: boolean; isEm?: boolean }[];
   cols: { id: string; label: string; widthPts: number }[];
   cells: Array<
     Array<{

@@ -21,6 +21,10 @@ import {
   type HeatmapTiles,
   type RunnerTemplate,
 } from "../registry";
+import {
+  horizontalColumnHoverClass,
+  type MatrixView,
+} from "@/lib/options-lab/templates/matrixView";
 import { createShellSession, type ShellSession } from "../host";
 import "@/lib/runner/templates/heatmap";
 import "@/lib/runner/templates/width-fit";
@@ -51,8 +55,11 @@ function TileGrid(props: {
   stale: boolean | null;
   epochQuality: string | null;
   error: string | null;
+  matrixView: MatrixView;
 }): ReactElement {
-  const { tiles, stale, epochQuality, error } = props;
+  const { tiles, stale, epochQuality, error, matrixView } = props;
+  const horizontal = matrixView === "horizontal";
+  const [hoverStrike, setHoverStrike] = useState<number | null>(null);
   return createElement(
     "div",
     {
@@ -73,11 +80,145 @@ function TileGrid(props: {
         )
       : null,
     tiles
-      ? createElement(
+      ? horizontal
+        ? createElement(
+            "table",
+            {
+              className: "w-full table-fixed border-collapse",
+              "data-testid": "spread-tax-grid",
+              "data-matrix-view": "horizontal",
+              onMouseLeave: () => setHoverStrike(null),
+            },
+            createElement(
+              "thead",
+              null,
+              createElement(
+                "tr",
+                { className: "h-8" },
+                createElement(
+                  "th",
+                  {
+                    className:
+                      "sticky left-0 top-0 z-[2] h-8 w-12 min-w-12 border-b border-r border-white/[0.08] bg-[#121218] px-0.5 text-center text-[9px] font-medium uppercase leading-tight tracking-wide text-white/45",
+                  },
+                  "Width",
+                  createElement(
+                    "span",
+                    {
+                      className:
+                        "block normal-case tracking-normal text-white/35",
+                    },
+                    "\\ body",
+                  ),
+                ),
+                ...tiles.rows.map((r) =>
+                  createElement(
+                    "th",
+                    {
+                      key: r.strike,
+                      "data-spot": r.isSpot ? "1" : "0",
+                      "data-em": r.isEm ? "1" : "0",
+                      "data-col-hover": hoverStrike === r.strike ? "1" : "0",
+                      onMouseEnter: () => setHoverStrike(r.strike),
+                      className: [
+                        "sticky top-0 z-[1] h-8 min-w-0 border-b border-white/[0.08] bg-[#121218] text-center text-[11px] font-semibold tabular-nums",
+                        r.isSpot
+                          ? "text-amber-400 shadow-[inset_2px_0_0_#fbbf24,inset_-2px_0_0_#fbbf24]"
+                          : r.isEm
+                            ? "text-violet-300 shadow-[inset_2px_0_0_#c084fc,inset_-2px_0_0_#c084fc]"
+                            : "text-white/55",
+                        horizontalColumnHoverClass(
+                          hoverStrike === r.strike,
+                          "head",
+                        ),
+                      ].join(" "),
+                    },
+                    r.label,
+                  ),
+                ),
+                createElement(
+                  "th",
+                  {
+                    "data-testid": "heatmap-width-col-right-head",
+                    className:
+                      "sticky right-0 top-0 z-[2] h-8 w-12 min-w-12 border-b border-l border-white/[0.08] bg-[#121218] px-0.5 text-center text-[9px] font-medium uppercase leading-tight tracking-wide text-white/45",
+                  },
+                  "Width",
+                ),
+              ),
+            ),
+            createElement(
+              "tbody",
+              null,
+              ...tiles.cols.map((c, ci) =>
+                createElement(
+                  "tr",
+                  {
+                    key: c.id,
+                    className: "h-8 border-b border-white/[0.03]",
+                  },
+                  createElement(
+                    "th",
+                    {
+                      className:
+                        "sticky left-0 z-[1] h-8 w-12 min-w-12 border-r border-white/[0.08] bg-[#16161c] px-0.5 text-center align-middle text-[12px] font-semibold tabular-nums text-emerald-400",
+                    },
+                    c.label,
+                  ),
+                  ...tiles.rows.map((r, ri) => {
+                    const cell = tiles.cells[ri]?.[ci];
+                    const empty = !cell || !cell.valid || cell.value == null;
+                    const face = empty ? "—" : (cell.display ?? "—");
+                    const bg = cell?.bgCss || "#1a1a1a";
+                    return createElement(
+                      "td",
+                      {
+                        key: r.strike,
+                        title: cell?.tooltip || face,
+                        "data-heatmap-tile": "1",
+                        "data-spread-tax-cell": "1",
+                        "data-spot": r.isSpot ? "1" : "0",
+                        "data-em": r.isEm ? "1" : "0",
+                        "data-col-hover": hoverStrike === r.strike ? "1" : "0",
+                        "data-null": empty ? "1" : "0",
+                        onMouseEnter: () => setHoverStrike(r.strike),
+                        className: [
+                          "h-8 min-w-0 cursor-default text-center align-middle tabular-nums text-[12px] text-amber-400",
+                          "[text-shadow:0_0_2px_rgba(0,0,0,0.8)]",
+                          r.isSpot
+                            ? "shadow-[inset_2px_0_0_#fbbf24,inset_-2px_0_0_#fbbf24]"
+                            : r.isEm
+                              ? "shadow-[inset_2px_0_0_#c084fc,inset_-2px_0_0_#c084fc]"
+                              : "",
+                          empty ? "text-white/25" : "",
+                          horizontalColumnHoverClass(
+                            hoverStrike === r.strike,
+                            "cell",
+                          ),
+                        ].join(" "),
+                        style: { backgroundColor: bg },
+                      },
+                      face,
+                    );
+                  }),
+                  createElement(
+                    "th",
+                    {
+                      className:
+                        "sticky right-0 z-[1] h-8 w-12 min-w-12 border-l border-white/[0.08] bg-[#16161c] px-0.5 text-center align-middle text-[12px] font-semibold tabular-nums text-emerald-400",
+                    },
+                    c.label,
+                  ),
+                ),
+              ),
+            ),
+          )
+        : createElement(
           "table",
           {
             className: "w-full border-collapse",
             "data-testid": "spread-tax-grid",
+            "data-matrix-view": "vertical",
           },
           createElement(
             "thead",
@@ -115,9 +256,14 @@ function TileGrid(props: {
                 {
                   key: r.strike,
                   "data-spot": r.isSpot ? "1" : "0",
+                  "data-em": r.isEm ? "1" : "0",
                   className: [
                     "h-14 border-b border-white/[0.03]",
-                    r.isSpot ? "border-t-2 border-amber-400/80" : "",
+                    r.isSpot
+                      ? "border-t-2 border-amber-400/80"
+                      : r.isEm
+                        ? "border-t-2 border-b-2 border-violet-400/80"
+                        : "",
                   ].join(" "),
                 },
                 createElement(
@@ -127,7 +273,9 @@ function TileGrid(props: {
                       "sticky left-0 z-[1] h-14 w-[7rem] min-w-[7rem] border-r border-white/[0.08] px-1 text-center align-middle text-[24px] tabular-nums",
                       r.isSpot
                         ? "bg-black/40 font-bold text-amber-400"
-                        : "bg-[#16161c] text-white/45",
+                        : r.isEm
+                          ? "bg-violet-950/50 font-bold text-violet-300"
+                          : "bg-[#16161c] text-white/45",
                     ].join(" "),
                   },
                   r.label,
@@ -170,6 +318,7 @@ export type HeatmapRenderHostProps = {
   tplKey: string;
   taxSide: string;
   minOi: number;
+  matrixView?: MatrixView;
   onMeta?: (meta: {
     stale: boolean | null;
     epochQuality: string | null;
@@ -181,7 +330,7 @@ export type HeatmapRenderHostProps = {
 
 export function HeatmapRenderHost(props: HeatmapRenderHostProps): ReactElement {
   const { symbol } = useOptionsLab();
-  const { expiration, viewSide, tplKey, taxSide, minOi, onMeta } = props;
+  const { expiration, viewSide, tplKey, taxSide, minOi, matrixView = "vertical", onMeta } = props;
   const [tiles, setTiles] = useState<HeatmapTiles | null>(null);
   const [stale, setStale] = useState<boolean | null>(null);
   const [epochQuality, setEpochQuality] = useState<string | null>(null);
@@ -270,6 +419,12 @@ export function HeatmapRenderHost(props: HeatmapRenderHostProps): ReactElement {
       "data-content-hash": contentHash ?? "",
       "data-spread-tax-host": tplKey === "spread-tax@0.1" ? "1" : "0",
     },
-    createElement(TileGrid, { tiles, stale, epochQuality, error }),
+    createElement(TileGrid, {
+      tiles,
+      stale,
+      epochQuality,
+      error,
+      matrixView,
+    }),
   );
 }

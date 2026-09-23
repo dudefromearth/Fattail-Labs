@@ -27,6 +27,10 @@ import {
   resolveWidthFitWeights,
 } from "@/lib/options-lab/templates/widthFit";
 import {
+  parseMatrixView,
+  type MatrixView,
+} from "@/lib/options-lab/templates/matrixView";
+import {
   clampBudgetMib,
   clampWindow,
   DEFAULT_BUDGET_MIB,
@@ -53,6 +57,8 @@ export type HeatmapSessionPrefs = {
   wfTime: "live" | "average" | "replay";
   wfWindow: AverageWindow;
   cacheBudgetMib: BudgetStopMib;
+  /** Strike×width matrix: vertical = current (strikes as rows); horizontal = compact transpose. */
+  matrixView: MatrixView;
   /** ET calendar day (YYYY-MM-DD) this was last saved. Gates same-day-only
    * restore of the expiration so the Heatmap starts each new day on 0DTE. */
   savedEtDay?: string;
@@ -146,6 +152,7 @@ export function parseHeatmapSession(raw: unknown): HeatmapSessionPrefs | null {
     cacheBudgetMib: clampBudgetMib(
       Number(o.cacheBudgetMib) || DEFAULT_BUDGET_MIB,
     ),
+    matrixView: parseMatrixView(o.matrixView),
     savedEtDay: typeof o.savedEtDay === "string" ? o.savedEtDay : undefined,
   };
 }

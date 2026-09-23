@@ -11,6 +11,8 @@ import { HeatmapRenderHost } from "@/lib/runner/sinks/render";
 import IkiRunnerRail, {
   type StreamTone,
 } from "./IkiRunnerRail";
+import MatrixViewToggle from "@/components/options-lab/MatrixViewToggle";
+import type { MatrixView } from "@/lib/options-lab/templates/matrixView";
 
 function streamFromDoc(
   stale: boolean | null,
@@ -37,6 +39,7 @@ function IkiRunnerWorkspace() {
   const [contentHash, setContentHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tplLabel, setTplLabel] = useState("Advanced flies");
+  const [matrixView, setMatrixView] = useState<MatrixView>("vertical");
 
   useEffect(() => {
     let cancelled = false;
@@ -113,6 +116,8 @@ function IkiRunnerWorkspace() {
         onExpirationChange={setExpiration}
         viewSide={viewSide}
         onViewSide={setViewSide}
+        matrixView={matrixView}
+        onMatrixViewChange={setMatrixView}
         spotLabel="—"
         genLine={genLine}
         dteLine={dteLine}
@@ -145,6 +150,14 @@ function IkiRunnerWorkspace() {
                   .join(" · ")}
               </p>
             </div>
+            {tplKey !== "spread-tax@0.1" ? (
+              <MatrixViewToggle
+                compact
+                value={matrixView}
+                onChange={setMatrixView}
+                testId="heatmap-matrix-view-panel"
+              />
+            ) : null}
             <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--color-label-secondary)]">
               <span className="inline-flex items-center gap-1.5 font-medium text-[var(--color-label)]">
                 <span
@@ -175,6 +188,7 @@ function IkiRunnerWorkspace() {
                 tplKey={tplKey}
                 taxSide={taxSide}
                 minOi={minOi}
+                matrixView={matrixView}
                 onMeta={onMeta}
               />
             ) : null}

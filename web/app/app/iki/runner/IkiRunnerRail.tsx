@@ -16,6 +16,8 @@ import {
   inspectorStickyNav,
 } from "@/components/options-lab/inspectorChrome";
 import type { LadderExpirationContract } from "@/lib/chainLadderApi";
+import MatrixViewToggle from "@/components/options-lab/MatrixViewToggle";
+import type { MatrixView } from "@/lib/options-lab/templates/matrixView";
 
 const EXPIRY_PICK_COUNT = 3;
 
@@ -93,6 +95,8 @@ export default function IkiRunnerRail({
   onExpirationChange,
   viewSide,
   onViewSide,
+  matrixView,
+  onMatrixViewChange,
   spotLabel,
   genLine,
   dteLine,
@@ -116,6 +120,8 @@ export default function IkiRunnerRail({
   onExpirationChange: (expiration: string) => void;
   viewSide: "call" | "put";
   onViewSide: (side: "call" | "put") => void;
+  matrixView: MatrixView;
+  onMatrixViewChange: (v: MatrixView) => void;
   spotLabel: string;
   genLine: string | null;
   dteLine: string | null;
@@ -217,6 +223,16 @@ export default function IkiRunnerRail({
               <option value="spread-tax@0.1">Spread Tax Map</option>
             </select>
           </label>
+          {!spreadTax ? (
+            <div className={inspectorRow + " flex-wrap py-2"}>
+              <span className={inspectorRowLabel}>View</span>
+              <MatrixViewToggle
+                value={matrixView}
+                onChange={onMatrixViewChange}
+                testId="heatmap-matrix-view"
+              />
+            </div>
+          ) : null}
           {spreadTax ? (
             <>
               <label className={inspectorRow}>

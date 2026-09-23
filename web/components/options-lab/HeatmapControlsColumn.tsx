@@ -40,6 +40,11 @@ import {
 } from "@/lib/options-lab/templates/widthFit";
 import type { LadderExpirationContract } from "@/lib/chainLadderApi";
 import SegmentedControl from "@/components/ui/SegmentedControl";
+import MatrixViewToggle from "@/components/options-lab/MatrixViewToggle";
+import {
+  supportsMatrixView,
+  type MatrixView,
+} from "@/lib/options-lab/templates/matrixView";
 import DetentSlider from "@/components/ui/DetentSlider";
 import {
   WINDOW_STOPS,
@@ -76,6 +81,8 @@ export type HeatmapControlsColumnProps = {
   onRocSensitivityChange: (v: number) => void;
   onCenterSpot: () => void;
   hasSpotRow: boolean;
+  matrixView: MatrixView;
+  onMatrixViewChange: (v: MatrixView) => void;
   tosScript: string;
   tosCopied: boolean;
   onCopyTos: () => void;
@@ -191,6 +198,8 @@ export default function HeatmapControlsColumn({
   onRocSensitivityChange,
   onCenterSpot,
   hasSpotRow,
+  matrixView,
+  onMatrixViewChange,
   tosScript,
   tosCopied,
   onCopyTos,
@@ -559,6 +568,16 @@ export default function HeatmapControlsColumn({
             </div>
           </label>
           )}
+          {supportsMatrixView(templateId) ? (
+            <div className={inspectorRow + " flex-wrap py-2"}>
+              <span className={inspectorRowLabel}>View</span>
+              <MatrixViewToggle
+                value={matrixView}
+                onChange={onMatrixViewChange}
+                testId="heatmap-matrix-view"
+              />
+            </div>
+          ) : null}
           <button
             type="button"
             className={inspectorListRow}

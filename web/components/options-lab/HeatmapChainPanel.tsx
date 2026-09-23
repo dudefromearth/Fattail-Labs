@@ -63,6 +63,9 @@ import {
 import type {
   BwWingSide,
   ChainContext,
+  ColDef,
+  GridCell,
+  RowDef,
   TemplateParams,
   ValueModeId,
   VerticalKind,
@@ -118,6 +121,17 @@ import {
 } from "@/lib/options-lab/templates/pricing";
 import { saveAnalyzerTrade } from "@/lib/options-lab/analyzerTrade";
 import HeatmapControlsColumn from "@/components/options-lab/HeatmapControlsColumn";
+import MatrixViewToggle from "@/components/options-lab/MatrixViewToggle";
+import {
+  horizontalColumnHoverClass,
+  supportsMatrixView,
+  type MatrixView,
+} from "@/lib/options-lab/templates/matrixView";
+import {
+  expectedMoveFence,
+  strikeAtExpectedMove,
+  type ExpectedMoveFence,
+} from "@/lib/options-lab/templates/expectedMoveFence";
 import { HeatmapHoverTip } from "@/components/options-lab/HeatmapHoverTip";
 import HeatmapLimQuadrant from "@/components/options-lab/HeatmapLimQuadrant";
 import HeatmapGexCalendar from "@/components/options-lab/HeatmapGexCalendar";
@@ -232,6 +246,162 @@ function darkenCssColor(css: string | undefined, factor = 0.55): string {
 }
 
 type MatrixTileKey = { strike: number; colId: string };
+
+function FlyMatrixTile({
+  row,
+  col,
+  cell,
+  compact,
+  selected,
+  atExpectedMove,
+  templateId,
+  templateLabel,
+  valueMode,
+  modeLabel,
+  convexityScore,
+  widthMedian,
+  tipPinned,
+  onHover,
+  onPin,
+  onLeave,
+  onOpen,
+  onSelect,
+  onColumnEnter,
+  columnHover,
+}: {
+  row: RowDef;
+  col: ColDef;
+  cell: GridCell | undefined;
+  compact: boolean;
+  selected: boolean;
+  atExpectedMove?: boolean;
+  templateId: string;
+  templateLabel: string;
+  valueMode: ValueModeId;
+  modeLabel: string;
+  convexityScore: number | null;
+  widthMedian: number | null;
+  tipPinned: boolean;
+  onHover: (model: HeatmapTipModel, x: number, y: number) => void;
+  onPin: () => void;
+  onLeave: () => void;
+  onOpen: () => void;
+  onSelect: () => void;
+  onColumnEnter?: (strike: number) => void;
+  columnHover?: boolean;
+}) {
+  const tile =
+    isWidthFitTemplate(templateId) && cell?.valid
+      ? { face: "", alt: cell.tooltip || "Width Fit" }
+      : formatHeatmapTileFace(cell?.display, cell?.value);
+  const bg = selected
+    ? darkenCssColor(cell?.bgCss || "#1a1a1a", 0.5)
+    : cell?.bgCss || "#1a1a1a";
+  const widthFitTip = isWidthFitTemplate(templateId)
+    ? {
+        colorT: cell?.colorT ?? null,
+        outline: !!cell?.widthFitOutline,
+        qualityFlag: cell?.qualityFlag,
+        stability: cell?.widthFitStability ?? null,
+        components: cell?.components,
+        widthMedian,
+      }
+    : undefined;
+  const tipArgs = {
+    templateId,
+    templateLabel,
+    mode: valueMode,
+    modeLabel,
+    strike: row.strike,
+    strikeLabel: row.label,
+    widthPts: col.widthPts,
+    widthLabel: col.label,
+    tileFace: tile.face,
+    tileAlt: tile.alt,
+    cellValid: !!cell?.valid,
+    cellValue: cell?.value ?? null,
+    cellTooltip: cell?.tooltip,
+    isSpot: row.isSpot,
+    convexityScore,
+    widthFit: widthFitTip,
+  };
+  return (
+    <td
+      role="button"
+      tabIndex={0}
+      aria-label={tile.alt}
+      aria-pressed={selected}
+      data-selected={selected ? "1" : "0"}
+      data-heatmap-tile="1"
+      data-spot={row.isSpot ? "1" : "0"}
+      data-em={atExpectedMove ? "1" : "0"}
+      data-col-hover={columnHover ? "1" : "0"}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (!cell?.valid && !isWidthFitTemplate(templateId)) return;
+        onHover(
+          heatmapMatrixTip({
+            ...tipArgs,
+            widthFit: widthFitTip
+              ? { ...widthFitTip, detail: true }
+              : undefined,
+          }),
+          e.clientX,
+          e.clientY,
+        );
+        onPin();
+        if (cell?.valid) onOpen();
+      }}
+      onMouseEnter={(e) => {
+        onColumnEnter?.(row.strike);
+        if (tipPinned) return;
+        onHover(
+          heatmapMatrixTip({
+            ...tipArgs,
+            widthFit: widthFitTip
+              ? { ...widthFitTip, detail: false }
+              : undefined,
+          }),
+          e.clientX,
+          e.clientY,
+        );
+      }}
+      onMouseLeave={() => {
+        if (tipPinned) return;
+        onLeave();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
+      className={[
+        compact
+          ? "h-8 min-w-0 cursor-pointer text-center align-middle tabular-nums text-[12px] leading-none text-amber-400"
+          : "h-14 min-w-0 cursor-pointer overflow-hidden px-1 text-center align-middle tabular-nums text-[24px] text-amber-400",
+        "[text-shadow:0_0_2px_rgba(0,0,0,0.8)]",
+        compact
+          ? horizontalColumnHoverClass(!!columnHover, "cell")
+          : "hover:z-[1] hover:ring-1 hover:ring-white/35",
+        selected
+          ? "z-[1] ring-2 ring-amber-400/70 brightness-90"
+          : cell?.widthFitOutline
+            ? "z-[1] ring-1 ring-white/50"
+            : "",
+        compact && row.isSpot
+          ? "shadow-[inset_2px_0_0_#fbbf24,inset_-2px_0_0_#fbbf24]"
+          : compact && atExpectedMove
+            ? "shadow-[inset_2px_0_0_#c084fc,inset_-2px_0_0_#c084fc]"
+            : "",
+        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-amber-300",
+      ].join(" ")}
+      style={{ backgroundColor: bg }}
+    >
+      {tile.face}
+    </td>
+  );
+}
 
 const StrikeRow = memo(function StrikeRow({
   row,
@@ -359,6 +529,7 @@ export default function HeatmapChainPanel() {
   const [wfTime, setWfTime] = useState<"live" | "average" | "replay">("live");
   const tmHost = useTimeMachineHost(symbol);
   const [wfWindow, setWfWindow] = useState<AverageWindow>(10);
+  const [matrixView, setMatrixView] = useState<MatrixView>("vertical");
   const [cacheRev, setCacheRev] = useState(0);
   const [tmHoldLine, setTmHoldLine] = useState(
     () => formatTodayHorizon().line,
@@ -366,6 +537,7 @@ export default function HeatmapChainPanel() {
   const [sessionReady, setSessionReady] = useState(false);
   const restoreSymbolRef = useRef<string | null>(null);
   const [selectedTile, setSelectedTile] = useState<MatrixTileKey | null>(null);
+  const [hoverStrike, setHoverStrike] = useState<number | null>(null);
   const [hoverTip, setHoverTip] = useState<{
     model: HeatmapTipModel;
     x: number;
@@ -403,6 +575,7 @@ export default function HeatmapChainPanel() {
       setWfIface(s.wfIface);
       setWfTime(s.wfTime);
       setWfWindow(s.wfWindow);
+      setMatrixView(s.matrixView);
       getStreamBook().setBudgetMib(DEFAULT_BUDGET_MIB);
     }
     setSessionReady(true);
@@ -427,6 +600,7 @@ export default function HeatmapChainPanel() {
       wfTime,
       wfWindow,
       cacheBudgetMib: DEFAULT_BUDGET_MIB,
+      matrixView,
     });
   }, [
     sessionReady,
@@ -445,6 +619,7 @@ export default function HeatmapChainPanel() {
     wfIface,
     wfTime,
     wfWindow,
+    matrixView,
   ]);
 
   // Apply per-symbol profile when product changes (wings, side, template defaults).
@@ -1017,6 +1192,16 @@ export default function HeatmapChainPanel() {
     return { ...matrix, cells };
   }, [matrix, templateId, wfTime, bookKey, wfWindow, weightsFp, cacheRev]);
 
+  const emFence: ExpectedMoveFence | null = useMemo(() => {
+    if (!supportsMatrixView(templateId) || !displayMatrix?.rows.length) {
+      return null;
+    }
+    return expectedMoveFence(
+      chainCtx,
+      displayMatrix.rows.map((r) => r.strike),
+    );
+  }, [templateId, displayMatrix, chainCtx.contentHash, chainCtx.spot]);
+
   const rankingStats = useMemo(() => {
     if (!matrix || !isWidthFitTemplate(templateId)) return null;
     if (wfTime === "average") {
@@ -1224,6 +1409,8 @@ export default function HeatmapChainPanel() {
     const elRect = spotEl.getBoundingClientRect();
     root.scrollTop +=
       elRect.top + elRect.height / 2 - (rootRect.top + rootRect.height / 2);
+    root.scrollLeft +=
+      elRect.left + elRect.width / 2 - (rootRect.left + rootRect.width / 2);
     return true;
   }, []);
 
@@ -1300,6 +1487,8 @@ export default function HeatmapChainPanel() {
           centerSpot();
         }}
         hasSpotRow={hasSpotRow}
+        matrixView={matrixView}
+        onMatrixViewChange={setMatrixView}
         tosScript={tosScript}
         tosCopied={tosCopied}
         onCopyTos={() => {
@@ -1488,6 +1677,15 @@ export default function HeatmapChainPanel() {
                   {smoothSpot != null ? fmt(smoothSpot, 2) : "—"}
                 </span>
               </span>
+              {emFence ? (
+                <span
+                  className="tabular-nums text-violet-300"
+                  data-testid="heatmap-expected-move"
+                  title="ATM call + put mid on this expiration"
+                >
+                  EM ±{emFence.em.toFixed(1)}
+                </span>
+              ) : null}
               {bus.hash ? (
                 <span
                   className="hidden tabular-nums text-[var(--color-label-tertiary)] sm:inline"
@@ -1495,6 +1693,14 @@ export default function HeatmapChainPanel() {
                 >
                   gen {bus.hash.slice(0, 8)}
                 </span>
+              ) : null}
+              {supportsMatrixView(templateId) && tpl.layout === "matrix" ? (
+                <MatrixViewToggle
+                  compact
+                  value={matrixView}
+                  onChange={setMatrixView}
+                  testId="heatmap-matrix-view-panel"
+                />
               ) : null}
               <button
                 type="button"
@@ -1766,8 +1972,155 @@ export default function HeatmapChainPanel() {
                 stability={rankingStats.minStability}
               />
             ) : tpl.layout === "matrix" && displayMatrix ? (
+              supportsMatrixView(templateId) && matrixView === "horizontal" ? (
+              <table
+                className="w-full table-fixed border-collapse text-[12px] leading-none"
+                data-testid="heatmap-matrix"
+                data-matrix-view="horizontal"
+                onMouseLeave={() => setHoverStrike(null)}
+              >
+                <thead className="sticky top-0 z-[2] bg-[#0a0a0e]/90 backdrop-blur-sm">
+                  <tr className="h-8 border-b border-white/10">
+                    <th
+                      scope="col"
+                      className="sticky left-0 z-[3] h-8 w-12 min-w-12 bg-[#0a0a0e] px-0.5 text-center align-middle text-[9px] font-medium uppercase leading-tight tracking-wide text-white/45"
+                    >
+                      Width
+                      <span className="block normal-case tracking-normal text-white/35">
+                        \ body
+                      </span>
+                    </th>
+                    {displayMatrix.rows.map((row) => (
+                      <th
+                        key={row.strike}
+                        scope="col"
+                        data-spot={row.isSpot ? "1" : "0"}
+                        data-em={
+                          strikeAtExpectedMove(emFence, row.strike) ? "1" : "0"
+                        }
+                        data-col-hover={
+                          hoverStrike === row.strike ? "1" : "0"
+                        }
+                        title={
+                          strikeAtExpectedMove(emFence, row.strike)
+                            ? `Expected move (ATM straddle ±${emFence!.em.toFixed(1)})`
+                            : undefined
+                        }
+                        onMouseEnter={() => setHoverStrike(row.strike)}
+                        className={[
+                          "h-8 min-w-0 text-center align-middle text-[11px] font-semibold tabular-nums",
+                          row.isSpot
+                            ? "text-amber-400 shadow-[inset_2px_0_0_#fbbf24,inset_-2px_0_0_#fbbf24]"
+                            : strikeAtExpectedMove(emFence, row.strike)
+                              ? "text-violet-300 shadow-[inset_2px_0_0_#c084fc,inset_-2px_0_0_#c084fc]"
+                              : "text-emerald-400",
+                          horizontalColumnHoverClass(
+                            hoverStrike === row.strike,
+                            "head",
+                          ),
+                        ].join(" ")}
+                      >
+                        {row.label}
+                      </th>
+                    ))}
+                    <th
+                      scope="col"
+                      aria-hidden
+                      className="sticky right-0 z-[3] h-8 w-12 min-w-12 bg-[#0a0a0e] px-0.5 text-center align-middle text-[9px] font-medium uppercase leading-tight tracking-wide text-white/45"
+                      data-testid="heatmap-width-col-right-head"
+                    >
+                      Width
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayMatrix.cols.map((col, ci) => (
+                    <tr
+                      key={col.id}
+                      className="h-8 border-b border-white/[0.03]"
+                    >
+                      <th
+                        scope="row"
+                        className="sticky left-0 z-[1] h-8 w-12 min-w-12 border-r border-white/[0.03] bg-black/20 px-0.5 text-center align-middle text-[12px] font-semibold tabular-nums text-emerald-400"
+                      >
+                        {col.label}
+                      </th>
+                      {displayMatrix.rows.map((row, ri) => {
+                        const cell = displayMatrix.cells[ri]?.[ci];
+                        return (
+                          <FlyMatrixTile
+                            key={row.strike}
+                            row={row}
+                            col={col}
+                            cell={cell}
+                            compact
+                            columnHover={hoverStrike === row.strike}
+                            onColumnEnter={setHoverStrike}
+                            atExpectedMove={strikeAtExpectedMove(
+                              emFence,
+                              row.strike,
+                            )}
+                            selected={
+                              selectedTile?.strike === row.strike &&
+                              selectedTile?.colId === col.id
+                            }
+                            templateId={templateId}
+                            templateLabel={tpl.label}
+                            valueMode={valueMode}
+                            modeLabel={modeLabel}
+                            convexityScore={
+                              convexityScores.get(`${row.strike}|${col.id}`) ??
+                              null
+                            }
+                            widthMedian={
+                              displayMatrix.footer?.[ci]?.median ?? null
+                            }
+                            tipPinned={tipPinned}
+                            onHover={(model, x, y) =>
+                              setHoverTip({ model, x, y })
+                            }
+                            onPin={() => setTipPinned(true)}
+                            onLeave={() => setHoverTip(null)}
+                            onOpen={() =>
+                              openHeldTile(row.strike, col.widthPts)
+                            }
+                            onSelect={() =>
+                              setSelectedTile((prev) =>
+                                prev?.strike === row.strike &&
+                                prev?.colId === col.id
+                                  ? null
+                                  : { strike: row.strike, colId: col.id },
+                              )
+                            }
+                          />
+                        );
+                      })}
+                      <th
+                        scope="row"
+                        className="sticky right-0 z-[1] h-8 w-12 min-w-12 border-l border-white/[0.03] bg-black/20 px-0.5 text-center align-middle text-[12px] font-semibold tabular-nums text-emerald-400"
+                        data-testid={`heatmap-width-col-right-${col.id}`}
+                      >
+                        {col.label}
+                      </th>
+                    </tr>
+                  ))}
+                  {!displayMatrix.rows.length && (
+                    <tr>
+                      <td
+                        colSpan={displayMatrix.rows.length + 2}
+                        className="px-4 py-16 text-center text-[16px] text-white/40"
+                      >
+                        {expiration
+                          ? "Waiting for chain…"
+                          : "Choose a contract"}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+              ) : (
               /* Symmetric flies matrix: 2× type vs MSC 12/10px baseline */
-              <table className="w-full min-w-[40rem] table-fixed border-collapse text-[24px] leading-none">
+              <table className="w-full min-w-[40rem] table-fixed border-collapse text-[24px] leading-none" data-testid="heatmap-matrix" data-matrix-view="vertical">
                 <thead className="sticky top-0 z-[2] bg-[#0a0a0e]/90 backdrop-blur-sm">
                   <tr className="h-14 border-b border-white/10">
                     <th
@@ -1803,9 +2156,16 @@ export default function HeatmapChainPanel() {
                     <tr
                       key={row.strike}
                       data-spot={row.isSpot ? "1" : "0"}
+                      data-em={
+                        strikeAtExpectedMove(emFence, row.strike) ? "1" : "0"
+                      }
                       className={[
                         "h-14 border-b border-white/[0.03]",
-                        row.isSpot ? "border-t-2 border-amber-400/80" : "",
+                        row.isSpot
+                          ? "border-t-2 border-amber-400/80"
+                          : strikeAtExpectedMove(emFence, row.strike)
+                            ? "border-t-2 border-b-2 border-violet-400/80"
+                            : "",
                       ].join(" ")}
                     >
                       <td
@@ -1813,142 +2173,65 @@ export default function HeatmapChainPanel() {
                           "sticky left-0 z-[1] h-14 w-[7rem] min-w-[7rem] border-r border-white/[0.03] px-1 text-center align-middle text-[24px] tabular-nums",
                           row.isSpot
                             ? "bg-black/40 font-bold text-amber-400"
-                            : "bg-black/20 text-white/45",
+                            : strikeAtExpectedMove(emFence, row.strike)
+                              ? "bg-violet-950/50 font-bold text-violet-300"
+                              : "bg-black/20 text-white/45",
                         ].join(" ")}
+                        title={
+                          strikeAtExpectedMove(emFence, row.strike)
+                            ? `Expected move (ATM straddle ±${emFence!.em.toFixed(1)})`
+                            : undefined
+                        }
                       >
                         {row.label}
                       </td>
                       {displayMatrix.cols.map((col, ci) => {
                         const cell = displayMatrix.cells[ri]?.[ci];
-                        const tile =
-                          isWidthFitTemplate(templateId) && cell?.valid
-                            ? { face: "", alt: cell.tooltip || "Width Fit" }
-                            : formatHeatmapTileFace(
-                                cell?.display,
-                                cell?.value,
-                              );
-                        const selected =
-                          selectedTile?.strike === row.strike &&
-                          selectedTile?.colId === col.id;
-                        const bg = selected
-                          ? darkenCssColor(cell?.bgCss || "#1a1a1a", 0.5)
-                          : cell?.bgCss || "#1a1a1a";
-                        const widthFitTip = isWidthFitTemplate(templateId)
-                          ? {
-                              colorT: cell?.colorT ?? null,
-                              outline: !!cell?.widthFitOutline,
-                              qualityFlag: cell?.qualityFlag,
-                              stability: cell?.widthFitStability ?? null,
-                              components: cell?.components,
-                              widthMedian: displayMatrix.footer?.[ci]?.median ?? null,
-                            }
-                          : undefined;
                         return (
-                          <td
+                          <FlyMatrixTile
                             key={col.id}
-                            role="button"
-                            tabIndex={0}
-                            aria-label={tile.alt}
-                            aria-pressed={selected}
-                            data-selected={selected ? "1" : "0"}
-                            data-heatmap-tile="1"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (!cell?.valid && !isWidthFitTemplate(templateId))
-                                return;
-                              const model = heatmapMatrixTip({
-                                templateId,
-                                templateLabel: tpl.label,
-                                mode: valueMode,
-                                modeLabel,
-                                strike: row.strike,
-                                strikeLabel: row.label,
-                                widthPts: col.widthPts,
-                                widthLabel: col.label,
-                                tileFace: tile.face,
-                                tileAlt: tile.alt,
-                                cellValid: !!cell?.valid,
-                                cellValue: cell?.value ?? null,
-                                cellTooltip: cell?.tooltip,
-                                isSpot: row.isSpot,
-                                convexityScore:
-                                  convexityScores.get(
-                                    `${row.strike}|${col.id}`,
-                                  ) ?? null,
-                                widthFit: widthFitTip
-                                  ? { ...widthFitTip, detail: true }
-                                  : undefined,
-                              });
-                              setHoverTip({
-                                model,
-                                x: e.clientX,
-                                y: e.clientY,
-                              });
-                              setTipPinned(true);
-                              if (cell?.valid) {
-                                openHeldTile(row.strike, col.widthPts);
-                              }
-                            }}
-                            onMouseEnter={(e) => {
-                              if (tipPinnedRef.current) return;
-                              setHoverTip({
-                                model: heatmapMatrixTip({
-                                  templateId,
-                                  templateLabel: tpl.label,
-                                  mode: valueMode,
-                                  modeLabel,
-                                  strike: row.strike,
-                                  strikeLabel: row.label,
-                                  widthPts: col.widthPts,
-                                  widthLabel: col.label,
-                                  tileFace: tile.face,
-                                  tileAlt: tile.alt,
-                                  cellValid: !!cell?.valid,
-                                  cellValue: cell?.value ?? null,
-                                  cellTooltip: cell?.tooltip,
-                                  isSpot: row.isSpot,
-                                  convexityScore:
-                                    convexityScores.get(
-                                      `${row.strike}|${col.id}`,
-                                    ) ?? null,
-                                  widthFit: widthFitTip
-                                    ? { ...widthFitTip, detail: false }
-                                    : undefined,
-                                }),
-                                x: e.clientX,
-                                y: e.clientY,
-                              });
-                            }}
-                            onMouseLeave={() => {
-                              if (tipPinnedRef.current) return;
-                              setHoverTip(null);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                setSelectedTile((prev) =>
-                                  prev?.strike === row.strike &&
-                                  prev?.colId === col.id
-                                    ? null
-                                    : { strike: row.strike, colId: col.id },
-                                );
-                              }
-                            }}
-                            className={[
-                              "h-14 min-w-0 cursor-pointer overflow-hidden px-1 text-center align-middle tabular-nums text-[24px] text-amber-400",
-                              "[text-shadow:0_0_2px_rgba(0,0,0,0.8)]",
-                              "hover:z-[1] hover:ring-1 hover:ring-white/35",
-                              selected
-                                ? "z-[1] ring-2 ring-amber-400/70 brightness-90"
-                                : cell?.widthFitOutline
-                                  ? "z-[1] ring-1 ring-white/50"
-                                  : "",
-                              "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-amber-300",
-                            ].join(" ")}
-                            style={{ backgroundColor: bg }}
-                          >
-                            {tile.face}
-                          </td>
+                            row={row}
+                            col={col}
+                            cell={cell}
+                            compact={false}
+                            atExpectedMove={strikeAtExpectedMove(
+                              emFence,
+                              row.strike,
+                            )}
+                            selected={
+                              selectedTile?.strike === row.strike &&
+                              selectedTile?.colId === col.id
+                            }
+                            templateId={templateId}
+                            templateLabel={tpl.label}
+                            valueMode={valueMode}
+                            modeLabel={modeLabel}
+                            convexityScore={
+                              convexityScores.get(
+                                `${row.strike}|${col.id}`,
+                              ) ?? null
+                            }
+                            widthMedian={
+                              displayMatrix.footer?.[ci]?.median ?? null
+                            }
+                            tipPinned={tipPinned}
+                            onHover={(model, x, y) =>
+                              setHoverTip({ model, x, y })
+                            }
+                            onPin={() => setTipPinned(true)}
+                            onLeave={() => setHoverTip(null)}
+                            onOpen={() =>
+                              openHeldTile(row.strike, col.widthPts)
+                            }
+                            onSelect={() =>
+                              setSelectedTile((prev) =>
+                                prev?.strike === row.strike &&
+                                prev?.colId === col.id
+                                  ? null
+                                  : { strike: row.strike, colId: col.id },
+                              )
+                            }
+                          />
                         );
                       })}
                     </tr>
@@ -1994,6 +2277,7 @@ export default function HeatmapChainPanel() {
                   </tfoot>
                 ) : null}
               </table>
+              )
             ) : (
               <table
                 className="w-max min-w-full border-collapse text-sm"

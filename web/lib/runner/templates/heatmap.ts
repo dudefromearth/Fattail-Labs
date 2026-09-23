@@ -4,6 +4,10 @@
  */
 
 import { FlySurfacePipeline } from "@/lib/options-lab/templates/flySurfacePipeline";
+import {
+  expectedMoveFence,
+  strikeAtExpectedMove,
+} from "@/lib/options-lab/templates/expectedMoveFence";
 import { symFlyTemplate } from "@/lib/options-lab/templates/symFly";
 import type {
   ChainContext,
@@ -53,11 +57,16 @@ export function paintCurrentHeatmap(ctx: ChainContext): HeatmapTiles {
   );
   const colored = symFlyTemplate.assignColors(cells, params);
   void colored;
+  const fence = expectedMoveFence(
+    ctx,
+    paint.rows.map((r) => r.strike),
+  );
   return {
     rows: paint.rows.map((r) => ({
       strike: r.strike,
       label: r.label,
       isSpot: r.isSpot,
+      isEm: strikeAtExpectedMove(fence, r.strike),
     })),
     cols: paint.cols.map((c) => ({
       id: c.id,
