@@ -59,6 +59,8 @@ export type HeatmapSessionPrefs = {
   cacheBudgetMib: BudgetStopMib;
   /** Strike×width matrix: vertical = current (strikes as rows); horizontal = compact transpose. */
   matrixView: MatrixView;
+  /** Advanced Fly / BWB: stacked call+put graphs. */
+  batmanMode: boolean;
   /** ET calendar day (YYYY-MM-DD) this was last saved. Gates same-day-only
    * restore of the expiration so the Heatmap starts each new day on 0DTE. */
   savedEtDay?: string;
@@ -153,6 +155,7 @@ export function parseHeatmapSession(raw: unknown): HeatmapSessionPrefs | null {
       Number(o.cacheBudgetMib) || DEFAULT_BUDGET_MIB,
     ),
     matrixView: parseMatrixView(o.matrixView),
+    batmanMode: o.batmanMode === true,
     savedEtDay: typeof o.savedEtDay === "string" ? o.savedEtDay : undefined,
   };
 }

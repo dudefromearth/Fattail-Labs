@@ -20,7 +20,9 @@ import { useOptionsLab } from "@/lib/optionsLabContext";
 import { useWarmTimeOrthoTape } from "@/lib/options-lab/timeOrthoTapeCache";
 import {
   clearAnalyzerTrade,
+  clearAnalyzerTradeBatch,
   loadAnalyzerTrade,
+  loadAnalyzerTradeBatch,
 } from "@/lib/options-lab/analyzerTrade";
 import {
   alertConditionMet,
@@ -791,18 +793,39 @@ export default function OpfRiskAnalyzer() {
 
   useEffect(() => {
     if (!bookHydrated) return;
+    const ingestBatch = (items: ReturnType<typeof loadAnalyzerTradeBatch>) => {
+      if (!items.length) return;
+      for (const it of items) {
+        ingestHandoffRaw(it.raw, it.source || "heatmap", it.savedAt);
+      }
+      clearAnalyzerTradeBatch();
+    };
     // Live handoff events: apply once, then clear storage (see ingestHandoffRaw).
     const onEvt = () => {
+      const batch = loadAnalyzerTradeBatch();
+      if (batch.length) {
+        ingestBatch(batch);
+        return;
+      }
       const s = loadAnalyzerTrade();
       if (s?.raw) ingestHandoffRaw(s.raw, s.source || "handoff", s.savedAt);
     };
+    const onBatch = () => ingestBatch(loadAnalyzerTradeBatch());
     // Mount: only auto-apply pending heatmap sends (not stale paste leftovers).
-    const pending = loadAnalyzerTrade();
-    if (pending?.raw && pending.source === "heatmap") {
-      ingestHandoffRaw(pending.raw, "heatmap", pending.savedAt);
+    const pendingBatch = loadAnalyzerTradeBatch();
+    if (pendingBatch.length) ingestBatch(pendingBatch);
+    else {
+      const pending = loadAnalyzerTrade();
+      if (pending?.raw && pending.source === "heatmap") {
+        ingestHandoffRaw(pending.raw, "heatmap", pending.savedAt);
+      }
     }
     window.addEventListener("ft-analyzer-trade", onEvt);
-    return () => window.removeEventListener("ft-analyzer-trade", onEvt);
+    window.addEventListener("ft-analyzer-trade-batch", onBatch);
+    return () => {
+      window.removeEventListener("ft-analyzer-trade", onEvt);
+      window.removeEventListener("ft-analyzer-trade-batch", onBatch);
+    };
   }, [bookHydrated, ingestHandoffRaw]);
 
   // Highlight only — does not drive the viewport (show/hide is independent).

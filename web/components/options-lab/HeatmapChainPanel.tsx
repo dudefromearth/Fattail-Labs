@@ -6,7 +6,8 @@
  * Apple HIG: surface cards, segmented controls, token chrome (HIS v1.0).
  */
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   DEFAULT_STRIKE_WINGS,
   STRIKE_WING_CHOICES,
@@ -119,11 +120,23 @@ import {
   symFlyDebit,
   verticalPackage,
 } from "@/lib/options-lab/templates/pricing";
-import { saveAnalyzerTrade } from "@/lib/options-lab/analyzerTrade";
+import {
+  saveAnalyzerTrade,
+  saveAnalyzerTradeBatch,
+} from "@/lib/options-lab/analyzerTrade";
+import BatmanSetupStrip from "@/components/options-lab/BatmanSetupStrip";
+import {
+  batmanReady,
+  remapMatrixToRows,
+  sharedBatmanRows,
+  supportsBatman,
+  type StagedFly,
+} from "@/lib/options-lab/templates/batmanMode";
 import HeatmapControlsColumn from "@/components/options-lab/HeatmapControlsColumn";
 import MatrixViewToggle from "@/components/options-lab/MatrixViewToggle";
 import {
   horizontalColumnHoverClass,
+  strikesLeftToRight,
   supportsMatrixView,
   type MatrixView,
 } from "@/lib/options-lab/templates/matrixView";
@@ -268,6 +281,7 @@ function FlyMatrixTile({
   onSelect,
   onColumnEnter,
   columnHover,
+  onPreview,
 }: {
   row: RowDef;
   col: ColDef;
@@ -289,6 +303,7 @@ function FlyMatrixTile({
   onSelect: () => void;
   onColumnEnter?: (strike: number) => void;
   columnHover?: boolean;
+  onPreview?: () => void;
 }) {
   const tile =
     isWidthFitTemplate(templateId) && cell?.valid
@@ -354,6 +369,7 @@ function FlyMatrixTile({
       }}
       onMouseEnter={(e) => {
         onColumnEnter?.(row.strike);
+        if (cell?.valid) onPreview?.();
         if (tipPinned) return;
         onHover(
           heatmapMatrixTip({
@@ -492,6 +508,7 @@ const StrikeRow = memo(function StrikeRow({
 });
 
 export default function HeatmapChainPanel() {
+  const router = useRouter();
   const { symbol, setSymbol, universe, profile, loading: universeLoading } =
     useOptionsLab();
   const flyWidths = useMemo(
@@ -504,6 +521,9 @@ export default function HeatmapChainPanel() {
   const [termMassExps, setTermMassExps] = useState<string[]>([]);
   const [expiration, setExpiration] = useState("");
   const [side, setSide] = useState<"call" | "put">("call");
+  const [batmanMode, setBatmanMode] = useState(false);
+  const [stagedCall, setStagedCall] = useState<StagedFly | null>(null);
+  const [stagedPut, setStagedPut] = useState<StagedFly | null>(null);
   const [wings, setWings] = useState<StrikeWings>(DEFAULT_STRIKE_WINGS);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [ladderDte, setLadderDte] = useState<number | null>(null);
@@ -576,6 +596,7 @@ export default function HeatmapChainPanel() {
       setWfTime(s.wfTime);
       setWfWindow(s.wfWindow);
       setMatrixView(s.matrixView);
+      setBatmanMode(s.batmanMode === true && supportsBatman(s.templateId));
       getStreamBook().setBudgetMib(DEFAULT_BUDGET_MIB);
     }
     setSessionReady(true);
@@ -601,6 +622,7 @@ export default function HeatmapChainPanel() {
       wfWindow,
       cacheBudgetMib: DEFAULT_BUDGET_MIB,
       matrixView,
+      batmanMode,
     });
   }, [
     sessionReady,
@@ -620,6 +642,7 @@ export default function HeatmapChainPanel() {
     wfTime,
     wfWindow,
     matrixView,
+    batmanMode,
   ]);
 
   // Apply per-symbol profile when product changes (wings, side, template defaults).
@@ -653,8 +676,12 @@ export default function HeatmapChainPanel() {
   const prevSessionOpenRef = useRef<boolean | null>(null);
   /** Single pipeline instance — destroyed on plane change */
   const flyPipeRef = useRef<FlySurfacePipeline | null>(null);
+  const flyPipeCallRef = useRef<FlySurfacePipeline | null>(null);
+  const flyPipePutRef = useRef<FlySurfacePipeline | null>(null);
   /** Lightweight paint for active mode only (never store all 11 mode grids). */
   const [flyPaint, setFlyPaint] = useState<FlyPipelinePaint | null>(null);
+  const [flyPaintCall, setFlyPaintCall] = useState<FlyPipelinePaint | null>(null);
+  const [flyPaintPut, setFlyPaintPut] = useState<FlyPipelinePaint | null>(null);
   const lastIngestKeyRef = useRef("");
   /** Written ONLY after pipeline.ingest actually runs. */
   const lastIngestRef = useRef<{ hash: string; symbol: string } | null>(null);
@@ -721,7 +748,13 @@ export default function HeatmapChainPanel() {
   useEffect(() => {
     flyPipeRef.current?.seam();
     flyPipeRef.current = null;
+    flyPipeCallRef.current?.seam();
+    flyPipeCallRef.current = null;
+    flyPipePutRef.current?.seam();
+    flyPipePutRef.current = null;
     setFlyPaint(null);
+    setFlyPaintCall(null);
+    setFlyPaintPut(null);
     lastIngestKeyRef.current = "";
   }, [symbol, expiration, wings]);
 
@@ -731,6 +764,8 @@ export default function HeatmapChainPanel() {
     prevSessionOpenRef.current = open;
     if (prev === false && open === true) {
       flyPipeRef.current?.seam();
+      flyPipeCallRef.current?.seam();
+      flyPipePutRef.current?.seam();
       lastIngestKeyRef.current = "";
     }
   }, [bus.sessionOpen]);
@@ -757,14 +792,33 @@ export default function HeatmapChainPanel() {
     setHoverTip(null);
     setTipPinned(false);
     setTipInspect(null);
-  }, [symbol, expiration, side, wings, valueMode, bwStrikeCount, bwWingSide]);
+    setStagedCall(null);
+    setStagedPut(null);
+  }, [symbol, expiration, side, wings, valueMode, bwStrikeCount, bwWingSide, templateId]);
+
+  useEffect(() => {
+    if (!supportsBatman(templateId) && batmanMode) setBatmanMode(false);
+  }, [templateId, batmanMode]);
+
+  useEffect(() => {
+    if (!batmanMode) {
+      setStagedCall(null);
+      setStagedPut(null);
+    }
+  }, [batmanMode]);
 
   // Leave fly surface templates → free pipeline
   useEffect(() => {
     if (isFlySurfaceTemplate(templateId)) return;
     flyPipeRef.current?.seam();
     flyPipeRef.current = null;
+    flyPipeCallRef.current?.seam();
+    flyPipeCallRef.current = null;
+    flyPipePutRef.current?.seam();
+    flyPipePutRef.current = null;
     setFlyPaint(null);
+    setFlyPaintCall(null);
+    setFlyPaintPut(null);
     lastIngestKeyRef.current = "";
   }, [templateId]);
 
@@ -894,52 +948,61 @@ export default function HeatmapChainPanel() {
 
   /** All local: OPF-held generation already in `chainCtx`. No extra fetch. */
   const openHeldTile = useCallback(
-    (body: number, widthPts: number) => {
+    (
+      body: number,
+      widthPts: number,
+      paintSide: "call" | "put" = side,
+      opts?: { preview?: boolean },
+    ) => {
       if (!expiration) return null;
+      const ctx: ChainContext = { ...chainCtx, viewSide: paintSide };
       const shortFly =
         templateId === "vertical"
           ? verticalKind === "credit"
           : valueMode === "credit";
       let cost: number | null = null;
       let legs;
+      let structure = `${body} × ${widthPts}`;
       if (templateId === "vertical") {
         const dir = shortFly ? "short" : "long";
-        const d = verticalPackage(chainCtx, body, widthPts, dir);
+        const d = verticalPackage(ctx, body, widthPts, dir);
         cost = d != null && Number.isFinite(d) ? Math.abs(d) : null;
         legs = verticalTosLegs({
           body,
           widthPts,
           expiration,
-          side,
+          side: paintSide,
           short: shortFly,
         });
       } else if (templateId === "bw-fly") {
         const wings = resolveBwWings(
-          chainCtx,
+          ctx,
           body,
           widthPts,
           bwStrikeCount,
           bwWingSide,
         );
         if (!wings) return null;
-        const d = bwFlyDebit(chainCtx, body, wings.lo, wings.hi);
+        const d = bwFlyDebit(ctx, body, wings.lo, wings.hi);
         cost = d != null && Number.isFinite(d) ? Math.abs(d) : null;
+        structure = `${wings.lo}/${body}/${wings.hi} ×${widthPts}`;
         legs = bwFlyTosLegs({
           lo: wings.lo,
           body,
           hi: wings.hi,
           expiration,
-          side,
+          side: paintSide,
           short: shortFly,
         });
       } else {
-        const d = symFlyDebit(chainCtx, body, widthPts);
+        const d = symFlyDebit(ctx, body, widthPts);
         cost = d != null && Number.isFinite(d) ? Math.abs(d) : null;
+        structure = `${body - widthPts}/${body}/${body + widthPts} ×${widthPts}`;
         legs = symFlyTosLegs({
           body,
           widthPts,
           expiration,
-          side,
+          side: paintSide,
           short: shortFly,
         });
       }
@@ -952,17 +1015,36 @@ export default function HeatmapChainPanel() {
       const payoff = miniExpirationPayoff({
         legs,
         debit: signedDebit,
-        spot: chainCtx.spot,
+        spot: ctx.spot,
       });
       const inspect: HeatmapPositionInspect = {
-        greeks: listedPackageGreeks(chainCtx, side, legs),
+        greeks: listedPackageGreeks(ctx, paintSide, legs),
         payoff: payoff.points,
         maxProfit: payoff.maxProfit,
         maxLoss: payoff.maxLoss,
-        spot: chainCtx.spot,
+        spot: ctx.spot,
       };
-      setTosScript(script);
       setTipInspect(inspect);
+      if (opts?.preview) {
+        return { script, inspect };
+      }
+      if (batmanMode && supportsBatman(templateId)) {
+        const staged: StagedFly = {
+          side: paintSide,
+          body,
+          widthPts,
+          script,
+          debit: cost,
+          structure,
+          inspect,
+        };
+        if (paintSide === "call") setStagedCall(staged);
+        else setStagedPut(staged);
+        setSelectedTile({ strike: body, colId: `w${widthPts}` });
+        setTosScript(script);
+        return { script, inspect };
+      }
+      setTosScript(script);
       setSelectedTile({ strike: body, colId: `w${widthPts}` });
       rememberTosScript(script);
       void navigator.clipboard.writeText(script).then(
@@ -983,6 +1065,7 @@ export default function HeatmapChainPanel() {
       templateId,
       bwStrikeCount,
       bwWingSide,
+      batmanMode,
     ],
   );
 
@@ -1039,7 +1122,7 @@ export default function HeatmapChainPanel() {
     const ingestMode = isWidthFitTemplate(templateId)
       ? "width_fit"
       : valueMode;
-    const ingestKey = `${bus.hash}|${symbol}|${side}|${ingestMode}|${flyWidths.join(",")}`;
+    const ingestKey = `${bus.hash}|${symbol}|${batmanMode ? "batman" : side}|${ingestMode}|${flyWidths.join(",")}`;
     if (ingestKey === lastIngestKeyRef.current) return;
 
     if (ingestRafRef.current) cancelAnimationFrame(ingestRafRef.current);
@@ -1049,13 +1132,6 @@ export default function HeatmapChainPanel() {
       ingestRafRef.current = 0;
       // Drop stale frame if hash moved again
       if (bus.hash !== hashAtSchedule) return;
-      if (!flyPipeRef.current) flyPipeRef.current = new FlySurfacePipeline();
-      const paint = flyPipeRef.current.ingest(
-        chainCtx,
-        modeAtSchedule,
-        flyWidths,
-        { receivedAt: genReceivedAtRef.current.at || Date.now() },
-      );
       const colorParams = {
         valueMode: modeAtSchedule,
         widthMode: "fixed_points" as const,
@@ -1067,14 +1143,33 @@ export default function HeatmapChainPanel() {
         stabilityPenaltyStrength: DEFAULT_STABILITY_PENALTY,
         widthFitNormalization: "per_width" as const,
       };
-      if (modeAtSchedule === "width_fit") {
-        widthFitTemplate.assignColors(paint.cells, colorParams);
+      const paintSide = (
+        viewSide: "call" | "put",
+        pipeRef: typeof flyPipeRef,
+        setPaint: typeof setFlyPaint,
+      ) => {
+        if (!pipeRef.current) pipeRef.current = new FlySurfacePipeline();
+        const paint = pipeRef.current.ingest(
+          { ...chainCtx, viewSide },
+          modeAtSchedule,
+          flyWidths,
+          { receivedAt: genReceivedAtRef.current.at || Date.now() },
+        );
+        if (modeAtSchedule === "width_fit") {
+          widthFitTemplate.assignColors(paint.cells, colorParams);
+        } else {
+          symFlyTemplate.assignColors(paint.cells, colorParams);
+        }
+        setPaint(paint);
+      };
+      if (batmanMode && supportsBatman(templateId)) {
+        paintSide("call", flyPipeCallRef, setFlyPaintCall);
+        paintSide("put", flyPipePutRef, setFlyPaintPut);
       } else {
-        symFlyTemplate.assignColors(paint.cells, colorParams);
+        paintSide(side, flyPipeRef, setFlyPaint);
       }
-      lastIngestKeyRef.current = `${hashAtSchedule}|${symbol}|${side}|${modeAtSchedule}|${flyWidths.join(",")}`;
+      lastIngestKeyRef.current = `${hashAtSchedule}|${symbol}|${batmanMode ? "batman" : side}|${modeAtSchedule}|${flyWidths.join(",")}`;
       lastIngestRef.current = { hash: hashAtSchedule, symbol };
-      setFlyPaint(paint);
     });
 
     return () => {
@@ -1082,7 +1177,7 @@ export default function HeatmapChainPanel() {
     };
     // Intentionally NOT depending on full chainCtx identity — hash is the gen gate.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- chainCtx read inside when hash changes
-  }, [templateId, bus.hash, symbol, side, valueMode, flyWidths, stickyScale, gradientThreshold, widthFitWeights]);
+  }, [templateId, bus.hash, symbol, side, batmanMode, valueMode, flyWidths, stickyScale, gradientThreshold, widthFitWeights]);
 
   const templateParams: TemplateParams = useMemo(
     () => ({
@@ -1114,34 +1209,81 @@ export default function HeatmapChainPanel() {
   const flyPaintReady =
     lastIngestRef.current?.symbol === symbol ? flyPaint : null;
 
-  const matrix = useMemo(() => {
-    if (tpl.layout !== "matrix") return null;
-    if (isFlySurfaceTemplate(tpl.id)) {
+  const paintToMatrix = useCallback(
+    (paint: FlyPipelinePaint) => {
       const wantMode = isWidthFitTemplate(tpl.id) ? "width_fit" : valueMode;
-      if (!flyPaintReady || flyPaintReady.mode !== wantMode) return null;
-      const cells = flyPaintReady.cells.map((row) => row.map((c) => ({ ...c })));
+      if (paint.mode !== wantMode) return null;
+      const cells = paint.cells.map((row) => row.map((c) => ({ ...c })));
       if (isWidthFitTemplate(tpl.id)) {
         const wf = assignWidthFitColors(cells, templateParams);
         return {
-          rows: flyPaintReady.rows,
-          cols: flyPaintReady.cols,
+          rows: paint.rows,
+          cols: paint.cols,
           cells,
           stickyScale: wf.stickyScale,
-          footer: attachFooterWidths(wf.footer, flyPaintReady.cols),
+          footer: attachFooterWidths(wf.footer, paint.cols),
         };
       }
       const colored = symFlyTemplate.assignColors(cells, templateParams);
       return {
-        rows: flyPaintReady.rows,
-        cols: flyPaintReady.cols,
+        rows: paint.rows,
+        cols: paint.cols,
         cells,
         stickyScale: colored.stickyScale,
         footer: [] as WidthFitFooterCol[],
       };
+    },
+    [tpl.id, valueMode, templateParams],
+  );
+
+  const matrix = useMemo(() => {
+    if (tpl.layout !== "matrix") return null;
+    if (isFlySurfaceTemplate(tpl.id)) {
+      if (!flyPaintReady) return null;
+      return paintToMatrix(flyPaintReady);
     }
     const built = buildGrid(tpl, chainCtx, templateParams);
     return { ...built, footer: [] as WidthFitFooterCol[] };
-  }, [tpl, chainCtx, templateParams, flyPaintReady, valueMode, stickyScale]);
+  }, [tpl, chainCtx, templateParams, flyPaintReady, paintToMatrix]);
+
+  const batmanBoards = useMemo(() => {
+    if (!batmanMode || !supportsBatman(templateId) || tpl.layout !== "matrix") {
+      return null;
+    }
+    if (isFlySurfaceTemplate(templateId)) {
+      const call = flyPaintCall ? paintToMatrix(flyPaintCall) : null;
+      const put = flyPaintPut ? paintToMatrix(flyPaintPut) : null;
+      if (!call || !put) return null;
+      const rows = sharedBatmanRows(call.rows, put.rows, chainCtx.spot);
+      return {
+        call: remapMatrixToRows(call, rows),
+        put: remapMatrixToRows(put, rows),
+      };
+    }
+    const callRaw = {
+      ...buildGrid(tpl, { ...chainCtx, viewSide: "call" }, templateParams),
+      footer: [] as WidthFitFooterCol[],
+    };
+    const putRaw = {
+      ...buildGrid(tpl, { ...chainCtx, viewSide: "put" }, templateParams),
+      footer: [] as WidthFitFooterCol[],
+    };
+    const rows = sharedBatmanRows(callRaw.rows, putRaw.rows, chainCtx.spot);
+    return {
+      call: remapMatrixToRows(callRaw, rows),
+      put: remapMatrixToRows(putRaw, rows),
+    };
+  }, [
+    batmanMode,
+    templateId,
+    tpl,
+    chainCtx,
+    templateParams,
+    flyPaintCall,
+    flyPaintPut,
+    paintToMatrix,
+    chainCtx.spot,
+  ]);
 
   const bookKey = interestKey(symbol, expiration);
   const weightsFp = weightsFingerprint(widthFitWeights);
@@ -1191,6 +1333,17 @@ export default function HeatmapChainPanel() {
     const cells = applyAverageColorT(matrix.cells, avg.grid);
     return { ...matrix, cells };
   }, [matrix, templateId, wfTime, bookKey, wfWindow, weightsFp, cacheRev]);
+
+  const boards = useMemo(() => {
+    if (batmanBoards) {
+      return [
+        { side: "call" as const, matrix: batmanBoards.call },
+        { side: "put" as const, matrix: batmanBoards.put },
+      ];
+    }
+    if (displayMatrix) return [{ side, matrix: displayMatrix }];
+    return [];
+  }, [batmanBoards, displayMatrix, side]);
 
   const emFence: ExpectedMoveFence | null = useMemo(() => {
     if (!supportsMatrixView(templateId) || !displayMatrix?.rows.length) {
@@ -1398,21 +1551,49 @@ export default function HeatmapChainPanel() {
     );
   }, [matrix?.stickyScale]);
 
-  const centerSpot = useCallback(() => {
-    const root = scrollRef.current;
-    if (!root) return false;
-    const spotEl = root.querySelector(
-      '[data-spot="1"]',
+  const batmanScrollLock = useRef(false);
+  const syncBatmanScroll = useCallback((src: HTMLElement) => {
+    if (!batmanMode || batmanScrollLock.current) return;
+    const callG = document.querySelector(
+      '[data-testid="batman-call-graph"]',
     ) as HTMLElement | null;
-    if (!spotEl) return false;
-    const rootRect = root.getBoundingClientRect();
-    const elRect = spotEl.getBoundingClientRect();
-    root.scrollTop +=
-      elRect.top + elRect.height / 2 - (rootRect.top + rootRect.height / 2);
-    root.scrollLeft +=
-      elRect.left + elRect.width / 2 - (rootRect.left + rootRect.width / 2);
-    return true;
-  }, []);
+    const putG = document.querySelector(
+      '[data-testid="batman-put-graph"]',
+    ) as HTMLElement | null;
+    const other = src === callG ? putG : src === putG ? callG : null;
+    if (!other) return;
+    batmanScrollLock.current = true;
+    other.scrollLeft = src.scrollLeft;
+    other.scrollTop = src.scrollTop;
+    batmanScrollLock.current = false;
+  }, [batmanMode]);
+
+  const centerSpot = useCallback(() => {
+    const roots = batmanMode
+      ? ([
+          document.querySelector('[data-testid="batman-call-graph"]'),
+          document.querySelector('[data-testid="batman-put-graph"]'),
+        ].filter(Boolean) as HTMLElement[])
+      : scrollRef.current
+        ? [scrollRef.current]
+        : [];
+    if (!roots.length) return false;
+    let ok = false;
+    for (const root of roots) {
+      const spotEl = root.querySelector(
+        '[data-spot="1"]',
+      ) as HTMLElement | null;
+      if (!spotEl) continue;
+      const rootRect = root.getBoundingClientRect();
+      const elRect = spotEl.getBoundingClientRect();
+      root.scrollTop +=
+        elRect.top + elRect.height / 2 - (rootRect.top + rootRect.height / 2);
+      root.scrollLeft +=
+        elRect.left + elRect.width / 2 - (rootRect.left + rootRect.width / 2);
+      ok = true;
+    }
+    return ok;
+  }, [batmanMode]);
 
   useEffect(() => {
     if (!centerOnPresentRef.current || !ordered.length) return;
@@ -1422,6 +1603,14 @@ export default function HeatmapChainPanel() {
     });
     return () => window.cancelAnimationFrame(id);
   }, [ordered, centerSpot]);
+
+  useEffect(() => {
+    if (!batmanMode || !batmanBoards) return;
+    const id = window.requestAnimationFrame(() => {
+      centerSpot();
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [batmanMode, batmanBoards, matrixView, centerSpot]);
 
   const selectedMeta = universe.find((u) => u.symbol === symbol);
   const selectedExpiry = expiryContracts.find(
@@ -1489,6 +1678,8 @@ export default function HeatmapChainPanel() {
         hasSpotRow={hasSpotRow}
         matrixView={matrixView}
         onMatrixViewChange={setMatrixView}
+        batmanMode={batmanMode}
+        onBatmanModeChange={setBatmanMode}
         tosScript={tosScript}
         tosCopied={tosCopied}
         onCopyTos={() => {
@@ -1529,7 +1720,10 @@ export default function HeatmapChainPanel() {
             : null
         }
         tmHold={{ line: tmHoldLine }}
-        onOpenAnalyzer={() => saveAnalyzerTrade(tosScript, "heatmap")}
+        onOpenAnalyzer={() => {
+          if (batmanMode) return;
+          saveAnalyzerTrade(tosScript, "heatmap");
+        }}
         spotLabel={smoothSpot != null ? fmt(smoothSpot, 2) : "—"}
         genLine={bus.hash ? `gen ${bus.hash.slice(0, 8)}` : null}
         dteLine={displayDte != null ? `${displayDte} DTE` : null}
@@ -1702,6 +1896,21 @@ export default function HeatmapChainPanel() {
                   testId="heatmap-matrix-view-panel"
                 />
               ) : null}
+              {supportsBatman(templateId) ? (
+                <button
+                  type="button"
+                  aria-pressed={batmanMode}
+                  data-testid="heatmap-batman-mode-panel"
+                  onClick={() => setBatmanMode((v) => !v)}
+                  className={
+                    secondaryBtn +
+                    " min-h-9 px-3 py-1 text-xs " +
+                    (batmanMode ? "bg-[var(--color-fill)]" : "")
+                  }
+                >
+                  Batman
+                </button>
+              ) : null}
               <button
                 type="button"
                 className={
@@ -1723,9 +1932,11 @@ export default function HeatmapChainPanel() {
             ref={scrollRef}
             className={[
               "min-h-0 flex-1",
-              tpl.layout === "quadrant" || tpl.layout === "matrix-profile"
-                ? "overflow-hidden"
-                : "overflow-x-auto overflow-y-auto",
+              batmanMode
+                ? "flex flex-col overflow-hidden"
+                : tpl.layout === "quadrant" || tpl.layout === "matrix-profile"
+                  ? "overflow-hidden"
+                  : "overflow-x-auto overflow-y-auto",
               tpl.layout === "matrix" ||
               tpl.layout === "profile" ||
               tpl.layout === "quadrant" ||
@@ -1971,8 +2182,68 @@ export default function HeatmapChainPanel() {
                 n={rankingStats.nGens}
                 stability={rankingStats.minStability}
               />
-            ) : tpl.layout === "matrix" && displayMatrix ? (
-              supportsMatrixView(templateId) && matrixView === "horizontal" ? (
+            ) : tpl.layout === "matrix" && boards.length ? (
+              <div
+                className={
+                  batmanMode
+                    ? "flex h-full min-h-0 flex-col bg-black"
+                    : undefined
+                }
+                data-testid={batmanMode ? "heatmap-batman" : undefined}
+              >
+              {boards.map((board, boardIndex) => {
+                const displayMatrix = board.matrix;
+                const emFence = expectedMoveFence(
+                  chainCtx,
+                  displayMatrix.rows.map((r) => r.strike),
+                );
+                const paintSide = board.side;
+                const hRows = strikesLeftToRight(displayMatrix.rows);
+                const hRowIndex = new Map(
+                  displayMatrix.rows.map((r, i) => [r.strike, i]),
+                );
+                const staged =
+                  batmanMode && supportsBatman(templateId)
+                    ? paintSide === "call"
+                      ? stagedCall
+                      : stagedPut
+                    : null;
+                return (
+              <Fragment key={board.side}>
+              {batmanMode && boardIndex === 1 ? (
+                <BatmanSetupStrip
+                  call={stagedCall}
+                  put={stagedPut}
+                  onClear={(s) => {
+                    if (s === "call") setStagedCall(null);
+                    else setStagedPut(null);
+                  }}
+                  onSend={() => {
+                    if (!batmanReady(stagedCall, stagedPut) || !stagedCall || !stagedPut) {
+                      return;
+                    }
+                    saveAnalyzerTradeBatch(
+                      [stagedCall.script, stagedPut.script],
+                      "heatmap",
+                    );
+                    router.push("/app/options-lab/analyzer");
+                  }}
+                />
+              ) : null}
+              <div
+                className={
+                  batmanMode
+                    ? "min-h-0 flex-1 overflow-auto bg-[#0a0a0e]"
+                    : undefined
+                }
+                data-testid={batmanMode ? `batman-${paintSide}-graph` : undefined}
+                onScroll={
+                  batmanMode
+                    ? (e) => syncBatmanScroll(e.currentTarget)
+                    : undefined
+                }
+              >
+              {supportsMatrixView(templateId) && matrixView === "horizontal" ? (
               <table
                 className="w-full table-fixed border-collapse text-[12px] leading-none"
                 data-testid="heatmap-matrix"
@@ -1990,7 +2261,7 @@ export default function HeatmapChainPanel() {
                         \ body
                       </span>
                     </th>
-                    {displayMatrix.rows.map((row) => (
+                    {hRows.map((row) => (
                       <th
                         key={row.strike}
                         scope="col"
@@ -2045,7 +2316,8 @@ export default function HeatmapChainPanel() {
                       >
                         {col.label}
                       </th>
-                      {displayMatrix.rows.map((row, ri) => {
+                      {hRows.map((row) => {
+                        const ri = hRowIndex.get(row.strike) ?? 0;
                         const cell = displayMatrix.cells[ri]?.[ci];
                         return (
                           <FlyMatrixTile
@@ -2061,8 +2333,11 @@ export default function HeatmapChainPanel() {
                               row.strike,
                             )}
                             selected={
-                              selectedTile?.strike === row.strike &&
-                              selectedTile?.colId === col.id
+                              staged
+                                ? staged.body === row.strike &&
+                                  staged.widthPts === col.widthPts
+                                : selectedTile?.strike === row.strike &&
+                                  selectedTile?.colId === col.id
                             }
                             templateId={templateId}
                             templateLabel={tpl.label}
@@ -2080,9 +2355,24 @@ export default function HeatmapChainPanel() {
                               setHoverTip({ model, x, y })
                             }
                             onPin={() => setTipPinned(true)}
-                            onLeave={() => setHoverTip(null)}
+                            onLeave={() => {
+                              setHoverTip(null);
+                              setTipInspect(null);
+                            }}
+                            onPreview={() =>
+                              openHeldTile(
+                                row.strike,
+                                col.widthPts,
+                                paintSide,
+                                { preview: true },
+                              )
+                            }
                             onOpen={() =>
-                              openHeldTile(row.strike, col.widthPts)
+                              openHeldTile(
+                                row.strike,
+                                col.widthPts,
+                                paintSide,
+                              )
                             }
                             onSelect={() =>
                               setSelectedTile((prev) =>
@@ -2199,8 +2489,11 @@ export default function HeatmapChainPanel() {
                               row.strike,
                             )}
                             selected={
-                              selectedTile?.strike === row.strike &&
-                              selectedTile?.colId === col.id
+                              staged
+                                ? staged.body === row.strike &&
+                                  staged.widthPts === col.widthPts
+                                : selectedTile?.strike === row.strike &&
+                                  selectedTile?.colId === col.id
                             }
                             templateId={templateId}
                             templateLabel={tpl.label}
@@ -2219,9 +2512,24 @@ export default function HeatmapChainPanel() {
                               setHoverTip({ model, x, y })
                             }
                             onPin={() => setTipPinned(true)}
-                            onLeave={() => setHoverTip(null)}
+                            onLeave={() => {
+                              setHoverTip(null);
+                              setTipInspect(null);
+                            }}
+                            onPreview={() =>
+                              openHeldTile(
+                                row.strike,
+                                col.widthPts,
+                                paintSide,
+                                { preview: true },
+                              )
+                            }
                             onOpen={() =>
-                              openHeldTile(row.strike, col.widthPts)
+                              openHeldTile(
+                                row.strike,
+                                col.widthPts,
+                                paintSide,
+                              )
                             }
                             onSelect={() =>
                               setSelectedTile((prev) =>
@@ -2277,7 +2585,12 @@ export default function HeatmapChainPanel() {
                   </tfoot>
                 ) : null}
               </table>
-              )
+              )}
+              </div>
+              </Fragment>
+                );
+              })}
+              </div>
             ) : (
               <table
                 className="w-max min-w-full border-collapse text-sm"
@@ -2379,8 +2692,13 @@ export default function HeatmapChainPanel() {
         pinned={tipPinned}
         tosScript={tipPinned ? tosScript : null}
         copied={tosCopied}
-        inspect={tipPinned ? tipInspect : null}
+        inspect={tipInspect}
+        selectOnly={batmanMode}
+        onSelect={() => {
+          /* Tile click already staged this fly. Button must not navigate. */
+        }}
         onAnalyze={() => {
+          if (batmanMode) return;
           if (tosScript) saveAnalyzerTrade(tosScript, "heatmap");
         }}
         onClose={() => {

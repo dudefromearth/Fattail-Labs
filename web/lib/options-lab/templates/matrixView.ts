@@ -19,6 +19,13 @@ export function parseMatrixView(raw: unknown): MatrixView {
   return raw === "horizontal" ? "horizontal" : "vertical";
 }
 
+/** Horizontal body axis: strikes increase left → right. */
+export function strikesLeftToRight<T extends { strike: number }>(
+  rows: readonly T[],
+): T[] {
+  return [...rows].sort((a, b) => a.strike - b.strike);
+}
+
 /** Horizontal-mode strike column: slight scale + full-column outline. */
 export function horizontalColumnHoverClass(active: boolean, edge: "head" | "cell"): string {
   const base =

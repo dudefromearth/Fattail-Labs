@@ -23,6 +23,7 @@ import {
 } from "../registry";
 import {
   horizontalColumnHoverClass,
+  strikesLeftToRight,
   type MatrixView,
 } from "@/lib/options-lab/templates/matrixView";
 import { createShellSession, type ShellSession } from "../host";
@@ -60,6 +61,10 @@ function TileGrid(props: {
   const { tiles, stale, epochQuality, error, matrixView } = props;
   const horizontal = matrixView === "horizontal";
   const [hoverStrike, setHoverStrike] = useState<number | null>(null);
+  const hRows = tiles ? strikesLeftToRight(tiles.rows) : [];
+  const hRowIndex = new Map(
+    (tiles?.rows ?? []).map((r, i) => [r.strike, i] as const),
+  );
   return createElement(
     "div",
     {
@@ -111,7 +116,7 @@ function TileGrid(props: {
                     "\\ body",
                   ),
                 ),
-                ...tiles.rows.map((r) =>
+                ...hRows.map((r) =>
                   createElement(
                     "th",
                     {
@@ -165,7 +170,8 @@ function TileGrid(props: {
                     },
                     c.label,
                   ),
-                  ...tiles.rows.map((r, ri) => {
+                  ...hRows.map((r) => {
+                    const ri = hRowIndex.get(r.strike) ?? 0;
                     const cell = tiles.cells[ri]?.[ci];
                     const empty = !cell || !cell.valid || cell.value == null;
                     const face = empty ? "—" : (cell.display ?? "—");

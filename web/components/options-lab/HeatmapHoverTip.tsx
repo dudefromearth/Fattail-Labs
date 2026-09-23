@@ -27,12 +27,18 @@ const TONE: Record<TipTone, string> = {
   muted: "text-white/45",
 };
 
-function MiniTent({
+export function HeatmapMiniTent({
   points,
   spot,
+  stroke = "#22d3ee",
+  testId = "heatmap-tile-tip-tent",
+  className = "mt-2 block",
 }: {
   points: HeatmapPayoffPoint[];
   spot: number | null;
+  stroke?: string;
+  testId?: string;
+  className?: string;
 }) {
   if (points.length < 2) return null;
   const W = 360;
@@ -55,8 +61,8 @@ function MiniTent({
     <svg
       width="100%"
       viewBox={`0 0 ${W} ${H}`}
-      className="mt-2 block"
-      data-testid="heatmap-tile-tip-tent"
+      className={className}
+      data-testid={testId}
       aria-hidden
     >
       <line
@@ -67,7 +73,7 @@ function MiniTent({
         stroke="rgba(255,255,255,0.22)"
         strokeWidth="1"
       />
-      <path d={d} fill="none" stroke="#22d3ee" strokeWidth="1.8" />
+      <path d={d} fill="none" stroke={stroke} strokeWidth="1.8" />
       {spot != null && Number.isFinite(spot) ? (
         <line
           x1={sx(spot)}
@@ -115,6 +121,8 @@ export function HeatmapHoverTip({
   copied = false,
   inspect = null,
   onAnalyze,
+  onSelect,
+  selectOnly = false,
   onClose,
 }: {
   model: HeatmapTipModel | null;
@@ -125,13 +133,16 @@ export function HeatmapHoverTip({
   copied?: boolean;
   inspect?: HeatmapPositionInspect | null;
   onAnalyze?: () => void;
+  onSelect?: () => void;
+  selectOnly?: boolean;
   onClose?: () => void;
 }) {
   if (!model) return null;
   const inspector = pinned;
-  const w = inspector ? 400 : 280;
+  const showTent = !!(inspect?.payoff && inspect.payoff.length > 1);
+  const w = inspector || showTent ? 400 : 280;
   const left = Math.max(8, Math.min(x + 16, window.innerWidth - w - 8));
-  const top = Math.max(8, Math.min(y + 12, window.innerHeight - (inspector ? 520 : 220)));
+  const top = Math.max(8, Math.min(y + 12, window.innerHeight - (inspector || showTent ? 520 : 220)));
   const g = inspect?.greeks;
   return (
     <div
@@ -193,10 +204,10 @@ export function HeatmapHoverTip({
           {model.structure}
         </div>
       ) : null}
-      {inspector && inspect?.payoff.length ? (
-        <MiniTent points={inspect.payoff} spot={inspect.spot} />
+      {showTent ? (
+        <HeatmapMiniTent points={inspect!.payoff} spot={inspect!.spot} />
       ) : null}
-      {inspector && g ? (
+      {g ? (
         <div className="mt-2 grid grid-cols-5 gap-2 border-t border-white/10 pt-2">
           <GreekCell
             label="Δ"
@@ -221,7 +232,7 @@ export function HeatmapHoverTip({
           <GreekCell label="IV" value={fmtIvPct(g.iv)} tone="neutral" />
         </div>
       ) : null}
-      {inspector && inspect ? (
+      {inspect ? (
         <div className="mt-1 flex justify-between gap-3 text-[13px] text-white/45">
           <span>
             Max{" "}
@@ -277,18 +288,33 @@ export function HeatmapHoverTip({
           >
             {tosScript}
           </pre>
-          <Link
-            href="/app/options-lab/analyzer"
-            data-testid="heatmap-tip-analyze"
-            onClick={onAnalyze}
-            className={
-              "mt-2.5 flex min-h-[44px] items-center justify-center rounded-full " +
-              "bg-[var(--color-tint)] px-4 text-[16px] font-semibold text-white " +
-              "no-underline hover:bg-[var(--color-tint-emphasis)]"
-            }
-          >
-            Analyze this Position
-          </Link>
+          {selectOnly ? (
+            <button
+              type="button"
+              data-testid="heatmap-tip-select"
+              onClick={onSelect}
+              className={
+                "mt-2.5 flex min-h-[44px] w-full items-center justify-center rounded-full " +
+                "bg-[var(--color-tint)] px-4 text-[16px] font-semibold text-white " +
+                "hover:bg-[var(--color-tint-emphasis)]"
+              }
+            >
+              Select this fly
+            </button>
+          ) : (
+            <Link
+              href="/app/options-lab/analyzer"
+              data-testid="heatmap-tip-analyze"
+              onClick={onAnalyze}
+              className={
+                "mt-2.5 flex min-h-[44px] items-center justify-center rounded-full " +
+                "bg-[var(--color-tint)] px-4 text-[16px] font-semibold text-white " +
+                "no-underline hover:bg-[var(--color-tint-emphasis)]"
+              }
+            >
+              Analyze this Position
+            </Link>
+          )}
         </div>
       ) : model.hint ? (
         <div className="mt-2 text-[14px] text-white/40">{model.hint}</div>

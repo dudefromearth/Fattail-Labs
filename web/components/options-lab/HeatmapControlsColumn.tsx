@@ -45,6 +45,7 @@ import {
   supportsMatrixView,
   type MatrixView,
 } from "@/lib/options-lab/templates/matrixView";
+import { supportsBatman } from "@/lib/options-lab/templates/batmanMode";
 import DetentSlider from "@/components/ui/DetentSlider";
 import {
   WINDOW_STOPS,
@@ -83,6 +84,8 @@ export type HeatmapControlsColumnProps = {
   hasSpotRow: boolean;
   matrixView: MatrixView;
   onMatrixViewChange: (v: MatrixView) => void;
+  batmanMode: boolean;
+  onBatmanModeChange: (on: boolean) => void;
   tosScript: string;
   tosCopied: boolean;
   onCopyTos: () => void;
@@ -200,6 +203,8 @@ export default function HeatmapControlsColumn({
   hasSpotRow,
   matrixView,
   onMatrixViewChange,
+  batmanMode,
+  onBatmanModeChange,
   tosScript,
   tosCopied,
   onCopyTos,
@@ -523,6 +528,19 @@ export default function HeatmapControlsColumn({
           <p className="px-3 py-1 text-right text-[length:var(--text-caption)] text-[var(--color-label-tertiary)]">
             Next {EXPIRY_PICK_COUNT} listed
           </p>
+          {supportsBatman(templateId) ? (
+            <SegmentedRow
+              label="Batman"
+              value={batmanMode ? "on" : "off"}
+              options={[
+                { id: "off", label: "One side" },
+                { id: "on", label: "Batman" },
+              ]}
+              onChange={(id) => onBatmanModeChange(id === "on")}
+              testId="heatmap-batman-mode"
+            />
+          ) : null}
+          {batmanMode && supportsBatman(templateId) ? null : (
           <SegmentedRow
             label="Side"
             value={side}
@@ -533,6 +551,7 @@ export default function HeatmapControlsColumn({
             onChange={onSideChange}
             testId="chain-ladder-side"
           />
+          )}
           {widthFit ? null : (
           <label className={inspectorRow + " flex-col items-stretch gap-1 py-2"}>
             <span className="sr-only">Rate of change color sensitivity</span>
@@ -622,6 +641,7 @@ export default function HeatmapControlsColumn({
               >
                 {tosCopied ? "Copied" : "Copy again"}
               </button>
+              {batmanMode ? null : (
               <Link
                 href="/app/options-lab/analyzer"
                 className={inspectorListRow + " no-underline"}
@@ -634,6 +654,7 @@ export default function HeatmapControlsColumn({
                   className="text-[var(--color-tint)]"
                 />
               </Link>
+              )}
             </>
           ) : (
             <p className={inspectorFooter}>⌥-click a tile to fill the script</p>

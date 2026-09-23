@@ -65,6 +65,7 @@ const vert = parseHeatmapSession({
 assert(vert?.verticalKind === "credit", "vertical kind with %");
 assert(vert?.valueMode === "pct_change", "vertical %");
 assert(ok?.matrixView === "vertical", "matrix view default");
+assert(ok?.batmanMode === false, "batman default off");
 const horiz = parseHeatmapSession({
   symbol: "SPX",
   templateId: "sym-fly",
@@ -95,6 +96,7 @@ const controls = readFileSync(
 assert(!controls.includes("runner-cache-budget"), "Cache slider is gone");
 assert(controls.includes("heatmap-tm-hold"), "horizon readout is present");
 assert(controls.includes("heatmap-matrix-view"), "vertical/horizontal toggle");
+assert(controls.includes("heatmap-batman-mode"), "batman toggle");
 const panel = readFileSync(
   join(
     dirname(fileURLToPath(import.meta.url)),
@@ -107,6 +109,8 @@ assert(panel.includes("data-em"), "EM strike mark");
 assert(panel.includes("heatmap-width-col-right-head"), "width col right");
 assert(panel.includes("sticky right-0"), "right width sticky");
 assert(panel.includes("data-col-hover"), "horizontal column hover");
+assert(panel.includes("BatmanSetupStrip"), "batman strip");
+assert(panel.includes("saveAnalyzerTradeBatch"), "two-card send");
 assert(!/Instant Replay/i.test(controls), "member copy is Time Machine");
 assert(!/from the open/.test(controls), "hold line is not an open-bell story");
 
