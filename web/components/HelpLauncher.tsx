@@ -158,13 +158,13 @@ function Compose({ onStarted }: { onStarted: (id: number) => void }) {
   return (
     <div className="space-y-3 p-4 text-sm">
       <select value={category} onChange={(e) => setCategory(e.target.value)}
-        className={`w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800 ${category ? "" : "text-zinc-400"}`}>
+        className={`w-full rounded-md border border-zinc-300 px-3 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 ${category ? "" : "text-zinc-400 dark:text-zinc-500"}`}>
         <option value="">What's it about? (optional — we'll sort it)</option>
         {TOPICS.map((t) => <option key={t.value} value={t.value} className="text-zinc-900 dark:text-zinc-100">{t.label}</option>)}
       </select>
       <textarea value={text} onChange={(e) => setText(e.target.value)} rows={5}
         placeholder="Ask your question…" autoFocus
-        className="w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800" />
+        className="w-full rounded-md border border-zinc-300 px-3 py-2 text-zinc-900 placeholder:text-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500" />
       {category === "bug" && (
         <div className="flex items-center gap-2">
           {shot ? (
@@ -332,7 +332,7 @@ function Chat({ id, onBack }: { id: number; onBack: () => void }) {
           <div className="flex gap-2">
             <input value={reply} onChange={(e) => { setReply(e.target.value); lastActivity.current = Date.now(); }} placeholder="Type your reply…"
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), send())}
-              className="flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" />
+              className="flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500" />
             <button onClick={send} disabled={busy || !reply.trim()}
               className="rounded-md bg-emerald-600 px-3 text-sm text-white disabled:opacity-50">Send</button>
           </div>
