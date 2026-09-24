@@ -4,6 +4,16 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-23 — DL-791 SSR tap collects every symbol every day · listed calendar is not a capture gate
+
+**Decision (Coach).** "Let's collect every day for every symbol" so we never miss an expiration day. `ssr_live_capture` no longer skips a name because `next_expirations_json` does not contain today. `front_expiration` is always the session day. Interest is registered for that 0DTE key; `chain_feed` (unchanged) fetches whatever interest exists. A live ladder with rows is written even when the listed calendar omitted the day. An empty book on an unlisted day is `NOT TODAY` (not a hole). An empty book on a day the calendar *does* list remains `NO CHAIN`. Hardening session-map still applies. **Do not restart `chain_feed`.**
+
+**Why.** On-disk COUNTS for 2026-09-09 showed AAPL's listed list jumping `9/4 → 9/11, 9/18…` (MWF holes 9/9, 9/14, 9/16) while SPX/XSP collected all day. Hydrate skipped a Massive rescan because some future Friday was still `>= today`. SPY/QQQ's 16-date cap skipped 9/2. Tape Lab's calendar was honest: zero `snap-*.json`.
+
+**Cites:** Coach 2026-09-23 · `ssr_live_capture.scheduled_chain_rows` / `front_expiration` · TREQ-050 (Tape Lab).
+
+---
+
 ## 2026-09-20 — DL-790 REQ-009 fold-in · :4011 overlay + loader in the futures deploy GO
 
 **Decision (Coach rider).** Spec overlay and `python -m symbology.load_specs` (ES, MES, ZB fixture) fold into the futures instance's commit/push/deploy GO. Deploying `origin/main` to StudioOne `:4011` brings `GET /spec` live; the member-card hop 404 resolves there. Loader runs immediately after the `:4011` restart in the same window. Weekend **is** the post-close window (market closed until Sunday 18:00). Cutoff 15:00 ET.

@@ -103,18 +103,24 @@ def listed_expiration_dates(row: dict[str, Any]) -> list[str]:
 
 
 def expires_on(row: dict[str, Any], day: date) -> bool:
-    """True only when `day` is a listed expiration for this symbol."""
+    """True when the Admin listed calendar says `day` is an expiration.
+
+    Capture does not use this as a gate (Coach: collect every symbol every
+    day). It only distinguishes an empty 0DTE book we expected (hole) from
+    an empty book on a day the calendar does not list (NOT TODAY).
+    """
     return day.isoformat() in listed_expiration_dates(row)
 
 
-def front_expiration(row: dict[str, Any], day: date) -> str | None:
-    """Expiry used for today's snap: the session day, and only if it is listed.
+def front_expiration(row: dict[str, Any], day: date) -> str:
+    """Expiry key for today's snap: always the session day.
 
-    Do not fall back to the calendar day when the name does not expire
-    today (AAPL on a Tuesday). That invented a 0DTE Massive does not have.
+    A stale listed calendar used to hide real 0DTE days (MWF names skipped
+    because the stored list jumped to Fridays). Always ask for today.
+    Massive/Redis empty means there is no 0DTE book — we do not invent strikes.
     """
-    key = day.isoformat()
-    return key if key in listed_expiration_dates(row) else None
+    del row  # capture key is the session day, not the listed calendar
+    return day.isoformat()
 
 
 def scan_listed_expirations(row: dict[str, Any], day: date) -> list[str]:
@@ -385,20 +391,12 @@ class LiveTap:
     def topic(self, day: date, row: dict[str, Any] | None = None) -> str:
         if row is None:
             row = {"symbol": "SPY"}
-        exp = front_expiration(row, day)
-        if not exp:
-            raise RuntimeError(
-                f"{row.get('symbol')} has no listed expiration on {day.isoformat()}"
-            )
-        return ladder_topics(row, exp, WINGS)[0]
+        return ladder_topics(row, front_expiration(row, day), WINGS)[0]
 
     def all_topics(self, day: date) -> list[str]:
         out: list[str] = []
         for row in self.scheduled_chain_rows():
-            exp = front_expiration(row, day)
-            if not exp:
-                continue
-            out.extend(self._ladder_lookup_topics(row, exp))
+            out.extend(self._ladder_lookup_topics(row, front_expiration(row, day)))
         return out
 
     def _load_session_map(self, *, force: bool = False) -> SessionMap:
@@ -499,14 +497,9 @@ class LiveTap:
                 else:
                     self._note_no_session(product, phase)
             rows = filtered
-        scheduled: list[dict[str, Any]] = []
-        for row in rows:
-            product = str(row.get("symbol") or "").upper()
-            if expires_on(row, self.day):
-                scheduled.append(row)
-            else:
-                self._note_no_expiry(product)
-        return scheduled
+        # Every in-session tradeable, every day. The listed calendar is not a
+        # capture gate — an empty 0DTE book is decided after the read.
+        return list(rows)
 
     def chain_cycle(self) -> dict[str, Any]:
         """One poll unit: interest + chain snap for the scheduled set."""
@@ -752,14 +745,17 @@ class LiveTap:
                 continue
             payload, topic_used = self._read_generation(row, exp)
             if not self.generation_has_rows(payload):
-                self._note_chain_miss(
-                    product, exp=exp, topic=topic_used, captured=captured
-                )
-                last = {
-                    "hole": f"NO CHAIN {product}",
-                    "symbol": product,
-                    "symbols": [],
-                }
+                if expires_on(row, self.day):
+                    self._note_chain_miss(
+                        product, exp=exp, topic=topic_used, captured=captured
+                    )
+                    last = {
+                        "hole": f"NO CHAIN {product}",
+                        "symbol": product,
+                        "symbols": [],
+                    }
+                else:
+                    self._note_no_expiry(product)
                 continue
             assert isinstance(payload, dict)
             n, ivs, greeks = self._row_iv_greeks(payload)

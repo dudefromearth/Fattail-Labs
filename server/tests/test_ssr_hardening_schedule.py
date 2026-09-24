@@ -243,7 +243,8 @@ def test_only_writes_snap_when_generation_has_rows(tmp_path, monkeypatch):
 
 
 def test_skips_symbol_that_does_not_expire_today(tmp_path, monkeypatch, capsys):
-    """AAPL listed Mon/Wed/Fri is not snapped on Tuesday — not a NO CHAIN hole."""
+    """Unlisted today with an empty book is NOT TODAY, not a hole — but we still
+    register interest so chain_feed fetches today's 0DTE if Massive has one."""
     _setup(tmp_path, monkeypatch, hardening="0", ts=PRE)
     store = FakeStore()
     _put_spy_generation(store)
@@ -262,8 +263,52 @@ def test_skips_symbol_that_does_not_expire_today(tmp_path, monkeypatch, capsys):
     tap.chain_cycle()
     out = capsys.readouterr().out
     assert "no expiry AAPL" in out
-    assert not any(":AAPL:" in t for t in store.touched)
+    assert any(":AAPL:" in t for t in store.touched)
     aapl_dir = _cache_day(tmp_path) / f"day={DAY.isoformat()}" / "chain" / "AAPL"
     assert list(aapl_dir.glob("snap-*.json")) == []
     assert not any("AAPL" in str(h) for h in tap.holes)
     assert any(":SPX:" in t for t in store.touched)
+
+
+def test_collects_unlisted_today_when_generation_has_rows(tmp_path, monkeypatch):
+    """Stale listed calendar must not hide a real 0DTE book."""
+    _setup(tmp_path, monkeypatch, hardening="0", ts=PRE)
+    store = FakeStore()
+    _put_spy_generation(store)
+
+    def universe():
+        rows = []
+        for row in FIXTURE_UNIVERSE:
+            item = dict(row)
+            if item["symbol"] == "AAPL":
+                item["next_expirations_json"] = ["2026-08-17", "2026-08-19", "2026-08-21"]
+            rows.append(item)
+        return rows
+
+    monkeypatch.setattr(tap_mod, "load_enabled_universe", universe)
+    aapl_row = {
+        "symbol": "AAPL",
+        "feed_symbol": None,
+        "next_expirations_json": ["2026-08-17", "2026-08-19", "2026-08-21"],
+    }
+    exp = tap_mod.front_expiration(aapl_row, DAY)
+    assert exp == DAY.isoformat()
+    topic = tap_mod.ladder_topics(aapl_row, exp, tap_mod.WINGS)[0]
+    store.docs[topic] = {
+        "content_hash": "aapl-hidden-0dte",
+        "as_of": PRE.isoformat(),
+        "row_count": 1,
+        "rows": [{"iv": 0.3, "delta": 0.4, "gamma": 0.02, "theta": -0.01, "vega": 0.2}],
+    }
+    tap = tap_mod.LiveTap(store=store)
+    tap.chain_cycle()
+    snaps = list(
+        (_cache_day(tmp_path) / f"day={DAY.isoformat()}" / "chain" / "AAPL").glob(
+            "snap-*.json"
+        )
+    )
+    assert len(snaps) == 1
+    doc = json.loads(snaps[0].read_text(encoding="utf-8"))
+    assert doc.get("expiration") == DAY.isoformat()
+    assert doc.get("hole") is None
+    assert not any("AAPL" in str(h) for h in tap.holes)

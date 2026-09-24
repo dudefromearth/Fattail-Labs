@@ -37,14 +37,15 @@ def test_friday_5min_day_is_not_rewritten():
     assert FRIDAY_5MIN_DAY.isoformat() == "2026-08-14"
 
 
-def test_front_expiration_only_same_listed_day():
+def test_front_expiration_is_always_the_session_day():
+    """Capture always asks for today. The listed calendar is not a gate."""
     from market_data.ssr_live_capture import expires_on, front_expiration
 
     row = {
         "symbol": "AAPL",
         "next_expirations_json": ["2026-08-10", "2026-08-19", "2026-08-21"],
     }
-    assert front_expiration(row, date(2026, 8, 18)) is None
+    assert front_expiration(row, date(2026, 8, 18)) == "2026-08-18"
     assert expires_on(row, date(2026, 8, 18)) is False
     assert front_expiration(row, date(2026, 8, 19)) == "2026-08-19"
     assert expires_on(row, date(2026, 8, 19)) is True
