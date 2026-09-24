@@ -478,6 +478,16 @@ function holdWithinLimit(openDay: string, closeDay: string): boolean {
   return span >= 0 && span <= MAX_STRUCTURE_HOLD_DAYS;
 }
 
+/** Signed calendar-day span (close − open); null if unparseable. Negative when
+ * the close is stamped before the open — a member outside US Eastern whose
+ * local clock lags the ET-recorded open. */
+function calendarDaysBetween(openDay: string, closeDay: string): number | null {
+  const a = Date.parse(openDay);
+  const b = Date.parse(closeDay);
+  if (Number.isNaN(a) || Number.isNaN(b)) return null;
+  return Math.round((b - a) / 86400000);
+}
+
 function todayYmdLocal(): string {
   const d = new Date();
   const y = d.getFullYear();
@@ -552,6 +562,12 @@ export function matchOpenClose(
   });
   const queues = new Map<string, OpenCloseMatch[]>();
   const result: OpenCloseMatch[] = [];
+  const leftoverCloses: {
+    close: Trade;
+    day: string;
+    key: string;
+    remaining: number;
+  }[] = [];
 
   for (const t of sorted) {
     const day = ymdFromExec(t.exec_at);
@@ -601,6 +617,46 @@ export function matchOpenClose(
       if (slotRemaining(openSlot) <= 0) {
         openSlot.close = t;
         openSlot.close_day = day;
+      }
+    }
+
+    if (remainingClose > 0) {
+      // Strict FIFO couldn't place these units (no *earlier* open of this
+      // structure was queued). Held for the reclaim pass below.
+      leftoverCloses.push({ close: t, day, key, remaining: remainingClose });
+    }
+  }
+
+  // Reclaim pass: pair an otherwise-orphaned close with an unmatched
+  // same-structure open within the hold window, IGNORING intra-window time
+  // order. FIFO above only pairs a close to an *earlier* open, so a close
+  // stamped before its open (a member outside US Eastern whose local clock
+  // lags the ET-recorded open) would orphan even though the open exists.
+  // Additive: only touches closes that would otherwise orphan. Mirrors the
+  // server matcher (trade_log_domain/matching.py).
+  for (const lc of leftoverCloses) {
+    if (lc.remaining <= 0) continue;
+    for (const openSlot of queues.get(lc.key) || []) {
+      if (lc.remaining <= 0) break;
+      const leftover = slotRemaining(openSlot);
+      if (leftover <= 0) continue;
+      const span = calendarDaysBetween(openSlot.open_day, lc.day);
+      if (
+        holdWindowApplies(openSlot.open) &&
+        (span === null || Math.abs(span) > MAX_STRUCTURE_HOLD_DAYS)
+      )
+        continue;
+      const take = Math.min(leftover, lc.remaining);
+      openSlot.closed_units = (openSlot.closed_units ?? 0) + take;
+      lc.remaining -= take;
+      (openSlot.closes ||= []).push({
+        close: lc.close,
+        close_day: lc.day,
+        units: take,
+      });
+      if (slotRemaining(openSlot) <= 0) {
+        openSlot.close = lc.close;
+        openSlot.close_day = lc.day;
       }
     }
   }
