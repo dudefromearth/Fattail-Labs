@@ -34,6 +34,35 @@ def test_quiet_server_binds_without_reverse_dns():
         httpd.server_close()
 
 
+def test_chain_page_uses_day_calendar_not_select():
+    import threading
+    from http.client import HTTPConnection
+
+    from market_data.ssr_snapshot_dash import Handler, QuietHTTPServer
+
+    httpd = QuietHTTPServer(("127.0.0.1", 0), Handler)
+    port = httpd.server_address[1]
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        conn = HTTPConnection("127.0.0.1", port, timeout=2)
+        conn.request("GET", "/chain")
+        res = conn.getresponse()
+        body = res.read()
+        assert res.status == 200
+        assert b'id="dayPickerBtn"' in body
+        assert b"<select id=\"day\">" not in body
+        assert b'src="/daycalendar.js"' in body
+        conn.request("GET", "/daycalendar.js")
+        js = conn.getresponse()
+        script = js.read()
+        assert js.status == 200
+        assert b"DayCalendar.mount" in script
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+
+
 def test_dash_host_lan_default(monkeypatch):
     monkeypatch.delenv("LABS_SSR_DASH_HOST", raising=False)
     from market_data.ssr_snapshot_dash import dash_host
@@ -144,10 +173,33 @@ def test_count_day_does_not_need_json_body(tmp_path: Path):
 def test_list_days_newest_first(tmp_path: Path):
     from market_data.ssr_snapshot_dash import list_days
 
-    (tmp_path / "day=2026-08-14").mkdir()
-    (tmp_path / "day=2026-08-17").mkdir()
+    for day, snaps in (("2026-08-14", 1), ("2026-08-17", 2)):
+        d = tmp_path / f"day={day}"
+        d.mkdir()
+        (d / "COUNTS.json").write_text(
+            json.dumps({"day": day, "snaps": snaps}), encoding="utf-8"
+        )
     (tmp_path / "logs").mkdir()
     assert list_days(tmp_path) == ["2026-08-17", "2026-08-14"]
+
+
+def test_list_days_skips_empty_weekend_dirs(tmp_path: Path):
+    from market_data.ssr_snapshot_dash import list_days
+
+    fri = tmp_path / "day=2026-09-18"
+    fri.mkdir()
+    (fri / "COUNTS.json").write_text(
+        json.dumps({"day": "2026-09-18", "snaps": 12}), encoding="utf-8"
+    )
+    sat = tmp_path / "day=2026-09-19"
+    sat.mkdir()
+    (sat / "COUNTS.json").write_text(
+        json.dumps({"day": "2026-09-19", "snaps": 0}), encoding="utf-8"
+    )
+    sun = tmp_path / "day=2026-09-20"
+    sun.mkdir()
+    (sun / "PROVENANCE.json").write_text("{}", encoding="utf-8")
+    assert list_days(tmp_path) == ["2026-09-18"]
 
 
 def test_available_and_retrieve_http(tmp_path: Path, monkeypatch):

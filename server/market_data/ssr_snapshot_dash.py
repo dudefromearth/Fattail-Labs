@@ -155,6 +155,33 @@ def scan_roots() -> list[Path]:
     return roots
 
 
+def _day_has_snaps(day_dir: Path) -> bool:
+    """True only when the day folder has at least one chain snap.
+
+    Weekend (and other empty) day=* dirs still get COUNTS.json / provenance
+    from the capture process. Those are not archive days — Tape Lab's calendar
+    only lights dates with data.
+    """
+    counts = day_dir / "COUNTS.json"
+    if counts.is_file():
+        try:
+            n = json.loads(counts.read_text(encoding="utf-8")).get("snaps")
+            if isinstance(n, (int, float)):
+                return int(n) > 0
+        except (OSError, json.JSONDecodeError, TypeError, ValueError):
+            pass
+    chain = day_dir / "chain"
+    if not chain.is_dir():
+        return False
+    for child in chain.iterdir():
+        if child.is_dir():
+            if any(child.glob("snap-*.json")):
+                return True
+        elif child.name.startswith("snap-") and child.suffix == ".json":
+            return True
+    return False
+
+
 def list_days(root: Path | None = None) -> list[str]:
     bases = [root] if root is not None else scan_roots()
     days: set[str] = set()
@@ -163,7 +190,8 @@ def list_days(root: Path | None = None) -> list[str]:
             continue
         for child in base.iterdir():
             if child.is_dir() and child.name.startswith("day="):
-                days.add(child.name.removeprefix("day="))
+                if _day_has_snaps(child):
+                    days.add(child.name.removeprefix("day="))
     return sorted(days, reverse=True)
 
 
@@ -661,6 +689,8 @@ PAGE_CHAIN = """<!DOCTYPE html>
     --ok: #3dd68c;
     --bad: #ff6b6b;
     --idle: #8b95a5;
+    --green: #3dd68c;
+    --dim: #8b95a5;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: var(--bg); color: var(--text);
@@ -689,8 +719,8 @@ PAGE_CHAIN = """<!DOCTYPE html>
   th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line);
     font-variant-numeric: tabular-nums; }
   th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
-  select { background: var(--bg); color: var(--text); border: 1px solid var(--line);
-    border-radius: 8px; padding: 6px 10px; }
+  select, header button { background: var(--bg); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 6px 10px; font: inherit; cursor: pointer; }
   .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
   .dot.on { background: var(--ok); } .dot.off { background: var(--bad); }
 </style>
@@ -707,7 +737,12 @@ PAGE_CHAIN = """<!DOCTYPE html>
     <span id="clock" class="chip">—</span>
     <span id="cadence" class="chip">—</span>
     <span id="wake" class="chip">—</span>
-    <label class="sub">Day <select id="day"></select></label>
+    <label class="sub">Day
+      <span style="position:relative;display:inline-flex;align-items:center;gap:2px">
+        <button type="button" id="dayPickerBtn">Pick a day…</button>
+        <input type="hidden" id="day"/>
+      </span>
+    </label>
     <a class="chip" href="/" style="text-decoration:none">&larr; Home</a>
     <a class="chip" href="/vp" style="text-decoration:none">Futures / VP →</a>
     <a class="chip" href="/docs" style="text-decoration:none">API docs →</a>
@@ -729,9 +764,16 @@ PAGE_CHAIN = """<!DOCTYPE html>
     </table>
   </section>
 </main>
+<script src="/daycalendar.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 let selected = null;
+const dayCal = DayCalendar.mount({
+  buttonEl: $('dayPickerBtn'),
+  hiddenInputEl: $('day'),
+  placeholder: 'Pick a day…',
+  unavailableTitle: 'No archive this day',
+});
 function phaseClass(p){ return ['gth','pre','rth','extended','closed','weekend'].includes(p) ? p : ''; }
 function fmt(ts){
   if(!ts) return '—';
@@ -760,10 +802,8 @@ function paint(st, dayDoc){
   $('write-root').textContent = st.write_root ? ('writing ' + st.write_root) : 'writing —';
   const days = st.days || [];
   const cur = selected || st.day;
-  if ($('day').options.length !== days.length) {
-    $('day').innerHTML = days.map(d => `<option value="${d}">${d}</option>`).join('');
-  }
-  $('day').value = cur;
+  dayCal.setAvailableDays(days);
+  if (cur && dayCal.getValue() !== cur) dayCal.setValue(cur);
   const p = st.processes || {};
   $('procs').innerHTML = [
     proc('tap', p.tap), proc('chain_feed', p.chain_feed),
@@ -1300,6 +1340,10 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if path in ("/chain", "/chain.html"):
                 self._send(200, PAGE_CHAIN.encode("utf-8"), "text/html; charset=utf-8")
+                return
+            if path == "/daycalendar.js":
+                js = Path(__file__).with_name("ssr_daycalendar.js")
+                self._send(200, js.read_bytes(), "text/javascript; charset=utf-8")
                 return
             if path in ("/vp", "/vp.html"):
                 self._send(200, PAGE_VP.encode("utf-8"), "text/html; charset=utf-8")
