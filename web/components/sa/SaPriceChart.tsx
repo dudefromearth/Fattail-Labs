@@ -11,7 +11,12 @@ import {
   type ISeriesApi,
   type UTCTimestamp,
 } from "lightweight-charts";
-import { fetchGenWait, peek, type FetchGenResult } from "@/lib/saDelivery";
+import {
+  fetchGenWait,
+  fetchWindowExclusive,
+  peek,
+  type FetchGenResult,
+} from "@/lib/saDelivery";
 import { honestBars } from "@/lib/saBars";
 import { resolveTick, tickDecimals } from "@/lib/saTicks";
 import { fetchSpec } from "@/lib/symbology/api";
@@ -34,7 +39,6 @@ import {
   asUnixMs,
   beginBandFetch,
   candlesInMsRange,
-  mockBinsFromCandles,
   profileRowGrain,
   visibleCandleWindow,
   type VpShapeClass,
@@ -185,6 +189,36 @@ export default function SaPriceChart({
     seriesRef.current = series;
     if (candlesRef.current.length) {
       series.setData(candlesRef.current);
+      // A brand-new chart/series has no explicit range yet, so it defaults
+      // to fitting ALL loaded candles instead of a Visible Range window —
+      // and candlesRef.current can already be populated here even on a
+      // true first mount (persisted OHLC cache), before apply() ever runs.
+      // Restore a previously-computed window if we have one (remount);
+      // otherwise compute a fresh narrow default right here, same as
+      // apply()'s reset branch — never leave a populated series with no
+      // explicit range.
+      const times = candlesRef.current.map((c) => c.time as UTCTimestamp);
+      const restore =
+        intendedWindowRef.current ??
+        (times.length
+          ? defaultTimeWindow(
+              times[0] * 1000,
+              times[times.length - 1] * 1000,
+              tfMs(prefsRef.current.priceTf),
+              prefsRef.current.priceLookbackDays,
+            )
+          : null);
+      if (restore) {
+        try {
+          chart.timeScale().setVisibleRange({
+            from: Math.floor(restore.lo / 1000) as UTCTimestamp,
+            to: Math.floor(restore.hi / 1000) as UTCTimestamp,
+          });
+          intendedWindowRef.current = restore;
+        } catch {
+          /* engine may reject empty */
+        }
+      }
     }
     const primitive = new VpHistogramPrimitive(paintRef.current);
     series.attachPrimitive(primitive);
@@ -279,7 +313,12 @@ export default function SaPriceChart({
       if (resetView && times.length && chartRef.current) {
         const dataLo = times[0] * 1000;
         const dataHi = times[times.length - 1] * 1000;
-        const w = defaultTimeWindow(dataLo, dataHi, tfMs(prefsRef.current.priceTf), 1);
+        const w = defaultTimeWindow(
+          dataLo,
+          dataHi,
+          tfMs(prefsRef.current.priceTf),
+          prefsRef.current.priceLookbackDays,
+        );
         try {
           chartRef.current.timeScale().setVisibleRange({
             from: Math.floor(w.lo / 1000) as UTCTimestamp,
@@ -394,7 +433,22 @@ export default function SaPriceChart({
           const candles = colorBars(toCandles(combined), prefsRef.current);
           candlesRef.current = candles;
           timesRef.current = candles.map((c) => c.time as UTCTimestamp);
+          // setData() re-fits the visible range to the whole series unless we
+          // restore it (same failure mode fixed in the onGen handler below).
+          // Here bar INDICES shift because we just prepended older bars, so
+          // restore by TIME (stable across a prepend), not by logical range —
+          // otherwise every backfill snaps the chart to "uncompressed" and,
+          // since the new fit-all edge sits right at the trigger distance
+          // again, re-fires this same handler in a loop.
+          const preRange = chart.timeScale().getVisibleRange();
           seriesRef.current?.setData(candles);
+          if (preRange) {
+            try {
+              chart.timeScale().setVisibleRange(preRange);
+            } catch {
+              /* engine may reject a range outside the newly loaded data */
+            }
+          }
           setHistBars(combined.length);
           syncPrimitiveTime();
           kickVpRef.current("now", "rebuild");
@@ -628,6 +682,15 @@ export default function SaPriceChart({
 
     const barMs = tfMs(prefs.priceTf);
     let lastSent = "";
+    // Paint ordering guard. Real server bins must never be regressed back
+    // to the cruder candle-occupancy mock for the same window, and a slow
+    // stale response must never clobber a newer one that already landed —
+    // repeated/duplicate run() calls for one window (pan, resize, refetch
+    // retries) were racing their synchronous mock-paint against each
+    // other's async real data with no ordering check at all.
+    let paintSeq = 0;
+    let paintedSeq = 0;
+    let paintedWasReal = false;
 
     const computeWindow = (): VisibleCandleWindow | null => {
       syncPrimitiveTime();
@@ -705,14 +768,32 @@ export default function SaPriceChart({
       if (!timesRef.current.length) return;
       const w = computeWindow();
       if (!w) return;
+      // Defense in depth against computeWindow()'s barsInLogicalRange
+      // strategy reporting the whole loaded series instead of what's on
+      // screen (happens transiently around setData() calls before the
+      // chart's visible range is re-narrowed — lightweight-charts auto-fits
+      // to full content otherwise). The library itself never renders bars
+      // narrower than ~1px, so more candles than pane pixels is never a
+      // real on-screen window — it's this settle race. Wait for the next
+      // trigger instead of firing a fetch spanning the full history.
+      const paneW = chartRef.current?.paneSize().width;
+      if (paneW && w.count > paneW) return;
       const sent = `${w.fromT}:${w.toT}:${w.count}:${cls}`;
       if (cls === "diff" && sent === lastSent) return;
       lastSent = sent;
+      const mySeq = ++paintSeq;
       setVisibleBars(w.count);
       const row = rowForView();
-      const visCandles = candlesRef.current.slice(w.fromIdx, w.toIdx + 1);
-      const mock = mockBinsFromCandles(visCandles, row);
-      if (mock.length) paintBins(mock, "mock");
+      // REQ-007 v2 law: "the client never assembles a histogram from bars."
+      // This used to paint a candle-occupancy placeholder (mockBinsFromCandles)
+      // here, rendered with the exact same real-looking bars as true server
+      // data — a member had no way to tell a fabricated placeholder from
+      // real per-tick volume just by looking at the chart. That's exactly
+      // the silent-lie failure mode the OPF doctrine forbids. Paint nothing
+      // until the real /window response lands; the primitive was already
+      // cleared for this epoch (interval/source/target change) above, so an
+      // empty profile layer with the candles still visible is the honest
+      // state while the fetch is in flight — not a fabricated one.
       const y = readY();
       if (y && y.hi > y.lo) {
         paintRef.current.visibleLo = y.lo;
@@ -728,12 +809,28 @@ export default function SaPriceChart({
       });
       if (plan.kind === "wait" || !plan.url) return;
       if (beginBandFetch(flightRef.current) === "wait") return;
-      void fetchGenWait(plan.url)
+      void fetchWindowExclusive(plan.url)
         .then((r) => {
           if (cancelled) return;
+          const namedState = (r.body as { named_state?: unknown } | null)?.named_state;
+          if (typeof namedState === "string" && namedState) {
+            // The server returns some failures (e.g. CONTRACT MISMATCH —
+            // row_not_multiple_of_substrate) as HTTP 200 with an error body
+            // instead of a 4xx. r.ok alone can't catch that; a named_state
+            // here means real data was refused, not that there's none to
+            // show — this must surface, never look identical to "no bins."
+            console.error(`[SaPriceChart] window named_state=${namedState}`, r.body);
+            setErr(`Profile unavailable (${namedState})`);
+            return;
+          }
           const bins = asVpBins(r.body?.bins);
           if (!bins.length) return;
+          // A slower, older request that lands after a newer one already
+          // painted real data must not clobber it with stale bins.
+          if (mySeq < paintedSeq && paintedWasReal) return;
           paintBins(bins, String(r.body?.bin_source || "window"));
+          paintedSeq = Math.max(paintedSeq, mySeq);
+          paintedWasReal = true;
           setRangeMs(r.ms);
         })
         .finally(() => {
@@ -868,6 +965,14 @@ export default function SaPriceChart({
         const url = `${apiBase}/ohlc/${source}?tf=${nativeOhlcTf(prefs.priceTf)}&lookback_days=0`;
         void fetchGenWait(url).then((r) => {
           if (Array.isArray(r.body?.bars) && seriesRef.current) {
+            // setData() re-fits the visible range to the whole series unless
+            // we explicitly restore it — the very next computeWindow() call
+            // (from kickVpRef below) would then read "entire loaded history"
+            // as the visible window instead of what's on screen, firing a
+            // VP fetch spanning the full series rather than REQ-007's
+            // visible-range-only window.
+            const ts = chartRef.current?.timeScale();
+            const preGenLogical = ts?.getVisibleLogicalRange() ?? null;
             const resampled = resampleOhlc(
               r.body.bars as OhlcBar[],
               tfMs(prefsRef.current.priceTf),
@@ -877,6 +982,22 @@ export default function SaPriceChart({
             candlesRef.current = candles;
             timesRef.current = candles.map((c) => c.time as UTCTimestamp);
             seriesRef.current.setData(candles);
+            // Restoring a captured range verbatim just perpetuates whatever
+            // state was already there — including a corrupted/overly-wide
+            // one from elsewhere. Clamp the restore to a sane bar count
+            // (pane width) so a bad prior state can't propagate forever
+            // through every subsequent live tick.
+            const paneW = chartRef.current?.paneSize().width;
+            if (
+              preGenLogical &&
+              paneW &&
+              Number(preGenLogical.to) - Number(preGenLogical.from) > paneW
+            ) {
+              const to = Number(preGenLogical.to);
+              ts?.setVisibleLogicalRange({ from: to - paneW, to });
+            } else if (preGenLogical) {
+              ts?.setVisibleLogicalRange(preGenLogical);
+            }
             syncPrimitiveTime();
             kickVpRef.current("now", "rebuild");
           }

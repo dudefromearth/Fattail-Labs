@@ -7,7 +7,6 @@ Mismatch → ContractMismatch (report to Coach), never coerce.
 from __future__ import annotations
 
 import os
-import threading
 from pathlib import Path
 from typing import Any
 
@@ -136,21 +135,6 @@ def is_coverage_response(body: dict[str, Any]) -> bool:
     return False
 
 
-_POOL: dict[tuple[str, int], Any] = {}
-# http.client.HTTPConnection keeps request/response state on the socket
-# (Idle vs Request-sent) and is not safe for concurrent use. FastAPI runs
-# this in a thread pool, and the VP widget fires several concurrent hop
-# calls per interaction — without this lock, two threads racing on the
-# same pooled connection raise http.client.CannotSendRequest. One lock
-# per (host, port) serializes access to that host's connection only;
-# different hosts still proceed independently.
-_POOL_LOCKS: dict[tuple[str, int], threading.Lock] = {}
-
-
-def _pool_lock(key: tuple[str, int]) -> threading.Lock:
-    return _POOL_LOCKS.setdefault(key, threading.Lock())
-
-
 def fetch_v1(
     path: str,
     *,
@@ -175,7 +159,14 @@ def _http_json(url: str, headers: dict[str, str] | None = None) -> tuple[int, di
 def _http_json_full(
     url: str, headers: dict[str, str] | None = None
 ) -> tuple[int, dict[str, Any], dict[str, str]]:
-    """GET with HTTP/1.1 keep-alive. Pin a stable host — never studioone.local."""
+    """GET, one connection per call. StudioOne's real cost is now ~0.1s
+    (precomputed VP buckets — see minute_bins.py); a fresh TCP connect on
+    the LAN is negligible next to that. A single shared/pooled connection
+    serialized every concurrent hop call behind one lock (OHLC, window,
+    stream, health — every panel, every tab) and one slow request queued
+    up every other one behind it. Opening per call trades a ~1ms LAN
+    handshake for genuine concurrency and removes the CannotSendRequest
+    race entirely — no shared socket state to race on."""
     import http.client
     import json
     from urllib.parse import urlsplit
@@ -188,43 +179,35 @@ def _http_json_full(
     path = parts.path or "/"
     if parts.query:
         path = f"{path}?{parts.query}"
-    key = (host, port)
     hdrs = dict(headers or {})
-    hdrs.setdefault("Connection", "keep-alive")
+    hdrs.setdefault("Connection", "close")
     hdrs.setdefault("Accept", "application/json")
-
-    def _once(c: http.client.HTTPConnection) -> tuple[int, bytes, dict[str, str]]:
-        c.request("GET", path, headers=hdrs)
-        resp = c.getresponse()
-        raw = resp.read()
-        rh = {k.lower(): v for k, v in resp.getheaders()}
-        return int(resp.status), raw, rh
 
     last_exc: Exception | None = None
     raw_b = b""
     rh: dict[str, str] = {}
     status = 0
-    with _pool_lock(key):
-        conn = _POOL.get(key)
-        for attempt in range(2):
-            try:
-                if conn is None:
-                    conn = http.client.HTTPConnection(host, port, timeout=10)
-                    _POOL[key] = conn
-                status, raw_b, rh = _once(conn)
-                break
-            except (http.client.RemoteDisconnected, ConnectionError, OSError) as exc:
-                last_exc = exc
-                try:
-                    conn.close()
-                except Exception:
-                    pass
-                _POOL.pop(key, None)
-                conn = None
-                if attempt == 1:
-                    raise ContractMismatch(f"HTTP connect failed: {exc}") from exc
-        else:
-            raise ContractMismatch(f"HTTP connect failed: {last_exc}")
+    for attempt in range(2):
+        conn = http.client.HTTPConnection(host, port, timeout=45)
+        try:
+            conn.request("GET", path, headers=hdrs)
+            resp = conn.getresponse()
+            raw_b = resp.read()
+            rh = {k.lower(): v for k, v in resp.getheaders()}
+            status = int(resp.status)
+            break
+        except (http.client.RemoteDisconnected, ConnectionError, OSError) as exc:
+            last_exc = exc
+            # A timeout means the request was slow, not that the
+            # connection was transiently reset — retrying just doubles
+            # the wait for the same outcome. Only retry on an actual
+            # connection failure.
+            if isinstance(exc, TimeoutError) or attempt == 1:
+                raise ContractMismatch(f"HTTP connect failed: {exc}") from exc
+        finally:
+            conn.close()
+    else:
+        raise ContractMismatch(f"HTTP connect failed: {last_exc}")
     if status == 304:
         return 304, {}, rh
     raw = raw_b.decode("utf-8") if raw_b else ""

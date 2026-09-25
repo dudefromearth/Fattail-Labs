@@ -30,7 +30,7 @@ export default function BatmanSetupStrip({
   const showSum = !!(call && put);
   return (
     <div
-      className="flex h-[28%] min-h-[6rem] max-h-[32%] shrink-0 items-stretch gap-3 bg-black px-3 py-1.5"
+      className="flex h-36 shrink-0 items-stretch gap-3 bg-black px-3 py-1"
       data-testid="heatmap-batman-strip"
       role="region"
       aria-label="Batman setup"

@@ -2186,7 +2186,7 @@ export default function HeatmapChainPanel() {
               <div
                 className={
                   batmanMode
-                    ? "flex h-full min-h-0 flex-col bg-black"
+                    ? "flex h-full min-h-0 flex-col gap-2.5 bg-black"
                     : undefined
                 }
                 data-testid={batmanMode ? "heatmap-batman" : undefined}
@@ -2233,7 +2233,7 @@ export default function HeatmapChainPanel() {
               <div
                 className={
                   batmanMode
-                    ? "min-h-0 flex-1 overflow-auto bg-[#0a0a0e]"
+                    ? "shrink-0 overflow-auto bg-[#0a0a0e]"
                     : undefined
                 }
                 data-testid={batmanMode ? `batman-${paintSide}-graph` : undefined}

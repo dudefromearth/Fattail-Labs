@@ -1396,6 +1396,78 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 self._json(200, doc)
                 return
+            if path == "/api/gaps/symbols":
+                from market_data.gap_history_read import symbols as gap_symbols
+
+                self._json(200, {"symbols": gap_symbols()})
+                return
+            if path == "/api/underlying/symbols":
+                from market_data.underlying_history_read import symbols as und_symbols
+
+                self._json(200, {"symbols": und_symbols(), "chains": False})
+                return
+            if path == "/api/underlying/daily":
+                from market_data.underlying_history_read import daily as und_daily
+
+                sym = ((qs.get("symbol") or [""])[0] or "").upper()
+                if not sym:
+                    self._json(400, {"error": "symbol is required"})
+                    return
+                try:
+                    doc = und_daily(sym, (qs.get("from") or [None])[0], (qs.get("to") or [None])[0])
+                except ValueError as exc:
+                    self._json(400, {"error": str(exc)})
+                    return
+                if doc is None:
+                    self._json(404, {"error": f"no underlying history for {sym}"})
+                    return
+                self._json(200, doc)
+                return
+            if path == "/api/underlying/session":
+                from market_data.underlying_history_read import session as und_session
+
+                sym = ((qs.get("symbol") or [""])[0] or "").upper()
+                day = (qs.get("day") or [""])[0]
+                if not sym or not day:
+                    self._json(400, {"error": "symbol and day are required"})
+                    return
+                try:
+                    doc = und_session(sym, day)
+                except ValueError as exc:
+                    self._json(400, {"error": str(exc)})
+                    return
+                if doc is None:
+                    self._json(404, {"error": f"no underlying session {sym} {day}"})
+                    return
+                self._json(200, doc)
+                return
+            if path == "/api/gaps":
+                from market_data.gap_history_read import book as gap_book
+                from market_data.gap_history_read import query as gap_query
+
+                sym = ((qs.get("symbol") or [""])[0] or "").upper()
+                if not sym:
+                    self._json(400, {"error": "symbol is required"})
+                    return
+                if (qs.get("book") or [""])[0] in ("1", "true"):
+                    doc = gap_book(sym)
+                    if doc is None:
+                        self._json(404, {"error": f"no gap history for {sym}"})
+                        return
+                    self._json(200, doc)
+                    return
+                doc = gap_query(
+                    sym,
+                    (qs.get("direction") or [None])[0],
+                    (qs.get("zone") or [None])[0],
+                    (qs.get("size") or [None])[0],
+                    (qs.get("day") or [None])[0],
+                )
+                if doc is None:
+                    self._json(404, {"error": f"no gap history for {sym}"})
+                    return
+                self._json(200, doc)
+                return
             self._json(404, {"error": "not found"})
         except Exception as exc:
             self._json(500, {"error": str(exc)})

@@ -95,16 +95,29 @@ export function bustSource(source: string): void {
 async function network(
   url: string,
   hit: CacheEntry | undefined,
+  signal?: AbortSignal,
 ): Promise<FetchGenResult> {
   const t0 =
     typeof performance !== "undefined" ? performance.now() : Date.now();
   const headers: Record<string, string> = {};
   if (hit?.etag) headers["If-None-Match"] = hit.etag;
-  const r = await fetch(url, {
-    credentials: "same-origin",
-    cache: "no-cache",
-    headers,
-  });
+  let r: Response;
+  try {
+    r = await fetch(url, {
+      credentials: "same-origin",
+      cache: "no-cache",
+      headers,
+      signal,
+    });
+  } catch (e) {
+    if (signal?.aborted) {
+      // Superseded by a newer request for a different window — not a
+      // failure, just no longer wanted. Caller sees an empty result and
+      // silently skips it (see SaPriceChart run()'s bins.length check).
+      return { body: null, fromCache: false, stale: false, status: 0, ms: 0, etag: null };
+    }
+    throw e;
+  }
   const ms =
     (typeof performance !== "undefined" ? performance.now() : Date.now()) - t0;
   if (r.status === 304 && hit) {
@@ -148,10 +161,68 @@ async function network(
 }
 
 /** Await the network hop. Use for OHLC when stale cache would hide history (REQ-001). */
+const inflightByUrl = new Map<string, Promise<FetchGenResult>>();
+const controllerByUrl = new Map<string, AbortController>();
+
+/**
+ * Cancel an in-flight fetchGenWait for this exact URL, if any. Use when a
+ * newer request has superseded it — e.g. the chart's window settled on a
+ * different range. Without this, a stale request keeps burning real CPU
+ * on the server for a result nobody wants anymore, which was stacking up
+ * under concurrent load and starving the request that actually mattered.
+ */
+export function abortFetchGenWait(url: string): void {
+  controllerByUrl.get(url)?.abort();
+}
+
 export async function fetchGenWait(url: string): Promise<FetchGenResult> {
   hydrateCache();
+  // Multiple call sites (interval switch, pan, settings change, live-regen)
+  // can each independently decide "fetch this window" for the identical
+  // URL within the same tick — up to ~20 duplicate requests observed for
+  // one window. Coalesce by URL: callers racing for the same in-flight
+  // request share its result instead of each opening a new connection.
+  const existing = inflightByUrl.get(url);
+  if (existing) return existing;
+  const controller = new AbortController();
+  controllerByUrl.set(url, controller);
   // Do not send If-None-Match — a 304 would re-apply a short cached series (REQ-001).
-  return network(url, undefined);
+  const p = network(url, undefined, controller.signal).finally(() => {
+    inflightByUrl.delete(url);
+    controllerByUrl.delete(url);
+  });
+  inflightByUrl.set(url, p);
+  return p;
+}
+
+function bandKeyOf(url: string): string {
+  try {
+    const u = new URL(url, typeof window !== "undefined" ? window.location.origin : "http://x");
+    return `${u.pathname}?source=${u.searchParams.get("source") || ""}`;
+  } catch {
+    return url;
+  }
+}
+
+const currentUrlByBand = new Map<string, string>();
+
+/**
+ * Exclusive per-(source,target) VP window fetch: when a caller asks for a
+ * different URL than whatever was last requested for this band, the older
+ * one is aborted first. Each effect remount gets its own fresh in-effect
+ * flight tracker (flightRef), so one remount has no way to know a *prior*
+ * remount's request for a since-abandoned window is still running — they
+ * were piling up as independent StudioOne requests, several genuinely
+ * different (not just duplicate) wide/expensive windows deep, starving the
+ * one request that actually mattered under concurrent load. This tracker
+ * lives above any single effect instance so it catches that case too.
+ */
+export function fetchWindowExclusive(url: string): Promise<FetchGenResult> {
+  const key = bandKeyOf(url);
+  const prev = currentUrlByBand.get(key);
+  if (prev && prev !== url) abortFetchGenWait(prev);
+  currentUrlByBand.set(key, url);
+  return fetchGenWait(url);
 }
 
 export function ohlcSpanDays(bars: { t?: number }[] | undefined): number {

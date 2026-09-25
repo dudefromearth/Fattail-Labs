@@ -22,9 +22,33 @@ export const BAND_MARGIN = 1;
 export type ProfileRowsLayout = "number-of-rows" | "ticks-per-row";
 
 /**
+ * The server requires row to be an exact positive-integer multiple of the
+ * native tick (display_rebin.py: row_not_multiple_of_substrate /
+ * row_below_substrate) — checked with an exact Decimal(str(...)) comparison,
+ * no float tolerance. It rejects a mismatch with a named_state error body
+ * at HTTP 200, not a 4xx, so a caller that only checks r.ok never sees it.
+ * "Number of rows" mode divides an arbitrary price span by N, which is
+ * essentially never already a clean multiple, and even "ticks per row"
+ * (tick × integer) isn't safe for a tick like SPY's 0.10 — 0.1 isn't an
+ * exact binary fraction, so plain float math can produce trailing noise
+ * (0.7000000000000001) the server's exact comparison rejects. Round up to
+ * the nearest valid multiple (never coarser than requested) and fix the
+ * decimal precision to the tick's own so the value serializes exactly.
+ */
+export function snapToTickMultiple(row: number, tick: number): number {
+  if (!(tick > 0)) return row;
+  const n = Math.max(1, Math.ceil(row / tick - 1e-9));
+  const snapped = n * tick;
+  const decimals = Math.max(0, (String(tick).split(".")[1] || "").length);
+  return Number(snapped.toFixed(decimals));
+}
+
+/**
  * TV Volume Profile grain.
  * Number of rows: visible price span / N (not rounded).
  * Ticks per row: tick × N.
+ * Either way, snapped to a substrate-valid multiple before it ever reaches
+ * the network — see snapToTickMultiple.
  */
 export function profileRowGrain(opts: {
   layout: ProfileRowsLayout;
@@ -35,11 +59,11 @@ export function profileRowGrain(opts: {
   const t = opts.tick > 0 ? opts.tick : 0.25;
   const size =
     Number.isFinite(opts.rowSize) && opts.rowSize > 0 ? opts.rowSize : 1;
-  if (opts.layout === "number-of-rows") {
-    const n = Math.max(1, size);
-    return Math.max(opts.span, t) / n;
-  }
-  return t * size;
+  const raw =
+    opts.layout === "number-of-rows"
+      ? Math.max(opts.span, t) / Math.max(1, size)
+      : t * size;
+  return snapToTickMultiple(raw, t);
 }
 
 /**
@@ -199,29 +223,6 @@ export type VpShapeEvent = {
   reason: "load" | "symbol" | "timeframe" | "refresh" | "pan" | "zoom" | "resize";
   window: VisibleCandleWindow;
 };
-
-/** Mock volume-at-price from the candles on screen. Used until the window API returns. */
-export function mockBinsFromCandles(
-  candles: { high: number; low: number }[],
-  tick: number,
-): VpBin[] {
-  const row = tick > 0 ? tick : 0.25;
-  const acc = new Map<number, number>();
-  for (const c of candles) {
-    const lo = Math.min(c.low, c.high);
-    const hi = Math.max(c.low, c.high);
-    if (!Number.isFinite(lo) || !Number.isFinite(hi) || hi < lo) continue;
-    const a = Math.floor(lo / row) * row;
-    const b = Math.ceil(hi / row) * row;
-    for (let p = a; p <= b + row * 0.5; p += row) {
-      const key = Math.round(p / row) * row;
-      acc.set(key, (acc.get(key) || 0) + 1);
-    }
-  }
-  return [...acc.entries()]
-    .map(([price, volume]) => ({ price, volume }))
-    .sort((x, y) => x.price - y.price);
-}
 
 export function asUnixMs(t: number): number {
   if (!Number.isFinite(t) || t <= 0) return 0;

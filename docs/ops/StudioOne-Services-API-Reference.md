@@ -47,6 +47,65 @@ This is the StudioOne-side mirror of [`Architecture/37-visible-range-volume-prof
 | `GET /api/day?day=YYYY-MM-DD` | `summarize_day()` for one day (defaults to today NY) |
 | `GET /api/available?...` | `_available_from_qs()` |
 | `GET /api/retrieve?...` (alias `/api/chain`) | `_retrieve_from_qs()` — pull a specific chain snapshot; `422` on bad query |
+| `GET /api/gaps/symbols` | Symbols on the Gaps page menu (chain underlyings). Futures in this store are omitted here |
+| `GET /api/gaps?symbol=&direction=&zone=&size=&day=` | Opening-gap types and results for one underlying. See §1.4 |
+| `GET /api/gaps?symbol=&book=1` | Every stored session for that symbol, with size measures and the VWAP path. See §1.4 |
+| `GET /api/underlying/symbols` | Symbols that have a packed underlying file. See §1.5 |
+| `GET /api/underlying/daily?symbol=&from=&to=` | Daily OHLCV for one underlying. See §1.5 |
+| `GET /api/underlying/session?symbol=&day=` | One regular session: daily bar, 5-minute bars, 1-minute bars for 09:30–16:00, session VWAP. See §1.5 |
+
+### 1.4 Opening-gap history
+
+Read-only. Files live at `{LABS_MARKET_DATA_ROOT}/gap-history/` (`SPY.json`, `I_SPX.json`, `ES.json`, …). The dashboard does not build them and does not call Massive. There are no option chains, quotes, or greeks in these files. Those stay in the chain snapshot store.
+
+Each row is one session: direction, zone on yesterday’s candle, the deck’s large/small flag (large means at least 40% of the 5-day average true range), and the result (`open`, `filled`, `extended`, `no-gap`). `fillMin` and `extMin` are minutes from midnight New York when that day’s regular-session 5-minute bars first reached yesterday’s close, and half a range past it.
+
+Three size measures are stored so a caller can cut small / medium / large / very large without another download:
+
+| Field | Meaning |
+|---|---|
+| `gapPct` | (open − prior close) / prior close |
+| `gapAtr` | absolute gap / 5-day average true range |
+| `gapSigma` | absolute gap percent / sample standard deviation of the previous 20 close-to-close returns. Null until 21 earlier closes exist. The gap day’s own close is not in that deviation |
+
+`vwap5` is 78 characters, one per 5-minute bar from 09:30 through 15:55 New York. `A` means that bar’s close was above the session VWAP, `B` below, `T` on it, `.` missing. The bar is known at its end (the 09:30 bar at 09:35), not at its start. Session VWAP is cumulative dollar volume over cumulative volume from 09:30, using the bar’s own VWAP when the feed has one and the typical price otherwise. Futures use the front contract’s dollar volume.
+
+`book=1` returns every row with those fields and nothing else. The Gaps page uses it to read any combination of direction, zone, size scale, and VWAP side. `404` when that symbol has no file. `400` when `symbol` is missing.
+
+`symbol` is the underlying (`SPY`, `SPX`, `QQQ`, `ES`). Index files are stored as `I_SPX.json`. Futures files are `ES.json`, `MES.json`, `NQ.json`, `CL.json`, `GC.json`. `GET /api/gaps/symbols` leaves those five off the list because the Gaps page chart reads a chain snapshot, which this store does not have. `book=1` still serves them.
+
+`day` is the session under study. It is left out of the cohort. If `direction`, `zone`, and `size` are omitted, they are taken from that stored day. Pass them to ask about a type directly. `size` here is still the deck’s large/small flag, not the four-bucket scale.
+
+```text
+GET /api/gaps/symbols
+GET /api/gaps?symbol=SPY&direction=up&zone=U-H&size=large
+GET /api/gaps?symbol=SPX&day=2026-09-23
+GET /api/gaps?symbol=SPY&book=1
+GET /api/gaps?symbol=ES&book=1
+```
+
+`history.members` is every other session of that type, with `result`, `fillMin`, and `extMin`, so a caller can recompute the odds as a live session moves through the day. `history.n`, `open`, `filled`, and `extended` are the final outcomes of that cohort.
+
+### 1.5 Underlying bars
+
+Packed files live at `{LABS_MARKET_DATA_ROOT}/gap-history/bars/` (`SPY.ftu1`, `I_SPX.ftu1`, `ES.ftu1`). Same rule: the dashboard only reads them, and they hold no option chain.
+
+What is in a file, and only this:
+
+- Daily open, high, low, close, volume
+- 5-minute bars for 09:30–16:00 New York, with a session VWAP on each bar
+- 1-minute bars for the whole regular session, 09:30–16:00 New York, with a session VWAP on each bar
+- For ES, MES, NQ, CL, and GC, the front outright that day (highest regular-session volume; a tie goes to the sooner expiry) and that contract’s name
+
+Equity indexes use the official daily bar. Futures daily bars are built from the 09:30–16:00 bars, so the gap is the cash-session open against the prior cash-session close, not the overnight Globex range. VWAP on a future is that contract’s own session VWAP, not a distance from SPX.
+
+`from` and `to` on the daily route are optional `YYYY-MM-DD` bounds. The session route is one day. `404` when the pack or the day is missing. `400` when `symbol` is missing, or `day` is missing or not a date.
+
+```text
+GET /api/underlying/symbols
+GET /api/underlying/daily?symbol=SPY&from=2024-01-01&to=2024-01-31
+GET /api/underlying/session?symbol=ES&day=2024-06-03
+```
 
 ### 1.2 Archive-gated routes (Spec §6.2 — Labs archive API)
 

@@ -29,7 +29,11 @@ test.describe("REQ-007 Visible Range / F4", () => {
     await expect(host).toHaveAttribute("data-profile-mode", "visible-range");
     await expect
       .poll(async () => Number((await host.getAttribute("data-vp-bins")) || "0"), {
-        timeout: 30_000,
+        // Real per-tick data now, not an instant fake placeholder — a cold
+        // per-day print cache build on StudioOne can legitimately take
+        // ~20-25s (see window_bins.py), and the hop client gives it up to
+        // 45s before giving up. 60s leaves real margin either way.
+        timeout: 60_000,
       })
       .toBeGreaterThan(0);
     await expect
@@ -55,7 +59,11 @@ test.describe("REQ-007 Visible Range / F4", () => {
     await expect(host).toBeVisible({ timeout: 45_000 });
     await expect
       .poll(async () => Number((await host.getAttribute("data-vp-bins")) || "0"), {
-        timeout: 30_000,
+        // Real per-tick data now, not an instant fake placeholder — a cold
+        // per-day print cache build on StudioOne can legitimately take
+        // ~20-25s (see window_bins.py), and the hop client gives it up to
+        // 45s before giving up. 60s leaves real margin either way.
+        timeout: 60_000,
       })
       .toBeGreaterThan(0);
     const before = windowHits.length;

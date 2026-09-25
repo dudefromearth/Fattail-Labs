@@ -14,9 +14,9 @@ import {
   FORCE_VP_EVENT,
   asUnixMs,
   candlesInMsRange,
-  mockBinsFromCandles,
   profileFetchPlan,
   profileRowGrain,
+  snapToTickMultiple,
   visibleCandleWindow,
   rangeUrl,
   sliceVisible,
@@ -24,9 +24,36 @@ import {
   windowUrl,
 } from "./saVpBand";
 
+function isExactMultiple(row: number, tick: number): boolean {
+  // Mirrors the server's exact Decimal(str(row))/Decimal(str(tick)) check
+  // (display_rebin.py) closely enough for a JS-side regression guard.
+  const scale = 1e6;
+  return Math.round((row * scale) % (tick * scale)) % Math.round(tick * scale) === 0;
+}
+
 assert.equal(profileRowGrain({ layout: "number-of-rows", rowSize: 24, span: 240, tick: 0.25 }), 10);
 assert.equal(profileRowGrain({ layout: "ticks-per-row", rowSize: 1, span: 240, tick: 0.25 }), 0.25);
 assert.equal(profileRowGrain({ layout: "ticks-per-row", rowSize: 4, span: 240, tick: 0.25 }), 1);
+
+// Regression: "Number of rows" mode used to divide an arbitrary span by N
+// and send the raw float straight to the server, which requires row to be
+// an *exact* integer multiple of the native tick (display_rebin.py) —
+// span/N is essentially never already a clean multiple, so this mode never
+// successfully fetched real data; it silently 200'd with a named_state
+// error body that looked like "just no bins" to a caller checking r.ok.
+for (const span of [61, 118.3, 240.01, 7, 1000.5]) {
+  for (const tick of [0.25, 0.1, 1, 0.01]) {
+    const row = profileRowGrain({ layout: "number-of-rows", rowSize: 24, span, tick });
+    assert.ok(
+      isExactMultiple(row, tick),
+      `row=${row} not an exact multiple of tick=${tick} (span=${span})`,
+    );
+    assert.ok(row >= tick, `row=${row} below substrate tick=${tick}`);
+  }
+}
+// "Ticks per row" isn't immune either — 0.1 isn't an exact binary fraction.
+assert.equal(snapToTickMultiple(0.1 * 7, 0.1), 0.7);
+assert.ok(isExactMultiple(profileRowGrain({ layout: "ticks-per-row", rowSize: 7, span: 1, tick: 0.1 }), 0.1));
 assert.equal(displayRow(40, 400, 0.25), 0.1);
 assert.equal(displayRow(800, 400, 0.25), 0.25);
 assert.equal(displayRow(2, 400, 0.25), 2 / 400);
@@ -85,17 +112,6 @@ assert.match(win.url || "", /from_t=1000/);
 assert.doesNotMatch(win.url || "", /\/range\//);
 assert.equal(FORCE_VP_EVENT, "sa-vp-update");
 
-const mock = mockBinsFromCandles(
-  [
-    { high: 101, low: 100 },
-    { high: 100.5, low: 99.5 },
-    { high: 102, low: 101 },
-  ],
-  0.25,
-);
-assert.ok(mock.length > 3);
-assert.ok(mock.every((b) => b.volume > 0));
-assert.ok(mock.some((b) => b.price >= 100 && b.price <= 101));
 assert.equal(asUnixMs(1_700_000_000), 1_700_000_000_000);
 assert.equal(asUnixMs(1_700_000_000_000), 1_700_000_000_000);
 

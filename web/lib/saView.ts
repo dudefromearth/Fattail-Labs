@@ -71,7 +71,15 @@ export function defaultTimeWindow(
 ): { lo: number; hi: number } {
   const pad = tfMs * RIGHT_PAD_BARS;
   const hi = dataHi + pad;
-  const want = Math.max(tfMs * 48, Math.max(1, lookbackDays) * 86400_000);
+  // REQ-007 v2: Visible Range only — the initial window must stay a genuine
+  // "on screen" span, not a proxy for how much history happens to be
+  // ingested. A flat 48-bar floor is fine on fine timeframes (5m*48 = 4h)
+  // but on daily/4h bars it silently demanded 1.5-2+ months regardless of
+  // the member's own Lookback (days) setting, which this function never
+  // even received (see call site). Cap the bar floor's time span so it
+  // can no longer dominate lookbackDays on coarse timeframes.
+  const barFloor = Math.min(tfMs * 10, 5 * 86400_000);
+  const want = Math.max(barFloor, Math.max(1, lookbackDays) * 86400_000);
   const lo = Math.max(dataLo, hi - want);
   return { lo, hi };
 }
