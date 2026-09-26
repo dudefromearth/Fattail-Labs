@@ -4,6 +4,14 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-25 — DL-795 SSR extra books are listed 1–5 trading DTE for every name (Coach)
+
+**Decision (Coach).** "I want the collector to also collect 0-5DTE." The standing tap already wrote 0DTE (front book) plus **one** next expiry for SPX/XSP when `LABS_SSR_MEXP=on` (DL-792/793 on the StudioOne mexp2 tree). This widens that extra layer: `select_listed_dte_window` takes every **listed** expiration with **1 ≤ trading DTE ≤ LABS_SSR_MEXP_MAX_DTE** (default **5**), for every tradeable name, never weekday-invented dates. 0DTE stays the front book. Cadence T1 15 s / T2 60 s and per-book wings already in `ssr_mexp_capture.py`. **chain_feed pid 538 not restarted.** Live log after reload: `mexp_books SPX day=2026-09-25 next=2026-09-28,2026-09-29,2026-09-30,2026-10-01,2026-10-02`.
+
+**Cites:** Coach 2026-09-25 · SSR-MEXP v0.8 §3/§5 · `ssr_mexp_capture.select_listed_dte_window`.
+
+---
+
 ## 2026-09-23 — DL-791 SSR tap collects every symbol every day · listed calendar is not a capture gate
 
 **Decision (Coach).** "Let's collect every day for every symbol" so we never miss an expiration day. `ssr_live_capture` no longer skips a name because `next_expirations_json` does not contain today. `front_expiration` is always the session day. Interest is registered for that 0DTE key; `chain_feed` (unchanged) fetches whatever interest exists. A live ladder with rows is written even when the listed calendar omitted the day. An empty book on an unlisted day is `NOT TODAY` (not a hole). An empty book on a day the calendar *does* list remains `NO CHAIN`. Hardening session-map still applies. **Do not restart `chain_feed`.**
