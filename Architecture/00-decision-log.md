@@ -4,6 +4,24 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-28 — DL-797 GO: 2.5σ capture band 0–5 DTE (Coach)
+
+**Decision (Coach).** GO on `docs/OPF-Band-2p5sigma-0-5DTE-v0_1.md` and plan v1.0. Q1 ruled: **2.5σ every book**, 0–5 DTE, SPX and XSP. No Labs UI (spec §4). CP-1: parallel capture Tue 2026-09-29 full RTH; swap after close. Running collector not modified in place. First packets: W0 India/Hotel/Foxtrot F0 (read-only). Code only after W0-G, not on the live exec tree during RTH.
+
+**Cites:** Coach GO 2026-09-28 · `981da06d` · analysis v0.1 · board `agents/p-opf-band-2p5sigma/`.
+
+---
+
+## 2026-09-27 — DL-796 Spaces do not govern the Lifecycle (Coach)
+
+**Decision (Coach), verbatim.** "Spaces do not govern the lifecycle. The life cycle is a template that agents follow. They use spaces as a place to congregate with humans and other agents."
+
+**What this is not.** Lifecycle is not an application of Agentic Spaces v0.5, not a second Factory instance, and not under Spaces' coordination law. Spaces is the congregation surface. The template (routine, tone, reach, Guide/Populator charters) is Agent OS / Lifecycle doctrine. Agents may meet members and each other *in* a space; the space does not run the loop.
+
+**Cites:** Coach 2026-09-27 · Lifecycle Spec v0.8 (stamped) · Agentic Spaces Spec v0.5 (not stamped).
+
+---
+
 ## 2026-09-25 — DL-795 SSR extra books are listed 1–5 trading DTE for every name (Coach)
 
 **Decision (Coach).** "I want the collector to also collect 0-5DTE." The standing tap already wrote 0DTE (front book) plus **one** next expiry for SPX/XSP when `LABS_SSR_MEXP=on` (DL-792/793 on the StudioOne mexp2 tree). This widens that extra layer: `select_listed_dte_window` takes every **listed** expiration with **1 ≤ trading DTE ≤ LABS_SSR_MEXP_MAX_DTE** (default **5**), for every tradeable name, never weekday-invented dates. 0DTE stays the front book. Cadence T1 15 s / T2 60 s and per-book wings already in `ssr_mexp_capture.py`. **chain_feed pid 538 not restarted.** Live log after reload: `mexp_books SPX day=2026-09-25 next=2026-09-28,2026-09-29,2026-09-30,2026-10-01,2026-10-02`.
