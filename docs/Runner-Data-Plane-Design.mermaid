@@ -1,0 +1,31 @@
+flowchart TB
+  subgraph page [Options Lab Runner page]
+    templates["Every template<br/>LIM · Width Fit · Term Mass · Advanced Fly"]
+  end
+
+  templates --> bus["useOptionChainBus<br/>unchanged"]
+  bus --> http["GET /api/me/market/chain-ladder"]
+  bus --> sock["WS /api/me/market/stream<br/>subscribe and push"]
+
+  http --> hop["fetch_runner_ladder<br/>one function"]
+  sock --> hop
+
+  hop -->|"LABS_LADDER_HOP on<br/>default"| get["one GET timeout 2s<br/>/api/ladder?symbol&expiration&wings<br/>Bearer LABS_SSR_ARCHIVE_TOKEN"]
+  hop -->|"LABS_LADDER_HOP=off<br/>one week, then deleted"| today["_fetch_ladder<br/>today's fill"]
+
+  get --> dash[":5055 GET /api/ladder"]
+  http --> exp["GET /api/me/market/chain-ladder/expirations<br/>preform when fresh, else sibling<br/>never a live scan"]
+  exp --> expdash[":5055 GET /api/ladder/expirations"]
+
+  dash --> clamp["wings_effective = min(requested, 50)"]
+  clamp --> hot["mb:ladder:{chain_underlier}:{expiration}:w{wings_effective}:dual"]
+  hot -->|hit| copy["plain SET mb:ladder-last:…<br/>TTL 18h · no publish"]
+  hot -->|miss| last["mb:ladder-last:…"]
+  dash --> interest["touch_interest on the canonical key"]
+  hot -->|neither| empty["502 No option contracts returned"]
+
+  dash -->|header hot| prov["apply_chain_provenance<br/>stale follows the document age"]
+  dash -->|header last| force["stale true on document and envelope<br/>same content_hash"]
+  prov --> wire["today's response keys<br/>marker stripped before the wire"]
+  force --> wire
+  wire --> templates

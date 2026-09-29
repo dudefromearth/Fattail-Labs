@@ -15,10 +15,15 @@ Response modes:
 
 from __future__ import annotations
 
+import json
 import math
+import os
 import re
 import threading
 import time
+import urllib.error
+import urllib.parse
+import urllib.request
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -74,6 +79,180 @@ def _bus_ladder_key(chain_ul: str, expiration: str, side: str, wings: int) -> st
 
 # Dual-side one-page budget: strikes × 2 ≤ 250 ⇒ ≤125 strikes
 _MAX_DUAL_WINGS = 50  # ±50 ≈ 101 strikes × 2 ≈ 202 contracts
+# Stripped before the ladder is attached to HTTP or the socket. Not a browser key.
+_SERVED_LAST = "_labs_ladder_served_last"
+_HOP_TIMEOUT_S = 2.0
+
+
+def ladder_hop_enabled() -> bool:
+    """On unless ``LABS_LADDER_HOP=off``.
+
+    The off escape restores today's ladder fill for one week (through
+    2026-10-06) and is then deleted. Unset or blank stays on.
+    """
+    raw = os.environ.get("LABS_LADDER_HOP")
+    if raw is None or not raw.strip():
+        return True
+    return raw.strip().lower() != "off"
+
+
+def wings_effective(wings: int) -> int:
+    """Key and interest use this. Requested wings stay on the document."""
+    return min(int(wings), _MAX_DUAL_WINGS)
+
+
+def _hop_base_and_token() -> tuple[str, str]:
+    base = (os.environ.get("LABS_SSR_ARCHIVE_URL") or "").strip().rstrip("/")
+    token = (os.environ.get("LABS_SSR_ARCHIVE_TOKEN") or "").strip()
+    return base, token
+
+
+def _hop_unset() -> HTTPException:
+    return HTTPException(
+        status_code=503,
+        detail=(
+            "Ladder hop is on and LABS_SSR_ARCHIVE_URL or "
+            "LABS_SSR_ARCHIVE_TOKEN is unset"
+        ),
+    )
+
+
+def _hop_get(path: str) -> tuple[int, dict[str, Any], str]:
+    """One GET. Returns status, object, and ``X-Labs-Ladder-Served``."""
+    base, token = _hop_base_and_token()
+    if not base or not token:
+        raise _hop_unset()
+    req = urllib.request.Request(
+        f"{base}{path}",
+        headers={
+            "Accept": "application/json",
+            "Authorization": f"Bearer {token}",
+        },
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=_HOP_TIMEOUT_S) as resp:
+            served = (resp.headers.get("X-Labs-Ladder-Served") or "").strip().lower()
+            doc = json.loads(resp.read().decode("utf-8"))
+            if not isinstance(doc, dict):
+                raise HTTPException(
+                    status_code=503, detail="Ladder hop returned a non-object"
+                )
+            return int(resp.status), doc, served
+    except HTTPException:
+        raise
+    except urllib.error.HTTPError as exc:
+        detail = ""
+        try:
+            parsed = json.loads((exc.read() or b"{}").decode("utf-8"))
+            if isinstance(parsed, dict):
+                detail = str(parsed.get("detail") or parsed.get("error") or "")
+        except (json.JSONDecodeError, UnicodeError, OSError):
+            detail = ""
+        if int(exc.code) == 502:
+            raise HTTPException(
+                status_code=502,
+                detail=detail or "No option contracts returned",
+            ) from exc
+        if int(exc.code) == 422:
+            raise HTTPException(
+                status_code=422,
+                detail=detail or "ladder hop rejected the query",
+            ) from exc
+        raise HTTPException(
+            status_code=503,
+            detail=detail or f"Ladder hop HTTP {exc.code}",
+        ) from exc
+    except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
+        raise HTTPException(
+            status_code=503, detail=f"Ladder hop failed: {exc}"
+        ) from exc
+
+
+def fetch_runner_ladder(
+    *,
+    product: str,
+    chain_underlier: str,
+    kind: str,
+    expiration: str,
+    side: str,
+    wings: int,
+    strike_step_cfg: float | None = None,
+) -> dict[str, Any]:
+    """Ladder document for the member route and the market socket.
+
+    Hop on: one GET to the plane, timeout 2s. Hop off: today's ``_fetch_ladder``.
+    The key uses ``wings_effective``. ``content_hash`` is not recomputed.
+    """
+    wings_req = int(wings)
+    wings_eff = wings_effective(wings_req)
+    if not ladder_hop_enabled():
+        doc = _fetch_ladder(
+            product=product,
+            chain_underlier=chain_underlier,
+            kind=kind,
+            expiration=expiration,
+            side=side,
+            wings=wings_eff,
+            strike_step_cfg=strike_step_cfg,
+        )
+        doc["wings_requested"] = wings_req
+        doc["wings_effective"] = wings_eff
+        return doc
+
+    qs = urllib.parse.urlencode(
+        {
+            "symbol": product,
+            "expiration": expiration,
+            "wings": str(wings_req),
+        }
+    )
+    _status, doc, served = _hop_get(f"/api/ladder?{qs}")
+    if not doc.get("content_hash"):
+        raise HTTPException(
+            status_code=502,
+            detail=f"No option contracts returned for {product} {expiration}",
+        )
+    if served == "last":
+        doc[_SERVED_LAST] = True
+    doc["wings_requested"] = wings_req
+    doc["wings_effective"] = wings_eff
+    from market_data.chain_provenance import apply_chain_provenance
+
+    return apply_chain_provenance(doc)
+
+
+def release_served_last(ladder: dict[str, Any]) -> bool:
+    """Call after provenance. Last-document reads are stale on document and envelope.
+
+    The marker is removed here so it never rides on the wire.
+    """
+    served = bool(ladder.pop(_SERVED_LAST, False))
+    if served:
+        ladder["stale"] = True
+    return served
+
+
+def _plane_expiration_dates(product: str) -> list[str] | None:
+    """Listed dates the plane holds. None when the sibling does not answer.
+
+    A missing hop setting is no sibling answer. The ladder document path is
+    the one that answers 503. This read does not scan upstream.
+    """
+    base, token = _hop_base_and_token()
+    if not base or not token:
+        return None
+    qs = urllib.parse.urlencode({"symbol": product})
+    try:
+        status, doc, _served = _hop_get(f"/api/ladder/expirations?{qs}")
+    except HTTPException:
+        return None
+    if status != 200:
+        return None
+    raw = doc.get("expirations")
+    if not isinstance(raw, list):
+        return None
+    return [str(item)[:10] for item in raw if item]
 
 
 def _native_mark_mid(product_symbol: str) -> tuple[float | None, str | None]:
@@ -536,7 +715,7 @@ def get_chain_ladder(
         )
 
     resolved = _resolve_universe_symbol(symbol or underlier or "SPX")
-    nxt = _fetch_ladder(
+    nxt = fetch_runner_ladder(
         product=resolved["product"],
         chain_underlier=resolved["chain_underlier"],
         kind=str(resolved.get("kind") or "equity"),
@@ -564,6 +743,8 @@ def get_chain_ladder(
     patch = diff_ladder(prev, nxt)
     mode = patch.get("mode")
     prov = provenance_wire(nxt)
+    if release_served_last(nxt):
+        prov = {**prov, "stale": True}
     session = _opf_session_for_ladder(
         product=resolved["product"],
         kind=str(resolved.get("kind") or "equity"),
@@ -813,7 +994,7 @@ def list_chain_ladder_expirations(
     ),
     refresh: bool = Query(
         default=False,
-        description="Force live Massive scan and write-through preform store",
+        description="Skip the preform calendar and read the plane's listed dates",
     ),
 ) -> dict:
     """Listed expirations for option-pointer selection (OC3 · OC11 store-first).
@@ -821,7 +1002,7 @@ def list_chain_ladder_expirations(
     SoR for Analyzer position-card / Builder expiration dropdowns: every
     returned date is a valid listed chain expiration within the OPF active
     DTE horizon (default **10 DTE**). Prefer preformed calendar when fresh;
-    else live scan + write-through. After cash close, 0DTE is omitted.
+    else the plane's listed dates. After cash close, 0DTE is omitted.
     """
     claims = require_session(request)
     _require_tool_member(claims, capability="read")
@@ -829,7 +1010,7 @@ def list_chain_ladder_expirations(
     ul = resolved["chain_underlier"]
     product = resolved["product"]
     today = date.today()
-    source = "live_scan"
+    source = "plane"
     session_open = _session_open_for_expiry_default()
     # Scan at least the DTE horizon so we do not miss listed dates at the edge
     scan_days = max(int(days), int(max_dte), OPF_ACTIVE_DTE_HORIZON)
@@ -857,22 +1038,17 @@ def list_chain_ladder_expirations(
                     session_open=session_open,
                     max_dte=max_dte,
                 )
-                # Preform may be short (old 3/10-cap) — top up with live scan
+                # Preform may be short (old 3/10-cap) — top up from the plane.
                 if len(contracts) < min(int(limit), 5):
-                    try:
-                        dates = _scan_expirations_live(
-                            ul,
-                            days=scan_days,
-                            limit=max(limit, 10),
-                            today=today,
-                        )
+                    dates = _plane_expiration_dates(product)
+                    if dates:
                         try:
                             ua.write_chain_calendar(
                                 cur, product, expirations=dates[: max(limit, 40)]
                             )
                             source = "preform_topped_up"
                         except Exception:
-                            source = "preform_plus_live"
+                            source = "preform_plus_plane"
                         contracts = _contracts_from_dates(
                             dates,
                             today=today,
@@ -880,25 +1056,20 @@ def list_chain_ladder_expirations(
                             session_open=session_open,
                             max_dte=max_dte,
                         )
-                    except MassiveClientError:
-                        pass  # keep preform contracts
             else:
-                try:
-                    dates = _scan_expirations_live(
-                        ul,
-                        days=scan_days,
-                        limit=max(limit, 10),
-                        today=today,
+                dates = _plane_expiration_dates(product)
+                if not dates:
+                    raise HTTPException(
+                        status_code=502,
+                        detail=f"No option contracts returned for {product}",
                     )
-                except MassiveClientError as exc:
-                    raise HTTPException(status_code=502, detail=str(exc)) from exc
                 try:
                     ua.write_chain_calendar(
                         cur, product, expirations=dates[: max(limit, 40)]
                     )
-                    source = "live_scan_write_through"
+                    source = "plane_write_through"
                 except Exception:
-                    source = "live_scan"
+                    source = "plane"
                 contracts = _contracts_from_dates(
                     dates,
                     today=today,

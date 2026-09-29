@@ -23,6 +23,7 @@ import re
 import secrets
 import subprocess
 import threading
+import time
 from datetime import date, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -1188,6 +1189,122 @@ def _docs_page(rel_path: str = _DOCS_DEFAULT_REL) -> str:
     return _DOCS_SHELL.format(title=title, source_note=note, body=body)
 
 
+# Plane ladder. Not an archive-pool route. Does not import Massive.
+_LADDER_LAST_TTL_S = 18 * 60 * 60
+_MAX_LADDER_WINGS = 50
+
+
+def clamp_ladder_wings(wings: int) -> int:
+    return min(int(wings), _MAX_LADDER_WINGS)
+
+
+def ladder_hot_key(chain_ul: str, expiration: str, wings: int) -> str:
+    return f"mb:ladder:{chain_ul}:{expiration}:w{int(wings)}:dual"
+
+
+def ladder_last_key(chain_ul: str, expiration: str, wings: int) -> str:
+    return f"mb:ladder-last:{chain_ul}:{expiration}:w{int(wings)}:dual"
+
+
+def resolve_ladder_symbol(symbol: str | None) -> dict[str, Any]:
+    """Product symbol → chain underlier. Direct universe read. No Massive."""
+    raw = (symbol or "SPX").strip().upper() or "SPX"
+    feed_hint = raw if raw.startswith("I:") else ""
+    product = raw[2:] if feed_hint else raw
+    import db
+
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT symbol, feed_symbol, kind, enabled
+                   FROM market_symbol_universe WHERE symbol = %s""",
+                (product,),
+            )
+            row = cur.fetchone()
+    if not row:
+        if feed_hint:
+            return {
+                "product": product,
+                "chain_underlier": feed_hint,
+                "kind": "index",
+            }
+        raise LookupError(f"{raw!r} is not in the Admin market universe")
+    sym = str(row.get("symbol") or product)
+    feed = str(row.get("feed_symbol") or "").strip()
+    kind = str(row.get("kind") or "equity")
+    enabled = row.get("enabled", True)
+    if enabled in (0, False, "0"):
+        raise LookupError(f"{raw!r} is disabled in the Admin market universe")
+    chain_ul = feed or (feed_hint or sym)
+    return {"product": sym, "chain_underlier": chain_ul, "kind": kind}
+
+
+def ladder_redis_client():
+    """Plain Redis. None when REDIS_URL is unset (caller answers 503)."""
+    url = (os.environ.get("REDIS_URL") or os.environ.get("LABS_REDIS_URL") or "").strip()
+    if not url:
+        return None
+    import redis
+
+    return redis.Redis.from_url(url, decode_responses=True)
+
+
+def touch_ladder_interest(client: Any, topic: str) -> None:
+    from market_data.market_bus.config import interest_grace_s
+
+    client.set(f"mb:interest:{topic}", str(time.time()), ex=int(interest_grace_s()))
+
+
+def read_plane_ladder(
+    client: Any, *, symbol: str, expiration: str, wings: int
+) -> tuple[int, dict[str, Any], str]:
+    """Hot key, else last key. Hot hit copies to last with a plain SET, TTL 18h.
+
+    Interest is touched on the canonical key even when both reads miss.
+    Returns (status, body, served) where served is ``hot``, ``last``, or ``""``.
+    """
+    resolved = resolve_ladder_symbol(symbol)
+    wings_eff = clamp_ladder_wings(wings)
+    chain_ul = str(resolved["chain_underlier"])
+    product = str(resolved["product"])
+    hot = ladder_hot_key(chain_ul, expiration, wings_eff)
+    last = ladder_last_key(chain_ul, expiration, wings_eff)
+    touch_ladder_interest(client, hot)
+    raw = client.get(hot)
+    if raw:
+        # Plain SET. Do not publish, and do not multiply the TTL.
+        client.set(last, raw, ex=_LADDER_LAST_TTL_S)
+        doc = json.loads(raw)
+        if not isinstance(doc, dict):
+            raise ValueError("ladder document is not an object")
+        return 200, doc, "hot"
+    raw_last = client.get(last)
+    if raw_last:
+        doc = json.loads(raw_last)
+        if not isinstance(doc, dict):
+            raise ValueError("ladder document is not an object")
+        return 200, doc, "last"
+    return (
+        502,
+        {"detail": f"No option contracts returned for {product} {expiration}"},
+        "",
+    )
+
+
+def listed_plane_dates(client: Any, chain_ul: str) -> list[str]:
+    """Expiration dates the hot and last keys hold for this chain underlier."""
+    found: set[str] = set()
+    for prefix in (f"mb:ladder:{chain_ul}:", f"mb:ladder-last:{chain_ul}:"):
+        scan = getattr(client, "scan_iter", None)
+        keys = scan(match=prefix + "*", count=200) if scan else ()
+        for key in keys:
+            rest = str(key)[len(prefix) :]
+            exp = rest.split(":", 1)[0]
+            if len(exp) == 10 and exp[4] == "-" and exp[7] == "-":
+                found.add(exp)
+    return sorted(found)
+
+
 class QuietHTTPServer(ThreadingHTTPServer):
     allow_reuse_address = True
     daemon_threads = True
@@ -1227,6 +1344,7 @@ class Handler(BaseHTTPRequestHandler):
         *,
         etag: str | None = None,
         retry_after: str | None = None,
+        extra_headers: dict[str, str] | None = None,
     ) -> None:
         raw = json.dumps(doc, default=str, separators=(",", ":")).encode("utf-8")
         accept = (self.headers.get("Accept-Encoding") or "").lower()
@@ -1251,8 +1369,74 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Encoding", encoding)
         if etag:
             self.send_header("ETag", f'"{etag}"')
+        if extra_headers:
+            for name, value in extra_headers.items():
+                self.send_header(name, value)
         self.end_headers()
         self.wfile.write(raw)
+
+    def _serve_ladder(self, qs: dict[str, list[str]]) -> None:
+        symbol = (qs.get("symbol") or ["SPX"])[0]
+        expiration = ((qs.get("expiration") or [""])[0] or "")[:10]
+        try:
+            wings = int((qs.get("wings") or ["25"])[0])
+        except (TypeError, ValueError):
+            self._json(422, {"detail": "wings must be an integer"})
+            return
+        try:
+            date.fromisoformat(expiration)
+        except ValueError:
+            self._json(422, {"detail": "expiration must be YYYY-MM-DD"})
+            return
+        try:
+            client = ladder_redis_client()
+        except Exception as exc:
+            self._json(503, {"detail": str(exc)})
+            return
+        if client is None:
+            self._json(503, {"detail": "REDIS_URL is unset"})
+            return
+        try:
+            status, doc, served = read_plane_ladder(
+                client, symbol=symbol, expiration=expiration, wings=wings
+            )
+        except LookupError as exc:
+            self._json(422, {"detail": str(exc)})
+            return
+        except Exception as exc:
+            self._json(503, {"detail": str(exc)})
+            return
+        extra = {"X-Labs-Ladder-Served": served} if served else None
+        self._json(status, doc, extra_headers=extra)
+
+    def _serve_ladder_expirations(self, qs: dict[str, list[str]]) -> None:
+        symbol = (qs.get("symbol") or ["SPX"])[0]
+        try:
+            client = ladder_redis_client()
+        except Exception as exc:
+            self._json(503, {"detail": str(exc)})
+            return
+        if client is None:
+            self._json(503, {"detail": "REDIS_URL is unset"})
+            return
+        try:
+            resolved = resolve_ladder_symbol(symbol)
+            dates = listed_plane_dates(client, str(resolved["chain_underlier"]))
+        except LookupError as exc:
+            self._json(422, {"detail": str(exc)})
+            return
+        except Exception as exc:
+            self._json(503, {"detail": str(exc)})
+            return
+        self._json(
+            200,
+            {
+                "symbol": resolved["product"],
+                "underlier": resolved["chain_underlier"],
+                "expirations": dates,
+                "count": len(dates),
+            },
+        )
 
     def _serve_archive(self, path: str, qs: dict[str, list[str]]) -> None:
         from market_data.ssr_archive_read import hole_http_status
@@ -1311,6 +1495,25 @@ class Handler(BaseHTTPRequestHandler):
         path = parsed.path
         qs = parse_qs(parsed.query)
         try:
+            if path in ("/api/ladder", "/api/ladder/expirations"):
+                expected = archive_token()
+                if expected is None:
+                    print(
+                        f"ARCHIVE NOT CONFIGURED: {path} with no LABS_SSR_ARCHIVE_TOKEN",
+                        flush=True,
+                    )
+                    self._json(501, dict(ARCHIVE_NOT_CONFIGURED))
+                    return
+                if not bearer_authorized(
+                    self.headers.get("Authorization"), expected
+                ):
+                    self._json(401, dict(ARCHIVE_AUTH))
+                    return
+                if path == "/api/ladder":
+                    self._serve_ladder(qs)
+                else:
+                    self._serve_ladder_expirations(qs)
+                return
             if path in ARCHIVE_API_PATHS:
                 expected = archive_token()
                 if expected is None:

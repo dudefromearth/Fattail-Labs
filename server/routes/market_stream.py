@@ -3,7 +3,7 @@
 WS /api/me/market/stream
 
 Architecture (member chain ladder):
-  chain_feed / _fetch_ladder → (optional Redis) → this socket **pushes**
+  fetch_runner_ladder (the same read as the ladder route) → this socket **pushes**
   chain full | diff | unchanged → browser MarketSocket → UI setState.
 
 The React surface does **not** interval-poll HTTP. It only applies pushed messages.
@@ -50,6 +50,10 @@ def _chain_wire(
     try:
         apply_chain_provenance(ladder)
         prov = provenance_wire(ladder)
+        from routes.chain_ladder import release_served_last
+
+        if release_served_last(ladder):
+            prov = {**prov, "stale": True}
     except ChainProvenanceError as exc:
         return {
             "t": "err",
@@ -304,7 +308,7 @@ async def _handle_sub(
             continue
         try:
             ladder = await asyncio.to_thread(
-                cl._fetch_ladder,
+                cl.fetch_runner_ladder,
                 product=resolved["product"],
                 chain_underlier=resolved["chain_underlier"],
                 kind=str(resolved.get("kind") or "equity"),
@@ -339,14 +343,15 @@ async def _handle_sub(
 
             store = get_store()
             if store is not None:
+                # The plane owns the ladder document and the last-key copy.
+                # Interest only — this socket does not write mb:ladder.
                 bus_key = cl._bus_ladder_key(
                     str(resolved["chain_underlier"]),
                     exp,
                     side,
-                    wings,
+                    cl.wings_effective(wings),
                 )
                 store.touch_interest(bus_key)
-                store.set_json(bus_key, ladder)
         except Exception:
             pass
 
@@ -488,7 +493,7 @@ async def _chain_push_loop(
                     return
                 try:
                     ladder = await asyncio.to_thread(
-                        cl._fetch_ladder,
+                        cl.fetch_runner_ladder,
                         product=meta["product"],
                         chain_underlier=meta["chain_underlier"],
                         kind=meta["kind"],
