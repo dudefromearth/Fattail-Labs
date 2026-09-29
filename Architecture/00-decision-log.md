@@ -4,6 +4,106 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-29 — DL-805 Member market-path plan v1.0 accepted (Coach)
+
+**Decision (Coach).** Plan v1.0 accepted. Dispatch W0.
+
+Q1: `:4012` for bars. Ruled as the plan drew it.
+
+Q2: one production cut per phase. Ruled.
+
+Q3: session-status keeps today's keys. No stale field is added. The spec's "no new JSON key" governs over row 2's wording, and the served-last document is signalled by nothing new. Note the discrepancy in the gate as a spec wording error, not a FAIL. It is corrected in spec v0.2 when the next version is cut for any other reason.
+
+Canary identities for every phase: Coach's own identity and one administrator identity.
+
+**Recorded.** Spec v0.1 is unchanged. Plan v1.0 is frozen. The rulings are in `docs/Labs-Member-Market-Path-Data-Plane-Full-Agent-Bench-Plan-v1.1.md`. W0 is India's read. Phase 2 has not started. Ladder plan v1.1 is still Phase 1. This entry does not start ladder W1.
+
+The acceptance names the canary composition. The id values in the message were the unfilled tokens `[my identity id]` and `[admin identity id]`. Those tokens are not identity ids. No id string is recorded. Ladder W3 and every canary in this program wait on the two strings. No member identity.
+
+**Does not.** Cut spec v0.2. Edit plan v1.0. Revise the ladder spec or either ladder plan. Close REQ-014. Restart MiniTwo or StudioOne. Build Phase 2.
+
+**Cites:** Coach 2026-09-29 · DL-804 · spec v0.1 · plan v1.0 · plan v1.1 · REQ-014.
+
+---
+
+## 2026-09-29 — DL-804 Member market path hops to the StudioOne data plane (Coach)
+
+**Decision (Coach).** The member requests that reach Massive from MiniTwo hop to the StudioOne data plane. Spec v0.1 is `docs/Labs-Member-Market-Path-Data-Plane-v0_1.md`. It grants SODP-MB: the hop for `/api/me/market/*` and every other member request that reaches Massive, which the inventory listed and the Runner spec declined. Plan v1.0 is `docs/Labs-Member-Market-Path-Data-Plane-Full-Agent-Bench-Plan-v1.0.md`. Status of both is PLAN. The plan is shown before any packet beyond Phase 1 runs.
+
+Phase 1 is Runner ladder plan v1.1. It is not re-planned and it is not revised. W0 of that plan stays MATCH. W1 of that plan still waits until P2 is on the production API, after Tuesday 2026-09-29 16:00 ET. This entry does not start W1, and it does not put data-plane code on that restart.
+
+Q1 and Q2 stay open in the spec. The defaults he wrote are how plan v1.0 is drawn until he overrides them: bars home `:4012`, with the route and token stated in that plan, and one production cut per phase. Q3 is a plan finding, not a spec edit: session-status has no `stale` key, and the plan does not add one.
+
+CP-1 on every StudioOne packet. No Labs control, screen, selector, or default anywhere in this program.
+
+Nothing built. Production was not restarted. No packet of Phases 2–4 is dispatched. W0 of this plan is not dispatched.
+
+**Does not.** Revise ladder spec v0.1, ladder plan v1.0, or ladder plan v1.1. Edit the inventory. Commit OPF fullbook, `chain_ladder`, or a feed. Close REQ-010, REQ-011, REQ-012, or REQ-013. Rewrite DL-799 through DL-803.
+
+**Cites:** Coach 2026-09-29 · spec v0.1 · plan v1.0 · ladder plan v1.1 · DL-803 · inventory v0.1 · REQ-014.
+
+---
+
+## 2026-09-28 — DL-803 Plan v1.0 accepted; :5055 is the reach path (Coach)
+
+**Decision (Coach).** Plan v1.0 accepted. The `:5055` route is the reach path. The bus is not. Dispatch W0.
+
+Tuesday's one API restart is P5 + P1 + P2, as the plan defaults. Data-plane code is not in it.
+
+Canary identities for W3: Coach's own identity and one admin identity. He will name the ids before that close. No member identities in the canary.
+
+Plan v1.0 is frozen. Those three sentences are recorded in `docs/Runner-Live-Ladder-Data-Plane-Full-Agent-Bench-Plan-v1.1.md` because v1.0 is numbered. Spec v0.1 is unchanged. W0 is India's read of spec v0.1. W1 does not start from this entry.
+
+**Cites:** Coach 2026-09-28 · DL-802 · spec v0.1 · plan v1.0 · plan v1.1 · REQ-013.
+
+---
+
+## 2026-09-28 — DL-802 Runner live ladder is served from StudioOne (Coach)
+
+**Decision (Coach).** P1, P2, P3, and P5 are approved. P5 is after Tuesday's close (2026-09-29, after 16:00 ET), one restart of the API job, evidence as the audit states. P4 is approved and scheduled last. P4 changes fill order. The 500 and the 502 are unchanged by it.
+
+Nothing else in Runner changes. No control, no screen, no selector, no default.
+
+Production Runner's live ladder is served from the data plane on StudioOne, not from Massive inside the Labs API process on MiniTwo. The response JSON to the browser does not change. The wings cap stays at 50 until Coach rules otherwise. Parallel-run: a canary member set or a staging host first, measured with P2's duration log, then production after a close. No Massive call remains on the Runner request path when this ships. Plan first. Nothing built until Coach accepts the plan.
+
+**Bench, on the door Coach left open.** The reach path is a ladder read on the StudioOne process at `:5055`, not a MiniTwo client of StudioOne Redis. Recorded in `docs/Runner-Live-Ladder-Data-Plane-v0_1.md` and plan v1.0. Status of both is PLAN. Coach accepts the plan before W0. A one-line override ("use the bus") replaces that door before W2. Silence is not the override.
+
+The handler, when the hot ladder key is absent and a last document exists, returns that document with the existing `stale` field set true. It does not call Massive, and it does not wait 60 seconds. The inventory of every other Massive site is `docs/Massive-Call-Site-Inventory-v0_1.md`. Those sites are out of this spec.
+
+**Does not.** Restart MiniTwo tonight. Load this design on Tuesday's P5 restart. Edit `chain_feed`. Change a Runner control, screen, selector, default, or the wings cap. Hop OHLC, session-status, marks, correlation, trade-chart, or algo-replay. Revise diagnostic v0.1, audit v0.1, or DL-799 through DL-801.
+
+**Cites:** Coach 2026-09-28 · diagnostic v0.1 · audit v0.1 · inventory v0.1 · spec v0.1 · plan v1.0 · SODP-1 · SODP-2 · SODP-3 · SODP-11 · Arch 28 · REQ-012 · REQ-013.
+
+---
+
+## 2026-09-28 — DL-801 W4 names the tree before any fullbook launchd load (Coach)
+
+**Decision (Coach), verbatim.** Add to Foxtrot's W4 gate, before any parallel launchd load: `ssr_fullbook.py` and its tests are present in `~/Fattail-Labs-mexp2` on StudioOne at the commit W1-G reviewed, the tests pass there in that tree's venv, and the fullbook_capture plist's script and working directory name that tree. Two trees is how Friday nearly lost a session; W4-G states which tree runs Tuesday's capture.
+
+Recorded in `docs/OPF-Band-2p5sigma-0-5DTE-Full-Agent-Bench-Plan-v1.3.md` because plan v1.2 is numbered and is not edited. Spec v0.3 is unchanged. Its plan pointer still names v1.2. v1.3 is the plan Foxtrot reads for the load.
+
+W1-G passed on StudioTwo the same night. The two files were untracked. HEAD `46a555f6` does not contain them. W4 does not load until the commit that gate reviewed is the checkout at `~/Fattail-Labs-mexp2`, the tests pass in that tree's venv, and the plist script and working directory both name that tree. W4-G states that `~/Fattail-Labs-mexp2` is the tree that runs Tuesday's capture.
+
+**Cites:** Coach 2026-09-28 · DL-800 · spec v0.3 · plan v1.2 · plan v1.3 · W1-G.
+
+---
+
+## 2026-09-28 — DL-800 ceiling 2,500 so the listed book is captured whole (Coach)
+
+**Decision (Coach), verbatim.** Spec v0.2 is superseded by `docs/OPF-Band-2p5sigma-0-5DTE-v0_3.md`. One change: the 750-contract ceiling is raised so every listed book is captured whole. New ceiling 2,500 contracts / 10 pages; a book past that fails loud. Rationale: SPX 2026-09-30 is 1,198 contracts and costs 1.14 s on a 15-second cadence; refusing it contradicts the ask. W1's ceiling test uses that book as the one that must succeed, and a synthetic book over 2,500 as the one that fails.
+
+Plan v1.1 is accepted with that amendment. The amendment is recorded in `docs/OPF-Band-2p5sigma-0-5DTE-Full-Agent-Bench-Plan-v1.2.md` because v1.1 is numbered and is not edited. v0.2 and v1.1 stay on disk.
+
+**Storage, Coach, verbatim.** The planning figure is the last_updated-gated write, ~5.7 GB per session both names, as the plan already builds. The 12.8 GB figure is the bound, not the plan.
+
+**Beside that, the same method with the book now stored.** v1.1's 5.70 GB and 12.79 GB refused SPX 2026-09-30. That snapshot is 1,108,657 bytes, 1.73 GB at the 15-second cadence. Gated session, both names, book included: 7.43 GB, and that is the figure W1 plans disk against. Every-wake bound, book included: 14.52 GB. Coach's 5.7 and 12.8 are not withdrawn; they are the refused-book rows.
+
+W1 dispatches after India's W0-G and after the close. CP-1. No live-path edit.
+
+**Cites:** Coach 2026-09-28 · DL-799 · spec v0.2 · spec v0.3 · plan v1.1 · plan v1.2.
+
+---
+
 ## 2026-09-28 — DL-799 full book supersedes the 2.5σ band for SPX and XSP (Coach)
 
 **Decision (Coach).** Spec v0.1 is superseded by `docs/OPF-Band-2p5sigma-0-5DTE-v0_2.md`, retitled "OPF — Full book, SPX and XSP, 0–5 DTE, at true cadence." The ask is maximum strikes with greeks, as fast as possible. The σ band is superseded for SPX and XSP.
