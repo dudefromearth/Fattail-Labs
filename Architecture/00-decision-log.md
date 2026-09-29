@@ -4,6 +4,26 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-29 — DL-806 Phase 5 is the three remaining member Massive paths (Coach)
+
+**Decision (Coach).** India's four findings are cut into spec v0.2. Three become Phase 5, with the same rules as the earlier phases. Plan v1.2 adds Phase 5 after Phase 4. Nothing else in the packets changes.
+
+The VP futures route is the exception. SODP-5 names futures chart history as one Massive-first provider, born on StudioOne (`:4012`). SODP §11 names `GET /api/app/vp/v1/ohlc/{source}` as the hop onto that provider. Phase 5 does not remove that call.
+
+The ship bar has to be true when it is met. Rows 9 and 10 are inside it. The SODP-5 provider is the named caller that remains.
+
+`ohlc_feed`, read-only the same day: no process and no loaded launchd job on StudioOne or MiniTwo. The only plist is `infra/launchd/ai.fattail.labs.ohlc-feed.plist.example`, and its comment says install on MiniTwo. That target is a TOPO-1 defect in the example. It is a finding for the Phase 3 packet. Nothing was changed.
+
+Canary id strings were read and are not recorded in this entry. They go on file when Coach confirms them. No canary loads until then.
+
+**Recorded.** Spec v0.2: `docs/Labs-Member-Market-Path-Data-Plane-v0_2.md`. Plan v1.2: `docs/Labs-Member-Market-Path-Data-Plane-Full-Agent-Bench-Plan-v1.2.md`. Status of both is PLAN. v0.1 and plan v1.1 are not edited. Phase 5 is not dispatched. v0.2 also corrects the row 2 `stale` wording, which DL-805 scheduled for this cut.
+
+**Does not.** Load a canary. Restart either host. Install `ohlc_feed`. Edit a feed's Massive call. Close REQ-014.
+
+**Cites:** Coach 2026-09-29 · DL-805 · W0-G 2026-09-29 · SODP-5 · spec v0.2 · plan v1.2 · REQ-014.
+
+---
+
 ## 2026-09-29 — DL-805 Member market-path plan v1.0 accepted (Coach)
 
 **Decision (Coach).** Plan v1.0 accepted. Dispatch W0.
