@@ -4,6 +4,48 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-09-28 — DL-799 full book supersedes the 2.5σ band for SPX and XSP (Coach)
+
+**Decision (Coach).** Spec v0.1 is superseded by `docs/OPF-Band-2p5sigma-0-5DTE-v0_2.md`, retitled "OPF — Full book, SPX and XSP, 0–5 DTE, at true cadence." The ask is maximum strikes with greeks, as fast as possible. The σ band is superseded for SPX and XSP.
+
+SPX and XSP, 0–5 DTE, capture the full listed book (all pages, current 750-contract ceiling; a book past it fails loud, never truncates). No σ math, no IV source, no ratchet. No `LABS_SSR_BAND_*` variables. Every other name keeps its current wing window.
+
+The serial pass is not a 2-second interval while ~120 topics share it. SPX and XSP get dedicated workers aimed at a true 2-second pass. Other names share a separate pass. Delta measures Massive's concurrency and rate limits and states the achievable interval before W1. No interval is promised that was not measured.
+
+The full book is written to the archive and to a new feed key per book. The existing member ladder key stays a window at its current width. No reader of that key sees a different generation.
+
+Full books are written at the existing cadence: 0DTE every pass of those workers, T1 15 s, T2 60 s. Delta states measured GB/session for SPX and XSP before W1.
+
+Verification adds the measured SPX/XSP pass interval during Tuesday and the archive's actual snapshot cadence per book. Strike coverage is every listed strike present, with greeks.
+
+What stands: parallel Tuesday, swap after the close, no Labs control changes, the ticks where §1 / §1a / §1b do not replace them, the plist repair. CP-1. No build on this ruling until the plan is revised and Delta's two measurements are in.
+
+**Cadence finding, separate, no build.** `docs/OPF-Actual-Cadence-Finding-v0_1.md`. Coach asked for the measured history behind "~50 s, not 2 s." The history on disk is the other way for the archive: SPX 0DTE files are ~2.3 s apart from 2026-08-18 through 2026-09-25, and a new `content_hash` arrives about every 5–7 s. The ~50 s figure is the chain-feed pass at ~120 topics, measured after the close on 2026-09-28 (median ~55 s). 2026-09-28 regular hours is the slow archive day (new-hash median 12 s, p90 33 s), not a 50 s tape.
+
+**Cites:** Coach 2026-09-28 · DL-797 · DL-798 · spec v0.1 (baseline) · spec v0.2.
+
+---
+
+## 2026-09-28 — DL-798 ticks: 2.5σ band dispatch (Coach)
+
+**Decision (Coach), verbatim.**
+
+1. One feed, two windows: covering keys limited to SPX and XSP for Tuesday. No slip. If the combined topics still overrun the 2-second pass on Tuesday morning, the parallel capture backs off to T1/T2 cadence on the far books and the report says so; the live 0DTE path is never the one that yields.
+
+2. Covering fetch is the live feed process, restarted once after today's close so its ladders cover active(t). Capture pid 42355 is not killed. If the feed restart fails or the first post-restart ladders do not cover active(t), the parallel day slips and Coach hears about it tonight — the live path is not touched again to make Tuesday happen.
+
+3. Wide window for SPX and XSP only. Every other name stays on the current count band, unchanged. Widening other names is a finding for a later spec, not this one.
+
+The fourth constraint stands: capture coverage and the member default are separate; a member's wings request never widens a live ladder.
+
+Friday finding — approved as its own action, after today's close, before W4: repair the launchd plist so script and working directory point at the mexp2 tree, and confirm the live capture comes up on it. That is a correctness fix to the running service, not part of the band change, and it is why Friday nearly had no session. Report the confirmed pid and tree tonight.
+
+**Dispatch.** W1–W7 on this ruling. W5 samples, the W6 swap, and the W7 screen stay on Tuesday's session and Wednesday morning.
+
+**Cites:** Coach 2026-09-28 after the close · DL-797 · plan v1.0 · spec v0.1.
+
+---
+
 ## 2026-09-28 — DL-797 GO: 2.5σ capture band 0–5 DTE (Coach)
 
 **Decision (Coach).** GO on `docs/OPF-Band-2p5sigma-0-5DTE-v0_1.md` and plan v1.0. Q1 ruled: **2.5σ every book**, 0–5 DTE, SPX and XSP. No Labs UI (spec §4). CP-1: parallel capture Tue 2026-09-29 full RTH; swap after close. Running collector not modified in place. First packets: W0 India/Hotel/Foxtrot F0 (read-only). Code only after W0-G, not on the live exec tree during RTH.
