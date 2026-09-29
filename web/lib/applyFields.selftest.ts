@@ -1,10 +1,13 @@
 /**
  * Characterization — apply path + Review. Run:
- *   node --experimental-strip-types web/lib/applyFields.selftest.ts
+ *   npx --yes tsx web/lib/applyFields.selftest.ts
  */
 import assert from "node:assert/strict";
 import {
+  applyProgressLabel,
   computePath,
+  emptyAnswers,
+  liveSteps,
   nextApplyStep,
   pruneAsked,
   recomputePath,
@@ -63,5 +66,24 @@ assert.equal(rows[0]?.id, "email");
 const skuChange = recomputePath("a@b.co", { ...filled, COACHING_SKU: "observer" });
 assert.equal(skuChange.answers.COACHING_SKU, "observer");
 assert.deepEqual(skuChange.path, yesPath);
+
+// Intro vs first-question progress (HIG 2026-09-02). liveSteps drops intro.
+const empty = emptyAnswers();
+const live = liveSteps({ email: "", ...empty });
+assert.ok(live.length > 0);
+assert.equal(live.includes("intro"), false);
+assert.equal(applyProgressLabel("intro", live), "");
+assert.notEqual(applyProgressLabel("intro", live), `${live.length} of ${live.length}`);
+assert.notEqual(applyProgressLabel("intro", live), `0 of ${live.length}`);
+assert.notEqual(applyProgressLabel("intro", live), `1 of ${live.length}`);
+assert.equal(applyProgressLabel("email", live), `1 of ${live.length}`);
+assert.equal(applyProgressLabel("HEAVEN", live), `2 of ${live.length}`);
+assert.equal(applyProgressLabel("review", live), "Review");
+assert.equal(applyProgressLabel("intro", live, true), "Done");
+
+const noLive = liveSteps({ email: "a@b.co", ...filled, ELEVEN_AM_ET: "no" });
+assert.equal(noLive.includes("PARTNER_SUPPORT"), false);
+assert.equal(applyProgressLabel("email", noLive), `1 of ${noLive.length}`);
+assert.equal(applyProgressLabel("TRIED", noLive), `${noLive.length} of ${noLive.length}`);
 
 console.log("applyFields.selftest ok");
