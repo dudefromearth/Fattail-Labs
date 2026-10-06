@@ -60,8 +60,8 @@ export const FALLBACK_APPS: AppRow[] = [
     id: 0,
     slug: "strategy-lab",
     title: "Strategy Lab",
-    blurb:
-      "Design → Curate → Deploy. Strategies on your account. Validate edges before capital; process over profit claims.",
+    // Silent Coming soon — no product story.
+    blurb: "",
     status: "soon",
     href: "/app/strategy-lab",
     sort_order: 40,
@@ -141,14 +141,10 @@ export function buildTopLevelCatalog(apiApps: AppRow[]): AppRow[] {
     ? {
         ...strategyFromApi,
         title: "Strategy Lab",
-        blurb:
-          strategyFromApi.blurb &&
-          !/Prove|Paper, Run|Build, Prove|Build, Test|Run bots/i.test(
-            strategyFromApi.blurb,
-          )
-            ? strategyFromApi.blurb
-            : fallbackBySlug("strategy-lab").blurb,
+        // Name + Coming soon only. Do not pass through catalog product story.
+        blurb: "",
         href: strategyFromApi.href || "/app/strategy-lab",
+        status: "soon",
       }
     : fallbackBySlug("strategy-lab");
 
