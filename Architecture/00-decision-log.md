@@ -4,6 +4,116 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-10-05 — DL-812 Databento FOP provider / provider-plugins program parked (Coach)
+
+**Decision (Coach).** The Databento / Market Data Provider Plugins program is parked.
+
+> Databento FOP provider / provider-plugins program parked 2026-10-05: no vendor greeks for CME options on futures. Specs remain as frozen baselines.
+
+**Reason.** Databento supplies no intraday greeks for CME options on futures. Verified against the 2026-10-02 statistics data for EW1, ES, LO1 and OG1: no volatility or delta records.
+
+**Recorded.** Frozen baselines, left on disk, not deleted:
+
+- `Specs/FatTail-Labs-Databento-FOP-Provider-Spec-v0_4.md` (`068f42a9`)
+- `Specs/FatTail-Labs-Market-Data-Provider-Plugins-Spec-v0_1.md` (`ce6a42b3`)
+
+Gate 1 on both specs is halted. Reopen only on Coach's word.
+
+**Does not.** Edit either spec. Delete either spec. Plan, seed, or build. Touch `.env` or the Databento key. Touch StudioOne.
+
+**Cites:** Coach 2026-10-05.
+
+---
+
+## 2026-10-04 — DL-811 Canonical trade v0.7 seated as CT-1 (Coach, Juliet)
+
+**Decision (Coach).** The admin click view is part of this program. Four trees. The approval count stays 0 of 3. Conor owns the admin view.
+
+> The admin click view IS part of this program. Four trees. Count is 0 of 3, as you reset it. Conor owns the admin view (C8).
+
+**Seated.** `Specs/CT-1.md` is v0.7 with the series ID in the header, the filename, and the footer. Source draft `Specs/Canonical-Trade-Broker-Adapters-Spec-v0_7.md` is unchanged. v0.5 stays frozen and is superseded by this seating. v0.6 was not seated and stays on disk as a draft.
+
+The four trees are the heatmap order block, the Analyzer, the Practice trade log, and the admin Tradier-click view.
+
+**Readback.** The six-leg law is two butterfly orders, and no wider split. The duration law is the member's choice of day or good-till-cancelled, with no memory of that choice. Price split, any other shape over four legs, and whether the choice is remembered stay open.
+
+**Does not.** Stamp BUILD AUTHORITY. Write a GO token. Count an approval. Edit a product file. Dispatch.
+
+**Cites:** Coach 2026-10-04 · DL-810 · DL-809 · draft v0.7 · `Specs/CT-1.md` · REQ-026.
+
+---
+
+## 2026-10-04 — DL-810 Admin click view is a fourth tree (Juliet, G-S)
+
+**Ruling (Juliet).** The admin view that would show Tradier-control clicks is a fourth tree. The approval count on this program resets to **0 of 3**. Raised to Coach before stamp, before a series ID, and before any edit.
+
+The three trees on the list are the heatmap order block, the Analyzer, and the Practice trade log. The admin surface is not one of them. Member activity on disk is route navigation: `page_views` (migration 039), shown on admin Flow (`web/app/admin/flow/page.tsx`) and admin Users. A control click is not a page view. Component C8 in draft v0.6 is an admin UI of its own.
+
+**Does not.** Seat v0.6. Mint a series ID. Edit v0.5 or v0.6. Edit admin, the trade log, the heatmap, or the Analyzer. Dispatch. Stamp BUILD AUTHORITY. Treat DL-809's 1 of 3 as still in force.
+
+**Cites:** Draft v0.6 SF-L7, C8, G-S · DL-809 · migration 039 · `web/app/admin/flow/page.tsx`.
+
+---
+
+## 2026-10-03 — DL-809 Practice trade log is in the canonical-trade program (Coach)
+
+**Decision (Coach).** The Practice trade log is in this program. The Tradier control belongs on that surface along with the heatmap order block and the Analyzer.
+
+> Include it
+
+**Recorded.** Working site list, pending a build stamp:
+
+1. Options Lab heatmap order block
+2. Options Lab Analyzer
+3. Practice trade log (`web/lib/tradeLog.ts`, `web/components/trade-log/TradeSheet.tsx`)
+
+Live Strategy Lab Curate has no Thinkorswim script. It is not on this list. The prototype generator under `strategy-lab-proto/msc-risk-graph-ui` is not on this list.
+
+Draft v0.5 still names the three-surface hypothesis. This entry is the widened list. v0.5 was not edited. No series ID. Approval count on the widened list: **1 of 3**. BUILD AUTHORITY remains none.
+
+**Does not.** Edit the trade log, the heatmap, or the Analyzer. Dispatch W1. Write a GO token. Treat this as the second or third approval.
+
+**Cites:** Coach 2026-10-03 · DL-808 · draft v0.5 · W0 census · REQ-025.
+
+---
+
+## 2026-10-03 — DL-808 August Tradier program superseded (Coach)
+
+**Decision (Coach).** The August Tradier specs are abandoned. The current direction is Canonical Trade Model and Broker Adapters, draft v0.5.
+
+> We are abandoning the August Tradier specs and going this current direction.
+
+**Recorded.** Superseded, left on disk:
+
+- `Specs/FatTail-Labs-Tradier-Integration-Spec-v0.1.md` (Proposed 2026-08-13)
+- `Specs/FatTail-Labs-Tradier-Integration-STATUS.md` (Last updated 2026-08-16)
+
+The draft that replaces them is `Specs/Canonical-Trade-Broker-Adapters-Spec-v0_5.md`. No series ID is seated on it. W0 (same day) found the Practice trade log copies a Thinkorswim script, a surface the draft's three-surface list does not name. That is a scope line back to Coach. BUILD AUTHORITY remains none.
+
+`Specs/Tradier-Trade-Link-Spec-v0_1.md` is named in the v0.5 supersession line and is not on disk. The review file `Specs/Tradier-Trade-Link-Spec-v0_1-GROK-REVIEW.md` is on disk.
+
+**Does not.** Delete or edit `server/integrations/tradier`. Delete or edit `migrations/124_member_broker_connections.sql`. Edit `migrations/124_apps_catalog_order.sql` (same number, Catalog Order, a different program). Edit the August file bodies. Dispatch W1. Stamp BUILD AUTHORITY. Mint a Specs series ID.
+
+**Cites:** Coach 2026-10-03 · draft v0.5 · REQ-024.
+
+---
+
+## 2026-09-29 — DL-807 Plan v1.2 accepted; the live-grid socket joins Phase 1 (Coach)
+
+**Decision (Coach).** Plan v1.2 accepted. Canary identities confirmed: identity_id 10 and identity_id 12, on file for every phase.
+
+The market-stream socket's `_fetch_ladder` calls, on subscribe and on the push loop, take the same `:5055` hop as the ladder route inside Phase 1, W2–W4. Same key, same last-document read, same 2-second budget. Plan v1.3 records that move. The socket is the live grid's steady path. It rides the ladder canary and the ladder cut. Phase 5 keeps positions valuation.
+
+Phase 3's job packet is a first standing-up of `ohlc_feed` on StudioOne. The feed has never run. It is not a gap-closer. The MiniTwo example plist is not installed.
+
+**Recorded.** Plan v1.3: `docs/Labs-Member-Market-Path-Data-Plane-Full-Agent-Bench-Plan-v1.3.md`. Spec v0.2, plan v1.2, and DL-806 stay as committed in `a213a1f7`. Ladder plan v1.1 is unchanged. Ladder W2 reads v1.3 for the socket before it starts.
+
+**Does not.** Dispatch ladder W1 or W2. Dispatch Phase 2 or Phase 5. Load a canary. Restart either host. Install `ohlc_feed`. Edit a feed. Close REQ-014 or REQ-013.
+
+**Cites:** Coach 2026-09-29 · DL-806 · plan v1.2 · plan v1.3 · spec v0.2 · ladder plan v1.1 · REQ-014.
+
+---
+
 ## 2026-09-29 — DL-806 Phase 5 is the three remaining member Massive paths (Coach)
 
 **Decision (Coach).** India's four findings are cut into spec v0.2. Three become Phase 5, with the same rules as the earlier phases. Plan v1.2 adds Phase 5 after Phase 4. Nothing else in the packets changes.
