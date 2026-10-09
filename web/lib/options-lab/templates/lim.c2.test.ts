@@ -64,7 +64,7 @@ function ctx(): ChainContext {
 
 function hotelEnv(over: LimEnv = {}): LimEnv {
   const env: LimEnv = {
-    LABS_LIM_CENTRE_SCALE_PTS: JSON.stringify({ "I:SPX": 50 }),
+    LABS_LIM_STRADDLE_K: "3.2712422351724415",
     LABS_LIM_BAND_CLOSE_PCT: "1.0",
     LABS_LIM_BAND_MEDIUM_PCT: "2.0",
     LABS_LIM_W_NET: "0.50",

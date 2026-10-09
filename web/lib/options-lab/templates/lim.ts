@@ -1,13 +1,16 @@
 /**
- * Heatmap LIM compute — Spec v0.4.3 §5–8 (E1–E17).
+ * Heatmap LIM compute — Spec v0.4.8 §5–8.
  *
- * Input: buildGexProfile(ctx, "gex_net") + ctx.spot. No volume. E8: Y has no unclamped twin.
- * Proximity never moves x/y. Crossings are intervals; no midpoint.
+ * X is one shared k applied to the ATM straddle: x = 100·tanh(r), r = centrePts/(k·S).
+ * Displayed X stays in the open interval (−100, +100). xUnclamped = 100·r for the trail.
+ * Y is unchanged. Proximity never moves x/y. Crossings are intervals; no midpoint.
+ * Input: buildGexProfile(ctx, "gex_net") + ctx.spot + ATM mids. No volume.
  */
 
+import { contractKey } from "@/lib/chainLadderApi";
 import type { ChainContext, HeatmapTemplate } from "./types";
 import { buildGexProfile } from "./gex";
-import { loadLimConfig, type LimConfig } from "./limConfig";
+import { LimConfigError, loadLimConfig, type LimConfig } from "./limConfig";
 import { LIM_MODE_LABEL, LIM_PICKER_LABEL } from "./limChrome";
 
 export type StrikeNet = {
@@ -46,7 +49,7 @@ export type LimResult = {
   wings: number;
   symbol: string;
   valid: boolean;
-  invalidReason: "no-scale" | "no-spot" | null;
+  invalidReason: "no-straddle" | "no-spot" | null;
 };
 
 export type LimComputeInput = {
@@ -56,6 +59,10 @@ export type LimComputeInput = {
   expiration: string;
   oiAsOf: string | null;
   nets: StrikeNet[];
+  /** ATM call mid. Null when that contract has no finite mid. */
+  callMid: number | null;
+  /** ATM put mid. Null when that contract has no finite mid. */
+  putMid: number | null;
 };
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -128,31 +135,84 @@ function crossingDist(
   return Math.min(Math.abs(spot - c.lo), Math.abs(spot - c.hi));
 }
 
+function finiteMid(row: { mid?: number | null } | undefined): number | null {
+  if (row == null || typeof row.mid !== "number" || !Number.isFinite(row.mid)) {
+    return null;
+  }
+  return row.mid;
+}
+
+/**
+ * Listed strike nearest spot. A distance tie takes the lower strike.
+ * Strikes come only from the contracts already on this expiration.
+ */
+export function nearestAtmStrike(
+  contracts: ChainContext["contracts"],
+  spot: number,
+): number | null {
+  let best: number | null = null;
+  let bestD = Infinity;
+  const seen = new Set<number>();
+  for (const key of contracts.keys()) {
+    const colon = key.lastIndexOf(":");
+    if (colon < 0) continue;
+    const strike = Number(key.slice(colon + 1));
+    if (!Number.isFinite(strike) || seen.has(strike)) continue;
+    seen.add(strike);
+    const d = Math.abs(strike - spot);
+    if (best == null || d < bestD || (d === bestD && strike < best)) {
+      best = strike;
+      bestD = d;
+    }
+  }
+  return best;
+}
+
+/**
+ * Displayed X. Float64 tanh reaches ±1 once |r| is about 20, which would
+ * paint the ball on the edge. Step one ulp inside ±100 only in that case.
+ */
+function displayedLean(ratio: number): number {
+  const x = 100 * Math.tanh(ratio);
+  if (x > -100 && x < 100) return x;
+  const ulp = 2 ** (Math.floor(Math.log2(100)) - 52);
+  if (x >= 100) return 100 - ulp;
+  if (x <= -100) return -100 + ulp;
+  return x;
+}
+
+/** S = ATM call mid + ATM put mid. Missing or non-positive S is not a straddle. */
+function straddlePremium(input: LimComputeInput): number | null {
+  const { callMid, putMid } = input;
+  if (typeof callMid !== "number" || typeof putMid !== "number") return null;
+  if (!Number.isFinite(callMid) || !Number.isFinite(putMid)) return null;
+  const s = callMid + putMid;
+  if (!(s > 0)) return null;
+  return s;
+}
+
 export function computeLimFromNets(
   input: LimComputeInput,
   config: LimConfig,
 ): LimResult {
-  const scale = config.LIM_CENTRE_SCALE_PTS[input.symbol];
-  const hasScale = Number.isFinite(scale);
+  const k = config.LIM_STRADDLE_K;
+  if (!(typeof k === "number" && Number.isFinite(k) && k > 0)) {
+    throw new LimConfigError(
+      "Invalid environment variable: LABS_LIM_STRADDLE_K (must be greater than 0)",
+      "LABS_LIM_STRADDLE_K",
+    );
+  }
   const spotOk =
     input.spot != null && Number.isFinite(input.spot) && input.spot > 0;
-  const valid = hasScale && spotOk;
+  if (!spotOk) return emptyState(input, false, "no-spot");
+
+  const S = straddlePremium(input);
+  if (S == null) return emptyState(input, false, "no-straddle");
 
   const usable = input.nets.filter(finiteNet);
   let totalAbs = 0;
   for (const r of usable) totalAbs += Math.abs(r.net);
-
-  if (!spotOk || totalAbs === 0) {
-    const emptyValid = hasScale && spotOk;
-    const reason: LimResult["invalidReason"] = emptyValid
-      ? null
-      : !hasScale
-        ? "no-scale"
-        : "no-spot";
-    const empty = emptyState(input, emptyValid, reason);
-    if (!spotOk) return { ...empty, valid: false, invalidReason: reason };
-    return empty;
-  }
+  if (totalAbs === 0) return emptyState(input, true, null);
 
   const spot = input.spot as number;
   const closeR = (config.LIM_BAND_CLOSE_PCT / 100) * spot;
@@ -174,12 +234,9 @@ export function computeLimFromNets(
   }
 
   const centrePts = weighted / totalAbs;
-  let lean = 0;
-  let xUnclamped = 0;
-  if (hasScale) {
-    xUnclamped = (centrePts / scale) * 100;
-    lean = clamp(xUnclamped, -100, 100);
-  }
+  const ratio = centrePts / (k * S);
+  const xUnclamped = 100 * ratio;
+  const lean = displayedLean(ratio);
 
   const netRatio = absGexClose === 0 ? 0 : gexClose / absGexClose;
   const netF = ((netRatio + 1) / 2) * 100;
@@ -242,8 +299,8 @@ export function computeLimFromNets(
     expiration: input.expiration,
     wings: input.wings,
     symbol: input.symbol,
-    valid,
-    invalidReason: valid ? null : !hasScale ? "no-scale" : "no-spot",
+    valid: true,
+    invalidReason: null,
   };
 }
 
@@ -267,6 +324,15 @@ export function computeLim(
 ): LimResult {
   const config = opts?.config ?? loadLimConfig();
   const nets = opts?.nets ?? netsFromGexProfile(ctx);
+  let callMid: number | null = null;
+  let putMid: number | null = null;
+  if (ctx.spot != null && Number.isFinite(ctx.spot) && ctx.spot > 0) {
+    const strike = nearestAtmStrike(ctx.contracts, ctx.spot);
+    if (strike != null) {
+      callMid = finiteMid(ctx.contracts.get(contractKey("call", strike)));
+      putMid = finiteMid(ctx.contracts.get(contractKey("put", strike)));
+    }
+  }
   return computeLimFromNets(
     {
       symbol: ctx.symbol,
@@ -275,6 +341,8 @@ export function computeLim(
       expiration: opts?.expiration ?? "",
       oiAsOf: opts?.oiAsOf ?? null,
       nets,
+      callMid,
+      putMid,
     },
     config,
   );

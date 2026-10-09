@@ -4,6 +4,101 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-10-08 — DL-820 LIM straddle scale built (amendment v0.4 → spec v0.4.8)
+
+**Decision.** The quad's horizontal scale is built. This is a breaking change (LIM spec §16).
+
+Coach, quoted, when the build had stopped because files sat outside the GO token list:
+
+> WTF just build the fucking thing already
+
+That sentence authorises the files the stop had named, in addition to the list on `agents/go/LIMS-W0.md`. v0.4.7 is not edited. Its sha1 stays `2d25e3f99a580b4e29058e720ca7f1424bc9c710`.
+
+**Old rule.** `x = clamp(centrePts / LIM_CENTRE_SCALE_PTS[symbol] × 100, −100, +100)`. The live map was `{"SPX":50,"I:SPX":50}`. A symbol absent from the map was `valid: false`. The chrome sentence was `No centre scale configured for {symbol}.`
+
+**New rule.** One shared `k` on each symbol's ATM straddle. ATM is the listed strike nearest spot on that expiration. A distance tie takes the lower strike. A missing mid is not borrowed.
+
+```text
+S          = mid(ATM call) + mid(ATM put)
+r          = centrePts / (k · S)
+x          = 100 · tanh(r)          displayed, open interval (−100, +100)
+xUnclamped = 100 · r                trail and transition
+```
+
+`k` = **3.2712422351724415**, environment `LABS_LIM_STRADDLE_K` / `NEXT_PUBLIC_LABS_LIM_STRADDLE_K`, in-code `LIM_STRADDLE_K`. No code default. Missing, non-finite, or `≤ 0` aborts. Y is unchanged. In float64, `tanh` reaches ±1 once `|r|` is about 20; the displayed value then steps one ulp inside ±100. `xUnclamped` stays `100·r`.
+
+Missing ATM mid, or `S ≤ 0`: `valid: false`, and the member sentence is `Quad window unavailable for {symbol} {expiration}: ATM straddle not available.` Missing spot stays `No spot for {symbol}.`
+
+**Spec.** `Specs/FatTail Labs — Heatmap LIM Template — Specification v0.4.8.md` folds amendment v0.4 §1a into a new file. v0.4.7, and amendments v0.1–v0.4, were not edited.
+
+**AT-LIMS4 admin half.** Not built. Admin Notifications Spec v1.1 does not exist, so there is no admin record and no MS-9 aggregation. The member sentence does not wait. The gate names this gap. It is not a pass.
+
+**Not this entry.** A commit. A push. MiniTwo. Production. The per-symbol list that DL-817 left on hold.
+
+## 2026-10-08 — DL-819 LIM straddle scale — three OKs on LIMS-W0 (Coach)
+
+**Decision (Coach, 2026-10-08). Not a build.**
+
+Coach, quoted:
+
+> Ok Ok Ok
+
+Three OKs in one ruling, recorded on `agents/go/LIMS-W0.md` as OK 1, OK 2, and OK 3, each dated 2026-10-08, each line `Ok`. DL-539: the OKs live on the token. A later build of amendment v0.4 may edit only the file list on that token. Nothing was edited under this entry. The build has not started.
+
+## 2026-10-08 — DL-818 LIM straddle amendment v0.4 approved (Coach)
+
+**Decision (Coach, 2026-10-08). Not a build stamp.**
+
+Coach, quoted:
+
+> I approve
+
+This approves `agents/p-options-pricing-foundation/LIM-Straddle-Scale-Amendment-v0_4.md`. India had returned READY FOR COACH in `gate-reports/LIM-Straddle-Scale-Amendment-v0_4-India-Review-v1_0.md`. v0.4 supersedes v0.1, v0.2, and v0.3. It amends `Specs/FatTail Labs — Heatmap LIM Template — Specification v0.4.7.md` by the §1a list. `k` = 3.2712422351724415 (`LABS_LIM_STRADDLE_K`).
+
+The amendment file was not edited. Its title still says DRAFT, and its status line still says not stamped. This entry is the approval.
+
+**Does not.** Authorise a build. Edit v0.4.7. Edit env. Restart anything. Count a Coach OK on the GO token. The Heatmap / Runner tree stays frozen until three successive OKs are on that token. This message is not on that token.
+
+## 2026-10-08 — DL-817 LIM quad scale — ATM straddle, normalised to the quad
+
+**Decision (Coach, 2026-10-08). Not a build stamp.**
+
+Coach, quoted:
+
+> So long as the calculation automatically normalizes for the boundaries of the quad
+
+The draft that records the reading of that sentence is `agents/p-options-pricing-foundation/LIM-Straddle-Scale-Amendment-v0_1.md`. It is not stamped. The Heatmap / Runner tree stays frozen until Coach's three OKs are on the GO token. The per-symbol list (option 1 in the apply prompt) is not used. That apply stays on hold, superseded by this decision. No env file and no code changed with this entry.
+
+**The rule (amendment §2).** For symbol `s`, expiration `e`, at a snapshot:
+
+```text
+S          = mid(ATM call) + mid(ATM put)
+r          = centrePts / (k · S)
+x          = 100 · tanh(r)
+xUnclamped = 100 · r
+```
+
+ATM is the listed strike nearest spot, on expiration `e`. `centrePts` stays the LIM7 sum. `x` is the displayed horizontal position and lies strictly inside (−100, +100). `xUnclamped` is what the trail and the transition keep. `k` is one required config value, `LABS_LIM_STRADDLE_K`, with no code default. Hotel's calibration, `gate-reports/LIM-Straddle-K-Calibration-v1_0.md`, sets
+
+**k = 3.2712422351724415**
+
+so that SPX's median `|x|` on the 41,063-minute sample is 11.13. SPX's max `|x|` on that sample moves from 50.76 under the fixed scale of 50 to 75.82. Six symbols have more than 1% of minutes with `|x| > 95`: IWM, SLV, TLT, UNG, USO, XLF. No minute in the sample was missing a straddle.
+
+**Consistency, from the formula evaluation** (`gate-reports/LIM-Centre-Scale-Formula-Evaluation-v1_0.md`). Spread is the largest symbol's figure divided by the smallest.
+
+| Formula | Median \|lean\| spread | p99 \|lean\| spread |
+|---|---:|---:|
+| F5 ATM straddle | 6.46 | 9.69 |
+| F6 spot × IV | 7.38 | 13.46 |
+| F3 expected move | 8.14 | 13.47 |
+| Option 1 list | 9.52 | 2.81 |
+| F2 window width | 16.30 | 12.35 |
+| F1 share of spot | 34.22 | 36.21 |
+
+F5 is the shared-k rule this decision adopts. The tanh in §2 is the normalisation Coach required on top of that rule. Option 1 is the list that is not used.
+
+**Does not.** Authorise a build. Edit the LIM spec file. Edit env. Restart anything. Count a Coach OK on the frozen Heatmap / Runner tree.
+
 ## 2026-10-05 — DL-812 Databento FOP provider / provider-plugins program parked (Coach)
 
 **Decision (Coach).** The Databento / Market Data Provider Plugins program is parked.

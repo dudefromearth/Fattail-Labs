@@ -105,7 +105,7 @@ export function limDotXY(
   };
 }
 
-/** Live disc uses clamped x. Ghosts may use xUnclamped past the edge. */
+/** Live disc uses displayed x (tanh, open interval). Ghosts may use xUnclamped past the edge. */
 export function limGhostXY(
   xUnclamped: number,
   y: number,
@@ -125,20 +125,24 @@ export function limPlanePoint(
   return { x: result.x, y: result.y };
 }
 
-export function limNoScaleMessage(symbol: string): string {
-  return `No centre scale configured for ${symbol}.`;
+export function limStraddleUnavailableMessage(
+  symbol: string,
+  expiration: string,
+): string {
+  return `Quad window unavailable for ${symbol} ${expiration}: ATM straddle not available.`;
 }
 
 export function limRefusalMessage(result: {
   valid: boolean;
   symbol: string;
-  invalidReason?: "no-scale" | "no-spot" | null;
+  expiration?: string;
+  invalidReason?: "no-straddle" | "no-spot" | null;
 }): string | null {
   if (result.valid) return null;
   if (result.invalidReason === "no-spot") {
     return `No spot for ${result.symbol}.`;
   }
-  return limNoScaleMessage(result.symbol);
+  return limStraddleUnavailableMessage(result.symbol, result.expiration ?? "");
 }
 
 /**

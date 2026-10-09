@@ -23,7 +23,7 @@ import {
   LIM_PICKER_LABEL,
   limChromeInfoLines,
   limChromeLine3,
-  limNoScaleMessage,
+  limStraddleUnavailableMessage,
   limNumericHeader,
   limStateLine,
 } from "./limChrome";
@@ -78,7 +78,7 @@ const rendered: string[] = [
     crossingCount: 2,
     crossingProximity: 0.5,
   }),
-  limNoScaleMessage("SPX"),
+  limStraddleUnavailableMessage("SPX", "2026-09-04"),
 ];
 
 const lim = HEATMAP_TEMPLATES.find((t) => t.id === "lim");

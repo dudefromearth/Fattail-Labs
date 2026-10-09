@@ -19,7 +19,7 @@ function assert(c: unknown, m: string): void {
 }
 
 const HOTEL: LC = {
-  LIM_CENTRE_SCALE_PTS: { "I:SPX": 50, SPX: 50 },
+  LIM_STRADDLE_K: 3.2712422351724415,
   LIM_BAND_CLOSE_PCT: 1,
   LIM_BAND_MEDIUM_PCT: 2,
   LIM_W_NET: 0.5,

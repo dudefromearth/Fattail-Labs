@@ -37,8 +37,8 @@ import {
   limMagFDisplay,
   limNumericHeader,
   limPlanePoint,
-  limNoScaleMessage,
   limProximityDisplay,
+  limStraddleUnavailableMessage,
   limRefusalMessage,
   limStateLine,
   limSurfaceFlags,
@@ -49,7 +49,7 @@ function assert(c: unknown, m: string): void {
 }
 
 const HOTEL: LimConfig = {
-  LIM_CENTRE_SCALE_PTS: { "I:SPX": 50 },
+  LIM_STRADDLE_K: 3.2712422351724415,
   LIM_BAND_CLOSE_PCT: 1,
   LIM_BAND_MEDIUM_PCT: 2,
   LIM_W_NET: 0.5,
@@ -72,7 +72,14 @@ function net(strike: number, call: number, put: number, n: number): StrikeNet {
   return { strike, call, put, net: n };
 }
 
-function run(nets: StrikeNet[], symbol = "I:SPX") {
+function run(
+  nets: StrikeNet[],
+  symbol = "I:SPX",
+  mids: { callMid: number | null; putMid: number | null } = {
+    callMid: 10,
+    putMid: 10,
+  },
+) {
   return computeLimFromNets(
     {
       symbol,
@@ -81,6 +88,8 @@ function run(nets: StrikeNet[], symbol = "I:SPX") {
       expiration: "2026-09-04",
       oiAsOf: null,
       nets,
+      callMid: mids.callMid,
+      putMid: mids.putMid,
     },
     HOTEL,
   );
@@ -123,15 +132,15 @@ const panel = readFileSync(
 
 // AT-LIM33 — valid:false is a named refusal, not a live centre reading (D1b)
 {
-  const off = run(F2, "I:NDX");
-  assert(off.valid === false, "AT-LIM19/33 valid false");
-  assert(off.invalidReason === "no-scale", "AT-LIM33 no-scale reason");
+  const off = run(F2, "I:NDX", { callMid: null, putMid: 10 });
+  assert(off.valid === false, "AT-LIMS4/33 valid false");
+  assert(off.invalidReason === "no-straddle", "AT-LIM33 no-straddle reason");
   const msg = limRefusalMessage(off);
+  const expected = limStraddleUnavailableMessage("I:NDX", "2026-09-04");
   assert(
-    msg === "No centre scale configured for I:NDX.",
-    "AT-LIM33 names the symbol",
+    msg === expected,
+    "AT-LIM33 names the symbol and expiration",
   );
-  assert(msg === limNoScaleMessage("I:NDX"), "AT-LIM33 C2-shaped named hole");
   const html = renderToStaticMarkup(
     createElement(HeatmapLimQuadrant, {
       result: off,
@@ -143,7 +152,7 @@ const panel = readFileSync(
   assert(!html.includes("data-testid=\"lim-chip-proximity\""), "AT-LIM33 no live chip");
   assert(!html.includes("data-testid=\"lim-ghost\""), "AT-LIM33 no trail");
   assert(html.includes("lim-scale-refusal"), "AT-LIM33 refusal on the plane");
-  assert(html.includes("No centre scale configured for I:NDX."), "AT-LIM33 copy");
+  assert(html.includes(expected), "AT-LIM33 copy");
   assert(!html.includes("Lean "), "AT-LIM33 no live Lean on the plane");
   assert(panel.includes("limPack.result?.valid"), "AT-LIM33 header gated on valid");
   assert(panel.includes("lim-header-refusal"), "AT-LIM33 header names refusal");

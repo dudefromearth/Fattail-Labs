@@ -8,7 +8,7 @@
  */
 
 export const LABS_LIM_ENV_KEYS = [
-  "LABS_LIM_CENTRE_SCALE_PTS",
+  "LABS_LIM_STRADDLE_K",
   "LABS_LIM_BAND_CLOSE_PCT",
   "LABS_LIM_BAND_MEDIUM_PCT",
   "LABS_LIM_W_NET",
@@ -30,7 +30,7 @@ export const LABS_LIM_ENV_KEYS = [
 export type LabsLimEnvKey = (typeof LABS_LIM_ENV_KEYS)[number];
 
 export type LimConfig = {
-  LIM_CENTRE_SCALE_PTS: Record<string, number>;
+  LIM_STRADDLE_K: number;
   LIM_BAND_CLOSE_PCT: number;
   LIM_BAND_MEDIUM_PCT: number;
   LIM_W_NET: number;
@@ -58,7 +58,7 @@ const W_SUM_EPS = 1e-9;
  * `process.env.NEXT_PUBLIC_LABS_LIM_*` member expressions (no loops, no `env[k]`).
  */
 const PUBLIC_LIM_ENV: Record<LabsLimEnvKey, string | undefined> = {
-  LABS_LIM_CENTRE_SCALE_PTS: process.env.NEXT_PUBLIC_LABS_LIM_CENTRE_SCALE_PTS,
+  LABS_LIM_STRADDLE_K: process.env.NEXT_PUBLIC_LABS_LIM_STRADDLE_K,
   LABS_LIM_BAND_CLOSE_PCT: process.env.NEXT_PUBLIC_LABS_LIM_BAND_CLOSE_PCT,
   LABS_LIM_BAND_MEDIUM_PCT: process.env.NEXT_PUBLIC_LABS_LIM_BAND_MEDIUM_PCT,
   LABS_LIM_W_NET: process.env.NEXT_PUBLIC_LABS_LIM_W_NET,
@@ -129,28 +129,11 @@ function parseBool(env: LimEnv, key: LabsLimEnvKey): boolean {
   invalid(key, "not a boolean");
 }
 
-function parseScaleMap(env: LimEnv): Record<string, number> {
-  const key: LabsLimEnvKey = "LABS_LIM_CENTRE_SCALE_PTS";
-  const raw = readRaw(env, key);
-  if (raw == null) missing(key);
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    invalid(key, "not JSON");
-  }
-  if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) {
-    invalid(key, "not a JSON object");
-  }
-  const out: Record<string, number> = {};
-  for (const [sym, val] of Object.entries(parsed as Record<string, unknown>)) {
-    const n = Number(val);
-    if (!Number.isFinite(n) || n === 0) {
-      invalid(key, `scale for ${sym} is not a non-zero finite number`);
-    }
-    out[sym] = n;
-  }
-  return out;
+function parseStraddleK(env: LimEnv): number {
+  const key: LabsLimEnvKey = "LABS_LIM_STRADDLE_K";
+  const n = parseNumber(env, key);
+  if (!(n > 0)) invalid(key, "must be greater than 0");
+  return n;
 }
 
 function parseLimConfig(env: LimEnv): LimConfig {
@@ -159,7 +142,7 @@ function parseLimConfig(env: LimEnv): LimConfig {
   }
 
   const cfg: LimConfig = {
-    LIM_CENTRE_SCALE_PTS: parseScaleMap(env),
+    LIM_STRADDLE_K: parseStraddleK(env),
     LIM_BAND_CLOSE_PCT: parseNumber(env, "LABS_LIM_BAND_CLOSE_PCT"),
     LIM_BAND_MEDIUM_PCT: parseNumber(env, "LABS_LIM_BAND_MEDIUM_PCT"),
     LIM_W_NET: parseNumber(env, "LABS_LIM_W_NET"),

@@ -6,6 +6,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { contractKey, type LadderRow } from "@/lib/chainLadderApi";
 import type { ChainContext } from "./types";
 import { HEATMAP_TEMPLATES } from "./registry";
 import {
@@ -19,9 +20,14 @@ import {
 import {
   computeLim,
   computeLimFromNets,
+  nearestAtmStrike,
   type LimResult,
   type StrikeNet,
 } from "./lim";
+import {
+  limRefusalMessage,
+  limStraddleUnavailableMessage,
+} from "./limChrome";
 
 function assert(c: unknown, m: string): void {
   if (!c) throw new Error(`FAIL: ${m}`);
@@ -31,8 +37,19 @@ function almost(a: number, b: number, eps = 1e-12): boolean {
   return Math.abs(a - b) <= eps;
 }
 
+const STRADDLE_K = 3.2712422351724415;
+const DEFAULT_S = 20;
+
+function xs(
+  centrePts: number,
+  S = DEFAULT_S,
+): { x: number; xUnclamped: number } {
+  const ratio = centrePts / (STRADDLE_K * S);
+  return { x: 100 * Math.tanh(ratio), xUnclamped: 100 * ratio };
+}
+
 const HOTEL: LimConfig = {
-  LIM_CENTRE_SCALE_PTS: { "I:SPX": 50 },
+  LIM_STRADDLE_K: STRADDLE_K,
   LIM_BAND_CLOSE_PCT: 1.0,
   LIM_BAND_MEDIUM_PCT: 2.0,
   LIM_W_NET: 0.5,
@@ -60,15 +77,25 @@ function net(
   return { strike, call, put, net: n };
 }
 
-function run(nets: StrikeNet[], symbol = "I:SPX"): LimResult {
+function run(
+  nets: StrikeNet[],
+  symbol = "I:SPX",
+  mids: { callMid: number | null; putMid: number | null } = {
+    callMid: 10,
+    putMid: 10,
+  },
+  spot: number | null = 5000,
+): LimResult {
   return computeLimFromNets(
     {
       symbol,
-      spot: 5000,
+      spot,
       wings: 50,
       expiration: "2026-09-02",
       oiAsOf: null,
       nets,
+      callMid: mids.callMid,
+      putMid: mids.putMid,
     },
     HOTEL,
   );
@@ -91,7 +118,7 @@ function expectCore(
   },
   label: string,
 ): void {
-  assert(r.x === exp.x, `${label} x ${r.x} !== ${exp.x}`);
+  assert(almost(r.x, exp.x, 1e-9), `${label} x ${r.x} !== ${exp.x}`);
   assert(r.y === exp.y, `${label} y ${r.y} !== ${exp.y}`);
   assert(r.lean === r.x, `${label} lean === x`);
   assert(r.nearSpotMix === r.y, `${label} nearSpotMix === y`);
@@ -112,10 +139,12 @@ const F1 = [
 ];
 {
   const r = run(F1);
-  expectCore(r, { x: 10, y: 100, netRatio: 1, concF: 100, magF: 100, crossingCount: 0 }, "F1");
+  const x1 = xs(5);
+  expectCore(r, { x: x1.x, y: 100, netRatio: 1, concF: 100, magF: 100, crossingCount: 0 }, "F1");
   assert(r.x > 0, "AT-LIM1 mass above → x > 0");
+  assert(r.x > -100 && r.x < 100, "AT-LIMS1 F1 inside");
   assert(r.y > 50, "AT-LIM4 all-positive near spot → y > 50");
-  assert(r.xUnclamped === 10, "F1 xUnclamped");
+  assert(almost(r.xUnclamped, x1.xUnclamped, 1e-9), "F1 xUnclamped = 100·r");
   assert(r.centrePts === 5, "F1 centrePts");
   assert(r.crossingProximity === 1, "F1 no nearest → proximity 1");
   assert(almost(r.y, recombine(r)), "AT-LIM16 F1 recombine");
@@ -132,10 +161,11 @@ const F2 = [
 ];
 {
   const r = run(F2);
-  expectCore(r, { x: 62, y: 40, netRatio: -1, concF: 80, magF: 80, crossingCount: 0 }, "F2");
+  const x2 = xs(31);
+  expectCore(r, { x: x2.x, y: 40, netRatio: -1, concF: 80, magF: 80, crossingCount: 0 }, "F2");
   assert(r.x > 0 && r.y < 50, "AT-LIM6 x > 0 and y < 50");
   assert(r.y < 50, "AT-LIM5 negative near spot (this geometry) → y < 50");
-  assert(r.xUnclamped === 62, "F2 xUnclamped");
+  assert(almost(r.xUnclamped, x2.xUnclamped, 1e-9), "F2 xUnclamped = 100·r");
   assert(almost(r.y, recombine(r)), "AT-LIM16 F2 recombine");
 }
 
@@ -194,7 +224,8 @@ const F6 = [
 ];
 {
   const r = run(F6);
-  expectCore(r, { x: -60, y: 71, netRatio: 0, concF: 100, magF: 80, crossingCount: 3 }, "F6");
+  const x6 = xs(-30);
+  expectCore(r, { x: x6.x, y: 71, netRatio: 0, concF: 100, magF: 80, crossingCount: 3 }, "F6");
   assert(r.x < 0, "AT-LIM2 mass below → x < 0");
   assert(r.crossings.length === 3, "AT-LIM11 count 3");
   assert(r.crossings[0].lo === 4920 && r.crossings[0].hi === 4940, "F6 c1 interval");
@@ -240,8 +271,11 @@ const F7 = [
 const F8 = [net(5100, 50, 0, 50), net(5200, 50, 0, 50)];
 {
   const r = run(F8);
-  expectCore(r, { x: 100, y: 40, netRatio: 0, concF: 50, magF: 0, crossingCount: 0 }, "F8");
-  assert(r.xUnclamped === 300, "F8 xUnclamped 300");
+  const x8 = xs(150);
+  expectCore(r, { x: x8.x, y: 40, netRatio: 0, concF: 50, magF: 0, crossingCount: 0 }, "F8");
+  assert(almost(r.xUnclamped, x8.xUnclamped, 1e-9), "AT-LIMS9 F8 xUnclamped = 100·r");
+  assert(Math.abs(r.xUnclamped) > 100, "AT-LIMS9 trail value past the edge");
+  assert(r.x > -100 && r.x < 100, "AT-LIMS1 F8 displayed x inside");
   assert(r.xUnclamped !== r.x, "AT-LIM13 xUnclamped ≠ x");
   assert(almost(r.y, recombine(r)), "AT-LIM16 F8 recombine");
 }
@@ -255,7 +289,8 @@ const F9 = [
 ];
 {
   const r = run(F9);
-  expectCore(r, { x: 5, y: 90, netRatio: 1, concF: 100, magF: 50, crossingCount: 1 }, "F9");
+  const x9 = xs(2.5);
+  expectCore(r, { x: x9.x, y: 90, netRatio: 1, concF: 100, magF: 50, crossingCount: 1 }, "F9");
   assert(r.crossingProximity === 0.5, "AT-LIM29 proximity 0.50");
   assert(r.crossingProximity > 0 && r.crossingProximity < 1, "AT-LIM29 strictly interior");
   assert(r.distanceToCrossing === 50, "F9 dist 50");
@@ -280,18 +315,19 @@ const F9 = [
   assert(far.crossingProximity === 1, "AT-LIM8 proximity 1");
 }
 
-// --- AT-LIM19 — symbol off the map; no fallback scale ---
+// --- AT-LIM19 retired. One k. A symbol with a straddle is valid (AT-LIMS4 inverse). ---
 {
   const r = run(F1, "I:NDX");
-  assert(r.valid === false, "AT-LIM19 valid false");
-  assert(r.x === 0 && r.xUnclamped === 0, "AT-LIM19 no fallback scale (would be x=10)");
-  assert(r.invalidReason === "no-scale", "AT-LIM19 no-scale reason");
+  const x1 = xs(5);
+  assert(r.valid === true, "I:NDX with a straddle is valid");
+  assert(r.invalidReason === null, "I:NDX no refusal");
+  assert(almost(r.x, x1.x, 1e-9), "I:NDX uses the same k and S");
 }
 
 // --- AT-LIM17 / 17b — loadLimConfig ---
 function hotelEnv(over: LimEnv = {}): LimEnv {
   const env: LimEnv = {
-    LABS_LIM_CENTRE_SCALE_PTS: JSON.stringify({ "I:SPX": 50 }),
+    LABS_LIM_STRADDLE_K: String(STRADDLE_K),
     LABS_LIM_BAND_CLOSE_PCT: "1.0",
     LABS_LIM_BAND_MEDIUM_PCT: "2.0",
     LABS_LIM_W_NET: "0.50",
@@ -315,7 +351,7 @@ function hotelEnv(over: LimEnv = {}): LimEnv {
 {
   resetLimConfigCache();
   const cfg = loadLimConfig(hotelEnv());
-  assert(cfg.LIM_CENTRE_SCALE_PTS["I:SPX"] === 50, "parse scale map");
+  assert(cfg.LIM_STRADDLE_K === STRADDLE_K, "parse straddle k");
   assert(cfg.LIM_W_NET + cfg.LIM_W_CONC + cfg.LIM_W_MAG === 1, "W sum 1.0");
   assert(cfg.LIM_SHOW_TRANSITION === false, "bool false");
 }
@@ -379,6 +415,13 @@ function hotelEnv(over: LimEnv = {}): LimEnv {
   };
   const r = computeLim(ctx, { config: HOTEL, expiration: "2026-09-02" });
   assert(r.x === 0 && r.y === 50, "computeLim empty profile → centre");
+  assert(r.valid === false, "empty contracts have no ATM straddle");
+  assert(r.invalidReason === "no-straddle", "empty contracts → no-straddle");
+  assert(
+    limRefusalMessage(r) ===
+      limStraddleUnavailableMessage("I:SPX", "2026-09-02"),
+    "empty contracts use the straddle sentence",
+  );
   assert(r.expiration === "2026-09-02", "expiration stamped");
   assert(r.oiAsOf === null, "JR3 oiAsOf hole");
 }
@@ -438,6 +481,189 @@ function hotelEnv(over: LimEnv = {}): LimEnv {
     const hits = src.split(needle).length - 1;
     assert(hits >= 1, `D2 literal ${needle} in limConfig.ts`);
   }
+}
+
+const here = dirname(fileURLToPath(import.meta.url));
+
+// --- AT-LIMS1 — displayed x is strictly inside the open interval ---
+{
+  const huge = run([net(9000, 50, 0, 50), net(9500, 50, 0, 50)]);
+  assert(huge.centrePts > 0, "AT-LIMS1 huge centre");
+  for (const r of [run(F1), run(F2), run(F6), run(F8), run([]), huge]) {
+    assert(r.valid, "AT-LIMS1 sample valid");
+    assert(r.x > -100 && r.x < 100, `AT-LIMS1 ${r.x} not strictly inside`);
+    assert(r.x !== 100 && r.x !== -100, "AT-LIMS1 not on the edge");
+  }
+}
+
+// --- AT-LIMS2 — order of r is the order of x ---
+{
+  const below = run(F6);
+  const mid = run(F1);
+  const above = run(F2);
+  assert(below.centrePts < mid.centrePts && mid.centrePts < above.centrePts, "AT-LIMS2 centres ordered");
+  assert(below.x < mid.x && mid.x < above.x, "AT-LIMS2 x order preserved");
+}
+
+// --- AT-LIMS3 — SPX calibration sample, type-7 median |x| ---
+{
+  const fixture = JSON.parse(
+    readFileSync(join(here, "lim.straddle-spx.json"), "utf8"),
+  ) as { n: number; rows: Array<[number, number]> };
+  assert(fixture.n === 3268, "AT-LIMS3 SPX minute count");
+  assert(fixture.rows.length === 3268, "AT-LIMS3 row count");
+  const absX: number[] = [];
+  for (const [centre, straddle] of fixture.rows) {
+    assert(straddle > 0, "AT-LIMS3 straddle positive");
+    const ratio = Math.abs(centre) / (STRADDLE_K * straddle);
+    absX.push(100 * Math.tanh(ratio));
+  }
+  absX.sort((a, b) => a - b);
+  const h = 0.5 * (absX.length - 1);
+  const lo = Math.floor(h);
+  const median = absX[lo] * (1 - (h - lo)) + absX[lo + 1] * (h - lo);
+  assert(Math.abs(median - 11.13) <= 0.5, `AT-LIMS3 median ${median} outside 11.13 ± 0.5`);
+  assert(almost(median, 11.130000000000003, 1e-6), `AT-LIMS3 median ${median}`);
+}
+
+// --- AT-LIMS4 member half. Admin half is a known gap (no Admin Notifications Spec v1.1). ---
+{
+  const missingCall = run(F1, "SPX", { callMid: null, putMid: 12 });
+  assert(missingCall.valid === false, "AT-LIMS4 missing call → invalid");
+  assert(missingCall.invalidReason === "no-straddle", "AT-LIMS4 reason");
+  assert(missingCall.x === 0 && missingCall.xUnclamped === 0, "AT-LIMS4 no invented x");
+  const msg = limRefusalMessage(missingCall);
+  assert(
+    msg === "Quad window unavailable for SPX 2026-09-02: ATM straddle not available.",
+    "AT-LIMS4 member sentence",
+  );
+  assert(msg === limStraddleUnavailableMessage("SPX", "2026-09-02"), "AT-LIMS4 helper");
+  const missingPut = run(F1, "QQQ", { callMid: 4, putMid: null });
+  assert(missingPut.valid === false && missingPut.invalidReason === "no-straddle", "AT-LIMS4 missing put");
+  assert(
+    limRefusalMessage(missingPut) ===
+      "Quad window unavailable for QQQ 2026-09-02: ATM straddle not available.",
+    "AT-LIMS4 put sentence",
+  );
+}
+
+// --- AT-LIMS5 — S ≤ 0 ---
+{
+  for (const mids of [
+    { callMid: 0, putMid: 0 },
+    { callMid: -3, putMid: 1 },
+    { callMid: 2, putMid: -2 },
+  ]) {
+    const r = run(F1, "SPY", mids);
+    assert(r.valid === false, "AT-LIMS5 invalid");
+    assert(r.invalidReason === "no-straddle", "AT-LIMS5 reason");
+    assert(
+      limRefusalMessage(r) ===
+        "Quad window unavailable for SPY 2026-09-02: ATM straddle not available.",
+      "AT-LIMS5 sentence",
+    );
+  }
+}
+
+// --- AT-LIMS6 — k absent, non-finite, or ≤ 0 aborts ---
+{
+  for (const bad of [undefined, "", "0", "-1", "NaN", "Infinity"] as const) {
+    let threw = false;
+    try {
+      loadLimConfig(hotelEnv({ LABS_LIM_STRADDLE_K: bad }));
+    } catch (e) {
+      threw = true;
+      assert(e instanceof LimConfigError, "AT-LIMS6 LimConfigError");
+      assert(
+        (e as LimConfigError).message.includes("LABS_LIM_STRADDLE_K"),
+        "AT-LIMS6 names the key",
+      );
+    }
+    assert(threw, `AT-LIMS6 ${String(bad)} aborts`);
+  }
+}
+
+// --- AT-LIMS7 is live RTH evidence in the Delta gate, not this process. ---
+
+// --- AT-LIMS8 — live product files do not keep the retired key ---
+{
+  const retired = ["LIM_CENTRE", "SCALE_PTS"].join("_");
+  const roots = [
+    join(here, "lim.ts"),
+    join(here, "limConfig.ts"),
+    join(here, "limChrome.ts"),
+    join(here, "lim.test.ts"),
+    join(here, "limQuadrant.test.ts"),
+    join(here, "lim.c2.test.ts"),
+    join(here, "lim.zeroFetch.test.ts"),
+    join(here, "lim.vocab.test.ts"),
+    join(here, "../../../components/options-lab/HeatmapLimQuadrant.tsx"),
+    join(here, "../../../components/options-lab/HeatmapChainPanel.tsx"),
+    join(here, "../../../.env.example"),
+    join(here, "../../../../Architecture/29-options-lab-heatmap-templates.md"),
+  ];
+  for (const p of roots) {
+    const text = readFileSync(p, "utf8");
+    assert(!text.includes(retired), `AT-LIMS8 ${p}`);
+  }
+}
+
+// --- AT-LIMS9 — panel trail still consumes xUnclamped ---
+{
+  const panel = readFileSync(
+    join(here, "../../../components/options-lab/HeatmapChainPanel.tsx"),
+    "utf8",
+  );
+  assert(panel.includes("xUnclamped: limPack.result.xUnclamped"), "AT-LIMS9 trail observe");
+  const quad = readFileSync(
+    join(here, "../../../components/options-lab/HeatmapLimQuadrant.tsx"),
+    "utf8",
+  );
+  assert(quad.includes("limGhostXY(g.xUnclamped"), "AT-LIMS9 ghosts use xUnclamped");
+}
+
+// --- ATM strike: tie takes the lower strike; a missing mid is not borrowed ---
+{
+  const tie = new Map<string, LadderRow>();
+  tie.set(contractKey("call", 4990), { strike: 4990, side: "call", mid: 3 });
+  tie.set(contractKey("put", 4990), { strike: 4990, side: "put", mid: 7 });
+  tie.set(contractKey("call", 5010), { strike: 5010, side: "call", mid: 100 });
+  tie.set(contractKey("put", 5010), { strike: 5010, side: "put", mid: 100 });
+  assert(nearestAtmStrike(tie, 5000) === 4990, "tie → lower strike");
+  const ctx: ChainContext = {
+    symbol: "SPX",
+    viewSide: "call",
+    spot: 5000,
+    strikeStep: 10,
+    wings: 50,
+    contracts: tie,
+    asOf: null,
+    contentHash: null,
+  };
+  const tied = computeLim(ctx, { config: HOTEL, expiration: "2026-09-02", nets: F1 });
+  const viaLower = xs(5, 10);
+  assert(tied.valid === true, "tie straddle valid");
+  assert(almost(tied.x, viaLower.x, 1e-9), "tie uses S at the lower strike");
+  assert(!almost(tied.x, xs(5, 200).x, 1e-6), "tie does not use the upper strike");
+
+  const hole = new Map<string, LadderRow>();
+  hole.set(contractKey("call", 4990), { strike: 4990, side: "call", mid: 3 });
+  hole.set(contractKey("put", 4990), { strike: 4990, side: "put", mid: null });
+  hole.set(contractKey("call", 5010), { strike: 5010, side: "call", mid: 100 });
+  hole.set(contractKey("put", 5010), { strike: 5010, side: "put", mid: 100 });
+  const missed = computeLim(
+    { ...ctx, contracts: hole },
+    { config: HOTEL, expiration: "2026-09-02", nets: F1 },
+  );
+  assert(missed.valid === false, "missing ATM put is not borrowed");
+  assert(missed.invalidReason === "no-straddle", "missing ATM put reason");
+}
+
+// --- Missing spot keeps the spot sentence ---
+{
+  const r = run(F1, "TSLA", { callMid: 10, putMid: 10 }, null);
+  assert(r.valid === false && r.invalidReason === "no-spot", "no spot reason");
+  assert(limRefusalMessage(r) === "No spot for TSLA.", "no spot sentence");
 }
 
 console.log("lim.test.ts ok");
