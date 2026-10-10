@@ -1,11 +1,18 @@
 """Billing webhook attribution/credit logic (routes/billing.py).
 
-LK Phase 3a/3b: _attribute_checkout, _award_referral_credit, and
-_handle_subscription's created-only credit award. These are plain
-functions taking a cursor and a dict (the already-parsed webhook
-object) — Stripe signature verification happens one layer up in
-stripe_webhook() and is not exercised here; see billing.py's comment
-that the SDK is used for signature verification only.
+LK Phase 3a/3b: checkout.session.completed attribution and the
+customer.subscription.created-only referral credit award. These go
+through the real POST /api/billing/webhook endpoint — including real
+Stripe-Signature HMAC verification — not the private helper functions
+(_attribute_checkout / _award_referral_credit / _handle_subscription)
+directly; signature verification and the event-type dispatch in
+stripe_webhook() are production code paths worth exercising for real,
+not stood in for.
+
+STRIPE_WEBHOOK_SECRET is not configured in this dev .env (no live
+Stripe webhook exists yet to point at it), so each test sets a
+test-only secret via monkeypatch + config.reset_config_for_tests(),
+the same pattern test_rate_limit_m1.py uses for env-driven config.
 
 links/link_markers/link_attributions/credit_tier_rules carry no FK to
 links (migrations/156_attribution.sql, 157_affiliates.sql), so probe
@@ -15,22 +22,35 @@ would make a real reachability check for no reason here).
 
 from __future__ import annotations
 
+import hashlib
+import hmac
+import json
+import time
 import uuid
 
 import db
 import pytest
 
+from config import reset_config_for_tests
 from links.attribution import mint_marker
 from links.credits import balance
-from routes.billing import PROVIDER, _attribute_checkout, _award_referral_credit, _handle_subscription
 
 SLUG_A = "zztsta"
 SLUG_B = "zztstb"
 SLUGS = (SLUG_A, SLUG_B)
+WEBHOOK_SECRET = "zztest_webhook_secret"
 
 
 def _ref(prefix: str) -> str:
     return f"zztest-{prefix}-{uuid.uuid4().hex[:8]}"
+
+
+@pytest.fixture(autouse=True)
+def webhook_secret(monkeypatch):
+    monkeypatch.setenv("STRIPE_WEBHOOK_SECRET", WEBHOOK_SECRET)
+    reset_config_for_tests()
+    yield WEBHOOK_SECRET
+    reset_config_for_tests()
 
 
 @pytest.fixture()
@@ -77,107 +97,116 @@ def _make_link(cur, slug: str, owner: int | None = None) -> None:
     )
 
 
-# --- _attribute_checkout (AF-L1/AF-L2, D8) -----------------------------------
+def _sign(body: bytes, secret: str) -> str:
+    ts = str(int(time.time()))
+    signed_payload = f"{ts}.{body.decode()}".encode()
+    sig = hmac.new(secret.encode(), signed_payload, hashlib.sha256).hexdigest()
+    return f"t={ts},v1={sig}"
 
 
-def test_attribute_checkout_noop_without_marker():
+def _post_event(client, event_type: str, obj: dict, secret: str):
+    event = {
+        "id": f"evt_{uuid.uuid4().hex[:16]}",
+        "object": "event",
+        "type": event_type,
+        "data": {"object": obj},
+    }
+    body = json.dumps(event).encode()
+    return client.post(
+        "/api/billing/webhook",
+        content=body,
+        headers={"Stripe-Signature": _sign(body, secret), "Content-Type": "application/json"},
+    )
+
+
+def _checkout_completed(*, session_id, identity_id, marker=None, amount_total=4900, currency="usd"):
+    metadata = {"identity_id": str(identity_id)}
+    if marker:
+        metadata["marker"] = marker
+    return {
+        "id": session_id,
+        "object": "checkout.session",
+        "metadata": metadata,
+        "amount_total": amount_total,
+        "currency": currency,
+    }
+
+
+def _subscription(*, sub_id, identity_id, price_id, marker=None, status="active"):
+    metadata = {"identity_id": str(identity_id)}
+    if marker:
+        metadata["marker"] = marker
+    return {
+        "id": sub_id,
+        "object": "subscription",
+        "customer": "",
+        "metadata": metadata,
+        "items": {"object": "list", "data": [{"price": {"object": "price", "id": price_id}}]},
+        "status": status,
+    }
+
+
+# --- signature verification --------------------------------------------------
+
+
+def test_webhook_rejects_bad_signature(client):
+    body = json.dumps({"id": "evt_zztest", "object": "event", "type": "ping", "data": {"object": {}}}).encode()
+    r = client.post(
+        "/api/billing/webhook",
+        content=body,
+        headers={"Stripe-Signature": "t=1,v1=deadbeef", "Content-Type": "application/json"},
+    )
+    assert r.status_code == 400
+
+
+# --- checkout.session.completed -> link attribution (AF-L1/AF-L2, D8) -------
+
+
+def test_checkout_completed_noop_without_marker(client, identities, webhook_secret):
+    obj = _checkout_completed(session_id=_ref("cs"), identity_id=identities["purchaser"])
+    r = _post_event(client, "checkout.session.completed", obj, webhook_secret)
+    assert r.status_code == 200
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            result = _attribute_checkout(cur, {"id": _ref("cs"), "metadata": {}}, "5")
-    assert result is None
-
-
-def test_attribute_checkout_noop_when_meta_identity_is_not_digit():
-    with db.transaction() as conn:
-        with conn.cursor() as cur:
-            marker = mint_marker(cur, SLUG_A)
-            result = _attribute_checkout(
-                cur, {"id": _ref("cs"), "metadata": {"marker": marker}}, "not-a-digit"
+            cur.execute(
+                "SELECT COUNT(*) AS n FROM link_attributions WHERE external_ref = %s", (obj["id"],)
             )
-    assert result is None
+            assert cur.fetchone()["n"] == 0
 
 
-def test_attribute_checkout_noop_for_unknown_marker(identities):
-    with db.transaction() as conn:
-        with conn.cursor() as cur:
-            result = _attribute_checkout(
-                cur,
-                {"id": _ref("cs"), "metadata": {"marker": "zzzzznotrea"}},
-                str(identities["purchaser"]),
-            )
-    assert result is None
-
-
-def test_attribute_checkout_records_and_is_idempotent(identities):
+def test_checkout_completed_attributes_and_redelivery_is_idempotent(client, identities, webhook_secret):
     ref = _ref("cs")
-    obj = {"id": ref, "metadata": {}, "amount_total": 4900, "currency": "usd"}
     with db.transaction() as conn:
         with conn.cursor() as cur:
             marker = mint_marker(cur, SLUG_A)
-            obj["metadata"]["marker"] = marker
-            first = _attribute_checkout(cur, obj, str(identities["purchaser"]))
-    assert first == f"attributed to {SLUG_A}"
+    obj = _checkout_completed(session_id=ref, identity_id=identities["purchaser"], marker=marker)
+
+    first = _post_event(client, "checkout.session.completed", obj, webhook_secret)
+    assert first.status_code == 200, first.text
+    assert "attributed" in first.json()["result"]
+
+    # Stripe redelivers the same event.
+    second = _post_event(client, "checkout.session.completed", obj, webhook_secret)
+    assert second.status_code == 200
+    assert second.json()["result"] == "attribution already recorded"
 
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            second = _attribute_checkout(cur, obj, str(identities["purchaser"]))
             cur.execute(
                 "SELECT COUNT(*) AS n, identity_id, amount_cents FROM link_attributions "
                 "WHERE external_ref = %s GROUP BY identity_id, amount_cents",
                 (ref,),
             )
             row = cur.fetchone()
-    assert second == "attribution already recorded"
     assert row["n"] == 1
     assert row["identity_id"] == identities["purchaser"]
     assert row["amount_cents"] == 4900
 
 
-# --- _award_referral_credit (AF-L9) ------------------------------------------
+# --- customer.subscription.created -> referral credit (AF-L9) --------------
 
 
-def test_award_referral_credit_noop_without_marker(identities):
-    with db.transaction() as conn:
-        with conn.cursor() as cur:
-            result = _award_referral_credit(cur, {"metadata": {}}, "zztest-price-x", identities["purchaser"])
-    assert result is None
-
-
-def test_award_referral_credit_noop_when_marker_unknown(identities):
-    with db.transaction() as conn:
-        with conn.cursor() as cur:
-            result = _award_referral_credit(
-                cur, {"metadata": {"marker": "zzzzznotrea"}}, "zztest-price-x", identities["purchaser"]
-            )
-    assert result is None
-
-
-def test_award_referral_credit_noop_when_link_has_no_owner(identities):
-    with db.transaction() as conn:
-        with conn.cursor() as cur:
-            _make_link(cur, SLUG_A, owner=None)
-            marker = mint_marker(cur, SLUG_A)
-            result = _award_referral_credit(
-                cur, {"metadata": {"marker": marker}}, "zztest-price-x", identities["purchaser"]
-            )
-    assert result is None
-
-
-def test_award_referral_credit_noop_when_no_tier_rule_configured(identities):
-    with db.transaction() as conn:
-        with conn.cursor() as cur:
-            _make_link(cur, SLUG_A, owner=identities["owner"])
-            marker = mint_marker(cur, SLUG_A)
-            result = _award_referral_credit(
-                cur, {"metadata": {"marker": marker}}, "zztest-price-unmapped", identities["purchaser"]
-            )
-    assert result is None
-    with db.transaction() as conn:
-        with conn.cursor() as cur:
-            assert balance(cur, identities["owner"]) == 0
-
-
-def test_award_referral_credit_awards_owner_not_purchaser(identities):
+def test_subscription_created_awards_credit_to_link_owner(client, identities, webhook_secret):
     price_id = f"zztest-price-{uuid.uuid4().hex[:8]}"
     sub_id = _ref("sub")
     with db.transaction() as conn:
@@ -188,17 +217,70 @@ def test_award_referral_credit_awards_owner_not_purchaser(identities):
                 "INSERT INTO credit_tier_rules (price_id, credits, label) VALUES (%s, %s, %s)",
                 (price_id, 10, "zztest-annual"),
             )
-            result = _award_referral_credit(
-                cur, {"id": sub_id, "metadata": {"marker": marker}}, price_id, identities["purchaser"]
-            )
-    assert result == f"10 credits to identity {identities['owner']}"
+    sub = _subscription(
+        sub_id=sub_id, identity_id=identities["purchaser"], price_id=price_id, marker=marker
+    )
+    r = _post_event(client, "customer.subscription.created", sub, webhook_secret)
+    assert r.status_code == 200, r.text
+    assert "10 credits" in r.json()["result"]
     with db.transaction() as conn:
         with conn.cursor() as cur:
             assert balance(cur, identities["owner"]) == 10
             assert balance(cur, identities["purchaser"]) == 0
 
 
-def test_award_referral_credit_flags_self_referral(identities):
+def test_subscription_updated_does_not_award_credit(client, identities, webhook_secret):
+    """Only the first customer.subscription.created delivery awards a
+    referral credit — .updated and .deleted deliveries for the same
+    subscription must not (D13/AF-L9: once per earned subscription)."""
+    price_id = f"zztest-price-{uuid.uuid4().hex[:8]}"
+    sub_id = _ref("sub")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            _make_link(cur, SLUG_B, owner=identities["owner"])
+            marker = mint_marker(cur, SLUG_B)
+            cur.execute(
+                "INSERT INTO credit_tier_rules (price_id, credits, label) VALUES (%s, %s, %s)",
+                (price_id, 10, "zztest-annual"),
+            )
+    sub = _subscription(
+        sub_id=sub_id, identity_id=identities["purchaser"], price_id=price_id, marker=marker
+    )
+    r = _post_event(client, "customer.subscription.updated", sub, webhook_secret)
+    assert r.status_code == 200, r.text
+    assert r.json()["result"] == f"unmapped price {price_id}"
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            assert balance(cur, identities["owner"]) == 0
+
+
+def test_subscription_created_redelivery_does_not_double_award(client, identities, webhook_secret):
+    price_id = f"zztest-price-{uuid.uuid4().hex[:8]}"
+    sub_id = _ref("sub")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            _make_link(cur, SLUG_A, owner=identities["owner"])
+            marker = mint_marker(cur, SLUG_A)
+            cur.execute(
+                "INSERT INTO credit_tier_rules (price_id, credits, label) VALUES (%s, %s, %s)",
+                (price_id, 10, "zztest-annual"),
+            )
+    sub = _subscription(
+        sub_id=sub_id, identity_id=identities["purchaser"], price_id=price_id, marker=marker
+    )
+    first = _post_event(client, "customer.subscription.created", sub, webhook_secret)
+    assert "10 credits" in first.json()["result"]
+
+    # Stripe redelivers customer.subscription.created with the same id.
+    second = _post_event(client, "customer.subscription.created", sub, webhook_secret)
+    assert "credit already awarded" in second.json()["result"]
+
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            assert balance(cur, identities["owner"]) == 10
+
+
+def test_subscription_created_self_referral_is_flagged_not_blocked(client, identities, webhook_secret):
     price_id = f"zztest-price-{uuid.uuid4().hex[:8]}"
     sub_id = _ref("sub")
     owner = identities["owner"]
@@ -210,91 +292,15 @@ def test_award_referral_credit_flags_self_referral(identities):
                 "INSERT INTO credit_tier_rules (price_id, credits, label) VALUES (%s, %s, %s)",
                 (price_id, 1, "zztest-observer"),
             )
-            # The owner buys through their own link.
-            result = _award_referral_credit(
-                cur, {"id": sub_id, "metadata": {"marker": marker}}, price_id, owner
-            )
+    # The link owner buys through their own link.
+    sub = _subscription(sub_id=sub_id, identity_id=owner, price_id=price_id, marker=marker)
+    r = _post_event(client, "customer.subscription.created", sub, webhook_secret)
+    assert "self-referral, flagged" in r.json()["result"]
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
             cur.execute(
                 "SELECT self_referral FROM credit_events WHERE identity_id=%s AND external_ref=%s",
                 (owner, sub_id),
             )
             row = cur.fetchone()
-    assert "self-referral, flagged" in result
     assert bool(row["self_referral"]) is True
-
-
-def test_award_referral_credit_idempotent_on_subscription_id(identities):
-    price_id = f"zztest-price-{uuid.uuid4().hex[:8]}"
-    sub_id = _ref("sub")
-    with db.transaction() as conn:
-        with conn.cursor() as cur:
-            _make_link(cur, SLUG_A, owner=identities["owner"])
-            marker = mint_marker(cur, SLUG_A)
-            cur.execute(
-                "INSERT INTO credit_tier_rules (price_id, credits, label) VALUES (%s, %s, %s)",
-                (price_id, 10, "zztest-annual"),
-            )
-            sub = {"id": sub_id, "metadata": {"marker": marker}}
-            first = _award_referral_credit(cur, sub, price_id, identities["purchaser"])
-    assert first is not None and "10 credits" in first
-
-    with db.transaction() as conn:
-        with conn.cursor() as cur:
-            # Stripe redelivers customer.subscription.created with the same id.
-            second = _award_referral_credit(cur, sub, price_id, identities["purchaser"])
-            bal = balance(cur, identities["owner"])
-    assert second == "credit already awarded"
-    assert bal == 10  # the redelivery did not double-award
-
-
-# --- _handle_subscription wiring: credit award only when created=True -------
-
-
-def _sub(*, purchaser_id: int, marker: str, price_id: str, sub_id: str) -> dict:
-    return {
-        "id": sub_id,
-        "customer": "",
-        "metadata": {"identity_id": str(purchaser_id), "marker": marker},
-        "items": {"data": [{"price": {"id": price_id}}]},
-        "status": "active",
-    }
-
-
-def test_handle_subscription_awards_credit_when_created_true(identities):
-    price_id = f"zztest-price-{uuid.uuid4().hex[:8]}"
-    sub_id = _ref("sub")
-    with db.transaction() as conn:
-        with conn.cursor() as cur:
-            _make_link(cur, SLUG_A, owner=identities["owner"])
-            marker = mint_marker(cur, SLUG_A)
-            cur.execute(
-                "INSERT INTO credit_tier_rules (price_id, credits, label) VALUES (%s, %s, %s)",
-                (price_id, 10, "zztest-annual"),
-            )
-            sub = _sub(purchaser_id=identities["purchaser"], marker=marker, price_id=price_id, sub_id=sub_id)
-            result = _handle_subscription(cur, sub, created=True)
-    assert "10 credits" in result
-    with db.transaction() as conn:
-        with conn.cursor() as cur:
-            assert balance(cur, identities["owner"]) == 10
-
-
-def test_handle_subscription_skips_credit_when_created_false(identities):
-    price_id = f"zztest-price-{uuid.uuid4().hex[:8]}"
-    sub_id = _ref("sub")
-    with db.transaction() as conn:
-        with conn.cursor() as cur:
-            _make_link(cur, SLUG_B, owner=identities["owner"])
-            marker = mint_marker(cur, SLUG_B)
-            cur.execute(
-                "INSERT INTO credit_tier_rules (price_id, credits, label) VALUES (%s, %s, %s)",
-                (price_id, 10, "zztest-annual"),
-            )
-            sub = _sub(purchaser_id=identities["purchaser"], marker=marker, price_id=price_id, sub_id=sub_id)
-            # customer.subscription.updated / .deleted never award credit —
-            # only the first customer.subscription.created delivery does.
-            result = _handle_subscription(cur, sub, created=False)
-    assert result == f"unmapped price {price_id}"
-    with db.transaction() as conn:
-        with conn.cursor() as cur:
-            assert balance(cur, identities["owner"]) == 0
