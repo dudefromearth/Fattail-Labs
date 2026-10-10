@@ -97,6 +97,12 @@ const CARDS: { href: string; title: string; body: string; testId: string }[] = [
     body: "Structural Analysis prototype — SA objects only. Not a member surface. StudioTwo.",
     testId: "admin-card-sa-dev",
   },
+  {
+    href: "/admin/links",
+    title: "Links / QR",
+    body: "Dynamic short links and QR codes on labs.fattail.ai/q/<slug> — edit destination without reprinting, scan reporting (LK-1.1 Phase 1).",
+    testId: "admin-card-links",
+  },
 ];
 
 export default function AdminPage() {

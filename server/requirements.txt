@@ -28,3 +28,10 @@ Markdown>=3.7,<4.0
 pytest>=8,<10
 pytest-timeout>=2.3
 zstandard>=0.22,<1.0   # quant.build only (packs); the reader needs no zstd
+
+# Links Phase 1 W2 — QR (segno, Pillow, zxing-cpp) and local GeoLite2.
+segno>=1.6.6,<2
+pillow>=12.3,<13
+zxing-cpp>=3.1,<4
+geoip2>=5.1,<5.2
+maxminddb>=2.8,<3

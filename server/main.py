@@ -115,8 +115,10 @@ def create_app() -> FastAPI:
     from routes.progress_admin import router as progress_admin_router
     from routes.stats_admin import router as stats_admin_router
     from routes.presence import router as presence_router
+    from routes.links_admin import router as links_admin_router
 
     app.include_router(auth_router)
+    app.include_router(links_admin_router)
     app.include_router(access_admin_router)
     app.include_router(apps_router)
     app.include_router(wiki_router)

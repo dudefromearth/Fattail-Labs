@@ -1,0 +1,125 @@
+{
+  "cases": [
+    {
+      "id": "http_scheme",
+      "url": "http://example.com/zztest",
+      "reason": "http scheme"
+    },
+    {
+      "id": "bare_ip",
+      "url": "https://8.8.8.8/zztest",
+      "reason": "bare IP"
+    },
+    {
+      "id": "localhost",
+      "url": "https://localhost/zztest",
+      "address": "127.0.0.1",
+      "reason": "localhost"
+    },
+    {
+      "id": "loopback_v4",
+      "url": "https://127.0.0.1/zztest",
+      "address": "127.0.0.1",
+      "reason": "127.0.0.1"
+    },
+    {
+      "id": "rfc1918_10",
+      "url": "https://10.1.2.3/zztest",
+      "address": "10.1.2.3",
+      "reason": "10.x"
+    },
+    {
+      "id": "rfc1918_172_16",
+      "url": "https://172.16.0.1/zztest",
+      "address": "172.16.0.1",
+      "reason": "172.16.x"
+    },
+    {
+      "id": "rfc1918_172_24",
+      "url": "https://172.24.5.5/zztest",
+      "address": "172.24.5.5",
+      "reason": "172.16-31.x interior"
+    },
+    {
+      "id": "rfc1918_172_31",
+      "url": "https://172.31.255.254/zztest",
+      "address": "172.31.255.254",
+      "reason": "172.31.x"
+    },
+    {
+      "id": "rfc1918_192_168",
+      "url": "https://192.168.1.10/zztest",
+      "address": "192.168.1.10",
+      "reason": "192.168.x"
+    },
+    {
+      "id": "cgnat_100_64",
+      "url": "https://100.64.1.1/zztest",
+      "address": "100.64.1.1",
+      "reason": "100.64.x"
+    },
+    {
+      "id": "cgnat_100_127",
+      "url": "https://100.127.1.1/zztest",
+      "address": "100.127.1.1",
+      "reason": "CGNAT 100.64/10 top"
+    },
+    {
+      "id": "link_local_169_254",
+      "url": "https://169.254.169.254/zztest",
+      "address": "169.254.169.254",
+      "reason": "169.254.x"
+    },
+    {
+      "id": "ula_fd00",
+      "url": "https://[fd00::1]/zztest",
+      "address": "fd00::1",
+      "reason": "fd00::"
+    },
+    {
+      "id": "loopback_v6",
+      "url": "https://[::1]/zztest",
+      "address": "::1",
+      "reason": "::1"
+    },
+    {
+      "id": "labs_host",
+      "url": "https://labs.fattail.ai/zztest",
+      "reason": "Labs host"
+    },
+    {
+      "id": "credentials",
+      "url": "https://user:pass@example.com/zztest",
+      "reason": "credentials in the URL"
+    },
+    {
+      "id": "fragment",
+      "url": "https://example.com/zztest#section",
+      "reason": "fragment"
+    },
+    {
+      "id": "multicast",
+      "url": "https://224.0.0.1/zztest",
+      "address": "224.0.0.1",
+      "reason": "multicast"
+    },
+    {
+      "id": "unspecified_v4",
+      "url": "https://0.0.0.0/zztest",
+      "address": "0.0.0.0",
+      "reason": "unspecified address"
+    },
+    {
+      "id": "link_local_v6",
+      "url": "https://[fe80::1]/zztest",
+      "address": "fe80::1",
+      "reason": "IPv6 link-local"
+    }
+  ],
+  "flip_resolution": {
+    "url": "https://flip-resolution.example/zztest",
+    "note": "First resolution answers a public unicast address. The second resolution, immediately before connect, includes a private address. reachability refuses and does not connect.",
+    "first_answers": ["1.1.1.1"],
+    "second_answers": ["1.1.1.1", "10.9.8.7"]
+  }
+}
