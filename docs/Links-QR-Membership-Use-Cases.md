@@ -85,6 +85,69 @@ just having been emailed about it.
 19. **Physical-world attribution** — merch, conference badges, a physical
     desk or booth — knowing which printed thing actually gets scanned.
 
+## Top-of-funnel / social acquisition (YouTube, X, Instagram, Facebook)
+
+Everything in Growth/acquisition above assumes someone already found
+FatTail. These are specifically for the step before that — a stranger
+scrolling a feed, with no relationship to the brand yet. Almost all of
+these reuse Phase 1's slug/QR/label/`source`+`medium`+`campaign` fields
+exactly as built; the "build" is a naming/placement discipline, not new
+code. The one real gap is called out at the end (#30).
+
+20. **Per-video tracked link (YouTube description)** — every upload gets
+    its own short link instead of one evergreen channel link, so a
+    specific video's conversion is measurable, not just "YouTube"
+    in aggregate. Uses existing infra — no new build.
+21. **On-screen QR during the video itself** (YouTube, Reels, livestream
+    overlay) — rendered directly in the frame at a specific moment, so a
+    viewer with their phone in hand can scan mid-video without pausing to
+    find the description. This is the literal original use case the
+    labeled-QR feature (W3) was built for.
+22. **Pinned-comment vs. description link A/B** — two tracked links for
+    the same video testing which placement actually gets clicked (a
+    YouTube-specific case of #16). Uses existing infra — no new build.
+23. **YouTube's other native clickable/typeable surfaces** — video
+    cards (the mid-video overlay prompt), the end-screen intro/outro
+    element, the channel banner's link, and Community posts are four
+    more distinct, separately-trackable placements YouTube already
+    supports a link on. A different tracked link per surface (not just
+    per video) tells you whether a mid-video card, the outro, the
+    always-on banner, or a Community post is actually the thing that
+    converts — same mechanism, four more data points per upload/channel.
+    Uses existing infra — no new build.
+24. **Livestream chat-drop links** — a link posted in chat at a specific
+    moment tied to what's being said on screen, so a content moment can
+    be correlated to a conversion, not just "this stream" as a whole.
+25. **X.com thread/tweet-level links** — a distinct tracked link per
+    thread or pinned tweet rather than one bio link, since X's algorithm
+    often suppresses reach on tweets that contain a link — "link in the
+    tweet" vs. "link in the first reply" becomes directly measurable
+    instead of a guess.
+26. **Instagram Story link stickers** — Stories support a native
+    clickable link with a natural 24-hour attribution window; a link per
+    Story keeps performance from being smeared into one bio-link bucket.
+27. **Paid-ad click-through links** (Instagram/Facebook/X ad placements)
+    — a separate tracked link per PAID campaign, distinct from organic
+    posts on the same platform, so ad spend ROI isn't conflated with
+    organic reach. Genuinely different from the rest of this list: this
+    measures CAC per paid campaign, not "did this post convert."
+28. **Facebook group/page post links** — the same per-post
+    tracked-link discipline applied to Group posts and Page posts, where
+    a lot of trading-education word-of-mouth already happens organically.
+29. **"Link in bio" rotation with per-post correlation** — Instagram (and
+    X, for accounts without Story-style links) typically allow only one
+    clickable bio link. Rotating/versioning it per campaign push and
+    timestamping the change lets a spike in bio-link clicks be
+    attributed back to whichever post window preceded it.
+30. **Short, speakable/typeable codes for non-clickable surfaces** —
+    Instagram captions, a spoken call-to-action in a video, and X replies
+    where a link is suppressed all need something a viewer can *type*,
+    not click. Phase 1's random 6-char slug (`labs.fattail.ai/q/x7k2mq`)
+    is fence-safe but not memorable — a vanity-slug option (e.g.
+    `/yt-oct`, `/ig-launch`) would need a small, deliberate carve-out from
+    the collision-safe random-alphabet design. The one item in this
+    section that is an actual gap, not just a usage pattern — not built.
+
 ---
 
 *Reference list only. See `Specs/Links-Attribution-Affiliates-Spec-v0_2.md`
