@@ -173,7 +173,9 @@ def _label(label) -> str:
     return text
 
 
-def _owner(owner) -> str:
+def _owner(owner) -> str | None:
+    if owner is None:
+        return None
     if isinstance(owner, bool) or not isinstance(owner, int):
         raise TypeError("owner must be an identity_id (int)")
     if owner <= 0:
