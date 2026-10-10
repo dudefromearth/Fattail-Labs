@@ -123,6 +123,11 @@ async def create_checkout(request: Request) -> dict:
     body = await request.json()
     price_id = (body.get("price_id") or "").strip()
 
+    # LK Phase 3a attribution (Specs/Links-Attribution-Affiliates-Spec-v0_1.md).
+    # Existing-member checkout only; validated against link_markers so
+    # metadata never carries a garbage/forged cookie value forward.
+    marker = (request.cookies.get("ftl_mkr") or "").strip() or None
+
     with db.transaction() as conn:
         with conn.cursor() as cur:
             mapped = {m["price_id"] for m in _stripe_mappings(cur)}
@@ -135,16 +140,24 @@ async def create_checkout(request: Request) -> dict:
             )
             row = cur.fetchone()
             email = row["email"] if row else None
+            if marker:
+                from links.attribution import lookup_marker
+
+                if lookup_marker(cur, marker) is None:
+                    marker = None
 
     origin = _web_origin()
     stripe.api_key = get_config().stripe_secret_key
+    checkout_metadata = {"identity_id": str(claims["identity_id"])}
+    if marker:
+        checkout_metadata["marker"] = marker
     params: dict = {
         "mode": "subscription",
         "line_items": [{"price": price_id, "quantity": 1}],
         "success_url": f"{origin}/membership?status=success",
         "cancel_url": f"{origin}/membership?status=cancelled",
-        "metadata": {"identity_id": str(claims["identity_id"])},
-        "subscription_data": {"metadata": {"identity_id": str(claims["identity_id"])}},
+        "metadata": checkout_metadata,
+        "subscription_data": {"metadata": dict(checkout_metadata)},
     }
     if customer_id:
         params["customer"] = customer_id
@@ -214,6 +227,36 @@ def create_portal(request: Request) -> dict:
 
 
 # --- webhook (source of membership truth) -------------------------------------
+
+def _attribute_checkout(cur, obj: dict, meta_identity) -> str | None:
+    """LK Phase 3a. No-op (returns None) unless this checkout carried a
+    marker that link_markers actually recognizes — a forged or stale
+    metadata value attributes nothing (D8: no number without a basis)."""
+    if not (meta_identity and str(meta_identity).isdigit()):
+        return None
+    marker = (obj.get("metadata") or {}).get("marker")
+    if not marker or not isinstance(marker, str):
+        return None
+    from links.attribution import lookup_marker, record_attribution
+
+    found = lookup_marker(cur, marker)
+    if found is None:
+        return None
+    session_id = obj.get("id")
+    if not session_id:
+        return None
+    recorded = record_attribution(
+        cur,
+        marker=marker,
+        slug=found["slug"],
+        identity_id=int(meta_identity),
+        provider=PROVIDER,
+        external_ref=str(session_id),
+        amount_cents=obj.get("amount_total"),
+        currency=obj.get("currency"),
+    )
+    return f"attributed to {found['slug']}" if recorded else "attribution already recorded"
+
 
 def _membership_status(sub_status: str) -> str | None:
     if sub_status in ACTIVE_STATUSES:
@@ -300,6 +343,7 @@ async def stripe_webhook(request: Request) -> dict:
                         cur, int(meta_identity), PROVIDER, customer_id
                     )
                     result = "customer linked"
+                result = _attribute_checkout(cur, obj, meta_identity) or result
             elif kind in (
                 "customer.subscription.created",
                 "customer.subscription.updated",

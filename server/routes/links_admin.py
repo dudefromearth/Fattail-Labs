@@ -245,6 +245,7 @@ def detail(slug: str, request: Request, days: int = 7) -> dict:
                     "daily": [],
                     "breakdowns": {},
                     "events": [],
+                    "attribution": {"orders": 0, "amount_cents": 0, "recent": []},
                 }
 
             # Headline totals are all-time (bots excluded), independent of
@@ -299,6 +300,21 @@ def detail(slug: str, request: Request, days: int = 7) -> dict:
             )
             events = cur.fetchall()
 
+            # LK Phase 3a — existing-member Stripe checkouts only (D8: no
+            # commission/payout figures, ever, just the attribution signal).
+            cur.execute(
+                "SELECT COUNT(*) AS n, COALESCE(SUM(amount_cents), 0) AS cents "
+                "FROM link_attributions WHERE slug=%s",
+                (slug,),
+            )
+            attr_totals = cur.fetchone()
+            cur.execute(
+                "SELECT occurred_at, provider, amount_cents, currency "
+                "FROM link_attributions WHERE slug=%s ORDER BY occurred_at DESC LIMIT 20",
+                (slug,),
+            )
+            attr_recent = cur.fetchall()
+
     scan_count = kind_counts.get("scan", 0)
     click_count = kind_counts.get("click", 0)
     return {
@@ -312,6 +328,11 @@ def detail(slug: str, request: Request, days: int = 7) -> dict:
         "daily": daily,
         "breakdowns": breakdowns,
         "events": events,
+        "attribution": {
+            "orders": attr_totals["n"],
+            "amount_cents": attr_totals["cents"],
+            "recent": attr_recent,
+        },
     }
 
 

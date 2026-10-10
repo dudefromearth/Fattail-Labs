@@ -46,6 +46,12 @@ type BreakdownBucket = {
 
 type DailyPoint = { day: string; scan: number; click: number; count: number };
 
+type Attribution = {
+  orders: number;
+  amount_cents: number;
+  recent: { occurred_at: string; provider: string; amount_cents: number | null; currency: string | null }[];
+};
+
 type Detail = {
   link: LinkRow;
   tracked: boolean;
@@ -57,7 +63,19 @@ type Detail = {
   daily: DailyPoint[];
   breakdowns: Record<string, BreakdownBucket>;
   events: EventRow[];
+  attribution: Attribution;
 };
+
+function formatCents(cents: number, currency: string | null): string {
+  const amount = cents / 100;
+  try {
+    return new Intl.NumberFormat(undefined, { style: "currency", currency: (currency || "usd").toUpperCase() }).format(
+      amount,
+    );
+  } catch {
+    return `$${amount.toFixed(2)}`;
+  }
+}
 
 const RANGE_OPTIONS = [
   { id: "7", label: "7d" },
@@ -458,10 +476,19 @@ export default function LinkDetailPanel({ slug }: { slug: string }) {
         </Card>
       ) : (
         <>
-          <div className="mb-6 grid grid-cols-3 gap-4">
+          <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
             <StatTile label="Total scans" value={data.total_scans ?? 0} hint="bots excluded, all time" />
             <StatTile label="Camera scans" value={data.scan_count ?? 0} hint="no referrer, mobile" />
             <StatTile label="Link clicks" value={data.click_count ?? 0} hint="shared / tapped link" />
+            <StatTile
+              label="Attributed orders"
+              value={data.attribution.orders}
+              hint={
+                data.attribution.orders
+                  ? `${formatCents(data.attribution.amount_cents, data.attribution.recent[0]?.currency ?? "usd")} · existing members, Stripe`
+                  : "existing members, Stripe only"
+              }
+            />
           </div>
 
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">

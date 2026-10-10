@@ -4,6 +4,13 @@ decide and log_after read slug, ua, and referrer. They take no session.
 The /log body may include a peer address. It is used for one GeoLite2
 lookup and then dropped. It is not stored and not logged.
 A logging failure does not raise.
+
+decide also mints a first-touch attribution marker (LK Phase 3a) when
+the caller does not already carry one and the link is a live, dynamic,
+https redirect — the one case the marker could ever ride on. This is
+the one write decide() makes; it is a single indexed insert on an
+opaque token, not the event log, and stays inside the RD-L1 latency
+bar the same way AT-1 already measures.
 """
 
 from __future__ import annotations
@@ -13,6 +20,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit
 
 import db
+from links.attribution import mint_marker
 from links.events import classify, record_miss, record_pass
 from links.geo import locate
 from links.store import get_link
@@ -21,16 +29,27 @@ _BIND = ("127.0.0.1", 4017)
 _INACTIVE = "The link is no longer active."
 
 
-def decide(slug, ua, referrer) -> dict:
-    """Read the link and choose the response. No write."""
+def decide(slug, ua, referrer, has_marker: bool = True) -> dict:
+    """Read the link, choose the response, and mint a marker when the
+    caller has none yet and the link qualifies. has_marker=True (the
+    safe default) never mints — callers must opt in by passing False."""
     conn = db.connect()
     try:
         with conn.cursor() as cur:
             link = get_link(cur, slug if isinstance(slug, str) else "")
-        conn.rollback()
+            marker = None
+            if link is not None and not has_marker and _qualifies_for_marker(link):
+                marker = mint_marker(cur, link["slug"])
+        conn.commit() if marker else conn.rollback()
     finally:
         db.get_pool().put(conn)
-    return _decision(link)
+    result = _decision(link)
+    result["marker"] = marker
+    return result
+
+
+def _qualifies_for_marker(link: dict) -> bool:
+    return bool(link["active"]) and not link["static"] and _scheme_is_https(link["destination"])
 
 
 def log_after(slug, ua, referrer) -> None:
@@ -117,6 +136,7 @@ class _Handler(BaseHTTPRequestHandler):
         try:
             payload = self._read_json()
             peer = _take_peer(payload)
+            has_marker = _take_has_marker(payload)
             slug, ua, referrer = _only_fields(payload)
         except (ValueError, json.JSONDecodeError):
             self._send(400, {"error": "bad request"})
@@ -124,7 +144,7 @@ class _Handler(BaseHTTPRequestHandler):
         if path == "/decide":
             peer = ""
             self.close_connection = True
-            self._send(200, decide(slug, ua, referrer))
+            self._send(200, decide(slug, ua, referrer, has_marker))
             return
         try:
             _log_after(slug, ua, referrer, peer)
@@ -178,6 +198,14 @@ def _take_peer(payload: dict) -> str:
     if not isinstance(raw, str):
         raise ValueError("peer")
     return raw.strip()
+
+
+def _take_has_marker(payload: dict) -> bool:
+    """True (never mint) unless the caller explicitly says it has none."""
+    if "has_marker" not in payload:
+        return True
+    raw = payload.pop("has_marker")
+    return True if raw is None else bool(raw)
 
 
 def _only_fields(payload: dict) -> tuple[str, str, str]:

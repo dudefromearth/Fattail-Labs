@@ -14,6 +14,17 @@ const CACHE: Record<string, string> = {
   Vary: "*",
 };
 
+// LK Phase 3a (Specs/Links-Attribution-Affiliates-Spec-v0_1.md). Not a
+// Labs session — RD-L1's "no Labs session set" is unaffected. First-party
+// on labs.fattail.ai only; carries an opaque marker, no identity.
+const MARKER_COOKIE = "ftl_mkr";
+const MARKER_COOKIE_DAYS = Number(process.env.LABS_ATTRIBUTION_COOKIE_DAYS || "30") || 30;
+
+function hasMarkerCookie(req: Request): boolean {
+  const raw = req.headers.get("cookie") ?? "";
+  return raw.split(";").some((p) => p.trim().startsWith(`${MARKER_COOKIE}=`));
+}
+
 function schemeIsHttps(location: string): boolean {
   try {
     const url = new URL(location);
@@ -43,14 +54,21 @@ function peerAddress(req: Request): string {
 
 async function handle(req: Request, ctx: Ctx, head: boolean): Promise<Response> {
   const { slug } = await ctx.params;
-  // Request query is not a destination (RD-L5). Session header is not read.
+  // Request query is not a destination (RD-L5). Session header is not read
+  // — only presence of the one named marker cookie (not a session) below.
   const ua = req.headers.get("user-agent") ?? "";
   const referrer = req.headers.get("referer") ?? "";
   const peer = peerAddress(req);
-  const decision = await decide(slug, ua, referrer);
+  const decision = await decide(slug, ua, referrer, hasMarkerCookie(req));
   after(() => logAfter(slug, ua, referrer, peer));
 
   const headers = new Headers(CACHE);
+  if (decision.marker) {
+    headers.append(
+      "Set-Cookie",
+      `${MARKER_COOKIE}=${decision.marker}; Max-Age=${MARKER_COOKIE_DAYS * 86400}; Path=/; HttpOnly; Secure; SameSite=Lax`,
+    );
+  }
   if (decision.status === 302 && decision.location && schemeIsHttps(decision.location)) {
     headers.set("Location", decision.location);
     return new Response(null, { status: 302, headers });
