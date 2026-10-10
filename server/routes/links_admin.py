@@ -154,7 +154,7 @@ def list_links(request: Request) -> dict:
             cur.execute(
                 """
                 SELECT slug, destination, label, active, `static` AS static_flag,
-                       created_at, updated_at
+                       source, medium, campaign, placement, created_at, updated_at
                 FROM links
                 ORDER BY created_at DESC
                 """
@@ -187,6 +187,10 @@ def list_links(request: Request) -> dict:
                 "label": row["label"],
                 "active": bool(row["active"]),
                 "static": static,
+                "source": row["source"],
+                "medium": row["medium"],
+                "campaign": row["campaign"],
+                "placement": row["placement"],
                 "scans": None if static else stat["scans"],
                 "last_scan": None if static else stat["last_scan"],
                 "created_at": row["created_at"],

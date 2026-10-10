@@ -1,9 +1,10 @@
 "use client";
 
-// Links / QR — admin list + create (LK-1.1, W3 minimal surface).
+// Links / QR — admin list + create (LK-1.1, W3 minimal surface, plus
+// search/filter, campaign tagging, and bulk activate/deactivate).
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Button from "@/components/ui/Button";
 import SegmentedControl from "@/components/ui/SegmentedControl";
 
@@ -14,10 +15,17 @@ type LinkRow = {
   label: string;
   active: boolean;
   static: boolean;
+  source: string | null;
+  medium: string | null;
+  campaign: string | null;
+  placement: string | null;
   scans: number | null;
   last_scan: string | null;
   created_at: string;
 };
+
+const ALL_CAMPAIGNS = "__all__";
+const NO_CAMPAIGN = "__none__";
 
 export default function LinksPanel() {
   const [state, setState] = useState<"loading" | "denied" | "ready">("loading");
@@ -31,6 +39,13 @@ export default function LinksPanel() {
 
   const [pageSize, setPageSize] = useState<"10" | "25" | "50">("10");
   const [page, setPage] = useState(0);
+
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [campaignFilter, setCampaignFilter] = useState(ALL_CAMPAIGNS);
+
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkWorking, setBulkWorking] = useState(false);
 
   const load = useCallback(() => {
     fetch("/api/admin/links", { credentials: "same-origin" })
@@ -87,6 +102,64 @@ export default function LinksPanel() {
     }
   }
 
+  const campaigns = useMemo(() => {
+    const set = new Set<string>();
+    for (const l of links) {
+      if (l.campaign) set.add(l.campaign);
+    }
+    return Array.from(set).sort();
+  }, [links]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return links.filter((l) => {
+      if (q && !l.label.toLowerCase().includes(q) && !l.destination.toLowerCase().includes(q)) {
+        return false;
+      }
+      if (statusFilter === "active" && !l.active) return false;
+      if (statusFilter === "inactive" && l.active) return false;
+      if (campaignFilter === NO_CAMPAIGN && l.campaign) return false;
+      if (campaignFilter !== ALL_CAMPAIGNS && campaignFilter !== NO_CAMPAIGN && l.campaign !== campaignFilter) {
+        return false;
+      }
+      return true;
+    });
+  }, [links, search, statusFilter, campaignFilter]);
+
+  function resetToFirstPage() {
+    setPage(0);
+  }
+
+  function toggleSelected(slug: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(slug)) next.delete(slug);
+      else next.add(slug);
+      return next;
+    });
+  }
+
+  async function bulkSetActive(active: boolean) {
+    if (!selected.size) return;
+    setBulkWorking(true);
+    try {
+      await Promise.all(
+        Array.from(selected).map((slug) =>
+          fetch(`/api/admin/links/${slug}`, {
+            method: "PATCH",
+            credentials: "same-origin",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ active }),
+          }),
+        ),
+      );
+      setSelected(new Set());
+      load();
+    } finally {
+      setBulkWorking(false);
+    }
+  }
+
   if (state === "loading") {
     return <main className="p-8 text-[var(--color-label-secondary)]">Loading links…</main>;
   }
@@ -100,9 +173,11 @@ export default function LinksPanel() {
   }
 
   const size = Number(pageSize);
-  const totalPages = Math.max(1, Math.ceil(links.length / size));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / size));
   const pageClamped = Math.min(page, totalPages - 1);
-  const pageLinks = links.slice(pageClamped * size, pageClamped * size + size);
+  const pageLinks = filtered.slice(pageClamped * size, pageClamped * size + size);
+  const pageSlugs = pageLinks.map((l) => l.slug);
+  const allOnPageSelected = pageSlugs.length > 0 && pageSlugs.every((s) => selected.has(s));
 
   return (
     <main className="mx-auto max-w-4xl p-6" data-testid="links-panel">
@@ -168,17 +243,73 @@ export default function LinksPanel() {
         </div>
       </form>
 
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <input
+          className="min-w-[12rem] flex-1 rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-3 py-2 text-[length:var(--text-subheadline)] text-[var(--color-label)]"
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            resetToFirstPage();
+          }}
+          placeholder="Search label or destination…"
+          data-testid="links-search-input"
+        />
+        <select
+          className="rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-3 py-2 text-[length:var(--text-footnote)] text-[var(--color-label)]"
+          value={campaignFilter}
+          onChange={(e) => {
+            setCampaignFilter(e.target.value);
+            resetToFirstPage();
+          }}
+          data-testid="links-campaign-filter"
+        >
+          <option value={ALL_CAMPAIGNS}>All campaigns</option>
+          <option value={NO_CAMPAIGN}>No campaign</option>
+          {campaigns.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+        <div className="w-44">
+          <SegmentedControl
+            value={statusFilter}
+            onChange={(v) => {
+              setStatusFilter(v);
+              resetToFirstPage();
+            }}
+            ariaLabel="Status filter"
+            options={[
+              { id: "all", label: "All" },
+              { id: "active", label: "Active" },
+              { id: "inactive", label: "Inactive" },
+            ]}
+          />
+        </div>
+      </div>
+
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <p className="text-[length:var(--text-caption)] text-[var(--color-label-tertiary)]">
-          {links.length} link{links.length === 1 ? "" : "s"}
+          {filtered.length} of {links.length} link{links.length === 1 ? "" : "s"}
+          {selected.size > 0 ? ` · ${selected.size} selected` : ""}
         </p>
         <div className="flex items-center gap-3">
+          {selected.size > 0 && (
+            <>
+              <Button variant="secondary" disabled={bulkWorking} onClick={() => bulkSetActive(false)}>
+                Deactivate selected
+              </Button>
+              <Button variant="secondary" disabled={bulkWorking} onClick={() => bulkSetActive(true)}>
+                Reactivate selected
+              </Button>
+            </>
+          )}
           <div className="w-40">
             <SegmentedControl
               value={pageSize}
               onChange={(v) => {
                 setPageSize(v);
-                setPage(0);
+                resetToFirstPage();
               }}
               ariaLabel="Links per page"
               options={[
@@ -194,6 +325,24 @@ export default function LinksPanel() {
         </div>
       </div>
 
+      {pageLinks.length > 0 && (
+        <label className="mb-2 flex items-center gap-2 text-[length:var(--text-caption)] text-[var(--color-label-tertiary)]">
+          <input
+            type="checkbox"
+            checked={allOnPageSelected}
+            onChange={(e) => {
+              setSelected((prev) => {
+                const next = new Set(prev);
+                if (e.target.checked) pageSlugs.forEach((s) => next.add(s));
+                else pageSlugs.forEach((s) => next.delete(s));
+                return next;
+              });
+            }}
+          />
+          Select all on this page
+        </label>
+      )}
+
       <ul className="space-y-3">
         {pageLinks.map((l) => (
           <li
@@ -201,6 +350,13 @@ export default function LinksPanel() {
             className="flex items-center gap-4 rounded-[var(--radius-xl)] bg-[var(--color-surface)] p-4 shadow-[var(--elevation-1)]"
             data-testid={`link-row-${l.slug}`}
           >
+            <input
+              type="checkbox"
+              className="flex-none"
+              checked={selected.has(l.slug)}
+              onChange={() => toggleSelected(l.slug)}
+              aria-label={`Select ${l.label}`}
+            />
             {!l.static && (
               <Link href={`/admin/links/${l.slug}`} className="flex-none">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -212,12 +368,19 @@ export default function LinksPanel() {
               </Link>
             )}
             <div className="min-w-0 flex-1">
-              <Link
-                href={`/admin/links/${l.slug}`}
-                className="text-[length:var(--text-subheadline)] font-semibold text-[var(--color-label)] hover:underline"
-              >
-                {l.label}
-              </Link>
+              <div className="flex flex-wrap items-center gap-2">
+                <Link
+                  href={`/admin/links/${l.slug}`}
+                  className="text-[length:var(--text-subheadline)] font-semibold text-[var(--color-label)] hover:underline"
+                >
+                  {l.label}
+                </Link>
+                {l.campaign && (
+                  <span className="rounded-[var(--radius-full)] bg-[var(--color-tint-soft)] px-2 py-0.5 text-[length:var(--text-caption)] font-medium text-[var(--color-tint-emphasis)]">
+                    {l.campaign}
+                  </span>
+                )}
+              </div>
               <p className="truncate text-[length:var(--text-footnote)] text-[var(--color-label-secondary)]">
                 {l.destination}
               </p>
@@ -247,14 +410,14 @@ export default function LinksPanel() {
             </div>
           </li>
         ))}
-        {!links.length && (
+        {!pageLinks.length && (
           <li className="rounded-[var(--radius-xl)] border border-dashed border-[var(--color-separator)] p-6 text-center text-[length:var(--text-subheadline)] text-[var(--color-label-secondary)]">
-            No links yet. Create one above.
+            {links.length ? "No links match these filters." : "No links yet. Create one above."}
           </li>
         )}
       </ul>
 
-      {links.length > size && (
+      {filtered.length > size && (
         <div className="mt-4 flex items-center justify-between text-[length:var(--text-caption)] text-[var(--color-label-secondary)]">
           <span>
             Page {pageClamped + 1} of {totalPages}
