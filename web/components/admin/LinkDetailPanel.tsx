@@ -174,8 +174,19 @@ function BreakdownPanel({
   );
 }
 
+function dayLabel(iso: string): string {
+  // iso is a plain YYYY-MM-DD day, not a timestamp — parse as local/UTC
+  // calendar date, not through Date() directly (which would shift a day
+  // depending on the viewer's timezone).
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
 function DailyChart({ daily }: { daily: DailyPoint[] }) {
   const max = Math.max(1, ...daily.map((d) => d.count));
+  // Aim for ~6 labels regardless of window length (7/30/90/All) so dense
+  // windows don't collide into unreadable text.
+  const labelEvery = Math.max(1, Math.ceil(daily.length / 6));
   return (
     <Card>
       <div className="mb-3 flex items-center justify-between">
@@ -192,24 +203,36 @@ function DailyChart({ daily }: { daily: DailyPoint[] }) {
       {daily.length === 0 ? (
         <p className="text-[length:var(--text-footnote)] text-[var(--color-label-tertiary)]">No scans yet.</p>
       ) : (
-        <div className="flex h-28 items-end gap-1">
-          {daily.map((d) => (
-            <div
-              key={d.day}
-              className="flex flex-1 flex-col-reverse"
-              title={`${d.day}: ${d.scan} scan · ${d.click} click`}
-            >
+        <>
+          <div className="flex h-28 items-end gap-1">
+            {daily.map((d) => (
               <div
-                className="w-full rounded-t-[3px] bg-[var(--color-tint)]"
-                style={{ height: `${Math.max(d.scan ? 2 : 0, (d.scan / max) * 96)}px` }}
-              />
+                key={d.day}
+                className="flex flex-1 flex-col-reverse"
+                title={`${d.day}: ${d.scan} scan · ${d.click} click`}
+              >
+                <div
+                  className="w-full rounded-t-[3px] bg-[var(--color-tint)]"
+                  style={{ height: `${Math.max(d.scan ? 2 : 0, (d.scan / max) * 96)}px` }}
+                />
+                <div
+                  className="w-full bg-[var(--color-label-tertiary)]"
+                  style={{ height: `${Math.max(d.click ? 2 : 0, (d.click / max) * 96)}px` }}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="mt-1 flex gap-1">
+            {daily.map((d, i) => (
               <div
-                className="w-full bg-[var(--color-label-tertiary)]"
-                style={{ height: `${Math.max(d.click ? 2 : 0, (d.click / max) * 96)}px` }}
-              />
-            </div>
-          ))}
-        </div>
+                key={d.day}
+                className="flex-1 text-center text-[length:var(--text-caption)] text-[var(--color-label-tertiary)]"
+              >
+                {i % labelEvery === 0 ? dayLabel(d.day) : ""}
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </Card>
   );

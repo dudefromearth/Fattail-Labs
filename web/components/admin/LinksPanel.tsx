@@ -46,6 +46,16 @@ export default function LinksPanel() {
     load();
   }, [load]);
 
+  // Live reporting: scan counts update without a manual refresh.
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        load();
+      }
+    }, 5000);
+    return () => clearInterval(id);
+  }, [load]);
+
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
