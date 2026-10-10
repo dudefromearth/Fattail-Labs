@@ -243,6 +243,8 @@ export default function LinkDetailPanel({ slug }: { slug: string }) {
   const [data, setData] = useState<Detail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [days, setDays] = useState<"7" | "30" | "90" | "0">("7");
+  const [eventsPage, setEventsPage] = useState(0);
+  const EVENTS_PAGE_SIZE = 10;
 
   const [destination, setDestination] = useState("");
   const [label, setLabel] = useState("");
@@ -350,6 +352,12 @@ export default function LinkDetailPanel({ slug }: { slug: string }) {
   }
 
   const cacheBust = encodeURIComponent(data.link.updated_at);
+  const totalEventsPages = Math.max(1, Math.ceil(data.events.length / EVENTS_PAGE_SIZE));
+  const eventsPageClamped = Math.min(eventsPage, totalEventsPages - 1);
+  const pageEvents = data.events.slice(
+    eventsPageClamped * EVENTS_PAGE_SIZE,
+    eventsPageClamped * EVENTS_PAGE_SIZE + EVENTS_PAGE_SIZE,
+  );
 
   return (
     <main className="mx-auto max-w-5xl p-6" data-testid="link-detail-panel">
@@ -462,7 +470,10 @@ export default function LinkDetailPanel({ slug }: { slug: string }) {
               <div className="w-48">
                 <SegmentedControl
                   value={days}
-                  onChange={(v) => setDays(v)}
+                  onChange={(v) => {
+                    setDays(v);
+                    setEventsPage(0);
+                  }}
                   ariaLabel="Date range"
                   options={RANGE_OPTIONS as unknown as { id: "7" | "30" | "90" | "0"; label: string }[]}
                 />
@@ -506,7 +517,7 @@ export default function LinkDetailPanel({ slug }: { slug: string }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.events.map((e, i) => (
+                  {pageEvents.map((e, i) => (
                     <tr key={i} className="border-t border-[var(--color-separator)]">
                       <td className="py-1.5 pr-3 font-[var(--font-mono)] text-[var(--color-label)]">{e.occurred_at}</td>
                       <td className="py-1.5 pr-3 text-[var(--color-label)]">{e.kind}</td>
@@ -529,6 +540,29 @@ export default function LinkDetailPanel({ slug }: { slug: string }) {
                 </tbody>
               </table>
             </div>
+            {data.events.length > EVENTS_PAGE_SIZE && (
+              <div className="mt-3 flex items-center justify-between text-[length:var(--text-caption)] text-[var(--color-label-secondary)]">
+                <span>
+                  Page {eventsPageClamped + 1} of {totalEventsPages}
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    variant="secondary"
+                    disabled={eventsPageClamped === 0}
+                    onClick={() => setEventsPage((p) => Math.max(0, p - 1))}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    disabled={eventsPageClamped >= totalEventsPages - 1}
+                    onClick={() => setEventsPage((p) => p + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           </Card>
         </>
       )}
