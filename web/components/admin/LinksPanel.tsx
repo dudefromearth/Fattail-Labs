@@ -24,6 +24,8 @@ type LinkRow = {
   created_at: string;
 };
 
+type OwnerOption = { identity_id: number; email: string; display_name: string | null };
+
 const ALL_CAMPAIGNS = "__all__";
 const NO_CAMPAIGN = "__none__";
 
@@ -36,6 +38,10 @@ export default function LinksPanel() {
   const [label, setLabel] = useState("");
   const [isStatic, setIsStatic] = useState(false);
   const [creating, setCreating] = useState(false);
+
+  const [ownerQuery, setOwnerQuery] = useState("");
+  const [ownerResults, setOwnerResults] = useState<OwnerOption[]>([]);
+  const [selectedOwner, setSelectedOwner] = useState<OwnerOption | null>(null);
 
   const [pageSize, setPageSize] = useState<"10" | "25" | "50">("10");
   const [page, setPage] = useState(0);
@@ -75,6 +81,26 @@ export default function LinksPanel() {
     return () => clearInterval(id);
   }, [load]);
 
+  // LK Phase 3b — owner picker (AF-L3/D13). Debounced search over any
+  // identity (member or approved affiliate); owner stays unset if the
+  // field is left blank — matches store.py's owner=None "don't touch".
+  useEffect(() => {
+    const q = ownerQuery.trim();
+    const handle = setTimeout(() => {
+      if (selectedOwner || q.length < 2) {
+        setOwnerResults([]);
+        return;
+      }
+      fetch(`/api/admin/links/owner-search?q=${encodeURIComponent(q)}`, {
+        credentials: "same-origin",
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => setOwnerResults(d?.results || []))
+        .catch(() => setOwnerResults([]));
+    }, 250);
+    return () => clearTimeout(handle);
+  }, [ownerQuery, selectedOwner]);
+
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -84,7 +110,12 @@ export default function LinksPanel() {
         method: "POST",
         credentials: "same-origin",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ destination, label, static: isStatic }),
+        body: JSON.stringify({
+          destination,
+          label,
+          static: isStatic,
+          ...(selectedOwner ? { owner: selectedOwner.identity_id } : {}),
+        }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
@@ -93,6 +124,8 @@ export default function LinksPanel() {
       setDestination("");
       setLabel("");
       setIsStatic(false);
+      setSelectedOwner(null);
+      setOwnerQuery("");
       setPage(0);
       load();
     } catch (err) {
@@ -181,9 +214,12 @@ export default function LinksPanel() {
 
   return (
     <main className="mx-auto max-w-4xl p-6" data-testid="links-panel">
-      <nav className="mb-4 text-[length:var(--text-footnote)]">
+      <nav className="mb-4 flex items-center justify-between text-[length:var(--text-footnote)]">
         <Link href="/admin" className="text-[var(--color-label-secondary)] hover:underline">
           ← Admin
+        </Link>
+        <Link href="/admin/affiliates" className="text-[var(--color-tint)] hover:underline">
+          Affiliates &amp; credits →
         </Link>
       </nav>
       <header className="mb-6">
@@ -235,6 +271,55 @@ export default function LinksPanel() {
           <input type="checkbox" checked={isStatic} onChange={(e) => setIsStatic(e.target.checked)} />
           Static (image encodes the destination directly — not tracked)
         </label>
+
+        <div className="relative mt-3">
+          <label className="text-[length:var(--text-caption)] text-[var(--color-label-secondary)]">
+            Owner (optional — referral credit, LK Phase 3b)
+            {selectedOwner ? (
+              <div className="mt-1 flex items-center justify-between rounded-[var(--radius-md)] bg-[var(--color-tint-soft)] px-3 py-2">
+                <span className="text-[length:var(--text-subheadline)] text-[var(--color-tint-emphasis)]">
+                  {selectedOwner.display_name || selectedOwner.email}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedOwner(null);
+                    setOwnerQuery("");
+                  }}
+                  className="text-[length:var(--text-caption)] text-[var(--color-label-secondary)] hover:underline"
+                >
+                  Clear
+                </button>
+              </div>
+            ) : (
+              <input
+                className="mt-1 w-full rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-3 py-2 text-[length:var(--text-subheadline)] text-[var(--color-label)]"
+                value={ownerQuery}
+                onChange={(e) => setOwnerQuery(e.target.value)}
+                placeholder="Search by name or email…"
+              />
+            )}
+          </label>
+          {!selectedOwner && ownerResults.length > 0 && (
+            <ul className="absolute z-10 mt-1 w-full overflow-hidden rounded-[var(--radius-md)] bg-[var(--color-surface)] shadow-[var(--elevation-2)]">
+              {ownerResults.map((o) => (
+                <li key={o.identity_id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedOwner(o);
+                      setOwnerResults([]);
+                    }}
+                    className="block w-full px-3 py-2 text-left text-[length:var(--text-footnote)] text-[var(--color-label)] hover:bg-[var(--color-fill)]"
+                  >
+                    {o.display_name || "(no name)"} <span className="text-[var(--color-label-tertiary)]">{o.email}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
         {error && <p className="mt-2 text-[length:var(--text-footnote)] text-[var(--color-destructive)]">{error}</p>}
         <div className="mt-3">
           <Button type="submit" variant="primary" disabled={creating} data-testid="links-create-submit">

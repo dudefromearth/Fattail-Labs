@@ -268,7 +268,50 @@ def _membership_status(sub_status: str) -> str | None:
     return None
 
 
-def _handle_subscription(cur, sub: dict) -> str:
+def _award_referral_credit(cur, sub: dict, price_id: str, purchaser_identity_id: int) -> str | None:
+    """LK Phase 3b (AF-L9). None (not an error) unless this subscription's
+    metadata carries a marker link_markers recognizes, the link has an
+    owner, and Coach has mapped this exact price to a credit amount —
+    no rule configured means no credit, not a guess."""
+    marker = (sub.get("metadata") or {}).get("marker")
+    if not marker or not isinstance(marker, str):
+        return None
+    from links.attribution import lookup_marker
+    from links.credits import award_credit, tier_rule
+    from links.store import get_link
+
+    found = lookup_marker(cur, marker)
+    if found is None:
+        return None
+    link = get_link(cur, found["slug"])
+    if link is None or not link.get("owner"):
+        return None
+    rule = tier_rule(cur, price_id)
+    if rule is None:
+        return None
+    owner_id = int(link["owner"])
+    self_referral = owner_id == purchaser_identity_id
+    sub_id = sub.get("id")
+    if not sub_id:
+        return None
+    cur.execute("SELECT id FROM link_attributions WHERE marker=%s", (marker,))
+    attr_row = cur.fetchone()
+    awarded = award_credit(
+        cur,
+        identity_id=owner_id,
+        credits=rule["credits"],
+        reason="referral",
+        external_ref=str(sub_id),
+        attribution_id=attr_row["id"] if attr_row else None,
+        self_referral=self_referral,
+    )
+    if not awarded:
+        return "credit already awarded"
+    flag = " (self-referral, flagged)" if self_referral else ""
+    return f"{rule['credits']} credits to identity {owner_id}{flag}"
+
+
+def _handle_subscription(cur, sub: dict, *, created: bool = False) -> str:
     customer_id = sub.get("customer")
     identity_id = identity.resolve_by_link(cur, PROVIDER, customer_id or "")
     if identity_id is None:
@@ -288,9 +331,14 @@ def _handle_subscription(cur, sub: dict) -> str:
             break
     if not price_id:
         return "no price in subscription"
+
+    credit_result = None
+    if created:
+        credit_result = _award_referral_credit(cur, sub, price_id, identity_id)
+
     plan_id = identity.plan_id_for_provider_key(cur, PROVIDER, price_id)
     if plan_id is None:
-        return f"unmapped price {price_id}"
+        return credit_result or f"unmapped price {price_id}"
 
     status = _membership_status(sub.get("status") or "")
     if status is None:
@@ -311,7 +359,8 @@ def _handle_subscription(cur, sub: dict) -> str:
     identity.upsert_membership(
         cur, identity_id, plan_id, status, PROVIDER, external_ref=sub.get("id")
     )
-    return f"membership {status}" + (" + alumni granted" if granted_alumni else "")
+    result = f"membership {status}" + (" + alumni granted" if granted_alumni else "")
+    return f"{result} + {credit_result}" if credit_result else result
 
 
 @router.post("/api/billing/webhook")
@@ -352,5 +401,5 @@ async def stripe_webhook(request: Request) -> dict:
                 sub = dict(obj)
                 if kind == "customer.subscription.deleted":
                     sub["status"] = "canceled"
-                result = _handle_subscription(cur, sub)
+                result = _handle_subscription(cur, sub, created=kind == "customer.subscription.created")
     return {"received": True, "result": result}

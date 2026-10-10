@@ -103,6 +103,12 @@ const CARDS: { href: string; title: string; body: string; testId: string }[] = [
     body: "Dynamic short links and QR codes on labs.fattail.ai/q/<slug> — edit destination without reprinting, scan reporting (LK-1.1 Phase 1).",
     testId: "admin-card-links",
   },
+  {
+    href: "/admin/affiliates",
+    title: "Affiliates",
+    body: "Referral credit for members and approved non-member affiliates — registry, owner assignment, credit tier rules (LK Phase 3b).",
+    testId: "admin-card-affiliates",
+  },
 ];
 
 export default function AdminPage() {

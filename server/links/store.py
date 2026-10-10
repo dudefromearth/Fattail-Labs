@@ -1,6 +1,10 @@
 """One row per link, updated in place (LK-L1).
 
-owner has no parameter and no statement writes it.
+owner is settable as of LK Phase 3b (AF-L3/D13,
+Specs/Links-Attribution-Affiliates-Spec-v0_2.md) — an identities.identity_id,
+never free text, never validated for existence here (callers resolve it
+first: an existing member's identity_id, or an approved affiliate's
+provisioned identity_id).
 A fence failure stores nothing and does not call reachability.
 A reachability failure after a passing fence is a warning; the row is stored.
 Slug is generated here and is not an update field.
@@ -28,6 +32,7 @@ def create_link(
     static=False,
     design=None,
     placement=None,
+    owner=None,
 ) -> dict:
     destination = _destination(destination)
     label = _label(label)
@@ -35,6 +40,7 @@ def create_link(
     warning = reachability(destination)
     source, medium, campaign, place = _placement(placement)
     design_json = _design(design)
+    owner_id = _owner(owner)
     flag = 1 if static else 0
     for _ in range(8):
         slug = new_slug()
@@ -43,10 +49,10 @@ def create_link(
                 """
                 INSERT INTO links (
                     slug, destination, label, active, `static`,
-                    source, medium, campaign, placement, design_json
-                ) VALUES (%s, %s, %s, 1, %s, %s, %s, %s, %s, %s)
+                    source, medium, campaign, placement, owner, design_json
+                ) VALUES (%s, %s, %s, 1, %s, %s, %s, %s, %s, %s, %s)
                 """,
-                (slug, destination, label, flag, source, medium, campaign, place, design_json),
+                (slug, destination, label, flag, source, medium, campaign, place, owner_id, design_json),
             )
         except pymysql.err.IntegrityError:
             continue
@@ -67,6 +73,7 @@ def update_link(
     active=None,
     design=None,
     placement=None,
+    owner=None,
 ) -> dict:
     current = get_link(cur, slug)
     if current is None:
@@ -93,6 +100,9 @@ def update_link(
         source, medium, campaign, place = _placement(placement)
         sets.extend(["source=%s", "medium=%s", "campaign=%s", "placement=%s"])
         params.extend([source, medium, campaign, place])
+    if owner is not None:
+        sets.append("owner=%s")
+        params.append(_owner(owner))
     if sets:
         params.append(current["slug"])
         cur.execute(f"UPDATE links SET {', '.join(sets)} WHERE slug=%s", params)
@@ -161,6 +171,14 @@ def _label(label) -> str:
     if not text or len(text) > _LABEL_MAX:
         raise ValueError("label length")
     return text
+
+
+def _owner(owner) -> str:
+    if isinstance(owner, bool) or not isinstance(owner, int):
+        raise TypeError("owner must be an identity_id (int)")
+    if owner <= 0:
+        raise ValueError("owner must be a positive identity_id")
+    return str(owner)
 
 
 def _placement(placement) -> tuple:

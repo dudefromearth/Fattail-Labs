@@ -211,15 +211,44 @@ async def create(request: Request) -> dict:
     destination = body.get("destination")
     label = body.get("label")
     static = bool(body.get("static", False))
+    owner = body.get("owner")
+    if owner is not None and (isinstance(owner, bool) or not isinstance(owner, int)):
+        raise HTTPException(status_code=422, detail="owner must be an identity_id (int)")
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:
-                row = create_link(cur, destination=destination, label=label, static=static)
+                row = create_link(cur, destination=destination, label=label, static=static, owner=owner)
     except FenceError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except (TypeError, ValueError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return {"link": _with_url(row)}
+
+
+@router.get("/owner-search")
+def owner_search(request: Request, q: str = "") -> dict:
+    """LK Phase 3b. Any identity can own a link — an existing member or
+    an approved affiliate's provisioned identity; both are just rows in
+    identities (AF-L12). Registered before /{slug} — must stay first."""
+    require_admin(request)
+    q = q.strip()
+    if len(q) < 2:
+        return {"results": []}
+    like = f"%{q}%"
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT identity_id, email, display_name
+                FROM identities
+                WHERE email LIKE %s OR display_name LIKE %s
+                ORDER BY display_name
+                LIMIT 10
+                """,
+                (like, like),
+            )
+            results = cur.fetchall()
+    return {"results": results}
 
 
 @router.get("/{slug}")
@@ -246,6 +275,7 @@ def detail(slug: str, request: Request, days: int = 7) -> dict:
                     "breakdowns": {},
                     "events": [],
                     "attribution": {"orders": 0, "amount_cents": 0, "recent": []},
+                    "owner": None,
                 }
 
             # Headline totals are all-time (bots excluded), independent of
@@ -315,6 +345,24 @@ def detail(slug: str, request: Request, days: int = 7) -> dict:
             )
             attr_recent = cur.fetchall()
 
+            # LK Phase 3b — owner (AF-L3/D13) + their credit balance, if set.
+            owner_info = None
+            if row.get("owner"):
+                from links.credits import balance as credit_balance
+
+                owner_id = int(row["owner"])
+                cur.execute(
+                    "SELECT email, display_name FROM identities WHERE identity_id=%s",
+                    (owner_id,),
+                )
+                ident = cur.fetchone()
+                owner_info = {
+                    "identity_id": owner_id,
+                    "email": ident["email"] if ident else None,
+                    "display_name": ident["display_name"] if ident else None,
+                    "credit_balance": credit_balance(cur, owner_id),
+                }
+
     scan_count = kind_counts.get("scan", 0)
     click_count = kind_counts.get("click", 0)
     return {
@@ -333,6 +381,7 @@ def detail(slug: str, request: Request, days: int = 7) -> dict:
             "amount_cents": attr_totals["cents"],
             "recent": attr_recent,
         },
+        "owner": owner_info,
     }
 
 
@@ -389,6 +438,9 @@ async def update(slug: str, request: Request) -> dict:
         if any(k in body for k in placement_keys)
         else None
     )
+    owner = body.get("owner")
+    if owner is not None and (isinstance(owner, bool) or not isinstance(owner, int)):
+        raise HTTPException(status_code=422, detail="owner must be an identity_id (int)")
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:
@@ -399,6 +451,7 @@ async def update(slug: str, request: Request) -> dict:
                     label=body.get("label"),
                     active=body.get("active"),
                     placement=placement,
+                    owner=owner,
                 )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail="unknown link") from exc

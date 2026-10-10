@@ -52,6 +52,13 @@ type Attribution = {
   recent: { occurred_at: string; provider: string; amount_cents: number | null; currency: string | null }[];
 };
 
+type OwnerInfo = {
+  identity_id: number;
+  email: string | null;
+  display_name: string | null;
+  credit_balance: number;
+};
+
 type Detail = {
   link: LinkRow;
   tracked: boolean;
@@ -64,6 +71,7 @@ type Detail = {
   breakdowns: Record<string, BreakdownBucket>;
   events: EventRow[];
   attribution: Attribution;
+  owner: OwnerInfo | null;
 };
 
 function formatCents(cents: number, currency: string | null): string {
@@ -490,6 +498,34 @@ export default function LinkDetailPanel({ slug }: { slug: string }) {
               }
             />
           </div>
+
+          {data.owner && (
+            <Card className="mb-6 flex items-center justify-between">
+              <div>
+                <Eyebrow>Owner (referral credit)</Eyebrow>
+                <p className="mt-1 text-[length:var(--text-subheadline)] font-medium text-[var(--color-label)]">
+                  {data.owner.display_name || data.owner.email || `identity ${data.owner.identity_id}`}
+                </p>
+                {data.owner.email && (
+                  <p className="text-[length:var(--text-caption)] text-[var(--color-label-tertiary)]">{data.owner.email}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <div className="text-[length:var(--text-title-3)] font-semibold text-[var(--color-label)]">
+                    {data.owner.credit_balance}
+                  </div>
+                  <div className="text-[length:var(--text-caption)] text-[var(--color-label-tertiary)]">credit balance</div>
+                </div>
+                <Link
+                  href="/admin/affiliates"
+                  className="text-[length:var(--text-caption)] text-[var(--color-tint)] hover:underline"
+                >
+                  Manage →
+                </Link>
+              </div>
+            </Card>
+          )}
 
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-[length:var(--text-title-3)] font-semibold text-[var(--color-label)]">Scans</h2>
