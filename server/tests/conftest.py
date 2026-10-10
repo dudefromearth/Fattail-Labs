@@ -35,6 +35,12 @@ _load_env()
 os.environ.pop("LABS_SMTP_HOST", None)
 os.environ.pop("LABS_NOTIFY_EMAIL_REQUIRED", None)
 
+# Links geo tests (LK Phase 1 W2) assume the unset default (-> the bundled
+# test fixture mmdb), not whatever real GeoLite2 database is configured for
+# actual operation (LK-1.2 §4) — unset, don't disable (empty string means
+# "no lookups" to geo.py, which is a different behavior than the fixture).
+os.environ.pop("LABS_GEOLITE2_PATH", None)
+
 # Prefer dry-run HeyGen when tests omit dry_run (still pass dry_run=True explicitly).
 os.environ.setdefault("LABS_HEYGEN_DRY_RUN", "1")
 

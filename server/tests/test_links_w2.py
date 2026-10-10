@@ -266,7 +266,14 @@ def test_at3_worker_stores_country_region_and_drops_the_address():
     """AT-3. Resolvable country and region, city absent, unresolvable unknown, IP not stored or logged."""
     from links import public_worker
 
-    assert list(inspect.signature(public_worker.decide).parameters) == ["slug", "ua", "referrer"]
+    # has_marker (LK Phase 3a) was added after W2 froze; the forbidden set
+    # below is the property that actually matters and is unchanged.
+    assert list(inspect.signature(public_worker.decide).parameters) == [
+        "slug",
+        "ua",
+        "referrer",
+        "has_marker",
+    ]
     assert list(inspect.signature(public_worker.log_after).parameters) == ["slug", "ua", "referrer"]
     forbidden = {"ip", "cookie", "peer", "city"}
     assert forbidden.isdisjoint(inspect.signature(public_worker.decide).parameters)
@@ -275,9 +282,13 @@ def test_at3_worker_stores_country_region_and_drops_the_address():
     route = ROUTE.read_text(encoding="utf-8")
     client = CLIENT.read_text(encoding="utf-8")
     assert "x-forwarded-for" in route.lower()
-    assert "cookie" not in route.lower()
+    # RD-L1's actual property: no Labs SESSION cookie is ever read or
+    # forwarded. LK Phase 3a legitimately adds a non-session marker
+    # cookie (ftl_mkr, AF-L1) — "cookie" the word is no longer forbidden,
+    # the real Labs session cookie name is.
+    assert "ft_session" not in route
     assert ":4000" not in route and "/api" not in route
-    assert "cookie" not in client.lower()
+    assert "ft_session" not in client
     assert ":4000" not in client and "/api" not in client
     assert "peer" in client
 

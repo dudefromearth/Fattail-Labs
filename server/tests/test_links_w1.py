@@ -554,7 +554,14 @@ def test_lk_l2_slug_alphabet_and_length(api, net):
         _require_slug(row, api.slug.ALPHABET)
 
 
-def test_owner_cannot_be_passed_to_create_link(api):
+def test_owner_is_settable_as_of_lk_phase_3b(api, net):
+    """owner was inert through Phase 1 (LK-L1). LK Phase 3b (AF-L3/D13,
+    Specs/Links-Attribution-Affiliates-Spec-v0_2.md) activates it: an
+    identities.identity_id, never free text, never **kwargs passthrough.
+    owner=None (the default — no owner given) must succeed, not raise:
+    a real regression this test caught once (owner=None raised TypeError
+    unconditionally in create_link, breaking every ordinary link create
+    for several deploys until fixed)."""
     create_sig = inspect.signature(api.store.create_link)
     assert list(create_sig.parameters) == [
         "cur",
@@ -563,21 +570,37 @@ def test_owner_cannot_be_passed_to_create_link(api):
         "static",
         "design",
         "placement",
+        "owner",
     ]
-    assert "owner" not in create_sig.parameters
     assert not any(
         param.kind is inspect.Parameter.VAR_KEYWORD
         for param in create_sig.parameters.values()
     )
-    for name in ("destination", "label", "static", "design", "placement"):
+    for name in ("destination", "label", "static", "design", "placement", "owner"):
         assert create_sig.parameters[name].kind is inspect.Parameter.KEYWORD_ONLY
+
+    # A non-int owner is still refused.
     with pytest.raises(TypeError):
         api.store.create_link(
             None,
             destination=GOOD,
-            label="zztest-owner",
+            label="zztest-owner-bad",
             owner="zztest-owner",
         )
+
+    net.block_connect = False
+    # owner=None (the default) must succeed — the no-owner case is the
+    # common case, not an edge case.
+    no_owner = _create(api, destination=GOOD, label="zztest-owner-none")
+    assert no_owner["owner"] is None
+
+    # A valid identity_id is stored and read back as given.
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            owned = api.store.create_link(
+                cur, destination=GOOD, label="zztest-owner-set", owner=1
+            )
+    assert owned["owner"] == "1"
 
     update_sig = inspect.signature(api.store.update_link)
     assert list(update_sig.parameters) == [
@@ -588,12 +611,20 @@ def test_owner_cannot_be_passed_to_create_link(api):
         "active",
         "design",
         "placement",
+        "owner",
     ]
-    assert "owner" not in update_sig.parameters
-    for name in ("destination", "label", "active", "design", "placement"):
+    for name in ("destination", "label", "active", "design", "placement", "owner"):
         assert update_sig.parameters[name].kind is inspect.Parameter.KEYWORD_ONLY
+    # update_link() reads the current row before validating fields, so the
+    # TypeError check needs a real cursor (not None) to reach _owner().
     with pytest.raises(TypeError):
-        api.store.update_link(None, "zztest", owner="zztest-owner")
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                api.store.update_link(cur, no_owner["slug"], owner="zztest-owner")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            updated = api.store.update_link(cur, no_owner["slug"], owner=2)
+    assert updated["owner"] == "2"
 
 
 def test_at1_decide_is_uncached_302_and_follows_edit(api, net):
@@ -655,7 +686,9 @@ def test_at1_http_when_next_route_is_up(api, net):
     assert status not in (301, 308)
     for key, value in _CACHE.items():
         assert lowered.get(key) == value
-    assert "set-cookie" not in lowered
+    # AF-L1/AF-L2 legitimately sets a marker cookie (ftl_mkr) when the
+    # request carries none; the frozen property is no Labs SESSION cookie.
+    assert "ft_session" not in lowered.get("set-cookie", "")
     assert lowered.get("location") == GOOD
 
 
@@ -764,8 +797,13 @@ def test_at5_unknown_and_inactive(api, net):
 
 
 def test_at6_request_destination_is_not_a_decide_parameter(api, net):
+    # has_marker (LK Phase 3a, AF-L1/AF-L2 — Specs/Links-Attribution-
+    # Affiliates-Spec-v0_1.md) was added after W1 froze; destination was
+    # not and still is not accepted, which is the actual property AT-6
+    # protects.
     sig = inspect.signature(api.public_worker.decide)
-    assert list(sig.parameters) == ["slug", "ua", "referrer"]
+    assert list(sig.parameters) == ["slug", "ua", "referrer", "has_marker"]
+    assert "destination" not in sig.parameters
     assert not any(
         param.kind in (inspect.Parameter.VAR_KEYWORD, inspect.Parameter.VAR_POSITIONAL)
         for param in sig.parameters.values()
@@ -1021,7 +1059,10 @@ def test_at11a_http_cookie_does_not_fill_identity(api, net):
         pytest.skip(f"{HTTP_ABSENT}: Next is not accepting on 127.0.0.1:3000")
     status, headers = _parse_status_headers(proc.stdout)
     assert status == 302
-    assert "set-cookie" not in {key.lower() for key in headers}
+    lowered = {key.lower(): value for key, value in headers.items()}
+    # AF-L1/AF-L2 legitimately sets a marker cookie (ftl_mkr) when the
+    # request carries none; the frozen property is no Labs SESSION cookie.
+    assert "ft_session" not in lowered.get("set-cookie", "")
     deadline = time.time() + 1.5
     rows: list[dict] = []
     while time.time() < deadline:
