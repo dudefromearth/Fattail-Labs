@@ -5,6 +5,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import Button from "@/components/ui/Button";
+import SegmentedControl from "@/components/ui/SegmentedControl";
 
 type LinkRow = {
   slug: string;
@@ -27,6 +28,9 @@ export default function LinksPanel() {
   const [label, setLabel] = useState("");
   const [isStatic, setIsStatic] = useState(false);
   const [creating, setCreating] = useState(false);
+
+  const [pageSize, setPageSize] = useState<"10" | "25" | "50">("10");
+  const [page, setPage] = useState(0);
 
   const load = useCallback(() => {
     fetch("/api/admin/links", { credentials: "same-origin" })
@@ -74,6 +78,7 @@ export default function LinksPanel() {
       setDestination("");
       setLabel("");
       setIsStatic(false);
+      setPage(0);
       load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "create failed");
@@ -93,6 +98,11 @@ export default function LinksPanel() {
       </main>
     );
   }
+
+  const size = Number(pageSize);
+  const totalPages = Math.max(1, Math.ceil(links.length / size));
+  const pageClamped = Math.min(page, totalPages - 1);
+  const pageLinks = links.slice(pageClamped * size, pageClamped * size + size);
 
   return (
     <main className="mx-auto max-w-4xl p-6" data-testid="links-panel">
@@ -158,17 +168,34 @@ export default function LinksPanel() {
         </div>
       </form>
 
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <p className="text-[length:var(--text-caption)] text-[var(--color-label-tertiary)]">
           {links.length} link{links.length === 1 ? "" : "s"}
         </p>
-        <Button variant="secondary" onClick={() => load()}>
-          Refresh
-        </Button>
+        <div className="flex items-center gap-3">
+          <div className="w-40">
+            <SegmentedControl
+              value={pageSize}
+              onChange={(v) => {
+                setPageSize(v);
+                setPage(0);
+              }}
+              ariaLabel="Links per page"
+              options={[
+                { id: "10", label: "10" },
+                { id: "25", label: "25" },
+                { id: "50", label: "50" },
+              ]}
+            />
+          </div>
+          <Button variant="secondary" onClick={() => load()}>
+            Refresh
+          </Button>
+        </div>
       </div>
 
       <ul className="space-y-3">
-        {links.map((l) => (
+        {pageLinks.map((l) => (
           <li
             key={l.slug}
             className="flex items-center gap-4 rounded-[var(--radius-xl)] bg-[var(--color-surface)] p-4 shadow-[var(--elevation-1)]"
@@ -226,6 +253,30 @@ export default function LinksPanel() {
           </li>
         )}
       </ul>
+
+      {links.length > size && (
+        <div className="mt-4 flex items-center justify-between text-[length:var(--text-caption)] text-[var(--color-label-secondary)]">
+          <span>
+            Page {pageClamped + 1} of {totalPages}
+          </span>
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              disabled={pageClamped === 0}
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="secondary"
+              disabled={pageClamped >= totalPages - 1}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
