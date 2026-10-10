@@ -32,8 +32,6 @@ def _load_env() -> None:
         os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 
 
-_load_env()
-
 import db  # noqa: E402
 import resources_domain as rd  # noqa: E402
 
@@ -245,4 +243,11 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    # Only as a fallback for `python migrate_attachments_to_resources.py`
+    # without first sourcing .env — never on import. setdefault() means an
+    # already-set (including intentionally-unset-by-caller) var is left
+    # alone, but unconditional module-level execution would still stomp on
+    # a test process's deliberately-unset vars the moment this module is
+    # imported for its functions (as tests/test_resources_migration.py does).
+    _load_env()
     main()
