@@ -24,6 +24,16 @@ function schemeIsHttps(location: string): boolean {
 }
 
 function peerAddress(req: Request): string {
+  // Cloudflare's edge sets this authoritatively on every request that
+  // reaches us (we sit entirely behind a Cloudflare Tunnel) — the client
+  // cannot set or override it, unlike X-Forwarded-For. Prefer it.
+  const cf = req.headers.get("cf-connecting-ip");
+  if (cf && cf.trim()) {
+    return cf.trim();
+  }
+  // Fallback for paths with no Cloudflare in front (local/dev testing).
+  // Client-suppliable and therefore not trustworthy as an identity source
+  // — RD-L3's discard-after-lookup and D4's honesty rule still apply.
   const forwarded = req.headers.get("x-forwarded-for");
   if (!forwarded) {
     return "";

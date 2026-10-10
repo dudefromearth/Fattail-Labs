@@ -219,7 +219,7 @@ export default function LinkDetailPanel({ slug }: { slug: string }) {
   const [state, setState] = useState<"loading" | "denied" | "notfound" | "ready">("loading");
   const [data, setData] = useState<Detail | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [days, setDays] = useState<"7" | "30" | "90" | "0">("30");
+  const [days, setDays] = useState<"7" | "30" | "90" | "0">("7");
 
   const [destination, setDestination] = useState("");
   const [label, setLabel] = useState("");
@@ -228,37 +228,53 @@ export default function LinkDetailPanel({ slug }: { slug: string }) {
   const [campaign, setCampaign] = useState("");
   const [placement, setPlacement] = useState("");
   const [saving, setSaving] = useState(false);
-  const [origin, setOrigin] = useState<string>(() => (typeof window === "undefined" ? "" : window.location.origin));
 
-  const load = useCallback(() => {
-    fetch(`/api/admin/links/${slug}?days=${days}`, { credentials: "same-origin" })
-      .then((r) => {
-        if (r.status === 404) return "notfound" as const;
-        return r.ok ? r.json() : ("denied" as const);
-      })
-      .then((d) => {
-        if (d === "denied") {
-          setState("denied");
-          return;
-        }
-        if (d === "notfound") {
-          setState("notfound");
-          return;
-        }
-        setData(d);
-        setDestination(d.link.destination);
-        setLabel(d.link.label);
-        setSource(d.link.source ?? "");
-        setMedium(d.link.medium ?? "");
-        setCampaign(d.link.campaign ?? "");
-        setPlacement(d.link.placement ?? "");
-        setState("ready");
-      })
-      .catch(() => setState("denied"));
-  }, [slug, days]);
+  const load = useCallback(
+    (opts: { resetForm?: boolean } = {}) => {
+      const resetForm = opts.resetForm ?? true;
+      fetch(`/api/admin/links/${slug}?days=${days}`, { credentials: "same-origin", cache: "no-store" })
+        .then((r) => {
+          if (r.status === 404) return "notfound" as const;
+          return r.ok ? r.json() : ("denied" as const);
+        })
+        .then((d) => {
+          if (d === "denied") {
+            setState("denied");
+            return;
+          }
+          if (d === "notfound") {
+            setState("notfound");
+            return;
+          }
+          setData(d);
+          if (resetForm) {
+            setDestination(d.link.destination);
+            setLabel(d.link.label);
+            setSource(d.link.source ?? "");
+            setMedium(d.link.medium ?? "");
+            setCampaign(d.link.campaign ?? "");
+            setPlacement(d.link.placement ?? "");
+          }
+          setState("ready");
+        })
+        .catch(() => setState("denied"));
+    },
+    [slug, days],
+  );
 
   useEffect(() => {
     load();
+  }, [load]);
+
+  // Live reporting: poll in the background so scans show up without a
+  // manual refresh. Never touches the edit form's in-progress values.
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        load({ resetForm: false });
+      }
+    }, 5000);
+    return () => clearInterval(id);
   }, [load]);
 
   async function onSave(e: React.FormEvent) {
@@ -381,33 +397,6 @@ export default function LinkDetailPanel({ slug }: { slug: string }) {
             ))}
           </div>
 
-          {origin && !data.link.static && (
-            <div className="mt-4 flex items-center gap-3 rounded-[var(--radius-md)] bg-[var(--color-warning)]/10 px-3 py-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={`/api/admin/links/${slug}/qr-dev-test.svg?host=${encodeURIComponent(origin)}&v=${cacheBust}`}
-                alt="Dev-only scannable QR (this network only)"
-                className="h-20 w-20 flex-none rounded-[var(--radius-sm)] bg-white p-1"
-              />
-              <div className="min-w-0 flex-1 text-[length:var(--text-caption)] text-[var(--color-label-secondary)]">
-                <strong className="text-[var(--color-label)]">Dev test — scan with your phone.</strong>{" "}
-                Only works on this network, and is <em>not</em> what the printed QR encodes.
-                If your phone can&apos;t reach this hostname, type an address it <em>can</em>{" "}
-                reach (e.g. the LAN IP) below.
-                <div className="mt-1.5 flex items-center gap-2">
-                  <input
-                    className="w-56 rounded-[var(--radius-sm)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-2 py-1 font-[var(--font-mono)] text-[length:var(--text-caption)] text-[var(--color-label)]"
-                    value={origin}
-                    onChange={(e) => setOrigin(e.target.value)}
-                    placeholder="http://192.168.1.x:3000"
-                  />
-                  <a className="font-medium text-[var(--color-tint)] underline" href={`${origin}/q/${slug}`} target="_blank" rel="noreferrer">
-                    open
-                  </a>
-                </div>
-              </div>
-            </div>
-          )}
         </Card>
 
         {!data.link.static && (
@@ -456,10 +445,10 @@ export default function LinkDetailPanel({ slug }: { slug: string }) {
                 />
               </div>
               <a
-                href={`/api/admin/links/${slug}/events.csv`}
+                href={`/api/admin/links/${slug}/events.csv?days=${days}`}
                 className="inline-flex min-h-[var(--hit-min)] items-center justify-center gap-2 rounded-[var(--radius-full)] bg-[var(--color-fill)] px-4 text-sm font-medium text-[var(--color-label)] hover:opacity-90"
               >
-                Download CSV
+                Download CSV ({days === "0" ? "all time" : `${days}d`})
               </a>
             </div>
           </div>

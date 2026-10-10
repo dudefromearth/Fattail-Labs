@@ -52,13 +52,32 @@ def _with_url(row: dict) -> dict:
 
 
 def _day_window(days: int) -> int:
-    return days if days in _DAY_WINDOWS else 30
+    return days if days in _DAY_WINDOWS else 7
 
 
 def _since(days: int) -> datetime | None:
     if days <= 0:
         return None
     return datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days)
+
+
+def _daily_series(daily_map: dict[str, dict[str, int]], window: int) -> list[dict]:
+    """A fixed, zero-filled calendar grid for the selected window so the
+    chart's bars represent actual days, not just whichever days have
+    events (one day of data must not stretch to fill the whole chart).
+    "All" (window == 0) has no natural upper bound, so it stays sparse."""
+    if window <= 0:
+        return [
+            {"day": day, "scan": v["scan"], "click": v["click"], "count": v["scan"] + v["click"]}
+            for day, v in sorted(daily_map.items())
+        ]
+    today = datetime.now(timezone.utc).date()
+    out = []
+    for offset in range(window - 1, -1, -1):
+        day = (today - timedelta(days=offset)).isoformat()
+        v = daily_map.get(day, {"scan": 0, "click": 0})
+        out.append({"day": day, "scan": v["scan"], "click": v["click"], "count": v["scan"] + v["click"]})
+    return out
 
 
 def _grouped_counts(cur, slug: str, column: str, since: datetime | None) -> list[dict]:
@@ -200,7 +219,7 @@ async def create(request: Request) -> dict:
 
 
 @router.get("/{slug}")
-def detail(slug: str, request: Request, days: int = 30) -> dict:
+def detail(slug: str, request: Request, days: int = 7) -> dict:
     require_admin(request)
     window = _day_window(days)
     since = _since(window)
@@ -254,10 +273,7 @@ def detail(slug: str, request: Request, days: int = 30) -> dict:
                 bucket = daily_map.setdefault(r["day"].isoformat(), {"scan": 0, "click": 0})
                 if r["kind"] in bucket:
                     bucket[r["kind"]] = r["c"]
-            daily = [
-                {"day": day, "scan": v["scan"], "click": v["click"], "count": v["scan"] + v["click"]}
-                for day, v in sorted(daily_map.items())
-            ]
+            daily = _daily_series(daily_map, window)
 
             breakdowns = {}
             for dim, column in _BREAKDOWN_COLUMNS.items():
@@ -296,7 +312,7 @@ def detail(slug: str, request: Request, days: int = 30) -> dict:
 
 
 @router.get("/{slug}/breakdown/{dimension}")
-def breakdown(slug: str, dimension: str, request: Request, days: int = 30) -> dict:
+def breakdown(slug: str, dimension: str, request: Request, days: int = 7) -> dict:
     """Full ranked list for one dimension — the drill-down behind a
     detail-page top-10 panel's "View all" link."""
     require_admin(request)
@@ -495,22 +511,29 @@ def _slugify(label: str) -> str:
 
 
 @router.get("/{slug}/events.csv")
-def events_csv(slug: str, request: Request) -> Response:
+def events_csv(slug: str, request: Request, days: int = 7) -> Response:
     require_admin(request)
+    window = _day_window(days)
+    since = _since(window)
     with db.transaction() as conn:
         with conn.cursor() as cur:
             row = get_link(cur, slug)
             if row is None:
                 raise HTTPException(status_code=404, detail="unknown link")
+            where = "slug = %s"
+            params: list = [slug]
+            if since is not None:
+                where += " AND occurred_at >= %s"
+                params.append(since)
             cur.execute(
-                """
+                f"""
                 SELECT occurred_at, slug, kind, device_class, os_family, referrer,
                        country, region, bot
                 FROM link_events
-                WHERE slug = %s
+                WHERE {where}
                 ORDER BY occurred_at DESC
                 """,
-                (slug,),
+                params,
             )
             events = cur.fetchall()
     buf = io.StringIO()
