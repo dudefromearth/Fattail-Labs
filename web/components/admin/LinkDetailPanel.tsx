@@ -8,6 +8,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import AppCapsuleNav from "@/components/admin/AppCapsuleNav";
 import Button from "@/components/ui/Button";
 import SegmentedControl from "@/components/ui/SegmentedControl";
 
@@ -387,11 +388,8 @@ export default function LinkDetailPanel({ slug }: { slug: string }) {
 
   return (
     <main className="mx-auto max-w-5xl p-6" data-testid="link-detail-panel">
+      <AppCapsuleNav active="links" />
       <nav className="mb-4 flex gap-2 text-[length:var(--text-footnote)] text-[var(--color-label-secondary)]">
-        <Link href="/admin" className="hover:underline">
-          Admin
-        </Link>
-        <span>/</span>
         <Link href="/admin/links" className="hover:underline" data-testid="link-back-to-list">
           Links / QR
         </Link>

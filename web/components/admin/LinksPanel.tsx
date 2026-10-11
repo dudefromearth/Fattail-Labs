@@ -5,6 +5,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import AppCapsuleNav from "@/components/admin/AppCapsuleNav";
 import Button from "@/components/ui/Button";
 import SegmentedControl from "@/components/ui/SegmentedControl";
 
@@ -214,14 +215,7 @@ export default function LinksPanel() {
 
   return (
     <main className="mx-auto max-w-4xl p-6" data-testid="links-panel">
-      <nav className="mb-4 flex items-center justify-between text-[length:var(--text-footnote)]">
-        <Link href="/admin" className="text-[var(--color-label-secondary)] hover:underline">
-          ← Admin
-        </Link>
-        <Link href="/admin/affiliates" className="text-[var(--color-tint)] hover:underline">
-          Affiliates &amp; credits →
-        </Link>
-      </nav>
+      <AppCapsuleNav active="links" />
       <header className="mb-6">
         <h1 className="text-[length:var(--text-title-1)] font-semibold tracking-tight text-[var(--color-label)]">
           Links / QR

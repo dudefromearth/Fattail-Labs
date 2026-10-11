@@ -4,8 +4,8 @@
 // Never self-serve: every row starts pending, only an admin approval
 // provisions an identity (AF-L4/AF-L12).
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import AppCapsuleNav from "@/components/admin/AppCapsuleNav";
 import Button from "@/components/ui/Button";
 import SegmentedControl from "@/components/ui/SegmentedControl";
 
@@ -176,17 +176,7 @@ export default function AffiliatesPanel() {
 
   return (
     <main className="mx-auto max-w-4xl p-6" data-testid="affiliates-panel">
-      <nav className="mb-4 flex gap-2 text-[length:var(--text-footnote)] text-[var(--color-label-secondary)]">
-        <Link href="/admin" className="hover:underline">
-          Admin
-        </Link>
-        <span>/</span>
-        <Link href="/admin/links" className="hover:underline">
-          Links / QR
-        </Link>
-        <span>/</span>
-        <span className="text-[var(--color-label)]">Affiliates</span>
-      </nav>
+      <AppCapsuleNav active="affiliates" />
 
       <header className="mb-6">
         <h1 className="text-[length:var(--text-title-1)] font-semibold tracking-tight text-[var(--color-label)]">

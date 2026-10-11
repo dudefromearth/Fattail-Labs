@@ -8,8 +8,8 @@
 // partner-facing surface anywhere (Q10) — this admin view is the only
 // place these numbers are ever shown.
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import AppCapsuleNav from "@/components/admin/AppCapsuleNav";
 import Button from "@/components/ui/Button";
 import SegmentedControl from "@/components/ui/SegmentedControl";
 
@@ -190,17 +190,7 @@ export default function PartnersPanel() {
 
   return (
     <main className="mx-auto max-w-4xl p-6" data-testid="partners-panel">
-      <nav className="mb-4 flex gap-2 text-[length:var(--text-footnote)] text-[var(--color-label-secondary)]">
-        <Link href="/admin" className="hover:underline">
-          Admin
-        </Link>
-        <span>/</span>
-        <Link href="/admin/links" className="hover:underline">
-          Links / QR
-        </Link>
-        <span>/</span>
-        <span className="text-[var(--color-label)]">Partners</span>
-      </nav>
+      <AppCapsuleNav active="partners" />
 
       <header className="mb-6">
         <h1 className="text-[length:var(--text-title-1)] font-semibold tracking-tight text-[var(--color-label)]">

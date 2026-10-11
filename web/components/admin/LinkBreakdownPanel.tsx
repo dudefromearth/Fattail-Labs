@@ -5,6 +5,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import AppCapsuleNav from "@/components/admin/AppCapsuleNav";
 
 type Item = { key: string; count: number; pct: number };
 
@@ -70,11 +71,8 @@ export default function LinkBreakdownPanel({ slug, dimension, days }: { slug: st
 
   return (
     <main className="mx-auto max-w-2xl p-6" data-testid="link-breakdown-panel">
+      <AppCapsuleNav active="links" />
       <nav className="mb-4 flex gap-2 text-[length:var(--text-footnote)] text-[var(--color-label-secondary)]">
-        <Link href="/admin" className="hover:underline">
-          Admin
-        </Link>
-        <span>/</span>
         <Link href="/admin/links" className="hover:underline">
           Links / QR
         </Link>
