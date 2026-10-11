@@ -28,12 +28,13 @@ Spec v0.2 §2 rulings are complete (PM-L2, Q9–Q11). Go-live stays gated on PM-
 
 | Step | Status | Report |
 |---|---|---|
-| LG2 Alpha+Kilo: partner registry backend | **PASS** | `seeds/LG2-1-alpha-kilo-partners-backend.md` |
+| LG2 Alpha+Kilo: partner registry backend | **PASS** | `seeds/LG2-1-alpha-kilo-partners-backend.md`, commit `43b5c65d` |
 | LG2-G Delta gate | **PASS** | `gate-reports/LG2-G.md` |
-| LG3 Charlie: partner registry admin UI | pending | `seeds/LG3-1-charlie-partners-ui.md` |
-| LG3-G Delta gate | pending | `gate-reports/LG3-G.md` |
+| Backend deploy | **DONE** | `labs.fattail.ai` — migration `158_partners.sql` applied, `ai.fattail.labs.api` restarted, route confirmed live (401 unauthenticated) |
+| LG3 Charlie: partner registry admin UI | **PASS** | `seeds/LG3-1-charlie-partners-ui.md` |
+| LG3-G Delta gate | **PASS** | `gate-reports/LG3-G.md` |
 | Lima decision log | pending | `Architecture/00-decision-log.md` |
-| Deploy | pending (migration + API restart; web rebuild after LG3) | |
+| Frontend deploy | pending | production `web` rebuild |
 
 **Go-live note (standing, not a step to check off):** nothing in LG2/LG3 clears PM-L5. No partner may be paid or comp'd for real until legal input is obtained — this applies regardless of how many of the steps above PASS.
 

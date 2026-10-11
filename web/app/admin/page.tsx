@@ -109,6 +109,12 @@ const CARDS: { href: string; title: string; body: string; testId: string }[] = [
     body: "Referral credit for members and approved non-member affiliates — registry, owner assignment, credit tier rules (LK Phase 3b).",
     testId: "admin-card-affiliates",
   },
+  {
+    href: "/admin/partners",
+    title: "Partners",
+    body: "Creator/co-marketing links — cash or comp'd membership for people with no existing stake in FatTail, never store credit (LK Phase 4b).",
+    testId: "admin-card-partners",
+  },
 ];
 
 export default function AdminPage() {
