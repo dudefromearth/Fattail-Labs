@@ -4,6 +4,30 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-10-10 — DL-826 Links Growth & Acquisition 4b built — partner registry
+
+**Decision (Coach, 2026-10-10, direct ruling — `Specs/LK-1.2.md` §3 exception for the build; PM-L5 go-live gate explicitly not waived).**
+
+Coach, quoted:
+
+> do 4b and don't interrupt me unless necessary. Commit at logical slices
+
+Full build of 4b (partner/creator co-marketing links) per `Specs/Links-Growth-Acquisition-Spec-v0_1.md` §7–§10, ruled by `Specs/Links-Growth-Acquisition-Spec-v0_2.md` §2 (PM-L2 confirmed; Q9 flat fee per signup; Q10 manual reporting only; Q11 fully outside Labs). India's CONDITIONAL APPROVE on the parent spec already confirmed zero Canonical Model contact.
+
+**Board.** `agents/p-links-growth/` — LG2 (backend) and LG3 (frontend) both fired and PASSed. Seeds `LG2-1-alpha-kilo-partners-backend.md`, `LG3-1-charlie-partners-ui.md`. Gates `gate-reports/LG2-G.md`, `gate-reports/LG3-G.md`, both PASS.
+
+**The build.**
+- `migrations/158_partners.sql` — new `partners` table, deliberately separate from `affiliates`/`credit_tier_rules` (PM-L1): cash or comp'd membership, never store credit. AF-L10's "never cash" rule governs the member-referral store-credit path only, not this one.
+- `server/routes/partners_admin.py` — admin CRUD mirroring `affiliates_admin.py`'s pending/approved/revoked pattern, never self-serve. Approval provisions a minimal `identities` row, reusing `get_or_create_identity` exactly as affiliates does (PM-L2). `POST .../grant-membership` calls `identity.upsert_membership()` directly for `comp_membership` partners (PM-L4) — never a Stripe API call, never a simulated checkout; idempotent via `memberships`' existing `(identity_id, plan_id, source)` unique key. The list response includes a `signups`/`total_cents` pair computed read-only from existing `link_attributions` rows on every read — never stored, never an invoice or payable record (PM-L3/Q11).
+- `web/components/admin/PartnersPanel.tsx` + `web/app/admin/partners/page.tsx` — admin-only UI mirroring `AffiliatesPanel.tsx`'s HIG and structure; a terms-type toggle (cash flat fee vs. comp-membership plan ID), the signups/dollar-equivalent total, approve/revoke, and a one-click "Grant membership" action. No partner-facing surface anywhere (Q10). New "Partners" card on the admin hub.
+- `server/main.py` — two-line router registration, applied surgically against a clean `origin/main` checkout each time (this file carries known pre-existing unrelated WIP — `access_line_middleware`/Tradier-router removal — present on both the local and production working trees; never blind-applied).
+
+**Evidence.** `pytest tests/test_partners_admin.py -q`: 24 passed, including a monkeypatch asserting the comp-membership grant path never calls `stripe.checkout.Session.create`. Full `pytest tests/ -q -k "links or affiliate or billing or partner"`: 147 passed. `tsc --noEmit`: zero errors referencing the new files. Live functional check against the real backend (create → approve → list, not just a type-check), probe row cleaned up after. Deployed to `labs.fattail.ai`: migration applied, `ai.fattail.labs.api` restarted, production `web` rebuilt (`npm run build`, `/admin/partners` compiled as a dynamic route) and `ai.fattail.labs.web` restarted. External verification: `https://labs.fattail.ai/admin/partners` → 200, `https://labs.fattail.ai/api/admin/partners` → 401 (route live, auth enforced).
+
+**Standing precondition, unaffected by this entry.** PM-L5 (legal input on cash compensation) remains a hard go-live gate. Nothing here authorizes paying or comp'ing a real partner — the build exists; the go-live decision does not.
+
+---
+
 ## 2026-10-10 — DL-825 Links Growth & Acquisition 4a ships — two-sided referral credit
 
 **Decision (Coach, 2026-10-10, direct ruling — `Specs/LK-1.2.md` §3 exception; no separate multi-seat stamp run).**
