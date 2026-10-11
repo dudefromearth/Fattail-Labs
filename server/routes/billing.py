@@ -269,10 +269,20 @@ def _membership_status(sub_status: str) -> str | None:
 
 
 def _award_referral_credit(cur, sub: dict, price_id: str, purchaser_identity_id: int) -> str | None:
-    """LK Phase 3b (AF-L9). None (not an error) unless this subscription's
-    metadata carries a marker link_markers recognizes, the link has an
-    owner, and Coach has mapped this exact price to a credit amount —
-    no rule configured means no credit, not a guess."""
+    """LK Phase 3b (AF-L9) + LK Phase 4 4a (AF-L15/AF-L16/AF-L17). None
+    (not an error) unless this subscription's metadata carries a marker
+    link_markers recognizes, the link has an owner, and Coach has mapped
+    this exact price to a credit amount — no rule configured means no
+    credit, not a guess.
+
+    Awards the owner (AF-L9, unchanged) and, as of 4a, the referred
+    purchaser too — same per-tier scale (Q12 ruled symmetric, not an
+    independent constant), same transaction, independent idempotency on
+    (identity_id, reason, external_ref) so a redelivered webhook cannot
+    double-award either side. Self-referral (owner == purchaser) only
+    ever produces the single flagged owner-side award (AF-L7/AF-L17) —
+    there is no second party to award.
+    """
     marker = (sub.get("metadata") or {}).get("marker")
     if not marker or not isinstance(marker, str):
         return None
@@ -296,19 +306,33 @@ def _award_referral_credit(cur, sub: dict, price_id: str, purchaser_identity_id:
         return None
     cur.execute("SELECT id FROM link_attributions WHERE marker=%s", (marker,))
     attr_row = cur.fetchone()
-    awarded = award_credit(
+    attribution_id = attr_row["id"] if attr_row else None
+    owner_awarded = award_credit(
         cur,
         identity_id=owner_id,
         credits=rule["credits"],
         reason="referral",
         external_ref=str(sub_id),
-        attribution_id=attr_row["id"] if attr_row else None,
+        attribution_id=attribution_id,
         self_referral=self_referral,
     )
-    if not awarded:
-        return "credit already awarded"
+    referred_note = ""
+    if not self_referral:
+        referred_awarded = award_credit(
+            cur,
+            identity_id=purchaser_identity_id,
+            credits=rule["credits"],
+            reason="referred",
+            external_ref=str(sub_id),
+            attribution_id=attribution_id,
+            self_referral=False,
+        )
+        if referred_awarded:
+            referred_note = f"; {rule['credits']} credits to identity {purchaser_identity_id} (referred)"
+    if not owner_awarded:
+        return f"credit already awarded{referred_note}"
     flag = " (self-referral, flagged)" if self_referral else ""
-    return f"{rule['credits']} credits to identity {owner_id}{flag}"
+    return f"{rule['credits']} credits to identity {owner_id}{flag}{referred_note}"
 
 
 def _handle_subscription(cur, sub: dict, *, created: bool = False) -> str:

@@ -204,9 +204,13 @@ def test_checkout_completed_attributes_and_redelivery_is_idempotent(client, iden
 
 
 # --- customer.subscription.created -> referral credit (AF-L9) --------------
+# LK Phase 4 4a (AF-L15/AF-L16): the referred purchaser earns the same
+# per-tier amount the owner does, not an independent constant (Q12 ruled).
 
 
-def test_subscription_created_awards_credit_to_link_owner(client, identities, webhook_secret):
+def test_subscription_created_awards_credit_to_owner_and_referred_purchaser(
+    client, identities, webhook_secret
+):
     price_id = f"zztest-price-{uuid.uuid4().hex[:8]}"
     sub_id = _ref("sub")
     with db.transaction() as conn:
@@ -222,11 +226,20 @@ def test_subscription_created_awards_credit_to_link_owner(client, identities, we
     )
     r = _post_event(client, "customer.subscription.created", sub, webhook_secret)
     assert r.status_code == 200, r.text
-    assert "10 credits" in r.json()["result"]
+    result = r.json()["result"]
+    assert "10 credits" in result
+    assert "referred" in result
     with db.transaction() as conn:
         with conn.cursor() as cur:
             assert balance(cur, identities["owner"]) == 10
-            assert balance(cur, identities["purchaser"]) == 0
+            assert balance(cur, identities["purchaser"]) == 10
+            cur.execute(
+                "SELECT identity_id, reason FROM credit_events WHERE external_ref=%s ORDER BY identity_id",
+                (sub_id,),
+            )
+            rows = {row["identity_id"]: row["reason"] for row in cur.fetchall()}
+    assert rows[identities["owner"]] == "referral"
+    assert rows[identities["purchaser"]] == "referred"
 
 
 def test_subscription_updated_does_not_award_credit(client, identities, webhook_secret):
@@ -277,7 +290,9 @@ def test_subscription_created_redelivery_does_not_double_award(client, identitie
 
     with db.transaction() as conn:
         with conn.cursor() as cur:
+            # Redelivery does not double-award either side independently.
             assert balance(cur, identities["owner"]) == 10
+            assert balance(cur, identities["purchaser"]) == 10
 
 
 def test_subscription_created_self_referral_is_flagged_not_blocked(client, identities, webhook_secret):
@@ -292,10 +307,12 @@ def test_subscription_created_self_referral_is_flagged_not_blocked(client, ident
                 "INSERT INTO credit_tier_rules (price_id, credits, label) VALUES (%s, %s, %s)",
                 (price_id, 1, "zztest-observer"),
             )
-    # The link owner buys through their own link.
+    # The link owner buys through their own link — there is no distinct
+    # referred party, so 4a's second award must not fire (AF-L17).
     sub = _subscription(sub_id=sub_id, identity_id=owner, price_id=price_id, marker=marker)
     r = _post_event(client, "customer.subscription.created", sub, webhook_secret)
     assert "self-referral, flagged" in r.json()["result"]
+    assert "referred" not in r.json()["result"]
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -303,4 +320,10 @@ def test_subscription_created_self_referral_is_flagged_not_blocked(client, ident
                 (owner, sub_id),
             )
             row = cur.fetchone()
+            cur.execute(
+                "SELECT COUNT(*) AS n FROM credit_events WHERE external_ref=%s",
+                (sub_id,),
+            )
+            total = cur.fetchone()["n"]
     assert bool(row["self_referral"]) is True
+    assert total == 1  # exactly one award event, not a second "referred" one
