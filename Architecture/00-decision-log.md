@@ -4,6 +4,23 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-10-10 — DL-825 Links Growth & Acquisition 4a ships — two-sided referral credit
+
+**Decision (Coach, 2026-10-10, direct ruling — `Specs/LK-1.2.md` §3 exception; no separate multi-seat stamp run).**
+
+`Specs/Links-Growth-Acquisition-Spec-v0_1.md` (DRAFT) proposed two Tier A acquisition/conversion builds from `docs/Links-QR-Use-Case-Ranking-Acquisition-Conversion.md`. India reviewed it (`agents/p-links/gate-reports/Links-Growth-Acquisition-Spec-v0_1-India-Review-v1_0.md`) — CONDITIONAL APPROVE, zero Canonical Model violations, no MSC contact. Coach then ruled every open question directly:
+
+- **4a (two-sided referral):** Q12 — the referred person's credit uses the **same per-tier scale** the owner earns (symmetric, not an independent constant). Q13 — **forward-only**, no backfill of existing `link_attributions` rows. Recorded in `Specs/Links-Growth-Acquisition-Spec-v0_2.md` §1. **BUILD AUTHORITY granted.**
+- **4b (partner/creator co-marketing):** PM-L2 confirmed (minimal `identities` row, reusing AF-L12's pattern). Q9 — flat fee per signup. Q10 — manual reporting only, no partner portal. Q11 — fully outside Labs, no invoice/payable tracking. PM-L5 confirmed as a **hard go-live precondition** — code may be built, it does not ship live to a real partner before legal input. Recorded in `Specs/Links-Growth-Acquisition-Spec-v0_2.md` §2. **Not fired this session.**
+
+**Board.** `agents/p-links-growth/` stood up as its own project (split from `agents/p-links/`, LK Phase 1–3, since 4a/4b carry a different risk class and go-live gate). Plan: `docs/Links-Growth-Phase4-Full-Agent-Bench-Plan-v1.0.md`. Seed `LG1-1-alpha-kilo-two-sided-award.md` fired; gate `agents/p-links-growth/gate-reports/LG1-G.md` PASS.
+
+**The build.** `server/routes/billing.py`'s `_award_referral_credit` now awards the referred purchaser alongside the existing link-owner award (AF-L9, unchanged) — same transaction, same `sub_id` as `external_ref`, a new `reason='referred'` value, independent idempotency via the existing `ux_credit_events_idempotency` unique key (no migration). Self-referral (owner == purchaser) still produces only the single flagged owner-side award (AF-L7/AF-L17) — there is no second party to pay. Commit `4df3c45c`.
+
+**Evidence.** `pytest tests/ -q -k "links or affiliate or billing"`: 120 passed, 4 skipped (pre-existing, unrelated geo-fixture environment note), 0 failed. Deployed to `labs.fattail.ai`; `ai.fattail.labs.api` restarted (pid 76260 → 96310), `/api/health` 200 post-restart.
+
+---
+
 ## 2026-10-08 — DL-820 LIM straddle scale built (amendment v0.4 → spec v0.4.8)
 
 **Decision.** The quad's horizontal scale is built. This is a breaking change (LIM spec §16).

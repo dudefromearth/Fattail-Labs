@@ -11,15 +11,16 @@
 
 ## Current junction
 
-### LG1 — two-sided referral credit (4a)
+### LG1 — two-sided referral credit (4a) — **PROGRAM PASS** (shipped 2026-10-10)
 
 | Step | Status | Report |
 |---|---|---|
 | Spec v0.1 DRAFT + India review | **DONE** | `agents/p-links/gate-reports/Links-Growth-Acquisition-Spec-v0_1-India-Review-v1_0.md` |
 | Spec v0.2 Coach rulings (Q12/Q13) | **DONE** | `Specs/Links-Growth-Acquisition-Spec-v0_2.md` |
-| LG1 Alpha+Kilo: referred-side award + tests | **IN PROGRESS** | `seeds/LG1-1-alpha-kilo-two-sided-award.md` |
-| LG1-G Delta gate | pending | `gate-reports/LG1-G.md` |
-| Lima decision log | pending | `Architecture/00-decision-log.md` |
+| LG1 Alpha+Kilo: referred-side award + tests | **PASS** | `seeds/LG1-1-alpha-kilo-two-sided-award.md`, commit `4df3c45c` |
+| LG1-G Delta gate | **PASS** | `gate-reports/LG1-G.md` |
+| Lima decision log | **DONE** | `Architecture/00-decision-log.md` DL-825 |
+| Deployed | **DONE** | `labs.fattail.ai`, `ai.fattail.labs.api` restarted, `/api/health` 200 |
 
 ### 4b — partner/creator co-marketing (not fired)
 
