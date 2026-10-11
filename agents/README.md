@@ -222,3 +222,11 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
   course pins). Plan: `IMPLEMENTATION-PLAN.md`. Spec:
   `Specs/FatTail-Labs-Resource-Spec-v1.0.md`. Design:
   `Architecture/10-resources-design.md`.
+- `agents/p-links-growth/` — **Links Growth & Acquisition (LK Phase 4)** — two-sided
+  referral credit (4a, firing) + partner/creator co-marketing links (4b, not fired,
+  go-live gated on legal input). Specs:
+  `Specs/Links-Growth-Acquisition-Spec-v0_1.md` + `v0_2.md` (Coach rulings).
+  **Full multi-agent plan:** `docs/Links-Growth-Phase4-Full-Agent-Bench-Plan-v1.0.md`.
+  Board: `agents/p-links-growth/ORCHESTRATOR.md`. Parent: `agents/p-links/` (LK Phase 1–3,
+  shipped). **Next: LG1 (Alpha+Kilo) → LG1-G → Lima. 4a BUILD AUTHORITY granted; 4b
+  code may proceed later but does not ship live before PM-L5 legal clearance.**
