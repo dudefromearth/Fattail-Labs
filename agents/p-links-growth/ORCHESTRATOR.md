@@ -22,9 +22,20 @@
 | Lima decision log | **DONE** | `Architecture/00-decision-log.md` DL-825 |
 | Deployed | **DONE** | `labs.fattail.ai`, `ai.fattail.labs.api` restarted, `/api/health` 200 |
 
-### 4b — partner/creator co-marketing (not fired)
+### 4b — partner/creator co-marketing — **firing** (Coach instruction, 2026-10-10)
 
-Spec v0.2 §2 rulings are complete (PM-L2, Q9–Q11). **Not started.** Needs its own seed when Coach fires it. Go-live stays gated on PM-L5 (legal input on cash compensation) regardless of when code is built — this is a go-live gate, not a build gate, and this board does not and cannot clear it.
+Spec v0.2 §2 rulings are complete (PM-L2, Q9–Q11). Go-live stays gated on PM-L5 (legal input on cash compensation) regardless of when code is built — this is a go-live gate, not a build gate, and this board does not and cannot clear it. Build may proceed per Coach's ruling.
+
+| Step | Status | Report |
+|---|---|---|
+| LG2 Alpha+Kilo: partner registry backend | **PASS** | `seeds/LG2-1-alpha-kilo-partners-backend.md` |
+| LG2-G Delta gate | **PASS** | `gate-reports/LG2-G.md` |
+| LG3 Charlie: partner registry admin UI | pending | `seeds/LG3-1-charlie-partners-ui.md` |
+| LG3-G Delta gate | pending | `gate-reports/LG3-G.md` |
+| Lima decision log | pending | `Architecture/00-decision-log.md` |
+| Deploy | pending (migration + API restart; web rebuild after LG3) | |
+
+**Go-live note (standing, not a step to check off):** nothing in LG2/LG3 clears PM-L5. No partner may be paid or comp'd for real until legal input is obtained — this applies regardless of how many of the steps above PASS.
 
 ---
 
