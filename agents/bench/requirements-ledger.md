@@ -22,6 +22,7 @@ Status: `OPEN` · `AP-1` · `WITHDRAWN`
 | **REQ-012** | 2026-09-28 | Runner 500s | OPEN | Diagnose Runner internal server errors. P1 P2 P3 P5 approved. P4 approved, last. P5 after Tuesday 2026-09-29 close, one API restart. See row below. |
 | **REQ-013** | 2026-09-28 | Runner live ladder | OPEN · **ACCEPTED** | Plan v1.0 accepted. Reach path `:5055`. W0 dispatched. Canary is Coach plus one admin; ids later; no member ids. See row below. |
 | **REQ-014** | 2026-09-29 | Member market path | OPEN · **ACCEPTED** | Plan v1.0 accepted. Q1 `:4012`. Q2 one cut per phase. Q3 today's keys, no new `stale`. W0 dispatched. Canary is Coach plus one admin; id strings not yet on file. See row below. |
+| **REQ-030** | 2026-10-12 | Front door | OPEN · **BUILD** | Mobile product page + checkout, first build. See row below. |
 
 ### REQ-001 — ≥ 90 days of price on the chart (VP confirmation blocker)
 
@@ -183,6 +184,30 @@ The spec text he supplied is the file. It is not restated here.
 **Disposition:** Spec `docs/Labs-Member-Market-Path-Data-Plane-v0_1.md` unchanged. Plan v1.0 accepted and frozen. Plan v1.1 records the rulings: Q1 `:4012` as drawn (`GET /history/v1/store-bars`, `LABS_HISTORY_READ_TOKEN`); Q2 one production cut per phase; Q3 session-status keeps today's keys, no `stale` field added, §2 governs over row 2, wording error noted at W0 and corrected in spec v0.2 only when a later version is cut for another reason. Canary composition is Coach's identity and one administrator for every phase. The acceptance left both id values unfilled, so no id string is on file. W0 is dispatched. This row stays open. REQ-010, REQ-011, REQ-012, and REQ-013 stay open.
 
 **Closes:** Coach AP-1 on the program ship bar (spec §4: one regular-hours session after the last cut), or Coach withdraw. Not closed. Accepting the plan started W0. It does not close this row.
+
+### REQ-030 — Front door (mobile product page + checkout)
+
+**Captured:** 2026-10-12 (DL-826). **BUILD.** Issue #13. Specs approved the same day.
+
+**Coach wording (RL-1, preserved):**
+
+> front door = mobile product page + checkout, first build
+>
+> front door into our ecosystem
+>
+> improve the observer experience and increase conversions
+>
+> NEVER a 301
+>
+> core lineup Observer → Navigator Annual/Lifetime; Activator, Quarterly and $165 intro switchable in config, no code change
+>
+> nothing lost from the original checkout detail
+
+**Also ruled in the same GO:** no human gating on this run; Delta and Kilo gate; B6 stays open so WooCommerce keeps the charge; stop only for a critical issue that needs Coach.
+
+**Acceptance:** the new URLs complete apply → Woo handoff → confirmation on iPhone and Pixel profiles, including a slow-3G run; five member states do not show a buy button they do not need; the split defaults to 0% and can be killed. Coach AP-1 still required to close the row. Not closed.
+
+**Closes:** AP-1 or Coach withdraw. Not closed.
 
 ## Closed
 

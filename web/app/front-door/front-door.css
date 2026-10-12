@@ -1,0 +1,272 @@
+.fd {
+  --fd-hue: #00b478;
+  --fd-ink: #1d1d1f;
+  --fd-muted: #424245;
+  --fd-bg: #f5f5f7;
+  --fd-card: #ffffff;
+  --fd-line: #d2d2d7;
+  box-sizing: border-box;
+  min-height: 100vh;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  background: var(--fd-bg);
+  color: var(--fd-ink);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+  font-size: 17px;
+  line-height: 1.35;
+}
+
+.fd *,
+.fd *::before,
+.fd *::after {
+  box-sizing: border-box;
+}
+
+.fd-wrap {
+  width: min(440px, 100%);
+  margin: 0 auto;
+  padding: 20px 16px 112px;
+}
+
+.fd-kicker {
+  margin: 0 0 8px;
+  color: var(--fd-hue);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.fd h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.fd-lead,
+.fd-detail {
+  margin: 0 0 16px;
+  color: var(--fd-muted);
+}
+
+.fd-card {
+  background: var(--fd-card);
+  border: 1px solid var(--fd-line);
+  border-radius: 12px;
+  padding: 12px;
+  margin: 0 0 12px;
+}
+
+.fd-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  margin: 0 0 8px;
+  padding: 12px;
+  border: 1px solid var(--fd-line);
+  border-radius: 12px;
+  background: var(--fd-card);
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.fd-choice[aria-checked="true"] {
+  border-color: var(--fd-hue);
+  box-shadow: inset 0 0 0 1px var(--fd-hue);
+}
+
+.fd-choice:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.fd-choice input {
+  width: 24px;
+  height: 24px;
+  margin-top: 2px;
+  accent-color: var(--fd-hue);
+  flex: 0 0 auto;
+}
+
+.fd-price {
+  display: block;
+  font-weight: 600;
+}
+
+.fd-disclosure {
+  display: block;
+  color: var(--fd-muted);
+  font-size: 15px;
+}
+
+.fd label.fd-field {
+  display: block;
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.fd input[type="email"],
+.fd input[type="text"] {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  margin-top: 6px;
+  padding: 12px;
+  border: 1px solid var(--fd-line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--fd-ink);
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.fd input:focus {
+  outline: 2px solid var(--fd-hue);
+  outline-offset: 1px;
+}
+
+.fd-notice {
+  margin: 0 0 12px;
+  color: var(--fd-muted);
+  font-size: 14px;
+}
+
+.fd-check {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.fd-check input {
+  width: 24px;
+  height: 24px;
+  accent-color: var(--fd-hue);
+  flex: 0 0 auto;
+}
+
+.fd-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin: 16px -16px 0;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: rgba(245, 245, 247, 0.96);
+  border-top: 1px solid var(--fd-line);
+}
+
+.fd-submit,
+.fd-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--fd-hue);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.fd-submit:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.fd-links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.fd-links a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--fd-hue);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.fd-error,
+.fd-nudge {
+  margin: 0 0 12px;
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.fd-error {
+  background: #fff4f2;
+  color: #7a1f16;
+}
+
+.fd-nudge {
+  background: #fff8e8;
+  color: #3d2e04;
+}
+
+.fd-nudge a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: #0b5;
+  color: var(--fd-hue);
+  font-weight: 600;
+}
+
+.fd-weeks {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fd-weeks li {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 8px;
+  min-height: 44px;
+  align-items: center;
+  border-top: 1px solid var(--fd-line);
+  padding: 8px 0;
+}
+
+.fd-video {
+  width: 100%;
+  max-width: 100%;
+  border-radius: 12px;
+  background: #111;
+}
+
+.fd[data-speed="slow"] .fd-extra {
+  display: none;
+}
+
+.fd-status {
+  margin: 0;
+  padding: 16px;
+  background: var(--fd-card);
+  border-radius: 12px;
+}
+
+@media (min-width: 800px) {
+  .fd h1 {
+    font-size: 34px;
+  }
+}

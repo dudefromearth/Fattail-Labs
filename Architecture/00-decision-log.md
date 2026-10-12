@@ -4,6 +4,20 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-10-12 — DL-826 Front door is the first build (Coach)
+
+**Decision (Coach).** Coach approved `Specs/Observer-Navigator-Funnel-Spec-v1.0.1.md` and `Specs/WP-Labs-Cutover-Design-v1.0.1.md` on 2026-10-12. B6 (billing off WooCommerce) stays OPEN, so WooCommerce keeps taking payment. OD-F6 and DL-240 are reversed only as far as the specs state. The front door (mobile product page + checkout, issue #13) is the first build. HARD RULE: no 301 redirects, ever. RL-1: REQ-030.
+
+**GO (Coach, 2026-10-12, by voice).** Build issue #13 now as a fully automated bench run. There is no human gating. Delta and Kilo gate. Consult Coach only on a critical issue. Run the spec, then test. Multiple gate points are fine. Create the unit tests. B6 stays open and does not block.
+
+**Recorded.** Both specs are in `Specs/`. The build is the new `server/front_door/` tree, `web/app/front-door/` URLs, and migration `155_front_door.sql`. Payment is a WooCommerce handoff. The traffic split defaults to 0% with a kill switch. D2 is implemented as app-level admission because production nginx is out of scope. Track A (live Woo CSS) was not done.
+
+**Does not.** Turn on Stripe charging. Add a 301. Edit `server/routes/billing.py`, `server/progress/`, or the membership page. Deploy. Touch MiniTwo. Close B6. Close issue #13 (that is Coach's, after review).
+
+**Cites:** Coach 2026-10-12 · issue #13 · REQ-030 · funnel spec v1.0.1 · cutover design v1.0.1.
+
+---
+
 ## 2026-09-29 — DL-806 Phase 5 is the three remaining member Massive paths (Coach)
 
 **Decision (Coach).** India's four findings are cut into spec v0.2. Three become Phase 5, with the same rules as the earlier phases. Plan v1.2 adds Phase 5 after Phase 4. Nothing else in the packets changes.

@@ -216,6 +216,13 @@ def create_app() -> FastAPI:
             "help system failed to register; continuing without it"
         )
 
+    # Front door (issue #13). New router only — billing.py is not edited.
+    # Invalid offers abort boot. A missing handoff secret fails the handoff
+    # route, not the rest of Labs.
+    from routes.front_door import include_front_door
+
+    include_front_door(app)
+
     uploads = Path(__file__).resolve().parent / "uploads"
     uploads.mkdir(exist_ok=True)
     app.mount("/api/media", StaticFiles(directory=uploads), name="media")
