@@ -4,6 +4,18 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-10-13 — DL-832 Tape Labs guides are on the dashboard (Coach)
+
+**Decision (Coach, 2026-10-13, in writing).**
+
+> Can you create a ver accessible user guide for each of these deployed tools and add it to the TapeLabs main page. Make it in markdown format, deploy it in a markdown editor with all the extensions to support tables and other advanced formatting features, and include a download button
+
+**Recorded.** “ver accessible” is kept as written and read as very accessible. `/tapelabs` carries one guide each for Health, Symbol view, Backtest, and Gaps. The guide is Markdown. The reading view and the editor preview use the site Markdown renderer with GitHub-flavored Markdown: tables, footnotes, strikethrough, task lists, and automatic links. The editor can insert those. Download Markdown saves the file. Edits in the editor stay in the browser. The page stays off the site menu, the apps catalog, and the sitemap. Studies, Live board, Walk forward, Ways to look, and Tester stay off this dashboard. The Health page’s links to those reports are described as not on this dashboard.
+
+**Does not.** Add a navigation item. Close REQ-032.
+
+**Cites:** Coach 2026-10-13 · REQ-033 · DL-831.
+
 ## 2026-10-13 — DL-831 Tape Labs is an unlisted dashboard (Coach)
 
 **Decision (Coach, 2026-10-13, in writing).**

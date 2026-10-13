@@ -5,7 +5,7 @@
  * Monospace textarea in token chrome. Display uses <Markdown>, not this.
  */
 
-import type { TextareaHTMLAttributes } from "react";
+import type { ComponentProps } from "react";
 
 const EDITOR_CLASS =
   "w-full resize-none rounded-lg border border-[var(--color-separator)] " +
@@ -16,7 +16,7 @@ const EDITOR_CLASS =
 export default function MarkdownEditor({
   className = "",
   ...rest
-}: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+}: ComponentProps<"textarea">) {
   return (
     <textarea
       spellCheck={false}
