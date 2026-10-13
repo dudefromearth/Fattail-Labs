@@ -114,7 +114,7 @@ export default function FrontDoor({
       setOrderKey(existing);
       return;
     }
-    const next = randomId();
+    const next = randomId(); // getRandomValues when randomUUID is missing on plain HTTP
     sessionStorage.setItem("fd_order_key", next);
     setOrderKey(next);
   }, []);

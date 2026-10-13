@@ -4,7 +4,7 @@ import { bucketFromSignals, entryForReferrer, formatPrice } from "./offers";
 import type { FrontDoorProduct } from "./offers";
 import { bucketFor, decideAdmission } from "./traffic";
 import { clearFormDraft, readFormDraft, writeFormDraft, FORM_DRAFT_KEY } from "./formDraft";
-import { randomId, sha256HexFallback } from "./webCrypto";
+import { randomId, sha256HexFallback, UUID_V4 } from "./webCrypto";
 import type { FrontDoorOffers } from "./offers";
 
 const observer: FrontDoorProduct = {
@@ -79,7 +79,41 @@ const lifetime: FrontDoorProduct = {
   const empty = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
   assert.equal(sha256HexFallback(""), empty);
   assert.equal(sha256HexFallback("abc"), createHash("sha256").update("abc").digest("hex"));
-  assert.match(randomId(), /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+  assert.match(randomId(), UUID_V4);
+}
+
+{
+  const previous = globalThis.crypto;
+  let fills = 0;
+  const httpCrypto = {
+    getRandomValues(target: Uint8Array) {
+      fills += 1;
+      for (let i = 0; i < target.length; i += 1) target[i] = (i * 17) & 255;
+      return target;
+    },
+  };
+  Object.defineProperty(globalThis, "crypto", { configurable: true, writable: true, value: httpCrypto });
+  try {
+    assert.equal("randomUUID" in httpCrypto, false);
+    const id = randomId();
+    assert.equal(fills, 1);
+    assert.match(id, UUID_V4);
+    const throwing = {
+      randomUUID() {
+        throw new TypeError("crypto.randomUUID is not a function");
+      },
+      getRandomValues(target: Uint8Array) {
+        fills += 1;
+        target.fill(9);
+        return target;
+      },
+    };
+    Object.defineProperty(globalThis, "crypto", { configurable: true, writable: true, value: throwing });
+    assert.match(randomId(), UUID_V4);
+    assert.equal(fills, 2);
+  } finally {
+    Object.defineProperty(globalThis, "crypto", { configurable: true, writable: true, value: previous });
+  }
 }
 
 function memoryStorage(): Storage {

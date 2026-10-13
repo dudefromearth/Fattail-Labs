@@ -103,17 +103,24 @@ export async function sha256Hex(text: string): Promise<string> {
   return sha256HexFallback(text);
 }
 
+const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export function randomId(): string {
-  const cryptoObj = globalThis.crypto;
-  if (cryptoObj && typeof cryptoObj.randomUUID === "function") {
+  // Same guard as PageViewTracker: randomUUID exists only on HTTPS and localhost.
+  const cryptoObj = typeof globalThis.crypto === "undefined" ? undefined : globalThis.crypto;
+  if (cryptoObj && "randomUUID" in cryptoObj && typeof cryptoObj.randomUUID === "function") {
     try {
       return cryptoObj.randomUUID();
     } catch {
-      /* insecure context */
+      /* plain HTTP can expose the name and then throw */
     }
   }
+  return uuidFromRandomBytes(cryptoObj);
+}
+
+function uuidFromRandomBytes(cryptoObj: Crypto | undefined): string {
   const bytes = new Uint8Array(16);
-  if (cryptoObj && typeof cryptoObj.getRandomValues === "function") {
+  if (cryptoObj && "getRandomValues" in cryptoObj && typeof cryptoObj.getRandomValues === "function") {
     try {
       cryptoObj.getRandomValues(bytes);
     } catch {
@@ -127,6 +134,8 @@ export function randomId(): string {
   const hex = hexBytes(bytes);
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
+
+export { UUID_V4 };
 
 function fillRandom(bytes: Uint8Array) {
   for (let i = 0; i < bytes.length; i += 1) {
