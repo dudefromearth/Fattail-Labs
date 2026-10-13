@@ -34,6 +34,7 @@ Status: `OPEN` · `AP-1` · `WITHDRAWN`
 | **REQ-024** | 2026-10-03 | Canonical trade | OPEN | Abandon the August Tradier specs. The current direction is the canonical trade draft. See row below. |
 | **REQ-025** | 2026-10-03 | Canonical trade | OPEN | Include the Practice trade log. See row below. |
 | **REQ-026** | 2026-10-04 | Canonical trade | OPEN | The admin click view is in. Four trees. Count 0 of 3. Conor owns that view. See row below. |
+| **REQ-032** | 2026-10-13 | Tape Labs | OPEN | Unlisted `/tapelabs` dashboard. Health, Symbol view, Backtest, Gaps. Not in navigation. See row below. |
 
 ### REQ-001 — ≥ 90 days of price on the chart (VP confirmation blocker)
 
@@ -373,6 +374,18 @@ Later the same day:
 **Disposition:** DL-811. Seated as `Specs/CT-1.md`. v0.7 draft unchanged. No stamp. No approval counted.
 
 **Closes:** Coach AP-1, or Coach withdraw. Not closed.
+
+### REQ-032 — Tape Labs on an unlisted URL
+
+**Captured:** 2026-10-13. **OPEN.**
+
+**Coach wording (2026-10-13):**
+
+> I want to deploy this to FatTail Labs, but I don't want it to appear on any of the navigation. It will only be accessible if you know the URL, which will be labs.fattail.ai/tapelabs this will bring you to a dashboard with cards where you can select the deployed tapelab tools. The tools I want to deploy include the Health, Symbol View, Backtest and Gaps
+
+**Disposition:** DL-831. The dashboard is `/tapelabs`. The four tools are proxied from Tape Lab. They are not in the site menu, the apps catalog, or the sitemap. Signed-in session required. Checked on StudioTwo at `http://studiotwo:3000/tapelabs` on 2026-10-13. MiniTwo was not restarted, so `labs.fattail.ai/tapelabs` is not live yet.
+
+**Closes:** Coach AP-1 on labs.fattail.ai/tapelabs, or Coach withdraw. Not closed.
 
 ## Closed
 

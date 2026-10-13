@@ -4,6 +4,18 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-10-13 — DL-831 Tape Labs is an unlisted dashboard (Coach)
+
+**Decision (Coach, 2026-10-13, in writing).**
+
+> I want to deploy this to FatTail Labs, but I don't want it to appear on any of the navigation. It will only be accessible if you know the URL, which will be labs.fattail.ai/tapelabs this will bring you to a dashboard with cards where you can select the deployed tapelab tools. The tools I want to deploy include the Health, Symbol View, Backtest and Gaps
+
+**Recorded.** `/tapelabs` is a card dashboard for Health, Symbol view, Backtest, and Gaps. It is not linked from the site header, the apps catalog, home quick nav, or the sitemap, and robots disallow the path. A signed-in Labs session is required. Each card opens that Tape Lab page through `/tapelabs/t/…`, which the Next server fetches from `TAPELAB_ORIGIN` and rewrites so the tool’s root-absolute URLs stay on that prefix. The Tape Lab menu inside those pages is replaced with a link back to the dashboard, so Studies, Live board, Walk forward, Ways to look, and Tester are not offered. Today’s file is still not written by Gaps. Collectors stay stopped.
+
+**Does not.** Restart MiniTwo. Put Tape Lab on the production host. Start collectors. Add a navigation item. Publish Studies, Ways to look, Live board, Walk forward, or Tester.
+
+**Cites:** Coach 2026-10-13 · REQ-032.
+
 ## 2026-10-10 — DL-826 Links Growth & Acquisition 4b built — partner registry
 
 **Decision (Coach, 2026-10-10, direct ruling — `Specs/LK-1.2.md` §3 exception for the build; PM-L5 go-live gate explicitly not waived).**
