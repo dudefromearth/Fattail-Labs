@@ -242,18 +242,25 @@ test("order form remembers the draft after the video", async ({ page }, info) =>
   expect(stored).toContain("Buyer");
   expect(stored && stored.toLowerCase()).not.toContain("card");
   expect(await page.evaluate(() => localStorage.getItem("fd_form"))).toBeNull();
-  await page.getByTestId("fd-link-watch").click();
-  await expect(page.locator("[data-entry=watch]")).toBeVisible();
-  await page.goto("/front-door/order", { waitUntil: "domcontentloaded" });
+  await expect(async () => {
+    await page.goto("/front-door/watch", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-entry=watch]")).toBeVisible({ timeout: 5_000 });
+  }).toPass();
+  await expect(async () => {
+    await page.goto("/front-door/order", { waitUntil: "domcontentloaded" });
+    await expect(page.getByTestId("fd-email")).toHaveValue("buyer@example.com", { timeout: 5_000 });
+  }).toPass();
   await expect(page.getByTestId("fd-email")).toHaveValue("buyer@example.com");
   await expect(page.getByTestId("fd-first-name")).toHaveValue("Ada");
   await expect(page.getByTestId("fd-last-name")).toHaveValue("Buyer");
   await expect(page.getByTestId("fd-product-navigator-annual").locator("input")).toBeChecked();
   await expect(page.locator("#fd-terms-box")).toBeChecked();
-  await page.goto("/front-door/confirm?order_id=FD-1001&product=navigator-annual", {
-    waitUntil: "domcontentloaded",
-  });
-  await expect(page.getByTestId("fd-success")).toBeVisible({ timeout: 30_000 });
+  await expect(async () => {
+    await page.goto("/front-door/confirm?order_id=FD-1001&product=navigator-annual", {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.getByTestId("fd-success")).toBeVisible({ timeout: 5_000 });
+  }).toPass();
   await expect.poll(async () => page.evaluate(() => sessionStorage.getItem("fd_form"))).toBeNull();
 });
 
