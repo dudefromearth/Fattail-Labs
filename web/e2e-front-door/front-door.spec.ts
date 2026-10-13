@@ -111,10 +111,14 @@ async function checkout(page: Page, name: string) {
   expect(submit && submit.height).toBeGreaterThanOrEqual(44);
   expect(submit && submit.width).toBeGreaterThanOrEqual(44);
   const terms = await page.getByTestId("fd-terms").boundingBox();
-  expect(terms && terms.height).toBeGreaterThanOrEqual(60);
-  const box = await page.locator("#fd-terms-box").boundingBox();
-  expect(box && box.width).toBeGreaterThanOrEqual(36);
-  expect(box && box.height).toBeGreaterThanOrEqual(36);
+  const card = await page.locator(".fd-card").boundingBox();
+  expect(terms && terms.height).toBeGreaterThanOrEqual(48);
+  expect(terms && card && terms.width).toBeGreaterThanOrEqual(card.width - 36);
+  const mark = await page.getByTestId("fd-terms-mark").boundingBox();
+  expect(mark && mark.width).toBeGreaterThanOrEqual(28);
+  expect(mark && mark.height).toBeGreaterThanOrEqual(28);
+  await expect(page.locator("#fd-terms-box")).toHaveAttribute("type", "checkbox");
+  await expect(page.locator("#fd-terms-box")).toHaveAttribute("aria-describedby", "fd-terms-notice");
   await expect(page.locator("#fd-terms-box")).not.toBeChecked();
   await page.getByTestId("fd-link-terms").evaluate((el) => {
     el.addEventListener("click", (event) => event.preventDefault(), { capture: true });

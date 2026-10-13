@@ -456,25 +456,38 @@ export default function FrontDoor({
                 );
               })}
               </div>
-              <div className="fd-check" data-testid="fd-terms">
+              <label className="fd-check" data-testid="fd-terms">
                 <input
                   id="fd-terms-box"
                   type="checkbox"
                   checked={terms}
+                  aria-describedby="fd-terms-notice"
                   onChange={(event) => setTerms(event.target.checked)}
                 />
-                <span className="fd-check-copy">
-                  <label htmlFor="fd-terms-box">I accept the</label>
+                <span className="fd-check-mark" data-testid="fd-terms-mark" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="18" height="18">
+                    <path
+                      d="M5 12.5 10 17.5 19 7"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </span>
+                <span id="fd-terms-notice" className="fd-check-copy">
+                  I accept the{" "}
                   <LegalLink href={offers.terms_url} testId="fd-link-terms">
                     terms
-                  </LegalLink>
-                  <label htmlFor="fd-terms-box">and the</label>
+                  </LegalLink>{" "}
+                  and the{" "}
                   <LegalLink href={offers.privacy_url} testId="fd-link-privacy">
                     privacy notice
                   </LegalLink>
-                  <label htmlFor="fd-terms-box">.</label>
+                  .
                 </span>
-              </div>
+              </label>
             </div>
             {error && (
               <p className="fd-error" data-testid="fd-error" role="alert">
@@ -534,6 +547,7 @@ function LegalLink({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
+      onPointerDown={(event) => event.stopPropagation()}
       onClick={(event) => event.stopPropagation()}
     >
       {children}
