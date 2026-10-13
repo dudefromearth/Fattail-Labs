@@ -65,11 +65,21 @@ async function install(page: Page, view: object = NONE) {
 }
 
 async function shot(page: Page, file: string, fullPage = false) {
+  const localDir = "/tmp/fd-shots";
+  fs.mkdirSync(localDir, { recursive: true });
+  const local = path.join(localDir, path.basename(file));
   let last: unknown;
   for (let attempt = 0; attempt < 4; attempt += 1) {
     try {
       const bytes = await page.screenshot({ fullPage, timeout: 20_000, type: "png" });
-      fs.writeFileSync(file, bytes);
+      fs.writeFileSync(local, bytes);
+      try {
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        fs.writeFileSync(file, bytes);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (!message.includes("EAGAIN")) throw err;
+      }
       return;
     } catch (err) {
       last = err;
