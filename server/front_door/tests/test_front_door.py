@@ -96,6 +96,18 @@ def test_committed_config_matches_spec(offers):
     assert by_id["quarterly"]["enabled"] is False
 
 
+def test_legal_urls_are_removable_pointers(offers):
+    """DL-828. The legal pages are https strings in config, not a WordPress client."""
+    swapped = deepcopy(offers)
+    swapped["terms_url"] = "https://labs.example/terms"
+    swapped["privacy_url"] = "https://labs.example/privacy"
+    checked = validate_offers(swapped)
+    assert checked["terms_url"] == "https://labs.example/terms"
+    assert checked["privacy_url"] == "https://labs.example/privacy"
+    with pytest.raises(OfferConfigError):
+        validate_offers({**swapped, "terms_url": "http://fattail.ai/terms/"})
+
+
 def test_optional_flip_needs_no_code_change(offers, tmp_path):
     data = json.loads(OFFERS.read_text(encoding="utf-8"))
     monthly = next(p for p in data["products"] if p["id"] == "navigator-monthly")

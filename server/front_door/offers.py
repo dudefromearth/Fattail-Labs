@@ -190,6 +190,7 @@ def validate_offers(data: object) -> dict:
     return {
         "terms_version": terms.strip(),
         "privacy_notice_version": privacy.strip(),
+        # DL-828: opaque https pointers. Any host is valid. No WordPress client.
         "terms_url": _https_url("terms_url", data["terms_url"]),
         "privacy_url": _https_url("privacy_url", data["privacy_url"]),
         "woo_checkout_base": _https_url("woo_checkout_base", data["woo_checkout_base"]),
