@@ -79,6 +79,11 @@ def test_committed_config_matches_spec(offers):
     enabled = [p["id"] for p in offers["products"] if p["enabled"]]
     assert enabled == ["observer", "navigator-annual", "navigator-lifetime"]
     by_id = {p["id"]: p for p in offers["products"]}
+    assert offers["terms_url"] == "https://fattail.ai/terms/"
+    assert offers["privacy_url"] == "https://fattail.ai/privacy-policy/"
+    assert by_id["observer"]["disclosure"] == "Cancel any time. No refunds."
+    assert "No refunds" not in by_id["navigator-annual"]["disclosure"]
+    assert "No refunds" not in by_id["navigator-lifetime"]["disclosure"]
     assert by_id["observer"]["price_cents"] == 1700
     assert by_id["observer"]["interval"] == "week"
     assert by_id["observer"]["interval_count"] == 6

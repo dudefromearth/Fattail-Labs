@@ -141,6 +141,8 @@ def validate_offers(data: object) -> dict:
     for key in (
         "terms_version",
         "privacy_notice_version",
+        "terms_url",
+        "privacy_url",
         "woo_checkout_base",
         "woo_account_payment_methods",
         "feature_flag",
@@ -188,6 +190,8 @@ def validate_offers(data: object) -> dict:
     return {
         "terms_version": terms.strip(),
         "privacy_notice_version": privacy.strip(),
+        "terms_url": _https_url("terms_url", data["terms_url"]),
+        "privacy_url": _https_url("privacy_url", data["privacy_url"]),
         "woo_checkout_base": _https_url("woo_checkout_base", data["woo_checkout_base"]),
         "woo_account_payment_methods": _https_url(
             "woo_account_payment_methods", data["woo_account_payment_methods"]
@@ -256,6 +260,8 @@ def public_offers(offers: dict) -> dict:
     return {
         "terms_version": offers["terms_version"],
         "privacy_notice_version": offers["privacy_notice_version"],
+        "terms_url": offers["terms_url"],
+        "privacy_url": offers["privacy_url"],
         "feature_flag": offers["feature_flag"],
         "traffic_percent": offers["traffic_percent"],
         "kill_switch": offers["kill_switch"],

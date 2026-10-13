@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { applyDoorEnv, readOffersFile } from "@/lib/frontDoor/loadOffers";
 import { decideAdmission } from "@/lib/frontDoor/traffic";
+import { randomId } from "@/lib/frontDoor/webCrypto";
 
 export async function POST() {
   const offers = applyDoorEnv(readOffersFile());
-  const id = crypto.randomUUID();
+  const id = randomId();
   const decision = decideAdmission(offers, id);
   const response = NextResponse.json({
     visitor_key: id,

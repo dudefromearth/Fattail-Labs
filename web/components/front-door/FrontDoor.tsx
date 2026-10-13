@@ -8,7 +8,8 @@ import {
   type FrontDoorProduct,
   type SpeedBucket,
 } from "@/lib/frontDoor/offers";
-import { HOOK, PRIVACY_NOTICE, VSL_TRANSCRIPT, WEEKS } from "@/lib/frontDoor/copy";
+import { HOOK, VSL_TRANSCRIPT, WEEKS } from "@/lib/frontDoor/copy";
+import { randomId, sha256Hex } from "@/lib/frontDoor/webCrypto";
 
 export type DoorEntry = "order" | "start" | "watch" | "confirm";
 
@@ -63,12 +64,25 @@ function coarseFingerprint(): string {
   return `coarse-v1-${hash.toString(16)}`;
 }
 
-async function renderHash(text: string): Promise<string> {
-  const bytes = new TextEncoder().encode(text);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(digest))
-    .map((part) => part.toString(16).padStart(2, "0"))
-    .join("");
+function renderHash(text: string): Promise<string> {
+  return sha256Hex(text);
+}
+
+const FORM_KEY = "fd_form";
+
+function DoorHeader() {
+  return (
+    <header className="fd-head">
+      <p className="fd-kicker">FatTail</p>
+      <img
+        className="fd-logo"
+        src="/brand/fattail-labs-logo.jpg"
+        alt="FatTail Labs"
+        width={96}
+        height={96}
+      />
+    </header>
+  );
 }
 
 export default function FrontDoor({
@@ -92,6 +106,8 @@ export default function FrontDoor({
   const [orderId, setOrderId] = useState("");
   const [orderKey, setOrderKey] = useState("");
   const handed = useRef(false);
+  const keepDraft = useRef(true);
+  const [draftReady, setDraftReady] = useState(false);
 
   useEffect(() => {
     const existing = sessionStorage.getItem("fd_order_key");
@@ -99,10 +115,36 @@ export default function FrontDoor({
       setOrderKey(existing);
       return;
     }
-    const next = crypto.randomUUID();
+    const next = randomId();
     sessionStorage.setItem("fd_order_key", next);
     setOrderKey(next);
   }, []);
+
+  useEffect(() => {
+    if (entry !== "order") return;
+    try {
+      const raw = sessionStorage.getItem(FORM_KEY);
+      if (raw) {
+        const data = JSON.parse(raw) as Record<string, unknown>;
+        if (typeof data.email === "string") setEmail(data.email);
+        if (typeof data.firstName === "string") setFirstName(data.firstName);
+        if (typeof data.lastName === "string") setLastName(data.lastName);
+        if (typeof data.productId === "string" && data.productId) setProductId(data.productId);
+        if (data.terms === true) setTerms(true);
+      }
+    } catch {
+      /* a damaged draft is ignored */
+    }
+    setDraftReady(true);
+  }, [entry]);
+
+  useEffect(() => {
+    if (entry !== "order" || !draftReady || !keepDraft.current) return;
+    sessionStorage.setItem(
+      FORM_KEY,
+      JSON.stringify({ email, firstName, lastName, productId, terms }),
+    );
+  }, [draftReady, email, entry, firstName, lastName, productId, terms]);
 
   useEffect(() => {
     let cancelled = false;
@@ -258,8 +300,9 @@ export default function FrontDoor({
         selected.name,
         formatPrice(selected),
         selected.disclosure,
+        offers.terms_url,
+        offers.privacy_url,
         offers.terms_version,
-        PRIVACY_NOTICE,
       ].join("\n");
       const hash = await renderHash(seen);
       await postJson("/api/front-door/evidence", {
@@ -286,6 +329,8 @@ export default function FrontDoor({
         product_id: selected.id,
       });
       handed.current = true;
+      keepDraft.current = false;
+      sessionStorage.removeItem(FORM_KEY);
       sessionStorage.setItem("fd_handed", "1");
       window.location.assign(String(handoff.url));
     } catch (err) {
@@ -298,7 +343,7 @@ export default function FrontDoor({
     return (
       <div className="fd" data-testid="fd-root" data-entry={entry} data-admitted="0">
         <div className="fd-wrap">
-          <p className="fd-kicker">FatTail</p>
+          <DoorHeader />
           <h1>This page is not open</h1>
           <p className="fd-detail" data-testid="fd-closed">
             The front door is switched off. Nothing here sends you anywhere else.
@@ -318,7 +363,7 @@ export default function FrontDoor({
       data-admitted="1"
     >
       <div className="fd-wrap">
-        <p className="fd-kicker">FatTail</p>
+        <DoorHeader />
         {entry === "start" && <Sales offers={offers} speed={speed} />}
         {entry === "watch" && <Watch offers={offers} speed={speed} />}
         {entry === "confirm" && (
@@ -327,7 +372,6 @@ export default function FrontDoor({
         {entry === "order" && (
           <form data-testid="fd-order-form" onSubmit={submit} noValidate>
             <h1>{view?.headline || "Order"}</h1>
-            <p className="fd-detail">{view?.detail || "Checking membership before a buy button is shown."}</p>
             {view?.nudge && (
               <div className="fd-nudge" data-testid="fd-nudge" role="status">
                 <strong>{view.nudge.title}</strong>
@@ -342,42 +386,49 @@ export default function FrontDoor({
                 {view.headline}
               </p>
             )}
-            <label className="fd-field">
-              Email
-              <input
-                data-testid="fd-email"
-                type="email"
-                autoComplete="email"
-                inputMode="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                onBlur={() => checkEmail(email)}
-                required
-              />
-            </label>
-            <label className="fd-field">
-              First name
-              <input
-                data-testid="fd-first-name"
-                type="text"
-                autoComplete="given-name"
-                value={firstName}
-                onChange={(event) => setFirstName(event.target.value)}
-                required
-              />
-            </label>
-            <label className="fd-field">
-              Last name
-              <input
-                data-testid="fd-last-name"
-                type="text"
-                autoComplete="family-name"
-                value={lastName}
-                onChange={(event) => setLastName(event.target.value)}
-                required
-              />
-            </label>
-            <div className="fd-card" role="radiogroup" aria-label="Products">
+            <div className="fd-card">
+              <div className="fd-float">
+                <input
+                  id="fd-email"
+                  data-testid="fd-email"
+                  type="email"
+                  autoComplete="email"
+                  inputMode="email"
+                  placeholder=" "
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  onBlur={() => checkEmail(email)}
+                  required
+                />
+                <label htmlFor="fd-email">Email</label>
+              </div>
+              <div className="fd-float">
+                <input
+                  id="fd-first-name"
+                  data-testid="fd-first-name"
+                  type="text"
+                  autoComplete="given-name"
+                  placeholder=" "
+                  value={firstName}
+                  onChange={(event) => setFirstName(event.target.value)}
+                  required
+                />
+                <label htmlFor="fd-first-name">First name</label>
+              </div>
+              <div className="fd-float">
+                <input
+                  id="fd-last-name"
+                  data-testid="fd-last-name"
+                  type="text"
+                  autoComplete="family-name"
+                  placeholder=" "
+                  value={lastName}
+                  onChange={(event) => setLastName(event.target.value)}
+                  required
+                />
+                <label htmlFor="fd-last-name">Last name</label>
+              </div>
+              <div className="fd-choices" role="radiogroup" aria-label="Products">
               {choices.map((product) => {
                 const on = product.id === (selected?.id || "");
                 return (
@@ -403,21 +454,20 @@ export default function FrontDoor({
                   </label>
                 );
               })}
+              </div>
+              <label className="fd-check" data-testid="fd-terms">
+                <input
+                  id="fd-terms-box"
+                  type="checkbox"
+                  checked={terms}
+                  onChange={(event) => setTerms(event.target.checked)}
+                />
+                <span>
+                  I accept the <a href={offers.terms_url}>terms</a> and the{" "}
+                  <a href={offers.privacy_url}>privacy policy</a>.
+                </span>
+              </label>
             </div>
-            <p className="fd-notice" data-testid="fd-privacy">
-              {PRIVACY_NOTICE}
-            </p>
-            <label className="fd-check" data-testid="fd-terms">
-              <input
-                type="checkbox"
-                checked={terms}
-                onChange={(event) => setTerms(event.target.checked)}
-              />
-              <span>
-                I accept the terms ({offers.terms_version}) and the privacy notice (
-                {offers.privacy_notice_version}). No refunds.
-              </span>
-            </label>
             {error && (
               <p className="fd-error" data-testid="fd-error" role="alert">
                 {error}

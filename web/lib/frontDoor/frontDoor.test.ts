@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { bucketFromSignals, entryForReferrer, formatPrice } from "./offers";
 import type { FrontDoorProduct } from "./offers";
 import { bucketFor, decideAdmission } from "./traffic";
+import { randomId, sha256HexFallback } from "./webCrypto";
 import type { FrontDoorOffers } from "./offers";
 
 const observer: FrontDoorProduct = {
@@ -71,6 +72,13 @@ const lifetime: FrontDoorProduct = {
   assert.equal(decideAdmission({ ...offers, traffic_percent: 100, kill_switch: true }, "k").admitted, false);
   assert.equal(decideAdmission({ ...offers, traffic_percent: 50 }, "visitor-stable-key").admitted, false);
   assert.equal(decideAdmission({ ...offers, traffic_percent: 90 }, "visitor-stable-key").admitted, true);
+}
+
+{
+  const empty = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+  assert.equal(sha256HexFallback(""), empty);
+  assert.equal(sha256HexFallback("abc"), createHash("sha256").update("abc").digest("hex"));
+  assert.match(randomId(), /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
 }
 
 console.log("front-door unit checks ok");

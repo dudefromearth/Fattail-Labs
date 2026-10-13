@@ -19,6 +19,7 @@ export default defineConfig({
     { name: "iphone", use: { ...devices["iPhone 14"] } },
     { name: "pixel", use: { ...devices["Pixel 7"] } },
     { name: "pixel-slow-3g", use: { ...devices["Pixel 7"] } },
+    { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1280, height: 800 } } },
   ],
   webServer: {
     command: "npx next dev --webpack --hostname 127.0.0.1 --port 3210",

@@ -51,6 +51,8 @@ export function readOffersFile(path = offersFilePath()): FrontDoorOffers {
   const data = JSON.parse(readFileSync(path, "utf8")) as {
     terms_version: string;
     privacy_notice_version: string;
+    terms_url: string;
+    privacy_url: string;
     feature_flag: boolean;
     traffic_percent: number;
     kill_switch: boolean;
@@ -60,6 +62,9 @@ export function readOffersFile(path = offersFilePath()): FrontDoorOffers {
   };
   if (!data.terms_version || !data.privacy_notice_version) {
     throw new Error("front door offers are missing terms or privacy versions");
+  }
+  if (!data.terms_url || !data.privacy_url) {
+    throw new Error("front door offers are missing terms or privacy urls");
   }
   if (!Array.isArray(data.products) || data.products.length === 0) {
     throw new Error("front door offers have no products");
@@ -83,6 +88,8 @@ export function readOffersFile(path = offersFilePath()): FrontDoorOffers {
   return {
     terms_version: data.terms_version,
     privacy_notice_version: data.privacy_notice_version,
+    terms_url: data.terms_url,
+    privacy_url: data.privacy_url,
     feature_flag: data.feature_flag,
     traffic_percent: data.traffic_percent,
     kill_switch: data.kill_switch,

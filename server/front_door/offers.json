@@ -1,6 +1,8 @@
 {
   "terms_version": "2026-10-12",
   "privacy_notice_version": "2026-10-12",
+  "terms_url": "https://fattail.ai/terms/",
+  "privacy_url": "https://fattail.ai/privacy-policy/",
   "woo_checkout_base": "https://fattail.ai/checkout/",
   "woo_account_payment_methods": "https://fattail.ai/my-account/payment-methods/",
   "feature_flag": true,
@@ -21,7 +23,7 @@
       "interval_count": 6,
       "woo_product_id": 1718,
       "display_order": 10,
-      "disclosure": "$17 per week for 6 weeks. No refunds. A training program. It does not convert to Navigator on its own."
+      "disclosure": "Cancel any time. No refunds."
     },
     {
       "id": "navigator-annual",
@@ -36,7 +38,7 @@
       "interval_count": 1,
       "woo_product_id": 7864,
       "display_order": 20,
-      "disclosure": "$1,997 per year. No refunds. A separate purchase from Observer."
+      "disclosure": "$1,997 per year. A separate purchase from Observer."
     },
     {
       "id": "navigator-lifetime",
@@ -51,7 +53,7 @@
       "interval_count": null,
       "woo_product_id": 9816,
       "display_order": 30,
-      "disclosure": "One-time. The amount is confirmed on the secure checkout before you pay. No refunds."
+      "disclosure": "One-time. The amount is confirmed on the secure checkout before you pay."
     },
     {
       "id": "activator",

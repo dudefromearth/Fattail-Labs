@@ -19,6 +19,8 @@ export type FrontDoorProduct = {
 export type FrontDoorOffers = {
   terms_version: string;
   privacy_notice_version: string;
+  terms_url: string;
+  privacy_url: string;
   feature_flag: boolean;
   traffic_percent: number;
   kill_switch: boolean;
