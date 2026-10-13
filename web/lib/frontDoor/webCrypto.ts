@@ -90,12 +90,25 @@ function hexBytes(bytes: Uint8Array): string {
     .join("");
 }
 
+function subtleDigest(): SubtleCrypto["digest"] | null {
+  try {
+    const cryptoObj = globalThis.crypto;
+    if (!cryptoObj || !("subtle" in cryptoObj)) return null;
+    const subtle = cryptoObj.subtle;
+    if (!subtle || typeof subtle.digest !== "function") return null;
+    return subtle.digest.bind(subtle);
+  } catch {
+    // Firefox on plain HTTP: crypto.subtle is undefined, and reading digest throws.
+    return null;
+  }
+}
+
 export async function sha256Hex(text: string): Promise<string> {
-  const subtle = globalThis.crypto?.subtle;
-  if (subtle && typeof subtle.digest === "function") {
+  const digest = subtleDigest();
+  if (digest) {
     try {
-      const digest = await subtle.digest("SHA-256", new TextEncoder().encode(text));
-      return hexBytes(new Uint8Array(digest));
+      const bytes = await digest("SHA-256", new TextEncoder().encode(text));
+      return hexBytes(new Uint8Array(bytes));
     } catch {
       /* insecure context */
     }

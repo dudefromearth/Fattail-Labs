@@ -4,7 +4,7 @@ import { bucketFromSignals, entryForReferrer, formatPrice } from "./offers";
 import type { FrontDoorProduct } from "./offers";
 import { bucketFor, decideAdmission } from "./traffic";
 import { clearFormDraft, readFormDraft, writeFormDraft, FORM_DRAFT_KEY } from "./formDraft";
-import { randomId, sha256HexFallback, UUID_V4 } from "./webCrypto";
+import { randomId, sha256Hex, sha256HexFallback, UUID_V4 } from "./webCrypto";
 import type { FrontDoorOffers } from "./offers";
 
 const observer: FrontDoorProduct = {
@@ -80,6 +80,39 @@ const lifetime: FrontDoorProduct = {
   assert.equal(sha256HexFallback(""), empty);
   assert.equal(sha256HexFallback("abc"), createHash("sha256").update("abc").digest("hex"));
   assert.match(randomId(), UUID_V4);
+}
+
+function assertPlainHttpHash(): Promise<void> {
+  const previous = globalThis.crypto;
+  const expected = createHash("sha256").update("checkout").digest("hex");
+  const removed = {
+    getRandomValues(target: Uint8Array) {
+      return target;
+    },
+  };
+  const firefox = {
+    get subtle(): undefined {
+      return undefined;
+    },
+    getRandomValues(target: Uint8Array) {
+      return target;
+    },
+  };
+  Object.defineProperty(globalThis, "crypto", { configurable: true, writable: true, value: removed });
+  return sha256Hex("checkout")
+    .then((hash) => {
+      assert.equal("subtle" in removed, false);
+      assert.equal(hash, expected);
+      Object.defineProperty(globalThis, "crypto", { configurable: true, writable: true, value: firefox });
+      assert.equal(firefox.subtle, undefined);
+      return sha256Hex("checkout");
+    })
+    .then((hash) => {
+      assert.equal(hash, expected);
+    })
+    .finally(() => {
+      Object.defineProperty(globalThis, "crypto", { configurable: true, writable: true, value: previous });
+    });
 }
 
 {
@@ -193,4 +226,11 @@ function memoryStorage(): Storage {
   assert.equal(storage.getItem(FORM_DRAFT_KEY), null);
 }
 
-console.log("front-door unit checks ok");
+assertPlainHttpHash()
+  .then(() => {
+    console.log("front-door unit checks ok");
+  })
+  .catch((err: unknown) => {
+    console.error(err);
+    process.exit(1);
+  });

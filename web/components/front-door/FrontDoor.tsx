@@ -66,6 +66,7 @@ function coarseFingerprint(): string {
 }
 
 function renderHash(text: string): Promise<string> {
+  // Always a SHA-256. Plain HTTP has no crypto.subtle, so the bundled hash is used.
   return sha256Hex(text);
 }
 
