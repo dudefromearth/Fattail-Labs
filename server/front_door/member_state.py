@@ -173,7 +173,7 @@ def unchecked_view() -> dict[str, Any]:
         "state": "unchecked",
         "view": "unchecked",
         "headline": "Enter your email",
-        "detail": "We check membership on this email before showing a buy button.",
+        "detail": "",
         "can_buy": False,
         "products": [],
         "nudge": None,

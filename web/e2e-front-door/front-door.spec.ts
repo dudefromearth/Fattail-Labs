@@ -193,6 +193,8 @@ async function checkout(page: Page, name: string) {
   await expect(page.getByTestId("fd-product-navigator-annual")).not.toContainText("No refunds");
   await expect(page.getByTestId("fd-product-navigator-lifetime")).not.toContainText("No refunds");
   await expect(page.getByText("Checking membership")).toHaveCount(0);
+  await expect(page.getByText("before showing a buy button")).toHaveCount(0);
+  await expect(page.getByText("We check membership on this email")).toHaveCount(0);
   await expect(page.getByRole("img", { name: "FatTail Labs" })).toHaveAttribute(
     "src",
     "/brand/fattail-labs-logo.jpg",

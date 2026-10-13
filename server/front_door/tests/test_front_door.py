@@ -325,6 +325,7 @@ def test_api_five_states_handoff_evidence_and_split(client, offers):
     unchecked = http.post("/api/front-door/member-state", json={})
     assert unchecked.json()["state"] == "unchecked"
     assert unchecked.json()["can_buy"] is False
+    assert unchecked.json()["detail"] == ""
 
     down = http.post("/api/front-door/member-state", json={"email": "person@example.com"})
     assert down.json()["view"] == "sign_in_to_check"
