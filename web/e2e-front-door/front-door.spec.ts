@@ -120,6 +120,37 @@ async function checkout(page: Page, name: string) {
   await expect(page.locator("#fd-terms-box")).toHaveAttribute("type", "checkbox");
   await expect(page.locator("#fd-terms-box")).toHaveAttribute("aria-describedby", "fd-terms-notice");
   await expect(page.locator("#fd-terms-box")).not.toBeChecked();
+  await expect(page.getByText("We record this checkout")).toHaveCount(0);
+  await expect(page.getByTestId("fd-submit")).toHaveText("Continue to checkout");
+  await expect(page.getByTestId("fd-product-navigator-annual")).toContainText("$1,997/year");
+  await expect(page.getByTestId("fd-product-navigator-annual")).toContainText(
+    "$1,997 per year. A separate purchase from Observer.",
+  );
+  await expect(page.getByTestId("fd-product-navigator-lifetime")).toContainText(
+    "One-time · amount confirmed at checkout",
+  );
+  await expect(page.getByTestId("fd-product-navigator-lifetime")).toContainText(
+    "The amount is confirmed on the secure checkout before you pay.",
+  );
+  const layout = await page.evaluate(() => {
+    const card = document.querySelector(".fd-card");
+    const choices = card?.querySelector(":scope > .fd-choices") ?? null;
+    const terms = document.querySelector("[data-testid=fd-terms]");
+    const email = document.querySelector("#fd-email");
+    const first = document.querySelector("#fd-first-name");
+    const last = document.querySelector("#fd-last-name");
+    if (!card || !choices || !terms || !email || !first || !last) return "missing";
+    if (!card.contains(email) || !card.contains(first) || !card.contains(last)) return "fields-outside";
+    if (terms.parentElement !== card) return "terms-outside";
+    let node: ChildNode | null = choices.nextSibling;
+    while (node && node !== terms) {
+      if (node.nodeType === Node.ELEMENT_NODE) return "element-between";
+      if (node.nodeType === Node.TEXT_NODE && (node.textContent || "").trim()) return "text-between";
+      node = node.nextSibling;
+    }
+    return node === terms ? "ok" : "terms-not-next";
+  });
+  expect(layout).toBe("ok");
   await page.getByTestId("fd-link-terms").evaluate((el) => {
     el.addEventListener("click", (event) => event.preventDefault(), { capture: true });
   });
