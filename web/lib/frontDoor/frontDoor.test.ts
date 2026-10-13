@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { bucketFromSignals, entryForReferrer, formatPrice } from "./offers";
 import type { FrontDoorProduct } from "./offers";
 import { bucketFor, decideAdmission } from "./traffic";
+import { clearFormDraft, readFormDraft, writeFormDraft, FORM_DRAFT_KEY } from "./formDraft";
 import { randomId, sha256HexFallback } from "./webCrypto";
 import type { FrontDoorOffers } from "./offers";
 
@@ -79,6 +80,83 @@ const lifetime: FrontDoorProduct = {
   assert.equal(sha256HexFallback(""), empty);
   assert.equal(sha256HexFallback("abc"), createHash("sha256").update("abc").digest("hex"));
   assert.match(randomId(), /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+}
+
+function memoryStorage(): Storage {
+  const map = new Map<string, string>();
+  return {
+    get length() {
+      return map.size;
+    },
+    clear: () => map.clear(),
+    getItem: (key) => (map.has(key) ? map.get(key)! : null),
+    key: (index) => [...map.keys()][index] ?? null,
+    removeItem: (key) => {
+      map.delete(key);
+    },
+    setItem: (key, value) => {
+      map.set(key, String(value));
+    },
+  };
+}
+
+{
+  const storage = memoryStorage();
+  const local = memoryStorage();
+  writeFormDraft(
+    storage,
+    {
+      email: "buyer@example.com",
+      firstName: "Ada",
+      lastName: "Buyer",
+      productId: "navigator-annual",
+      terms: true,
+    },
+    "2026-10-12",
+  );
+  assert.equal(local.getItem(FORM_DRAFT_KEY), null);
+  const saved = JSON.parse(storage.getItem(FORM_DRAFT_KEY) || "{}") as Record<string, unknown>;
+  assert.deepEqual(Object.keys(saved).sort(), [
+    "email",
+    "firstName",
+    "lastName",
+    "productId",
+    "terms",
+    "termsVersion",
+  ]);
+  assert.equal(saved.card, undefined);
+  const restored = readFormDraft(storage, "2026-10-12");
+  assert.deepEqual(restored, {
+    email: "buyer@example.com",
+    firstName: "Ada",
+    lastName: "Buyer",
+    productId: "navigator-annual",
+    terms: true,
+  });
+  const stale = readFormDraft(storage, "2026-10-13");
+  assert.equal(stale && stale.terms, false);
+  assert.equal(stale && stale.email, "buyer@example.com");
+  storage.setItem(
+    FORM_DRAFT_KEY,
+    JSON.stringify({
+      email: "buyer@example.com",
+      firstName: "Ada",
+      lastName: "Buyer",
+      productId: "observer",
+      terms: true,
+      termsVersion: "2026-10-12",
+      card: "4242424242424242",
+      address: "1 Main",
+    }),
+  );
+  const stripped = readFormDraft(storage, "2026-10-12");
+  assert.equal(stripped && "card" in stripped, false);
+  assert.equal(stripped && stripped.productId, "observer");
+  assert.equal(stripped && stripped.terms, true);
+  storage.setItem(FORM_DRAFT_KEY, "{");
+  assert.equal(readFormDraft(storage, "2026-10-12"), null);
+  clearFormDraft(storage);
+  assert.equal(storage.getItem(FORM_DRAFT_KEY), null);
 }
 
 console.log("front-door unit checks ok");

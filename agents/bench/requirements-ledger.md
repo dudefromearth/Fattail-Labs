@@ -23,6 +23,7 @@ Status: `OPEN` · `AP-1` · `WITHDRAWN`
 | **REQ-013** | 2026-09-28 | Runner live ladder | OPEN · **ACCEPTED** | Plan v1.0 accepted. Reach path `:5055`. W0 dispatched. Canary is Coach plus one admin; ids later; no member ids. See row below. |
 | **REQ-014** | 2026-09-29 | Member market path | OPEN · **ACCEPTED** | Plan v1.0 accepted. Q1 `:4012`. Q2 one cut per phase. Q3 today's keys, no new `stale`. W0 dispatched. Canary is Coach plus one admin; id strings not yet on file. See row below. |
 | **REQ-030** | 2026-10-12 | Front door | OPEN · **BUILD** | Mobile product page + checkout, first build. See row below. |
+| **REQ-031** | 2026-10-12 | Front door form | OPEN · **BUILD** | Same-session order form memory. See row below. |
 
 ### REQ-001 — ≥ 90 days of price on the chart (VP confirmation blocker)
 
@@ -206,6 +207,20 @@ The spec text he supplied is the file. It is not restated here.
 **Also ruled in the same GO:** no human gating on this run; Delta and Kilo gate; B6 stays open so WooCommerce keeps the charge; stop only for a critical issue that needs Coach.
 
 **Acceptance:** the new URLs complete apply → Woo handoff → confirmation on iPhone and Pixel profiles, including a slow-3G run; five member states do not show a buy button they do not need; the split defaults to 0% and can be killed. Coach AP-1 still required to close the row. Not closed.
+
+**Closes:** AP-1 or Coach withdraw. Not closed.
+
+### REQ-031 — Front door form memory
+
+**Captured:** 2026-10-12. **BUILD.** Same branch as REQ-030.
+
+**Coach wording (RL-1, preserved):**
+
+> when a buyer leaves the order form for the six-weeks description, the short video, the terms or privacy pages, and comes back in the same session, the form must remember what they entered: email, first name, last name, selected plan, and the terms checkbox if you judge that safe (otherwise re-ask, and say which you chose). Today only fd_order_key, fd_handed and fd_visitor_attempt are kept in sessionStorage; the fields aren't. Store them in sessionStorage only, never localStorage, so the data is cleared when the tab closes. Use a single fd_form key, restore it on mount without a hydration mismatch, clear it after a successful handoff and on the confirm page, and never store payment data.
+
+**Judgment on the checkbox:** the terms checkbox is restored in the same tab when `termsVersion` in the draft matches the current `terms_version`. A newer terms version leaves the box unchecked so the buyer accepts again. Payment fields are not stored.
+
+**Acceptance:** unit checks for `fd_form`, and a Playwright round trip (fill, open the video, return) on iPhone and Pixel. Not closed.
 
 **Closes:** AP-1 or Coach withdraw. Not closed.
 

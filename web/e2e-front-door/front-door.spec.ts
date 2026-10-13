@@ -220,6 +220,43 @@ test("slow connection keeps the video off and still reaches checkout", async ({ 
   await shot(page, path.join(shotDir, "pixel-slow-3g-watch.png"), true);
 });
 
+test("order form remembers the draft after the video", async ({ page }, info) => {
+  test.skip(
+    info.project.name !== "iphone" && info.project.name !== "pixel",
+    "draft round trip runs on iPhone and Pixel",
+  );
+  await install(page);
+  await page.goto("/front-door/order", { waitUntil: "domcontentloaded" });
+  await expect(page.getByTestId("fd-submit")).toBeEnabled({ timeout: 90_000 });
+  await page.getByTestId("fd-email").fill("buyer@example.com");
+  await page.getByTestId("fd-first-name").fill("Ada");
+  await page.getByTestId("fd-last-name").fill("Buyer");
+  await page.getByTestId("fd-product-navigator-annual").locator("input").check();
+  await page.locator("#fd-terms-box").check();
+  await expect
+    .poll(async () => page.evaluate(() => sessionStorage.getItem("fd_form")))
+    .toContain("navigator-annual");
+  const stored = await page.evaluate(() => sessionStorage.getItem("fd_form"));
+  expect(stored).toContain("buyer@example.com");
+  expect(stored).toContain("Ada");
+  expect(stored).toContain("Buyer");
+  expect(stored && stored.toLowerCase()).not.toContain("card");
+  expect(await page.evaluate(() => localStorage.getItem("fd_form"))).toBeNull();
+  await page.getByTestId("fd-link-watch").click();
+  await expect(page.locator("[data-entry=watch]")).toBeVisible();
+  await page.goto("/front-door/order", { waitUntil: "domcontentloaded" });
+  await expect(page.getByTestId("fd-email")).toHaveValue("buyer@example.com");
+  await expect(page.getByTestId("fd-first-name")).toHaveValue("Ada");
+  await expect(page.getByTestId("fd-last-name")).toHaveValue("Buyer");
+  await expect(page.getByTestId("fd-product-navigator-annual").locator("input")).toBeChecked();
+  await expect(page.locator("#fd-terms-box")).toBeChecked();
+  await page.goto("/front-door/confirm?order_id=FD-1001&product=navigator-annual", {
+    waitUntil: "domcontentloaded",
+  });
+  await expect(page.getByTestId("fd-success")).toBeVisible({ timeout: 30_000 });
+  await expect.poll(async () => page.evaluate(() => sessionStorage.getItem("fd_form"))).toBeNull();
+});
+
 test("member states, links, and referrer routing", async ({ page }, info) => {
   test.skip(info.project.name !== "pixel", "run the matrix once");
   await install(page, {

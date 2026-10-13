@@ -9,6 +9,7 @@ import {
   type SpeedBucket,
 } from "@/lib/frontDoor/offers";
 import { HOOK, VSL_TRANSCRIPT, WEEKS } from "@/lib/frontDoor/copy";
+import { clearFormDraft, readFormDraft, writeFormDraft } from "@/lib/frontDoor/formDraft";
 import { randomId, sha256Hex } from "@/lib/frontDoor/webCrypto";
 
 export type DoorEntry = "order" | "start" | "watch" | "confirm";
@@ -68,8 +69,6 @@ function renderHash(text: string): Promise<string> {
   return sha256Hex(text);
 }
 
-const FORM_KEY = "fd_form";
-
 function DoorHeader() {
   return (
     <header className="fd-head">
@@ -121,30 +120,31 @@ export default function FrontDoor({
   }, []);
 
   useEffect(() => {
+    if (entry === "confirm") {
+      clearFormDraft(sessionStorage);
+      return;
+    }
     if (entry !== "order") return;
-    try {
-      const raw = sessionStorage.getItem(FORM_KEY);
-      if (raw) {
-        const data = JSON.parse(raw) as Record<string, unknown>;
-        if (typeof data.email === "string") setEmail(data.email);
-        if (typeof data.firstName === "string") setFirstName(data.firstName);
-        if (typeof data.lastName === "string") setLastName(data.lastName);
-        if (typeof data.productId === "string" && data.productId) setProductId(data.productId);
-        if (data.terms === true) setTerms(true);
-      }
-    } catch {
-      /* a damaged draft is ignored */
+    // Read after mount so the server HTML and the first client render stay empty.
+    const draft = readFormDraft(sessionStorage, offers.terms_version);
+    if (draft) {
+      setEmail(draft.email);
+      setFirstName(draft.firstName);
+      setLastName(draft.lastName);
+      if (draft.productId) setProductId(draft.productId);
+      setTerms(draft.terms);
     }
     setDraftReady(true);
-  }, [entry]);
+  }, [entry, offers.terms_version]);
 
   useEffect(() => {
     if (entry !== "order" || !draftReady || !keepDraft.current) return;
-    sessionStorage.setItem(
-      FORM_KEY,
-      JSON.stringify({ email, firstName, lastName, productId, terms }),
+    writeFormDraft(
+      sessionStorage,
+      { email, firstName, lastName, productId, terms },
+      offers.terms_version,
     );
-  }, [draftReady, email, entry, firstName, lastName, productId, terms]);
+  }, [draftReady, email, entry, firstName, lastName, offers.terms_version, productId, terms]);
 
   useEffect(() => {
     let cancelled = false;
@@ -330,7 +330,7 @@ export default function FrontDoor({
       });
       handed.current = true;
       keepDraft.current = false;
-      sessionStorage.removeItem(FORM_KEY);
+      clearFormDraft(sessionStorage);
       sessionStorage.setItem("fd_handed", "1");
       window.location.assign(String(handoff.url));
     } catch (err) {
