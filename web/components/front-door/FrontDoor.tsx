@@ -348,6 +348,7 @@ export default function FrontDoor({
           <p className="fd-detail" data-testid="fd-closed">
             The front door is switched off. Nothing here sends you anywhere else.
           </p>
+          <LegalFooter offers={offers} />
         </div>
       </div>
     );
@@ -455,18 +456,25 @@ export default function FrontDoor({
                 );
               })}
               </div>
-              <label className="fd-check" data-testid="fd-terms">
+              <div className="fd-check" data-testid="fd-terms">
                 <input
                   id="fd-terms-box"
                   type="checkbox"
                   checked={terms}
                   onChange={(event) => setTerms(event.target.checked)}
                 />
-                <span>
-                  I accept the <a href={offers.terms_url}>terms</a> and the{" "}
-                  <a href={offers.privacy_url}>privacy policy</a>.
+                <span className="fd-check-copy">
+                  <label htmlFor="fd-terms-box">I accept the</label>
+                  <LegalLink href={offers.terms_url} testId="fd-link-terms">
+                    terms
+                  </LegalLink>
+                  <label htmlFor="fd-terms-box">and the</label>
+                  <LegalLink href={offers.privacy_url} testId="fd-link-privacy">
+                    privacy notice
+                  </LegalLink>
+                  <label htmlFor="fd-terms-box">.</label>
                 </span>
-              </label>
+              </div>
             </div>
             {error && (
               <p className="fd-error" data-testid="fd-error" role="alert">
@@ -504,8 +512,45 @@ export default function FrontDoor({
             </a>
           )}
         </nav>
+        <LegalFooter offers={offers} />
       </div>
     </div>
+  );
+}
+
+function LegalLink({
+  href,
+  testId,
+  children,
+}: {
+  href: string;
+  testId: string;
+  children: string;
+}) {
+  return (
+    <a
+      className="fd-legal"
+      data-testid={testId}
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(event) => event.stopPropagation()}
+    >
+      {children}
+    </a>
+  );
+}
+
+function LegalFooter({ offers }: { offers: FrontDoorOffers }) {
+  return (
+    <footer className="fd-legal-footer">
+      <LegalLink href={offers.terms_url} testId="fd-footer-terms">
+        terms
+      </LegalLink>
+      <LegalLink href={offers.privacy_url} testId="fd-footer-privacy">
+        privacy notice
+      </LegalLink>
+    </footer>
   );
 }
 

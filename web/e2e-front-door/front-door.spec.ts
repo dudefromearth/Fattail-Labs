@@ -115,14 +115,33 @@ async function checkout(page: Page, name: string) {
   const box = await page.locator("#fd-terms-box").boundingBox();
   expect(box && box.width).toBeGreaterThanOrEqual(36);
   expect(box && box.height).toBeGreaterThanOrEqual(36);
-  await expect(page.locator('[data-testid=fd-terms] a').nth(0)).toHaveAttribute(
-    "href",
-    "https://fattail.ai/terms/",
-  );
-  await expect(page.locator('[data-testid=fd-terms] a').nth(1)).toHaveAttribute(
-    "href",
-    "https://fattail.ai/privacy-policy/",
-  );
+  await expect(page.locator("#fd-terms-box")).not.toBeChecked();
+  await page.getByTestId("fd-link-terms").evaluate((el) => {
+    el.addEventListener("click", (event) => event.preventDefault(), { capture: true });
+  });
+  await page.getByTestId("fd-link-privacy").evaluate((el) => {
+    el.addEventListener("click", (event) => event.preventDefault(), { capture: true });
+  });
+  await page.getByTestId("fd-link-terms").click();
+  await page.getByTestId("fd-link-privacy").click();
+  await expect(page.locator("#fd-terms-box")).not.toBeChecked();
+  for (const id of ["fd-link-terms", "fd-footer-terms"]) {
+    const link = page.getByTestId(id);
+    await expect(link).toHaveAttribute("href", "https://fattail.ai/terms/");
+    await expect(link).toHaveAttribute("target", "_blank");
+    const box = await link.boundingBox();
+    expect(box && box.height).toBeGreaterThanOrEqual(44);
+    expect(box && box.width).toBeGreaterThanOrEqual(44);
+  }
+  for (const id of ["fd-link-privacy", "fd-footer-privacy"]) {
+    const link = page.getByTestId(id);
+    await expect(link).toHaveAttribute("href", "https://fattail.ai/privacy-policy/");
+    await expect(link).toHaveAttribute("target", "_blank");
+    await expect(link).toHaveText("privacy notice");
+    const box = await link.boundingBox();
+    expect(box && box.height).toBeGreaterThanOrEqual(44);
+    expect(box && box.width).toBeGreaterThanOrEqual(44);
+  }
   await expect(page.getByTestId("fd-product-observer")).toContainText("$17/week");
   await expect(page.getByTestId("fd-product-observer")).toContainText("Cancel any time. No refunds.");
   await expect(page.getByTestId("fd-product-navigator-annual")).not.toContainText("No refunds");

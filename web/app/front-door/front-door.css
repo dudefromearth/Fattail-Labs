@@ -263,9 +263,36 @@
   flex: 0 0 auto;
 }
 
-.fd-check a {
+.fd-check-copy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 6px;
+  flex: 1;
+}
+
+.fd-check-copy label {
+  cursor: pointer;
+}
+
+.fd-legal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 4px;
   color: var(--fd-hue);
   font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.fd-legal-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 16px;
 }
 
 .fd-bar {
