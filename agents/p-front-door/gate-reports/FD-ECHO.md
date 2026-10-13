@@ -8,7 +8,7 @@
 ## What the screenshots show
 
 Before: `screenshots/before-iphone.png`, `before-pixel.png`, `before-desktop.png` (flat canvas).
-After: `screenshots/after-iphone.png`, `after-pixel.png`, `after-desktop.png`.
+After: `screenshots/after-iphone.png`, `after-pixel.png`, `after-desktop.png`. The order shots in this folder were recaptured with the dispute paragraph off the form and the acceptance row inside the product card.
 
 Header text stays on the left. The logo on the right is the existing file `web/public/brand/fattail-labs-logo.jpg` (the same asset `SiteHeader` uses), alt text "FatTail Labs", displayed at `clamp(32px, 10vw, 40px)` with `object-fit: contain`.
 
