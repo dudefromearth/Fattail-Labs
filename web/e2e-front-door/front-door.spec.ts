@@ -66,15 +66,16 @@ async function install(page: Page, view: object = NONE) {
 
 async function shot(page: Page, file: string, fullPage = false) {
   let last: unknown;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < 4; attempt += 1) {
     try {
-      await page.screenshot({ path: file, fullPage, timeout: 20_000 });
+      const bytes = await page.screenshot({ fullPage, timeout: 20_000, type: "png" });
+      fs.writeFileSync(file, bytes);
       return;
     } catch (err) {
       last = err;
       const message = err instanceof Error ? err.message : String(err);
-      if (!message.includes("EAGAIN") || attempt === 2) throw err;
-      await page.waitForTimeout(300);
+      if (!message.includes("EAGAIN") || attempt === 3) throw err;
+      await page.waitForTimeout(400);
     }
   }
   throw last;
@@ -208,7 +209,8 @@ async function checkout(page: Page, name: string) {
   expect(selectedShadow).not.toBe("none");
   expect(otherShadow).not.toBe("none");
   expect(selectedShadow).not.toBe(otherShadow);
-  await page.getByTestId("fd-terms").locator("input").check();
+  await page.getByTestId("fd-terms-mark").click();
+  await expect(page.locator("#fd-terms-box")).toBeChecked();
   await page.getByTestId("fd-submit").click();
   await page.waitForURL("**/fattail.test/**");
   await shot(page, path.join(shotDir, `${name}-woo.png`));
@@ -267,7 +269,8 @@ test("order form remembers the draft after the video", async ({ page }, info) =>
   await page.getByTestId("fd-first-name").fill("Ada");
   await page.getByTestId("fd-last-name").fill("Buyer");
   await page.getByTestId("fd-product-navigator-annual").locator("input").check();
-  await page.locator("#fd-terms-box").check();
+  await page.getByTestId("fd-terms-mark").click();
+  await expect(page.locator("#fd-terms-box")).toBeChecked();
   await expect
     .poll(async () => page.evaluate(() => sessionStorage.getItem("fd_form")))
     .toContain("navigator-annual");
