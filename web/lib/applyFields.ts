@@ -166,6 +166,24 @@ export function liveSteps(answers: Record<string, string>): ApplyStepId[] {
   return computePath(answers).filter((id) => id !== "intro");
 }
 
+/**
+ * Chrome progress. Intro is not a counted step (liveSteps already drops it).
+ * Empty on intro — never "0 of N", never "1 of N", never "N of N".
+ * First live question is "1 of N". N is the live path length.
+ */
+export function applyProgressLabel(
+  screen: ApplyScreenId,
+  pathLive: readonly ApplyStepId[],
+  done = false,
+): string {
+  if (done) return "Done";
+  if (screen === "review") return "Review";
+  if (screen === "intro") return "";
+  const pos = pathLive.indexOf(screen);
+  if (pos < 0) return "";
+  return `${pos + 1} of ${pathLive.length}`;
+}
+
 export function emptyAnswers(): Record<ApplyKey, string> {
   return {
     HELL: "",

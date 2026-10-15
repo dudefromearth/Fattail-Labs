@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import {
   APPLY_HUE,
+  applyProgressLabel,
   displayAnswer,
   emptyAnswers,
   liveSteps,
@@ -661,16 +662,7 @@ export default function ApplyForm() {
     )
   ) : null;
 
-  const progress = done
-    ? "Done"
-    : isReview
-      ? "Review"
-      : (() => {
-          const pos = pathLive.indexOf(screen as ApplyStepId);
-          return pos >= 0
-            ? `${pos + 1} of ${pathLive.length}`
-            : `${pathLive.length} of ${pathLive.length}`;
-        })();
+  const progress = applyProgressLabel(screen, pathLive, done);
 
   const showBack = !done && (isReview || (step && step.id !== "intro"));
 
@@ -688,7 +680,10 @@ export default function ApplyForm() {
           />
           <span className="apply-mark-word">fattail</span>
         </div>
-        <p className="apply-progress" aria-live="polite">
+        <p
+          className="apply-progress"
+          aria-live={progress ? "polite" : undefined}
+        >
           {progress}
         </p>
       </header>
