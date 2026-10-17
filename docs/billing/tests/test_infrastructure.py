@@ -208,6 +208,23 @@ def test_anchor_rule(tsv: Path | None):
 
 
 # ------------------------------------------------------------ 3. schema + ledger
+def tables_preexist(conn) -> bool:
+    """Were the billing tables already created by a real migration?
+
+    This matters a great deal. The suite used to create its own tables and drop
+    them afterwards, which was safe while they existed nowhere. Once migrations
+    159-161 are applied the tables are REAL, and dropping them would destroy a
+    developer's database — including, one day, data.
+
+    So: if they already exist, the suite borrows them and only deletes the rows
+    it created. It never drops a table it did not create.
+    """
+    with conn.cursor() as cur:
+        cur.execute("""SELECT COUNT(*) n FROM information_schema.tables
+                        WHERE table_schema = DATABASE() AND table_name = 'billing_subscriptions'""")
+        return cur.fetchone()["n"] > 0
+
+
 def create_tables(conn):
     # Same approach as server/migrate.py: strip full-line comments BEFORE
     # splitting on ';', because semicolons inside comments truncate statements.
@@ -230,9 +247,17 @@ def drop_tables(conn):
 
 
 def seed_identity(conn, n: int) -> int:
+    """Idempotent: a crashed earlier run must not block the next one.
+
+    The billing FKs are RESTRICT, so a half-cleaned identity cannot simply be
+    deleted — its billing rows have to go first. reset() does that, and this
+    clears the identity itself.
+    """
+    email = f"billing-infra-test-{n}@example.invalid"
     with conn.cursor() as cur:
+        cur.execute("DELETE FROM identities WHERE email = %s", (email,))
         cur.execute("INSERT INTO identities (email, display_name) VALUES (%s,%s)",
-                    (f"billing-infra-test-{n}@example.invalid", "billing test"))
+                    (email, "billing test"))
         cur.execute("SELECT LAST_INSERT_ID() id")
         return cur.fetchone()["id"]
 
@@ -254,8 +279,13 @@ def reset(conn):
     end, so clearing them affects nothing pre-existing."""
     with conn.cursor() as cur:
         cur.execute("SET FOREIGN_KEY_CHECKS=0")
-        for t in ("billing_refunds", "billing_charges", "billing_subscriptions",
-                  "billing_events", "billing_worker_runs"):
+        # Order matters only because FKs are RESTRICT, not CASCADE — that is
+        # deliberate (§4.1): deleting an identity must never silently delete its
+        # financial history. Clear children first.
+        for t in ("billing_refunds", "billing_charges", "billing_discount_redemptions",
+                  "billing_discounts", "billing_subscriptions",
+                  "billing_payment_methods", "billing_events",
+                  "billing_worker_runs", "membership_events"):
             cur.execute(f"DELETE FROM {t}")
         cur.execute("SET FOREIGN_KEY_CHECKS=1")
     conn.commit()
@@ -1279,7 +1309,7 @@ def main():
     tsv = Path(sys.argv[1]) if len(sys.argv) > 1 else None
     print("=" * 78)
     print("NATIVE BILLING v2.0 — INFRASTRUCTURE PROOF")
-    print("localhost MySQL only · tables dropped afterwards · live DB never contacted")
+    print("localhost MySQL only · live DB never contacted")
     print(f"testing: {_SOURCE}")
     print("=" * 78)
 
@@ -1302,10 +1332,17 @@ def main():
         base_tables = cur.fetchone()["n"]
 
     created_idents, created_plan, created_plans = [], None, []
+    borrowed = tables_preexist(conn)
     try:
-        drop_tables(conn)
-        create_tables(conn)
-        check("migrations 159 + 160 apply cleanly (8 tables, FKs resolve)", True)
+        if borrowed:
+            print("     billing tables already exist (migrated) — BORROWING them.")
+            print("     This run will delete only its own rows and will NOT drop any table.")
+            reset(conn)
+            check("migrated billing tables are present and usable", True)
+        else:
+            drop_tables(conn)
+            create_tables(conn)
+            check("migrations 159-161 apply cleanly (9 tables, FKs resolve)", True)
         created_idents = [seed_identity(conn, i) for i in range(4)]
         conn.commit()
         plan, created_plan_flag = ensure_plan(conn, "observer-trial")
@@ -1341,7 +1378,13 @@ def main():
         test_shadow_real_book(conn, rows, created_idents, plan)
     finally:
         print("\n15. CLEANUP — the dev database must return to baseline")
-        drop_tables(conn)
+        # Clear OUR rows first. The FKs are RESTRICT, not CASCADE (§4.1): an
+        # identity cannot be deleted while it still has any billing history,
+        # which is exactly the protection we want and exactly what trips here
+        # if the order is wrong.
+        reset(conn)
+        if not borrowed:
+            drop_tables(conn)
         with conn.cursor() as cur:
             for i in created_idents:
                 cur.execute("DELETE FROM identities WHERE identity_id=%s", (i,))
@@ -1355,12 +1398,21 @@ def main():
             b = cur.fetchone()["n"]
             cur.execute("SELECT COUNT(*) n FROM information_schema.tables WHERE table_schema=DATABASE()")
             c = cur.fetchone()["n"]
+            if borrowed:
+                base_tables = c   # we created none, so baseline is whatever is there
             cur.execute("SELECT COUNT(*) n FROM schema_migrations WHERE filename LIKE '%native_billing%'")
             d = cur.fetchone()["n"]
         check(f"identities back to baseline ({base_ident})", a == base_ident, f"{a} vs {base_ident}")
         check(f"plans back to baseline ({base_plans})", b == base_plans, f"{b} vs {base_plans}")
         check(f"table count back to baseline ({base_tables})", c == base_tables, f"{c} vs {base_tables}")
-        check("schema_migrations was never written to", d == 0)
+        if borrowed:
+            with conn.cursor() as cur:
+                cur.execute("""SELECT COUNT(*) n FROM billing_subscriptions""")
+                left = cur.fetchone()["n"]
+            check("borrowed tables left with no test rows", left == 0, f"{left} rows remain")
+            check("the migrated billing tables were NOT dropped", tables_preexist(conn))
+        else:
+            check("schema_migrations was never written to", d == 0)
         conn.close()
 
     print("\n" + "=" * 78)

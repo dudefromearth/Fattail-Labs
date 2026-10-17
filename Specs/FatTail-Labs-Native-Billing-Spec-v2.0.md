@@ -2320,9 +2320,14 @@ CREATE TABLE IF NOT EXISTS membership_events (
   actor       VARCHAR(64) NOT NULL DEFAULT '',
   created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  KEY ix_me_identity (identity_id, created_at)
+  KEY ix_me_identity (identity_id, created_at),
+  KEY ix_me_event (event, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
+
+Shipped as `migrations/161_membership_events.sql`. The second index is what makes
+"show me everything the reconciler corrected this week" a cheap query rather than a table
+scan — without it, drift reporting gets slower exactly as the table grows most useful.
 
 Today that answer lives in WooCommerce order notes, which do not survive the migration.
 
