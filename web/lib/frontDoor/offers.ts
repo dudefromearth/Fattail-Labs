@@ -115,7 +115,7 @@ export function orderRequestPath(origin: string, productId: string): string {
     origin: canonicalCheckoutOrigin(origin),
     product: checkoutProductAlias(productId),
   });
-  return `/front-door/order?${params.toString()}`;
+  return `/access/order?${params.toString()}`;
 }
 
 export function originLabel(origin: CheckoutOrigin): string {

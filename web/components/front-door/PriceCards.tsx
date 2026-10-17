@@ -37,7 +37,7 @@ export default function PriceCards({ products }: { products: FrontDoorProduct[] 
           }}
         />
         <p className="fd-detail">
-          <a className="fd-quiet" href="/front-door/demo">
+          <a className="fd-quiet" href="/access">
             Demo launcher
           </a>
         </p>

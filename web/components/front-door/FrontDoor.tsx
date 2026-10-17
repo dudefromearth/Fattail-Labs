@@ -103,6 +103,114 @@ function formatCardCvc(value: string): string {
   return value.replace(/\D/g, "").slice(0, 4);
 }
 
+function ContactFields({
+  phone,
+  street,
+  city,
+  region,
+  postal,
+  country,
+  onPhone,
+  onStreet,
+  onCity,
+  onRegion,
+  onPostal,
+  onCountry,
+}: {
+  phone: string;
+  street: string;
+  city: string;
+  region: string;
+  postal: string;
+  country: string;
+  onPhone: (value: string) => void;
+  onStreet: (value: string) => void;
+  onCity: (value: string) => void;
+  onRegion: (value: string) => void;
+  onPostal: (value: string) => void;
+  onCountry: (value: string) => void;
+}) {
+  return (
+    <div data-testid="fd-contact">
+      <div className="fd-float">
+        <input
+          id="fd-phone"
+          data-testid="fd-phone"
+          type="text"
+          autoComplete="tel"
+          inputMode="tel"
+          placeholder=" "
+          value={phone}
+          onChange={(event) => onPhone(event.target.value)}
+        />
+        <label htmlFor="fd-phone">Phone</label>
+      </div>
+      <div className="fd-float">
+        <input
+          id="fd-street"
+          data-testid="fd-street"
+          type="text"
+          autoComplete="street-address"
+          placeholder=" "
+          value={street}
+          onChange={(event) => onStreet(event.target.value)}
+        />
+        <label htmlFor="fd-street">Street address</label>
+      </div>
+      <div className="fd-float">
+        <input
+          id="fd-city"
+          data-testid="fd-city"
+          type="text"
+          autoComplete="address-level2"
+          placeholder=" "
+          value={city}
+          onChange={(event) => onCity(event.target.value)}
+        />
+        <label htmlFor="fd-city">City</label>
+      </div>
+      <div className="fd-split">
+        <div className="fd-float">
+          <input
+            id="fd-region"
+            data-testid="fd-region"
+            type="text"
+            autoComplete="address-level1"
+            placeholder=" "
+            value={region}
+            onChange={(event) => onRegion(event.target.value)}
+          />
+          <label htmlFor="fd-region">State</label>
+        </div>
+        <div className="fd-float">
+          <input
+            id="fd-postal"
+            data-testid="fd-postal"
+            type="text"
+            autoComplete="postal-code"
+            placeholder=" "
+            value={postal}
+            onChange={(event) => onPostal(event.target.value)}
+          />
+          <label htmlFor="fd-postal">ZIP code</label>
+        </div>
+      </div>
+      <div className="fd-float">
+        <input
+          id="fd-country"
+          data-testid="fd-country"
+          type="text"
+          autoComplete="country-name"
+          placeholder=" "
+          value={country}
+          onChange={(event) => onCountry(event.target.value)}
+        />
+        <label htmlFor="fd-country">Country</label>
+      </div>
+    </div>
+  );
+}
+
 function DoorHeader() {
   return (
     <header className="fd-head">
@@ -144,8 +252,15 @@ export default function FrontDoor({
   const [productId, setProductId] = useState(() => canonicalCheckoutProduct(initialProduct));
   const [origin] = useState<CheckoutOrigin>(() => canonicalCheckoutOrigin(initialOrigin));
   const [terms, setTerms] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
+
+  useEffect(() => {
+    if (!termsOpen) return;
+    document.querySelector("[data-testid=fd-terms-panel]")?.scrollIntoView({ block: "start" });
+    const close = document.querySelector("[data-testid=fd-terms-close]");
+    if (close instanceof HTMLButtonElement) close.focus();
+  }, [termsOpen]);
   const [notAdvice, setNotAdvice] = useState(false);
-  const [accountOpen, setAccountOpen] = useState(false);
   const [accountMode, setAccountMode] = useState<"" | "login" | "create">("");
   const [sessionChecked, setSessionChecked] = useState(entry !== "order");
   const [sessionToken, setSessionToken] = useState("");
@@ -165,6 +280,10 @@ export default function FrontDoor({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmed, setConfirmed] = useState<"yes" | "no" | "pending">("pending");
+  const [liveAccount, setLiveAccount] = useState(false);
+  const [accessNote, setAccessNote] = useState("");
+  const [paymentException, setPaymentException] = useState("");
+  const payResult = useRef<(ok: boolean, message?: string) => void>(() => {});
   const [orderId, setOrderId] = useState("");
   const [orderKey, setOrderKey] = useState("");
   const handed = useRef(false);
@@ -215,7 +334,6 @@ export default function FrontDoor({
         }
         if (data.terms === true) setTerms(true);
         if (data.notAdvice === true) setNotAdvice(true);
-        if (data.accountOpen === true) setAccountOpen(true);
         if (data.paymentOpen === true) setPaymentOpen(true);
         if (data.accountMode === "login" || data.accountMode === "create") {
           setAccountMode(data.accountMode);
@@ -258,7 +376,6 @@ export default function FrontDoor({
         productId,
         terms,
         notAdvice,
-        accountOpen,
         paymentOpen,
         accountMode,
         passwordNeeded,
@@ -269,7 +386,6 @@ export default function FrontDoor({
     );
   }, [
     accountMode,
-    accountOpen,
     city,
     confirmEmail,
     country,
@@ -298,10 +414,7 @@ export default function FrontDoor({
     if (entry !== "order" || !draftReady) return;
     const epoch = sessionEpoch.current;
     let cancelled = false;
-    const headers: Record<string, string> = {};
-    const token = sessionStorage.getItem("fd_belong_session");
-    if (token) headers["X-Fd-Session"] = token;
-    fetch("/api/auth/me", { credentials: "same-origin", headers })
+    fetch("/api/front-door/access/state", { credentials: "same-origin" })
       .then(async (response) => {
         const data = (await response.json().catch(() => ({}))) as Record<string, unknown>;
         return { ok: response.ok, data };
@@ -309,25 +422,29 @@ export default function FrontDoor({
       .then(({ ok, data }) => {
         if (cancelled || epoch !== sessionEpoch.current) return;
         const emailValue = typeof data.email === "string" ? data.email.trim() : "";
-        const member =
-          ok &&
-          emailValue.length > 0 &&
-          !(data.preview === true && data.member !== true);
-        if (!member) {
-          if (ok === false || data.preview === true) {
-            setSignedIn(null);
-            setPasswordNeeded(false);
-            setPasswordSaved(false);
-          }
+        const member = ok && data.signed_in === true && emailValue.length > 0 && data.is_demo === true;
+        if (ok && data.signed_in === true && data.is_demo === false) {
+          setLiveAccount(true);
+          setSignedIn(null);
+          setPasswordNeeded(false);
+          setPasswordSaved(false);
           setSessionChecked(true);
           return;
         }
-        const name =
+        if (!member) {
+          setSignedIn(null);
+          setPasswordNeeded(false);
+          setPasswordSaved(false);
+          setSessionChecked(true);
+          return;
+        }
+        const named = typeof data.name === "string" && data.name.trim() ? data.name.trim() : "";
+        const display =
           typeof data.display_name === "string" && data.display_name.trim()
             ? data.display_name.trim()
-            : emailValue;
-        setSignedIn({ kind: data.password_set === false ? "new" : "login", name, email: emailValue });
-        if (token) setSessionToken(token);
+            : named || emailValue;
+        setLiveAccount(false);
+        setSignedIn({ kind: data.password_set === false ? "new" : "login", name: display, email: emailValue });
         if (data.password_set === false) {
           setPasswordNeeded(true);
           setPasswordSaved(false);
@@ -351,7 +468,7 @@ export default function FrontDoor({
     const connection = (navigator as Navigator & {
       connection?: { effectiveType?: string; rtt?: number };
     }).connection;
-    fetch("/front-door/ping", { cache: "no-store" })
+    fetch("/api/health", { cache: "no-store" })
       .then(() => {
         if (cancelled) return;
         setSpeed(
@@ -391,66 +508,6 @@ export default function FrontDoor({
     window.addEventListener("pagehide", drop);
     return () => window.removeEventListener("pagehide", drop);
   }, [admitted, entry, orderKey, origin, productId, signedIn?.email]);
-
-  useEffect(() => {
-    if (!admitted || needsVisitor || !orderKey) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        if (entry !== "confirm") {
-          await postJson("/api/front-door/evidence", {
-            moment: "page_load",
-            order_key: orderKey,
-            payload: {
-              user_agent: navigator.userAgent,
-              referrer: document.referrer || null,
-              client_sent_at: new Date().toISOString(),
-            },
-          });
-          await postJson("/api/front-door/analytics", {
-            event: "view",
-            visitor_key: orderKey,
-            entry,
-            product_id: productId || null,
-            origin,
-            email: signedIn?.email || null,
-          });
-          if (!sessionStorage.getItem("fd_belong_session")) {
-            const next = (await postJson("/api/front-door/member-state", {})) as View;
-            if (!cancelled) setView(next);
-          }
-        } else {
-          const params = new URLSearchParams(window.location.search);
-          const wooOrderId = params.get("order_id");
-          if (!wooOrderId) {
-            if (!cancelled) setConfirmed("no");
-            return;
-          }
-          if (!cancelled) setOrderId(wooOrderId);
-          const hash = await renderHash(`confirm|${wooOrderId}|${offers.terms_version}`);
-          await postJson("/api/front-door/evidence", {
-            moment: "payment_confirmation",
-            order_key: orderKey,
-            payload: { woo_order_id: wooOrderId, rendered_checkout_sha256: hash },
-          });
-          await postJson("/api/front-door/analytics", {
-            event: "confirmation",
-            visitor_key: orderKey,
-            entry: "confirm",
-            product_id: params.get("product"),
-            origin,
-            email: signedIn?.email || null,
-          });
-          if (!cancelled) setConfirmed("yes");
-        }
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Checkout could not be recorded.");
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [admitted, needsVisitor, entry, orderKey, offers.terms_version]);
 
   useEffect(() => {
     if (!needsVisitor) return;
@@ -506,6 +563,11 @@ export default function FrontDoor({
   const navigatorOrder = Boolean(selected && isNavigatorProduct(selected.id));
   const contactOk = contactProblem(contact()) === "";
   const accountReady = Boolean(signedIn) && (!navigatorOrder || contactOk);
+  const accountComplete = accountReady && !passwordNeeded;
+
+  useEffect(() => {
+    if (entry === "order" && accountComplete) setPaymentOpen(true);
+  }, [entry, accountComplete]);
 
   useEffect(() => {
     if (entry !== "order" || !selected) return;
@@ -552,21 +614,37 @@ export default function FrontDoor({
     }).catch(() => {});
   }, [admitted, orderKey, view?.nudge, entry, productId, origin, signedIn?.email]);
 
+  function failPayment(message: string) {
+    setCardName("");
+    setCardNumber("");
+    setCardExp("");
+    setCardCvc("");
+    setPaymentMethod("");
+    setAccessNote("");
+    setPaymentException(message);
+  }
+
   function choosePayPal() {
     setPaymentMethod("paypal");
     setError("");
+    setPaymentException("");
+  }
+
+  function submitPayPal() {
     if (!selected) return;
+    setError("");
+    setPaymentException("");
     const params = new URLSearchParams({
       product: checkoutLabel(selected),
       price: salePriceLine(selected),
     });
     const popup = window.open(
-      `/front-door/paypal?${params.toString()}`,
+      `/access/paypal?${params.toString()}`,
       "fd-paypal",
       "popup,width=460,height=720",
     );
     if (!popup) {
-      setError("Allow the PayPal window to open, then choose PayPal again.");
+      failPayment("The PayPal window did not open.");
       return;
     }
     popup.focus();
@@ -585,23 +663,22 @@ export default function FrontDoor({
     }
     setBusy(true);
     try {
-      const data = await postJson("/api/front-door/login", {
+      const data = await postJson("/api/front-door/access/login", {
         email: username.trim(),
         password,
-        origin,
-        product_id: selected?.id || null,
       });
       const to = typeof data.email === "string" ? data.email : username.trim();
-      const name = typeof data.name === "string" ? data.name : to;
-      const session = typeof data.session === "string" ? data.session : "";
+      const name =
+        typeof data.display_name === "string" && data.display_name
+          ? data.display_name
+          : typeof data.name === "string"
+            ? data.name
+            : to;
       sessionEpoch.current += 1;
       setSignedIn({ kind: "login", name, email: to });
-      setSessionToken(session);
       setPasswordNeeded(false);
       setPasswordSaved(true);
       setPassword("");
-      if (session) sessionStorage.setItem("fd_belong_session", session);
-      document.cookie = `fd_preview_member=${encodeURIComponent(to)}; Path=/; SameSite=Lax`;
     } catch (err) {
       setError(err instanceof Error ? err.message : "That email and password do not match.");
     } finally {
@@ -631,27 +708,25 @@ export default function FrontDoor({
     }
     setBusy(true);
     try {
-      const data = await postJson("/api/front-door/join", {
-        door: "account",
+      const data = await postJson("/api/front-door/access/join", {
         email: email.trim(),
         first_name: firstName.trim(),
         last_name: lastName.trim(),
-        origin,
-        product_id: selected?.id || null,
       });
       const to = typeof data.email === "string" ? data.email : email.trim();
       const fallback = `${firstName.trim()} ${lastName.trim()}`;
-      const name = typeof data.name === "string" && data.name ? data.name : fallback;
-      const session = typeof data.session === "string" ? data.session : "";
+      const name =
+        typeof data.display_name === "string" && data.display_name
+          ? data.display_name
+          : typeof data.name === "string" && data.name
+            ? data.name
+            : fallback;
       sessionEpoch.current += 1;
       setSignedIn({ kind: "new", name, email: to });
-      setSessionToken(session);
-      setPasswordNeeded(true);
-      setPasswordSaved(false);
+      setPasswordNeeded(data.password_set !== true);
+      setPasswordSaved(data.password_set === true);
       setNewPassword("");
       setConfirmPassword("");
-      if (session) sessionStorage.setItem("fd_belong_session", session);
-      document.cookie = `fd_preview_member=${encodeURIComponent(to)}; Path=/; SameSite=Lax`;
     } catch (err) {
       const message = err instanceof Error ? err.message : "The account could not be created.";
       setError(message);
@@ -673,8 +748,7 @@ export default function FrontDoor({
     }
     setBusy(true);
     try {
-      await postJson("/api/front-door/session-password", {
-        session: sessionToken,
+      await postJson("/api/front-door/access/password", {
         password: newPassword,
       });
       setNewPassword("");
@@ -688,19 +762,112 @@ export default function FrontDoor({
     }
   }
 
+  async function openAccess() {
+    if (!selected) return;
+    setError("");
+    setAccessNote("");
+    setBusy(true);
+    try {
+      const granted = await postJson("/api/front-door/access/grant", { product_id: selected.id });
+      setCardName("");
+      setCardNumber("");
+      setCardExp("");
+      setCardCvc("");
+      const prior = granted.prior_member === true;
+      const linked = typeof granted.discord_user_id === "string" && granted.discord_user_id.length > 0;
+      if (!prior && !linked) {
+        sessionStorage.setItem("fd_discord_setup", "1");
+        window.location.assign("/home?discord=setup");
+        return;
+      }
+      sessionStorage.removeItem("fd_discord_setup");
+      window.location.assign("/home");
+    } catch (err) {
+      failPayment(err instanceof Error ? err.message : "The payment could not be completed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function submitCard() {
+    if (!selected) return;
+    setError("");
+    const digits = cardNumber.replace(/\D/g, "");
+    const [monthText, yearText] = cardExp.split("/");
+    const month = Number(monthText);
+    const year = 2000 + Number(yearText);
+    const today = new Date();
+    const expired =
+      month < 1 ||
+      month > 12 ||
+      year < today.getFullYear() ||
+      (year === today.getFullYear() && month < today.getMonth() + 1);
+    if (cardName.trim().length < 2 || digits.length < 13 || cardExp.length !== 5 || cardCvc.length < 3) {
+      failPayment("Enter the name, a card number, the expiration, and the security code.");
+      return;
+    }
+    if (expired) {
+      failPayment("The card is expired.");
+      return;
+    }
+    if (digits === "4000000000000002") {
+      failPayment("The card was declined.");
+      return;
+    }
+    void openAccess();
+  }
+
+  useEffect(() => {
+    payResult.current = (ok, message) => {
+      if (ok) {
+        void openAccess();
+        return;
+      }
+      failPayment(message || "PayPal did not complete the payment.");
+    };
+  });
+
+  useEffect(() => {
+    function onPayPal(event: MessageEvent) {
+      if (event.origin !== window.location.origin) return;
+      const data = event.data as { source?: string; ok?: boolean; message?: string } | null;
+      if (!data || data.source !== "fd-paypal") return;
+      payResult.current(data.ok === true, data.message);
+    }
+    window.addEventListener("message", onPayPal);
+    return () => window.removeEventListener("message", onPayPal);
+  }, []);
+
   async function resetDemo() {
     keepDraft.current = false;
-    try {
-      await postJson("/api/front-door/reset", {});
-    } catch {
-      /* The page still starts over. */
-    }
+    setError("");
     sessionStorage.removeItem(FORM_KEY);
     sessionStorage.removeItem("fd_belong_session");
     sessionStorage.removeItem("fd_order_key");
     sessionStorage.removeItem("fd_visitor_attempt");
-    document.cookie = "fd_preview_member=; Path=/; Max-Age=0";
-    window.location.assign("/front-door/demo");
+    sessionStorage.removeItem("fd_discord_setup");
+    try {
+      const response = await fetch("/api/front-door/access/state", { credentials: "same-origin" });
+      const data = (await response.json().catch(() => ({}))) as {
+        signed_in?: boolean;
+        is_demo?: boolean;
+      };
+      if (data.signed_in === true && data.is_demo === true) {
+        const out = await fetch("/api/auth/logout", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { Accept: "application/json" },
+        });
+        if (!out.ok) {
+          setError("Sign out did not complete. Try Reset demo again.");
+          return;
+        }
+      }
+    } catch {
+      setError("Sign out did not complete. Try Reset demo again.");
+      return;
+    }
+    window.location.assign("/access");
   }
 
   async function noteAcceptance(advice: boolean, accepted: boolean) {
@@ -740,88 +907,6 @@ export default function FrontDoor({
     }
   }
 
-  function ContactFields() {
-    return (
-      <div data-testid="fd-contact">
-        <div className="fd-float">
-          <input
-            id="fd-phone"
-            data-testid="fd-phone"
-            type="text"
-            autoComplete="tel"
-            inputMode="tel"
-            placeholder=" "
-            value={phone}
-            onChange={(event) => setPhone(event.target.value)}
-          />
-          <label htmlFor="fd-phone">Phone</label>
-        </div>
-        <div className="fd-float">
-          <input
-            id="fd-street"
-            data-testid="fd-street"
-            type="text"
-            autoComplete="street-address"
-            placeholder=" "
-            value={street}
-            onChange={(event) => setStreet(event.target.value)}
-          />
-          <label htmlFor="fd-street">Street address</label>
-        </div>
-        <div className="fd-float">
-          <input
-            id="fd-city"
-            data-testid="fd-city"
-            type="text"
-            autoComplete="address-level2"
-            placeholder=" "
-            value={city}
-            onChange={(event) => setCity(event.target.value)}
-          />
-          <label htmlFor="fd-city">City</label>
-        </div>
-        <div className="fd-split">
-          <div className="fd-float">
-            <input
-              id="fd-region"
-              data-testid="fd-region"
-              type="text"
-              autoComplete="address-level1"
-              placeholder=" "
-              value={region}
-              onChange={(event) => setRegion(event.target.value)}
-            />
-            <label htmlFor="fd-region">State</label>
-          </div>
-          <div className="fd-float">
-            <input
-              id="fd-postal"
-              data-testid="fd-postal"
-              type="text"
-              autoComplete="postal-code"
-              placeholder=" "
-              value={postal}
-              onChange={(event) => setPostal(event.target.value)}
-            />
-            <label htmlFor="fd-postal">ZIP code</label>
-          </div>
-        </div>
-        <div className="fd-float">
-          <input
-            id="fd-country"
-            data-testid="fd-country"
-            type="text"
-            autoComplete="country-name"
-            placeholder=" "
-            value={country}
-            onChange={(event) => setCountry(event.target.value)}
-          />
-          <label htmlFor="fd-country">Country</label>
-        </div>
-      </div>
-    );
-  }
-
   if (!admitted) {
     return (
       <div className="fd" data-testid="fd-root" data-entry={entry} data-admitted="0">
@@ -855,13 +940,28 @@ export default function FrontDoor({
         )}
         {entry === "order" && selected && (
           <div data-testid="fd-order-form" data-product={selected.id} data-origin={origin}>
+            {termsOpen && (
+              <section className="fd-card fd-terms-panel" data-testid="fd-terms-panel" aria-label="Terms and Conditions">
+                <div className="fd-terms-bar">
+                  <h2>Terms and Conditions</h2>
+                  <button
+                    type="button"
+                    className="fd-terms-close"
+                    data-testid="fd-terms-close"
+                    onClick={() => setTermsOpen(false)}
+                  >
+                    Close
+                  </button>
+                </div>
+                <div className="fd-terms-body" data-testid="fd-terms-body">
+                  <p>The terms page does not have the agreement text yet. Close returns you to the order.</p>
+                </div>
+              </section>
+            )}
             {view?.nudge && (
               <div className="fd-nudge" data-testid="fd-nudge" role="status">
                 <strong>{view.nudge.title}</strong>
                 <p>{view.nudge.body}</p>
-                {view.card_update_url && (
-                  <a href={view.card_update_url}>{view.nudge.action}</a>
-                )}
               </div>
             )}
             {view && view.view !== "unchecked" && (
@@ -878,13 +978,6 @@ export default function FrontDoor({
               <p className="fd-arrival" data-testid="fd-arrival">
                 {originLabel(origin)} · {checkoutShortName(selected.id)} · {salePriceLine(selected)}
               </p>
-              {origin === "website" && (
-                <p className="fd-detail">
-                  <a className="fd-quiet" data-testid="fd-change-product" href="/front-door/choose">
-                    Change product
-                  </a>
-                </p>
-              )}
               <h1>{checkoutLabel(selected)}</h1>
               <p className="fd-detail">{describeProduct(selected)}</p>
               <div className="fd-prices">
@@ -929,19 +1022,12 @@ export default function FrontDoor({
                 {error}
               </p>
             )}
-            <section className="fd-draw fd-card" data-testid="fd-account-card">
-              <button
-                type="button"
-                className="fd-draw-toggle"
-                data-testid="fd-account"
-                aria-expanded={accountOpen}
-                onClick={() => setAccountOpen((open) => !open)}
-              >
+            <section className="fd-draw fd-card fd-open" data-testid="fd-account-card">
+              <div className="fd-draw-head" data-testid="fd-account">
                 <span>Account</span>
                 {signedIn && <span className="fd-draw-note">Signed in</span>}
-              </button>
-              {accountOpen && (
-                <div className="fd-draw-body">
+              </div>
+              <div className="fd-draw-body">
                   {signedIn ? (
                     <>
                       <p className="fd-detail" data-testid="fd-signed-in">
@@ -955,11 +1041,6 @@ export default function FrontDoor({
                           <p className="fd-detail">
                             You're in. You have a login, you're on the mail list, and the content that
                             comes with an account is open.
-                          </p>
-                          <p className="fd-detail">
-                            <a className="fd-quiet" data-testid="fd-content-link" href="/pathway">
-                              Open that content
-                            </a>
                           </p>
                           {!purchaseClosed && (
                             <p className="fd-detail">The purchase below is optional.</p>
@@ -1018,7 +1099,20 @@ export default function FrontDoor({
                       {navigatorOrder && !contactOk && (
                         <>
                           <p className="fd-detail">Phone and address are required for Navigator.</p>
-                          <ContactFields />
+                          <ContactFields
+                            phone={phone}
+                            street={street}
+                            city={city}
+                            region={region}
+                            postal={postal}
+                            country={country}
+                            onPhone={setPhone}
+                            onStreet={setStreet}
+                            onCity={setCity}
+                            onRegion={setRegion}
+                            onPostal={setPostal}
+                            onCountry={setCountry}
+                          />
                         </>
                       )}
                       {navigatorOrder && contactOk && (
@@ -1027,6 +1121,10 @@ export default function FrontDoor({
                         </p>
                       )}
                     </>
+                  ) : liveAccount ? (
+                    <p className="fd-detail">
+                      This browser is signed in to a Labs account that is not a test account. Use a private window.
+                    </p>
                   ) : !sessionChecked ? (
                     <p className="fd-detail">Checking the session.</p>
                   ) : (
@@ -1161,7 +1259,22 @@ export default function FrontDoor({
                             />
                             <label htmlFor="fd-email-confirm">Confirm email</label>
                           </div>
-                          {navigatorOrder && <ContactFields />}
+                          {navigatorOrder && (
+                            <ContactFields
+                              phone={phone}
+                              street={street}
+                              city={city}
+                              region={region}
+                              postal={postal}
+                              country={country}
+                              onPhone={setPhone}
+                              onStreet={setStreet}
+                              onCity={setCity}
+                              onRegion={setRegion}
+                              onPostal={setPostal}
+                              onCountry={setCountry}
+                            />
+                          )}
                           <p className="fd-detail">Creating an account puts you on the mail list.</p>
                           <button
                             type="button"
@@ -1176,8 +1289,7 @@ export default function FrontDoor({
                       )}
                     </>
                   )}
-                </div>
-              )}
+              </div>
             </section>
             {!purchaseClosed && (
             <section
@@ -1238,12 +1350,25 @@ export default function FrontDoor({
                     />
                     <span className="fd-check-copy">
                       <label htmlFor="fd-terms-box">I have read and agree to the full</label>{" "}
-                      <LegalLink href={offers.terms_url} testId="fd-link-terms">
+                      <button
+                        type="button"
+                        className="fd-legal"
+                        data-testid="fd-link-terms"
+                        onClick={() => setTermsOpen(true)}
+                      >
                         Terms and Conditions
-                      </LegalLink>
+                      </button>
                       <label htmlFor="fd-terms-box">.</label>
                     </span>
                   </div>
+                  {payReady && paymentException && (
+                    <div data-testid="fd-payment-exception" role="alert">
+                      <p className="fd-error">{paymentException}</p>
+                      <p className="fd-detail" data-testid="fd-payment-options">
+                        Choose Credit Card or PayPal.
+                      </p>
+                    </div>
+                  )}
                   {payReady && (
                     <div className="fd-pay-methods" role="group" aria-label="Payment method">
                       <button
@@ -1251,7 +1376,10 @@ export default function FrontDoor({
                         className="fd-pay"
                         data-testid="fd-pay-card"
                         aria-pressed={paymentMethod === "card"}
-                        onClick={() => setPaymentMethod("card")}
+                        onClick={() => {
+                          setPaymentMethod("card");
+                          setPaymentException("");
+                        }}
                       >
                         Credit Card
                       </button>
@@ -1321,12 +1449,33 @@ export default function FrontDoor({
                           <label htmlFor="fd-cc-cvc">Security code</label>
                         </div>
                       </div>
+                      <button
+                        type="button"
+                        className="fd-cta"
+                        data-testid="fd-submit-card"
+                        disabled={busy}
+                        onClick={submitCard}
+                      >
+                        Submit payment · {formatPrice(selected)}
+                      </button>
                     </div>
+                  )}
+                  {payReady && paymentMethod === "paypal" && (
+                    <button
+                      type="button"
+                      className="fd-cta"
+                      data-testid="fd-submit-paypal"
+                      disabled={busy}
+                      onClick={submitPayPal}
+                    >
+                      Submit payment · {formatPrice(selected)}
+                    </button>
                   )}
                 </div>
               )}
             </section>
             )}
+            {accessNote && <p className="fd-detail">{accessNote}</p>}
           </div>
         )}
         {entry !== "order" && (
@@ -1346,7 +1495,7 @@ export default function FrontDoor({
             </a>
           </nav>
         )}
-        <LegalFooter offers={offers} />
+        {entry !== "order" && <LegalFooter offers={offers} />}
         <button
           type="button"
           className="fd-reset"
@@ -1418,7 +1567,7 @@ function Sales({ offers, speed }: { offers: FrontDoorOffers; speed: SpeedBucket 
           Search and ads land here. The order form is one screen, and the video page is linked below.
         </p>
       )}
-      <a className="fd-cta fd-sales-cta" data-testid="fd-sales-cta" href="/front-door/order?product=observer">
+      <a className="fd-cta fd-sales-cta" data-testid="fd-sales-cta" href="/access/order?product=observer">
         {observer ? `Continue · ${formatPrice(observer)}` : "Continue to the order form"}
       </a>
     </section>
@@ -1458,7 +1607,7 @@ function Watch({ offers, speed }: { offers: FrontDoorOffers; speed: SpeedBucket 
     <section>
       <h1>A short video, then the order form</h1>
       <VideoWords offers={offers} speed={speed} />
-      <a className="fd-cta fd-watch-cta" data-testid="fd-watch-cta" href="/front-door/order">
+      <a className="fd-cta fd-watch-cta" data-testid="fd-watch-cta" href="/access/order">
         Continue to the order form
       </a>
     </section>
