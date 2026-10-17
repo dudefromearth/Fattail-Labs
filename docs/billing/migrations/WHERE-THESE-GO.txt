@@ -1,0 +1,13 @@
+REFERENCE COPIES — these are NOT in migrations/ on purpose.
+
+  159_native_billing_v2.sql   core billing schema (6 tables)
+  160_billing_discounts.sql   discounts/coupons (2 tables + 3 columns)
+
+They are deliberately kept out of the repo's migrations/ directory so that
+server/migrate.py cannot pick them up and apply them. NEITHER HAS BEEN APPLIED
+TO ANY ENVIRONMENT.
+
+To use them, copy into migrations/ at the point the work is actually being built,
+after checking the numbering. As of 2026-10-16, origin/main's highest migration
+was 158, so 159 and 160 were free. Re-check before copying — if main has moved
+past 160, renumber yours, never theirs.

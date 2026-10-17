@@ -1,0 +1,5 @@
+# Live subscription export used by import-dryrun.py — real customer billing data.
+# Regenerate locally with export-woo-subs.sql; never commit.
+woo_subs.tsv
+labs_rows.json
+__pycache__/
