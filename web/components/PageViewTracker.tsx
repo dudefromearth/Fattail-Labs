@@ -65,10 +65,18 @@ export default function PageViewTracker() {
 
     // Member engagement beacon (unchanged; server records authed members only).
     try {
+      let session = "";
+      try {
+        session = window.sessionStorage.getItem("fd_belong_session") || "";
+      } catch {
+        session = "";
+      }
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (session) headers["X-Fd-Session"] = session;
       fetch("/api/pageview", {
         method: "POST",
         credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ path: pathname }),
         keepalive: true,
       }).catch(() => {});

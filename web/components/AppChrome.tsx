@@ -25,7 +25,9 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
   const isLaunchHome = pathname === "/";
   // Native apply is a fattail sales surface (lock.md) — no Labs nav / 0-DTE.
   const isApply = pathname === "/apply";
-  const hideMemberChrome = isAdminApp || isLaunchHome || isApply;
+  // Front door is its own sales surface (issue #13). Same chrome exception as apply.
+  const isFrontDoor = pathname === "/front-door" || pathname.startsWith("/front-door/");
+  const hideMemberChrome = isAdminApp || isLaunchHome || isApply || isFrontDoor;
 
   return (
     <ConfirmProvider>
@@ -33,7 +35,7 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
       <MemberSettingsRoot />
       <IdleSessionGuard />
       <IkiProductShell />
-      {!isAdminApp && !isApply && <PageViewTracker />}
+      {!isAdminApp && !isApply && !isFrontDoor && <PageViewTracker />}
       <PresenceTracker /> {/* presence tracks anyone signed in, admin area included */}
       {/* Plane-wide Wiki agent (admin) left of Help (members). DL-573.
           Separate boundaries: a Help throw must not swallow the Wiki orb. */}
@@ -44,7 +46,7 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
         <ErrorBoundary>
           <WikiAgentPanel />
         </ErrorBoundary>
-        {!isAdminApp && !isApply && (
+        {!isAdminApp && !isApply && !isFrontDoor && (
           <ErrorBoundary>
             <HelpLauncher />
           </ErrorBoundary>
