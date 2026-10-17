@@ -85,7 +85,7 @@ def classify(facts: dict) -> str:
         return "finished_observer"
     if cancelled_early:
         return "cancelled_before_completion"
-    return "none"
+    return "belonging"
 
 
 def payment_attention(facts: dict) -> bool:
@@ -101,7 +101,7 @@ def payment_attention(facts: dict) -> bool:
 
 def visible_products(state: str, offers: dict) -> list[dict]:
     enabled = [p for p in offers["products"] if p["enabled"]]
-    if state in BUY_STATES:
+    if state in BUY_STATES or state == "belonging":
         return enabled
     if state in UPGRADE_STATES:
         return [p for p in enabled if p["id"] != "observer"]
@@ -113,13 +113,13 @@ def _copy(state: str) -> tuple[str, str, str]:
     if state == "none":
         return (
             "Choose how you want to train",
-            "Observer is six weeks at $17 a week. Navigator Annual and Lifetime are separate purchases. No refunds.",
+            "Observer is six weeks at $17 a week. Navigator Annual and Lifetime are separate purchases.",
             "buy",
         )
     if state == "cancelled_before_completion":
         return (
             "You can start again",
-            "The earlier subscription ended before the six weeks were complete, so there is no membership on this email. You can buy Observer or Navigator. No refunds.",
+            "The earlier subscription ended before the six weeks were complete, so there is no membership on this email. You can buy Observer or Navigator.",
             "buy",
         )
     if state == "observer":
@@ -145,6 +145,12 @@ def _copy(state: str) -> tuple[str, str, str]:
             "You're already covered",
             "This email already has an active membership subscription. There is nothing further to buy here.",
             "already_covered",
+        )
+    if state == "belonging":
+        return (
+            "You're in",
+            "You have a login, a place on the mail list, and the content that comes with an account. Buying a product is optional.",
+            "buy",
         )
     raise MemberStateError(f"unknown state {state!r}")
 

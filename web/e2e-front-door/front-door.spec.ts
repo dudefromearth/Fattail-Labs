@@ -1,6 +1,43 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
+
+async function expectOnPageBackground(control: Locator) {
+  await expect(control).toBeVisible();
+  const box = await control.boundingBox();
+  expect(box && box.height).toBeGreaterThanOrEqual(44);
+  const plate = await control.evaluate((node) => {
+    const parent = node.parentElement;
+    const parentStyle = parent ? getComputedStyle(parent) : null;
+    const own = getComputedStyle(node);
+    return {
+      parentClass: parent?.className ?? "",
+      parentBackground: parentStyle?.backgroundColor ?? "",
+      parentShadow: parentStyle?.boxShadow ?? "",
+      ownBackground: own.backgroundColor,
+      inBar: Boolean(node.closest(".fd-bar")),
+    };
+  });
+  expect(plate.inBar).toBe(false);
+  expect(plate.parentClass).not.toContain("fd-bar");
+  expect(plate.parentBackground === "rgba(0, 0, 0, 0)" || plate.parentBackground === "transparent").toBe(true);
+  expect(plate.parentShadow).toBe("none");
+  expect(plate.ownBackground).not.toBe("rgba(0, 0, 0, 0)");
+}
+
+async function tapBox(link: Locator) {
+  return link.evaluate((el) => {
+    const rect = el.getBoundingClientRect();
+    const hit = getComputedStyle(el, "::after");
+    const hanging = hit.position === "absolute";
+    const hitWidth = hanging ? parseFloat(hit.width) : 0;
+    const hitHeight = hanging ? parseFloat(hit.height) : 0;
+    return {
+      width: Math.max(rect.width, Number.isFinite(hitWidth) ? hitWidth : 0),
+      height: Math.max(rect.height, Number.isFinite(hitHeight) ? hitHeight : 0),
+    };
+  });
+}
 
 const shotDir = process.env.FD_SHOT_DIR || "/opt/cursor/artifacts/front-door";
 fs.mkdirSync(shotDir, { recursive: true });
@@ -65,40 +102,56 @@ async function install(page: Page, view: object = NONE) {
 }
 
 async function shot(page: Page, file: string, fullPage = false) {
-  const localDir = "/tmp/fd-shots";
-  fs.mkdirSync(localDir, { recursive: true });
-  const local = path.join(localDir, path.basename(file));
   let last: unknown;
-  for (let attempt = 0; attempt < 4; attempt += 1) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      const bytes = await page.screenshot({ fullPage, timeout: 20_000, type: "png" });
-      fs.writeFileSync(local, bytes);
-      try {
-        fs.mkdirSync(path.dirname(file), { recursive: true });
-        fs.writeFileSync(file, bytes);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        if (!message.includes("EAGAIN")) throw err;
-      }
+      await page.screenshot({ path: file, fullPage, timeout: 20_000 });
       return;
     } catch (err) {
       last = err;
       const message = err instanceof Error ? err.message : String(err);
-      if (!message.includes("EAGAIN") || attempt === 3) throw err;
-      await page.waitForTimeout(400);
+      if (!message.includes("EAGAIN") || attempt === 2) throw err;
+      await page.waitForTimeout(300);
     }
   }
   throw last;
 }
 
 async function checkout(page: Page, name: string) {
-  await page.goto("/front-door/order", { waitUntil: "domcontentloaded" });
+  await page.goto("/front-door/choose", { waitUntil: "domcontentloaded" });
+  await expect(page.getByTestId("fd-product-panel")).toContainText("Observer Trial");
+  await expect(page.getByTestId("fd-product-panel")).toContainText("$17.00");
+  await expect(page.getByTestId("fd-product-panel")).toContainText("$17/week for 6 weeks");
+  await expect(page.getByTestId("fd-product-panel")).toContainText("You can cancel anytime. No refunds.");
+  await page.getByTestId("fd-product-navigator-monthly").click();
+  await expect(page.getByTestId("fd-card-navigator")).toContainText("$267.00");
+  await expect(page.getByTestId("fd-card-navigator")).not.toContainText("No refunds");
+  await page.getByTestId("fd-product-quarterly").click();
+  await expect(page.getByTestId("fd-card-navigator")).toContainText("$597.00");
+  await expect(page.getByTestId("fd-card-navigator")).toContainText("Save 25%");
+  await expect(page.getByTestId("fd-card-navigator")).not.toContainText("Optional.");
+  await expect(page.getByTestId("fd-card-navigator")).not.toContainText("No refunds");
+  await page.getByTestId("fd-product-navigator-annual").click();
+  await expect(page.getByTestId("fd-card-navigator")).toContainText("$1,997.00");
+  await expect(page.getByTestId("fd-card-navigator")).not.toContainText("No refunds");
+  await page.getByTestId("fd-product-navigator-lifetime").click();
+  await expect(page.getByTestId("fd-card-navigator")).toContainText("$3,000.00");
+  await expect(page.getByTestId("fd-card-navigator")).not.toContainText("amount confirmed at checkout");
+  await expect(page.getByTestId("fd-card-navigator")).not.toContainText("No refunds");
+  await page.getByTestId("fd-product-observer").click();
+  await page.goto("/front-door/order?origin=website&product=trial", { waitUntil: "domcontentloaded" });
   await expect(page.getByTestId("fd-order-form")).toBeVisible();
-  await expect(page.getByTestId("fd-submit")).toBeEnabled({ timeout: 90_000 });
+  await expect(page.getByTestId("fd-product-panel")).toHaveCount(0);
+  await expect(page.getByTestId("fd-account")).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByTestId("fd-payment")).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByTestId("fd-username")).toHaveCount(0);
+  await expect(page.getByTestId("fd-pay-card")).toHaveCount(0);
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
   expect(overflow).toBeLessThanOrEqual(1);
+  await page.getByTestId("fd-account").click();
+  await page.getByTestId("fd-account-create").click();
   const email = page.getByTestId("fd-email");
   const font = await email.evaluate((el) => getComputedStyle(el).fontSize);
   expect(font).toBe("16px");
@@ -106,10 +159,8 @@ async function checkout(page: Page, name: string) {
   await expect(page.locator('label[for="fd-email"]')).toHaveText("Email");
   const emailBox = await email.boundingBox();
   expect(emailBox && emailBox.height).toBeGreaterThanOrEqual(52);
-  for (const selector of [".fd-card", ".fd-choice", "[data-testid=fd-terms]", "[data-testid=fd-submit]", ".fd-links a", ".fd-bar"]) {
-    const shadow = await page.locator(selector).first().evaluate((el) => getComputedStyle(el).boxShadow);
-    expect(shadow).not.toBe("none");
-  }
+  const panelShadow = await page.locator(".fd-card").first().evaluate((el) => getComputedStyle(el).boxShadow);
+  expect(panelShadow).not.toBe("none");
   if (name === "pixel-slow-3g") {
     await expect(page.locator("[data-speed=slow]")).toBeVisible({ timeout: 90_000 });
     const duration = await page
@@ -118,83 +169,20 @@ async function checkout(page: Page, name: string) {
       .evaluate((el) => getComputedStyle(el).transitionDuration);
     expect(duration).toBe("0s");
   }
-  const submit = await page.getByTestId("fd-submit").boundingBox();
-  expect(submit && submit.height).toBeGreaterThanOrEqual(44);
-  expect(submit && submit.width).toBeGreaterThanOrEqual(44);
-  const terms = await page.getByTestId("fd-terms").boundingBox();
-  const card = await page.locator(".fd-card").boundingBox();
-  expect(terms && terms.height).toBeGreaterThanOrEqual(48);
-  expect(terms && card && terms.width).toBeGreaterThanOrEqual(card.width - 36);
-  const mark = await page.getByTestId("fd-terms-mark").boundingBox();
-  expect(mark && mark.width).toBeGreaterThanOrEqual(28);
-  expect(mark && mark.height).toBeGreaterThanOrEqual(28);
-  await expect(page.locator("#fd-terms-box")).toHaveAttribute("type", "checkbox");
-  await expect(page.locator("#fd-terms-box")).toHaveAttribute("aria-describedby", "fd-terms-notice");
-  await expect(page.locator("#fd-terms-box")).not.toBeChecked();
-  await expect(page.getByText("We record this checkout")).toHaveCount(0);
-  await expect(page.getByTestId("fd-submit")).toHaveText("Continue to checkout");
-  await expect(page.getByTestId("fd-product-navigator-annual")).toContainText("$1,997/year");
-  await expect(page.getByTestId("fd-product-navigator-annual")).toContainText(
-    "$1,997 per year. A separate purchase from Observer.",
+  await expect(page.getByTestId("fd-payment")).toBeDisabled();
+  await expect(page.getByTestId("fd-payment")).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByTestId("fd-terms")).toHaveCount(0);
+  const emailInAccount = await page.getByTestId("fd-email").evaluate((node) =>
+    Boolean(node.closest("[data-testid=fd-account-card]")),
   );
-  await expect(page.getByTestId("fd-product-navigator-lifetime")).toContainText(
-    "One-time · amount confirmed at checkout",
-  );
-  await expect(page.getByTestId("fd-product-navigator-lifetime")).toContainText(
-    "The amount is confirmed on the secure checkout before you pay.",
-  );
-  const layout = await page.evaluate(() => {
-    const card = document.querySelector(".fd-card");
-    const choices = card?.querySelector(":scope > .fd-choices") ?? null;
-    const terms = document.querySelector("[data-testid=fd-terms]");
-    const email = document.querySelector("#fd-email");
-    const first = document.querySelector("#fd-first-name");
-    const last = document.querySelector("#fd-last-name");
-    if (!card || !choices || !terms || !email || !first || !last) return "missing";
-    if (!card.contains(email) || !card.contains(first) || !card.contains(last)) return "fields-outside";
-    if (terms.parentElement !== card) return "terms-outside";
-    let node: ChildNode | null = choices.nextSibling;
-    while (node && node !== terms) {
-      if (node.nodeType === Node.ELEMENT_NODE) return "element-between";
-      if (node.nodeType === Node.TEXT_NODE && (node.textContent || "").trim()) return "text-between";
-      node = node.nextSibling;
-    }
-    return node === terms ? "ok" : "terms-not-next";
-  });
-  expect(layout).toBe("ok");
-  await page.getByTestId("fd-link-terms").evaluate((el) => {
-    el.addEventListener("click", (event) => event.preventDefault(), { capture: true });
-  });
-  await page.getByTestId("fd-link-privacy").evaluate((el) => {
-    el.addEventListener("click", (event) => event.preventDefault(), { capture: true });
-  });
-  await page.getByTestId("fd-link-terms").click();
-  await page.getByTestId("fd-link-privacy").click();
-  await expect(page.locator("#fd-terms-box")).not.toBeChecked();
-  for (const id of ["fd-link-terms", "fd-footer-terms"]) {
-    const link = page.getByTestId(id);
-    await expect(link).toHaveAttribute("href", "https://fattail.ai/terms/");
-    await expect(link).toHaveAttribute("target", "_blank");
-    const box = await link.boundingBox();
-    expect(box && box.height).toBeGreaterThanOrEqual(44);
-    expect(box && box.width).toBeGreaterThanOrEqual(44);
-  }
-  for (const id of ["fd-link-privacy", "fd-footer-privacy"]) {
-    const link = page.getByTestId(id);
-    await expect(link).toHaveAttribute("href", "https://fattail.ai/privacy-policy/");
-    await expect(link).toHaveAttribute("target", "_blank");
-    await expect(link).toHaveText("privacy notice");
-    const box = await link.boundingBox();
-    expect(box && box.height).toBeGreaterThanOrEqual(44);
-    expect(box && box.width).toBeGreaterThanOrEqual(44);
-  }
-  await expect(page.getByTestId("fd-product-observer")).toContainText("$17/week");
-  await expect(page.getByTestId("fd-product-observer")).toContainText("Cancel any time. No refunds.");
-  await expect(page.getByTestId("fd-product-navigator-annual")).not.toContainText("No refunds");
-  await expect(page.getByTestId("fd-product-navigator-lifetime")).not.toContainText("No refunds");
+  expect(emailInAccount).toBe(true);
+  const footerTerms = page.getByTestId("fd-footer-terms");
+  await expect(footerTerms).toHaveAttribute("href", "https://fattail.ai/terms/");
+  const privacy = page.getByTestId("fd-footer-privacy");
+  await expect(privacy).toHaveAttribute("href", "https://fattail.ai/privacy-policy/");
+  await expect(privacy).toHaveAttribute("target", "_blank");
+  await expect(privacy).toHaveText("privacy notice");
   await expect(page.getByText("Checking membership")).toHaveCount(0);
-  await expect(page.getByText("before showing a buy button")).toHaveCount(0);
-  await expect(page.getByText("We check membership on this email")).toHaveCount(0);
   await expect(page.getByRole("img", { name: "FatTail Labs" })).toHaveAttribute(
     "src",
     "/brand/fattail-labs-logo.jpg",
@@ -205,31 +193,91 @@ async function checkout(page: Page, name: string) {
     ),
   ).toHaveCount(0);
   const html = (await page.content()).toLowerCase();
-  expect(html).not.toContain("paypal");
   expect(html).not.toContain("stripe");
-  await shot(page, path.join(shotDir, `${name}-order.png`), true);
-  await page.getByTestId("fd-email").fill("buyer@example.com");
+  await expect(page.getByTestId("fd-pay-card")).toHaveCount(0);
   await page.getByTestId("fd-first-name").fill("Ada");
   await page.getByTestId("fd-last-name").fill("Buyer");
-  await page.getByTestId("fd-product-observer").locator("input").check();
-  const selectedShadow = await page
-    .getByTestId("fd-product-observer")
-    .evaluate((el) => getComputedStyle(el).boxShadow);
-  const otherShadow = await page
-    .getByTestId("fd-product-navigator-annual")
-    .evaluate((el) => getComputedStyle(el).boxShadow);
-  expect(selectedShadow).not.toBe("none");
-  expect(otherShadow).not.toBe("none");
-  expect(selectedShadow).not.toBe(otherShadow);
-  await page.getByTestId("fd-terms-mark").click();
-  await expect(page.locator("#fd-terms-box")).toBeChecked();
-  await page.getByTestId("fd-submit").click();
-  await page.waitForURL("**/fattail.test/**");
-  await shot(page, path.join(shotDir, `${name}-woo.png`));
-  await page.locator("#pay").click();
-  await expect(page.getByTestId("fd-success")).toBeVisible({ timeout: 90_000 });
-  await expect(page.getByTestId("fd-order-id")).toHaveText("FD-1001");
-  await shot(page, path.join(shotDir, `${name}-confirm.png`), true);
+  await page.getByTestId("fd-email").fill("buyer@example.com");
+  await page.getByTestId("fd-email-confirm").fill("buyer@example.com");
+  await page.getByTestId("fd-account-submit").click();
+  await expect(page.getByTestId("fd-signed-in")).toContainText("Ada Buyer");
+  await expect(page.getByTestId("fd-payment")).toBeEnabled();
+  await page.getByTestId("fd-payment").click();
+  await expect(page.getByTestId("fd-terms")).toBeVisible();
+  const terms = await page.getByTestId("fd-terms").boundingBox();
+  expect(terms && terms.height).toBeGreaterThanOrEqual(60);
+  const box = await page.locator("#fd-terms-box").boundingBox();
+  expect(box && box.width).toBeGreaterThanOrEqual(36);
+  expect(box && box.height).toBeGreaterThanOrEqual(36);
+  const sentence = await page.getByTestId("fd-terms").evaluate((row) => {
+    const copy = row.querySelector(".fd-check-copy");
+    const control = row.querySelector("input");
+    if (!copy || !control) return null;
+    const style = getComputedStyle(copy);
+    return {
+      separated: !copy.contains(control),
+      display: style.display,
+      lineHeight: parseFloat(style.lineHeight),
+      controlHeight: control.getBoundingClientRect().height,
+    };
+  });
+  expect(sentence?.separated).toBe(true);
+  expect(sentence?.display).toBe("block");
+  expect(sentence && sentence.lineHeight).toBeLessThan(sentence.controlHeight);
+  await expect(page.locator("#fd-terms-box")).not.toBeChecked();
+  await page.getByTestId("fd-link-terms").evaluate((el) => {
+    el.addEventListener("click", (event) => event.preventDefault(), { capture: true });
+  });
+  await page.getByTestId("fd-link-terms").click();
+  await expect(page.locator("#fd-terms-box")).not.toBeChecked();
+  const termsLink = page.getByTestId("fd-link-terms");
+  await expect(termsLink).toHaveAttribute("href", "https://fattail.ai/terms/");
+  await expect(termsLink).toHaveAttribute("target", "_blank");
+  const termsHit = await tapBox(termsLink);
+  expect(termsHit.height).toBeGreaterThanOrEqual(44);
+  expect(termsHit.width).toBeGreaterThanOrEqual(44);
+  const termsInPayment = await page.getByTestId("fd-terms").evaluate((node) =>
+    Boolean(node.closest("[data-testid=fd-payment-card]")),
+  );
+  expect(termsInPayment).toBe(true);
+  const adviceInPayment = await page.getByTestId("fd-not-advice").evaluate((node) =>
+    Boolean(node.closest("[data-testid=fd-payment-card]")),
+  );
+  expect(adviceInPayment).toBe(true);
+  await page.locator("#fd-not-advice-box").check();
+  await expect(page.getByTestId("fd-pay-card")).toHaveCount(0);
+  await page.locator("#fd-terms-box").check();
+  await expect(page.getByTestId("fd-pay-card")).toBeVisible();
+  await expect(page.getByTestId("fd-pay-paypal")).toBeVisible();
+  const card = await page.getByTestId("fd-pay-card").boundingBox();
+  expect(card && card.height).toBeGreaterThanOrEqual(44);
+  const cardPlate = await page.getByTestId("fd-pay-card").evaluate((node) => {
+    const card = node.closest("[data-testid=fd-payment-card]");
+    const style = card ? getComputedStyle(card) : null;
+    return {
+      inside: Boolean(card),
+      background: style?.backgroundColor ?? "",
+    };
+  });
+  expect(cardPlate.inside).toBe(true);
+  expect(cardPlate.background === "rgba(0, 0, 0, 0)" || cardPlate.background === "transparent").toBe(false);
+  await page.getByTestId("fd-pay-card").click();
+  await expect(page.getByTestId("fd-pay-card")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId("fd-cc-number")).toBeVisible();
+  const cardFields = await page.getByTestId("fd-cc-number").evaluate((node) =>
+    Boolean(node.closest("[data-testid=fd-payment-card]")),
+  );
+  expect(cardFields).toBe(true);
+  const popupPromise = page.waitForEvent("popup");
+  await page.getByTestId("fd-pay-paypal").click();
+  const popup = await popupPromise;
+  await expect(popup.getByTestId("fd-paypal-popup")).toBeVisible();
+  await expect(popup.getByRole("heading", { name: "Observer" })).toBeVisible();
+  await expect(page.getByTestId("fd-cc-number")).toHaveCount(0);
+  await expect(page.getByTestId("fd-pay-paypal")).toHaveAttribute("aria-pressed", "true");
+  await popup.close();
+  expect((await page.content()).toLowerCase()).not.toContain("stripe");
+  await shot(page, path.join(shotDir, `${name}-order.png`), true);
   if (name === "pixel-slow-3g") {
     await expect(page.locator("[data-speed=slow]")).toBeVisible();
   }
@@ -269,51 +317,6 @@ test("slow connection keeps the video off and still reaches checkout", async ({ 
   await shot(page, path.join(shotDir, "pixel-slow-3g-watch.png"), true);
 });
 
-test("order form remembers the draft after the video", async ({ page }, info) => {
-  test.skip(
-    info.project.name !== "iphone" && info.project.name !== "pixel",
-    "draft round trip runs on iPhone and Pixel",
-  );
-  await install(page);
-  await page.goto("/front-door/order", { waitUntil: "domcontentloaded" });
-  await expect(page.getByTestId("fd-submit")).toBeEnabled({ timeout: 90_000 });
-  await page.getByTestId("fd-email").fill("buyer@example.com");
-  await page.getByTestId("fd-first-name").fill("Ada");
-  await page.getByTestId("fd-last-name").fill("Buyer");
-  await page.getByTestId("fd-product-navigator-annual").locator("input").check();
-  await page.getByTestId("fd-terms-mark").click();
-  await expect(page.locator("#fd-terms-box")).toBeChecked();
-  await expect
-    .poll(async () => page.evaluate(() => sessionStorage.getItem("fd_form")))
-    .toContain("navigator-annual");
-  const stored = await page.evaluate(() => sessionStorage.getItem("fd_form"));
-  expect(stored).toContain("buyer@example.com");
-  expect(stored).toContain("Ada");
-  expect(stored).toContain("Buyer");
-  expect(stored && stored.toLowerCase()).not.toContain("card");
-  expect(await page.evaluate(() => localStorage.getItem("fd_form"))).toBeNull();
-  await expect(async () => {
-    await page.goto("/front-door/watch", { waitUntil: "domcontentloaded" });
-    await expect(page.locator("[data-entry=watch]")).toBeVisible({ timeout: 5_000 });
-  }).toPass();
-  await expect(async () => {
-    await page.goto("/front-door/order", { waitUntil: "domcontentloaded" });
-    await expect(page.getByTestId("fd-email")).toHaveValue("buyer@example.com", { timeout: 5_000 });
-  }).toPass();
-  await expect(page.getByTestId("fd-email")).toHaveValue("buyer@example.com");
-  await expect(page.getByTestId("fd-first-name")).toHaveValue("Ada");
-  await expect(page.getByTestId("fd-last-name")).toHaveValue("Buyer");
-  await expect(page.getByTestId("fd-product-navigator-annual").locator("input")).toBeChecked();
-  await expect(page.locator("#fd-terms-box")).toBeChecked();
-  await expect(async () => {
-    await page.goto("/front-door/confirm?order_id=FD-1001&product=navigator-annual", {
-      waitUntil: "domcontentloaded",
-    });
-    await expect(page.getByTestId("fd-success")).toBeVisible({ timeout: 5_000 });
-  }).toPass();
-  await expect.poll(async () => page.evaluate(() => sessionStorage.getItem("fd_form"))).toBeNull();
-});
-
 test("member states, links, and referrer routing", async ({ page }, info) => {
   test.skip(info.project.name !== "pixel", "run the matrix once");
   await install(page, {
@@ -334,17 +337,24 @@ test("member states, links, and referrer routing", async ({ page }, info) => {
   await expect(page.getByTestId("fd-covered")).toBeVisible();
   await expect(page.getByTestId("fd-nudge")).toBeVisible();
   await expect(page.getByTestId("fd-submit")).toHaveCount(0);
-  await expect(page.getByTestId("fd-link-start")).toBeVisible();
-  await expect(page.getByTestId("fd-link-watch")).toBeVisible();
+  await expect(page.getByTestId("fd-link-start")).toHaveCount(0);
+  await expect(page.getByTestId("fd-link-watch")).toHaveCount(0);
+  const weeks = page.getByTestId("fd-weeks-toggle");
+  await expect(weeks).toBeVisible();
+  await expect(weeks).toHaveAttribute("aria-expanded", "false");
+  await weeks.click();
+  await expect(page.getByTestId("fd-weeks-body")).toBeVisible();
+  await expect(page.getByText("See where capital is leaking.")).toBeVisible();
+  await expect(page.getByText("This is a training program in capital preservation.")).toBeVisible();
+  await expect(page).toHaveURL(/\/front-door\/order/);
   await shot(page, path.join(shotDir, "pixel-covered.png"), true);
 
   await page.goto("/front-door", { referer: "https://www.youtube.com/watch?v=abc" });
   await expect(page.locator("[data-entry=watch]")).toBeVisible();
+  await expectOnPageBackground(page.getByTestId("fd-watch-cta"));
   await page.goto("/front-door", { referer: "https://www.google.com/search?q=fattail" });
   await expect(page.locator("[data-entry=start]")).toBeVisible();
   await page.goto("/front-door/start");
   await expect(page.getByTestId("fd-link-order")).toBeVisible();
-  await expect(page.getByTestId("fd-sales-cta")).toBeVisible();
-  const cta = await page.getByTestId("fd-sales-cta").boundingBox();
-  expect(cta && cta.height).toBeGreaterThanOrEqual(44);
+  await expectOnPageBackground(page.getByTestId("fd-sales-cta"));
 });

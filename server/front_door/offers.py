@@ -92,6 +92,17 @@ def _product(raw: object, index: int) -> dict:
         raise OfferConfigError(f"{pid}: price_cents must be a non-negative integer or null")
     if mode == "listed" and not isinstance(cents, int):
         raise OfferConfigError(f"{pid}: listed price_mode requires price_cents")
+    regular = raw.get("regular_price_cents", None)
+    if regular is not None and (not isinstance(regular, int) or isinstance(regular, bool) or regular < 0):
+        raise OfferConfigError(f"{pid}: regular_price_cents must be a non-negative integer or null")
+    code = raw.get("offer_code", "")
+    if code is None:
+        code = ""
+    if not isinstance(code, str):
+        raise OfferConfigError(f"{pid}: offer_code must be a string")
+    code = code.strip()
+    if len(code) > 40:
+        raise OfferConfigError(f"{pid}: offer_code must be 40 characters or fewer")
     interval = raw.get("interval")
     if interval not in INTERVALS:
         raise OfferConfigError(f"{pid}: interval must be week|month|year|null")
@@ -125,6 +136,8 @@ def _product(raw: object, index: int) -> dict:
         "role": role,
         "enabled": raw["enabled"],
         "price_cents": cents,
+        "regular_price_cents": regular,
+        "offer_code": code,
         "price_mode": mode,
         "currency": "usd",
         "interval": interval,
@@ -248,6 +261,8 @@ def public_product(product: dict) -> dict:
         "kind": product["kind"],
         "role": product["role"],
         "price_cents": product["price_cents"],
+        "regular_price_cents": product.get("regular_price_cents"),
+        "offer_code": product.get("offer_code") or "",
         "price_mode": product["price_mode"],
         "currency": product["currency"],
         "interval": product["interval"],

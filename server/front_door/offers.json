@@ -16,6 +16,8 @@
       "kind": "subscription",
       "role": "core",
       "enabled": true,
+      "regular_price_cents": null,
+      "offer_code": "",
       "price_cents": 1700,
       "price_mode": "listed",
       "currency": "usd",
@@ -23,7 +25,7 @@
       "interval_count": 6,
       "woo_product_id": 1718,
       "display_order": 10,
-      "disclosure": "Cancel any time. No refunds."
+      "disclosure": "You can cancel anytime. No refunds."
     },
     {
       "id": "navigator-annual",
@@ -31,6 +33,8 @@
       "kind": "subscription",
       "role": "core",
       "enabled": true,
+      "regular_price_cents": 299700,
+      "offer_code": "",
       "price_cents": 199700,
       "price_mode": "listed",
       "currency": "usd",
@@ -46,14 +50,16 @@
       "kind": "one_time",
       "role": "core",
       "enabled": true,
-      "price_cents": null,
-      "price_mode": "confirmed_at_checkout",
+      "regular_price_cents": 499700,
+      "offer_code": "",
+      "price_cents": 300000,
+      "price_mode": "listed",
       "currency": "usd",
       "interval": null,
       "interval_count": null,
       "woo_product_id": 9816,
       "display_order": 30,
-      "disclosure": "One-time. The amount is confirmed on the secure checkout before you pay."
+      "disclosure": "One payment. No renewal."
     },
     {
       "id": "activator",
@@ -61,6 +67,8 @@
       "kind": "one_time",
       "role": "optional",
       "enabled": false,
+      "regular_price_cents": null,
+      "offer_code": "",
       "price_cents": null,
       "price_mode": "confirmed_at_checkout",
       "currency": "usd",
@@ -76,8 +84,10 @@
       "kind": "subscription",
       "role": "optional",
       "enabled": false,
-      "price_cents": null,
-      "price_mode": "confirmed_at_checkout",
+      "regular_price_cents": 80100,
+      "offer_code": "",
+      "price_cents": 59700,
+      "price_mode": "listed",
       "currency": "usd",
       "interval": "month",
       "interval_count": 3,
@@ -91,6 +101,8 @@
       "kind": "subscription",
       "role": "optional",
       "enabled": false,
+      "regular_price_cents": null,
+      "offer_code": "",
       "price_cents": 26700,
       "price_mode": "listed",
       "currency": "usd",
@@ -98,7 +110,7 @@
       "interval_count": 1,
       "woo_product_id": 1800,
       "display_order": 60,
-      "disclosure": "$267 per month. No refunds."
+      "disclosure": "$267 per month."
     },
     {
       "id": "monthly-intro",
@@ -106,6 +118,8 @@
       "kind": "subscription",
       "role": "optional",
       "enabled": false,
+      "regular_price_cents": null,
+      "offer_code": "",
       "price_cents": 16500,
       "price_mode": "listed",
       "currency": "usd",
@@ -113,7 +127,7 @@
       "interval_count": 1,
       "woo_product_id": null,
       "display_order": 70,
-      "disclosure": "$165 intro month. No refunds. Needs a WooCommerce product id before it can be switched on."
+      "disclosure": "$165 intro month. Needs a WooCommerce product id before it can be switched on."
     }
   ]
 }

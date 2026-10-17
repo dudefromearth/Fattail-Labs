@@ -36,12 +36,22 @@ def normalize_event(body: dict) -> dict:
     product_id = body.get("product_id")
     if product_id is not None and not isinstance(product_id, str):
         raise AnalyticsError("product_id must be a string or null")
+    origin = body.get("origin")
+    if origin not in {"website", "email", "qr"}:
+        origin = None
+    email = body.get("email")
+    if not isinstance(email, str) or not email.strip():
+        email = None
+    else:
+        email = email.strip().lower()
     return {
         "event": name,
         "visitor_key": visitor.strip(),
         "entry": entry,
         "product_id": product_id,
         "step": body.get("step") if isinstance(body.get("step"), str) else None,
+        "origin": origin,
+        "email": email,
     }
 
 
@@ -60,10 +70,30 @@ def dropoff_summary(rows: list[dict]) -> dict:
             elif "dropoff" in events:
                 explicit_drop += 1
     dropped = started - completed
+    by_origin = {
+        name: {"started": 0, "completed": 0, "dropped": 0}
+        for name in ("website", "email", "qr", "unknown")
+    }
+    origin_for: dict[str, str] = {}
+    for row in rows:
+        key = row["visitor_key"]
+        origin = row.get("origin")
+        if key not in origin_for and origin in by_origin:
+            origin_for[key] = origin
+    for key, events in by_visitor.items():
+        if "view" not in events and "product_selected" not in events:
+            continue
+        bucket = by_origin[origin_for.get(key, "unknown")]
+        bucket["started"] += 1
+        if events & _DONE:
+            bucket["completed"] += 1
+        else:
+            bucket["dropped"] += 1
     return {
         "visitors": len(by_visitor),
         "checkout_started": started,
         "handoff_or_confirmation": completed,
         "dropped": dropped,
         "explicit_dropoff_events": explicit_drop,
+        "by_origin": by_origin,
     }

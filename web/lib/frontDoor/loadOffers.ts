@@ -6,7 +6,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { cookies } from "next/headers";
-import type { FrontDoorOffers, FrontDoorProduct } from "./offers";
+import { CHECKOUT_PRODUCT_IDS, type FrontDoorOffers, type FrontDoorProduct } from "./offers";
 import { decideAdmission } from "./traffic";
 
 const BOOLS: Record<string, boolean> = {
@@ -69,14 +69,17 @@ export function readOffersFile(path = offersFilePath()): FrontDoorOffers {
   if (!Array.isArray(data.products) || data.products.length === 0) {
     throw new Error("front door offers have no products");
   }
+  const checkoutIds = new Set<string>(CHECKOUT_PRODUCT_IDS);
   const products = data.products
-    .filter((product) => product.enabled)
+    .filter((product) => product.enabled || checkoutIds.has(product.id))
     .map((product) => ({
       id: product.id,
       name: product.name,
       kind: product.kind,
       role: product.role,
       price_cents: product.price_cents,
+      regular_price_cents: product.regular_price_cents ?? null,
+      offer_code: (product.offer_code || "").trim(),
       price_mode: product.price_mode,
       currency: product.currency,
       interval: product.interval,

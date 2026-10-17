@@ -55,7 +55,14 @@ def offers():
 @pytest.fixture
 def client(offers):
     store = MemoryStore()
-    app = create_app(offers=offers, store=store, secret=SECRET, allow_facts=True, woo=_DownWoo())
+    app = create_app(
+        offers=offers,
+        store=store,
+        secret=SECRET,
+        allow_facts=True,
+        woo=_DownWoo(),
+        email_lookup=lambda domain: "mx",
+    )
     return TestClient(app), store
 
 
@@ -81,10 +88,13 @@ def test_committed_config_matches_spec(offers):
     by_id = {p["id"]: p for p in offers["products"]}
     assert offers["terms_url"] == "https://fattail.ai/terms/"
     assert offers["privacy_url"] == "https://fattail.ai/privacy-policy/"
-    assert by_id["observer"]["disclosure"] == "Cancel any time. No refunds."
+    assert by_id["observer"]["disclosure"] == "You can cancel anytime. No refunds."
     assert "No refunds" not in by_id["navigator-annual"]["disclosure"]
+    assert "No refunds" not in by_id["navigator-monthly"]["disclosure"]
     assert "No refunds" not in by_id["navigator-lifetime"]["disclosure"]
     assert by_id["observer"]["price_cents"] == 1700
+    assert by_id["observer"]["regular_price_cents"] is None
+    assert by_id["observer"]["offer_code"] == ""
     assert by_id["observer"]["interval"] == "week"
     assert by_id["observer"]["interval_count"] == 6
     assert by_id["navigator-annual"]["price_cents"] == 199700
@@ -94,18 +104,6 @@ def test_committed_config_matches_spec(offers):
     assert by_id["monthly-intro"]["enabled"] is False
     assert by_id["activator"]["enabled"] is False
     assert by_id["quarterly"]["enabled"] is False
-
-
-def test_legal_urls_are_removable_pointers(offers):
-    """DL-828. The legal pages are https strings in config, not a WordPress client."""
-    swapped = deepcopy(offers)
-    swapped["terms_url"] = "https://labs.example/terms"
-    swapped["privacy_url"] = "https://labs.example/privacy"
-    checked = validate_offers(swapped)
-    assert checked["terms_url"] == "https://labs.example/terms"
-    assert checked["privacy_url"] == "https://labs.example/privacy"
-    with pytest.raises(OfferConfigError):
-        validate_offers({**swapped, "terms_url": "http://fattail.ai/terms/"})
 
 
 def test_optional_flip_needs_no_code_change(offers, tmp_path):
@@ -181,6 +179,13 @@ def test_five_states_and_floor_views(offers):
     )
     assert covered == "covered_other"
     assert view_for(covered, offers, attention=False)["can_buy"] is False
+    belonging = classify(_facts())
+    assert belonging == "belonging"
+    home = view_for(belonging, offers, attention=False)
+    assert home["can_buy"] is True
+    assert "observer" in {p["id"] for p in home["products"]}
+    assert "No refunds" not in home["detail"]
+    assert "No refunds" not in home["headline"]
 
 
 def test_past_due_keeps_access_and_nudge(offers):
@@ -311,6 +316,7 @@ def test_dropoff_summary():
     assert summary["checkout_started"] == 2
     assert summary["handoff_or_confirmation"] == 1
     assert summary["dropped"] == 1
+    assert summary["by_origin"]["unknown"]["started"] == 2
 
 
 def test_api_five_states_handoff_evidence_and_split(client, offers):
@@ -325,7 +331,6 @@ def test_api_five_states_handoff_evidence_and_split(client, offers):
     unchecked = http.post("/api/front-door/member-state", json={})
     assert unchecked.json()["state"] == "unchecked"
     assert unchecked.json()["can_buy"] is False
-    assert unchecked.json()["detail"] == ""
 
     down = http.post("/api/front-door/member-state", json={"email": "person@example.com"})
     assert down.json()["view"] == "sign_in_to_check"

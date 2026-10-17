@@ -62,6 +62,30 @@ type UserDetail = {
     watch_seconds: number; last_lesson_at: string | null;
     courses_enrolled: number; courses_completed: number; quiz_attempts: number;
   };
+  funnel?: {
+    state: string;
+    origin: string | null;
+    product: string | null;
+    mail_list: string;
+    evidence?: {
+      preview?: boolean;
+      legal_record?: boolean;
+      note?: string;
+      reason?: string;
+      page_load_has_fingerprint?: boolean;
+      package?: {
+        usage?: { stale?: boolean; freshness?: string; weeks?: unknown };
+        moments?: Record<string, { moment?: string } | null>;
+      } | null;
+    };
+  };
+};
+
+type FunnelSummary = {
+  checkout_started: number;
+  handoff_or_confirmation: number;
+  dropped: number;
+  by_origin?: Record<string, { started: number; completed: number; dropped: number }>;
 };
 
 function fmtDate(iso: string | null): string {
@@ -120,9 +144,11 @@ const BILLING_STYLE: Record<string, string> = {
 
 function BillingBadge({ status, tier }: { status: string; tier: string }) {
   const cls = BILLING_STYLE[status] || "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300";
-  // Paid shows the tier (Observer / Activator / Navigator); others show the class label.
+  // Paid shows the tier. Belonging is a free account, not an Observer sale.
+  // Any other status falls through so early cancel can read "No access".
   const label =
     status === "paid" ? `Paid · ${tier}` :
+    status === "free" && tier === "Belonging" ? "Belonging" :
     status === "free" ? "Free" :
     status === "alumni" ? "Alumni" :
     status === "staff" ? "Staff" : tier || status;
@@ -150,6 +176,8 @@ export default function AdminUsersPage() {
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [detail, setDetail] = useState<UserDetail | null>(null);
+  const [previewLedger, setPreviewLedger] = useState(false);
+  const [funnel, setFunnel] = useState<FunnelSummary | null>(null);
 
   const load = useCallback(async (q: string, bf: string) => {
     setError(null);
@@ -167,6 +195,8 @@ export default function AdminUsersPage() {
     setRows(d.users || []);
     setTotal(d.total || 0);
     if (d.counts) setCounts(d.counts);
+    setPreviewLedger(Boolean(d.preview));
+    setFunnel(d.funnel || null);
   }, []);
 
   useEffect(() => {
@@ -247,6 +277,24 @@ export default function AdminUsersPage() {
           );
         })}
       </div>
+
+      {previewLedger && (
+        <p className="text-sm text-amber-800 dark:text-amber-200" data-testid="fd-admin-preview">
+          Preview ledger. These people are not production members.
+        </p>
+      )}
+      {funnel && (
+        <p className="text-sm text-zinc-600 dark:text-zinc-300" data-testid="fd-admin-funnel">
+          Front door: {funnel.checkout_started} started · {funnel.handoff_or_confirmation} completed · {funnel.dropped} dropped
+          {funnel.by_origin ? (
+            <>
+              {" "}· website {funnel.by_origin.website?.started ?? 0}
+              {" "}· email {funnel.by_origin.email?.started ?? 0}
+              {" "}· QR {funnel.by_origin.qr?.started ?? 0}
+            </>
+          ) : null}
+        </p>
+      )}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -348,10 +396,38 @@ export default function AdminUsersPage() {
                 <Stat label="Watch" value={fmtDuration(detail.engagement.watch_seconds)} />
               </div>
 
+              {detail.funnel && (
+                <div data-testid="fd-admin-person">
+                  <h3 className="mb-1 font-medium">Front door</h3>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-300">
+                    State {detail.funnel.state} · origin {detail.funnel.origin || "—"} · product{" "}
+                    {detail.funnel.product || "—"} · mail list {detail.funnel.mail_list}
+                  </p>
+                  {detail.funnel.evidence?.note && (
+                    <p className="mt-1 text-xs text-zinc-500" data-testid="fd-admin-evidence">
+                      {detail.funnel.evidence.note}
+                      {detail.funnel.evidence.package?.usage?.stale
+                        ? ` Usage is stale: ${detail.funnel.evidence.package.usage.freshness}`
+                        : ""}
+                      {detail.funnel.evidence.reason ? ` ${detail.funnel.evidence.reason}` : ""}
+                      {detail.funnel.evidence.page_load_has_fingerprint === false
+                        ? " Page load has no device fingerprint."
+                        : ""}
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div>
                 <h3 className="mb-1 font-medium">Membership</h3>
                 {detail.memberships.length === 0 && (
-                  <p className="text-xs text-zinc-500">No memberships — free account (observer).</p>
+                  <p className="text-xs text-zinc-500">
+                    {detail.funnel?.state === "belonging"
+                      ? "No purchase. Belonging: a login, the mail list, and account content."
+                      : detail.funnel?.state === "cancelled_before_completion"
+                        ? "No access. The earlier subscription ended. The mail list still has this email."
+                        : "No memberships — free account (observer)."}
+                  </p>
                 )}
                 <ul className="space-y-1">
                   {detail.memberships.map((m, i) => (

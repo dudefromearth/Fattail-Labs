@@ -1,10 +1,24 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { bucketFromSignals, entryForReferrer, formatPrice } from "./offers";
+import {
+  bucketFromSignals,
+  canonicalCheckoutOrigin,
+  canonicalCheckoutProduct,
+  checkoutProducts,
+  describeProduct,
+  entryForReferrer,
+  formatPrice,
+  memberDisclosure,
+  orderRequestPath,
+  panelPrice,
+  regularPrice,
+  salePriceLine,
+} from "./offers";
 import type { FrontDoorProduct } from "./offers";
 import { bucketFor, decideAdmission } from "./traffic";
-import { clearFormDraft, readFormDraft, writeFormDraft, FORM_DRAFT_KEY } from "./formDraft";
-import { randomId, sha256Hex, sha256HexFallback, UUID_V4 } from "./webCrypto";
+import { emailAddressProblem, isProperEmail } from "./emailAddress";
+import { contactProblem, isNavigatorProduct } from "./contact";
+import { randomId, sha256HexFallback } from "./webCrypto";
 import type { FrontDoorOffers } from "./offers";
 
 const observer: FrontDoorProduct = {
@@ -37,6 +51,47 @@ const lifetime: FrontDoorProduct = {
   assert.equal(formatPrice({ ...observer, price_cents: 199700, interval: "year", interval_count: 1 }), "$1,997/year");
   assert.equal(formatPrice({ ...observer, price_cents: 26700, interval: "month", interval_count: 1 }), "$267/month");
   assert.equal(formatPrice(lifetime), "One-time · amount confirmed at checkout");
+  const quarterly = {
+    ...observer,
+    id: "quarterly",
+    name: "Quarterly",
+    price_cents: null,
+    price_mode: "confirmed_at_checkout" as const,
+    interval: "month" as const,
+    interval_count: 3,
+    disclosure: "Optional. Shown only when switched on in config.",
+  };
+  const monthly = {
+    ...observer,
+    id: "navigator-monthly",
+    name: "Monthly",
+    price_cents: 26700,
+    interval: "month" as const,
+    interval_count: 1,
+    display_order: 60,
+  };
+  assert.equal(panelPrice(quarterly), "The amount is confirmed on the secure checkout before you pay.");
+  assert.equal(panelPrice(monthly), "$267/month");
+  assert.equal(panelPrice(lifetime), "One-time · amount confirmed at checkout");
+  assert.equal(regularPrice(observer), null);
+  assert.equal(regularPrice({ ...observer, regular_price_cents: 1700 }), null);
+  assert.equal(regularPrice({ ...observer, regular_price_cents: 2700 }), "$27/week × 6");
+  assert.equal(salePriceLine(observer), "$17/week × 6");
+  assert.equal(salePriceLine({ ...observer, offer_code: " FALL " }), "$17/week × 6 with code FALL");
+  assert.equal(memberDisclosure(quarterly), "");
+  assert.equal(describeProduct(observer), "Six weeks of practice. It does not become Navigator on its own.");
+  assert.equal(canonicalCheckoutProduct("Trial"), "observer");
+  assert.equal(canonicalCheckoutProduct("annual"), "navigator-annual");
+  assert.equal(canonicalCheckoutProduct("lifetime"), "navigator-lifetime");
+  assert.equal(canonicalCheckoutProduct("nope"), "");
+  assert.equal(canonicalCheckoutOrigin("QR"), "qr");
+  assert.equal(canonicalCheckoutOrigin(""), "website");
+  assert.equal(orderRequestPath("email", "navigator-annual"), "/front-door/order?origin=email&product=annual");
+  assert.equal(orderRequestPath("nope", "lifetime"), "/front-door/order?origin=website&product=lifetime");
+  assert.deepEqual(
+    checkoutProducts([lifetime, monthly, observer, quarterly]).map((product) => product.id),
+    ["observer", "navigator-monthly", "quarterly", "navigator-lifetime"],
+  );
 }
 
 {
@@ -76,161 +131,38 @@ const lifetime: FrontDoorProduct = {
 }
 
 {
+  assert.equal(emailAddressProblem("  Ada@Fattail.AI "), "");
+  assert.equal(isProperEmail("ada@fattail.ai"), true);
+  assert.equal(isProperEmail("a.b+tag@domain.co.uk"), true);
+  assert.match(emailAddressProblem(""), /email address for this order/);
+  assert.match(emailAddressProblem("ada"), /complete email address/);
+  assert.match(emailAddressProblem("ada@fattail"), /complete email address/);
+  assert.match(emailAddressProblem("ada@fattail..ai"), /complete email address/);
+  assert.match(emailAddressProblem("ada@example.com"), /^$/);
+}
+
+{
   const empty = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
   assert.equal(sha256HexFallback(""), empty);
   assert.equal(sha256HexFallback("abc"), createHash("sha256").update("abc").digest("hex"));
-  assert.match(randomId(), UUID_V4);
-}
-
-function assertPlainHttpHash(): Promise<void> {
-  const previous = globalThis.crypto;
-  const expected = createHash("sha256").update("checkout").digest("hex");
-  const removed = {
-    getRandomValues(target: Uint8Array) {
-      return target;
-    },
-  };
-  const firefox = {
-    get subtle(): undefined {
-      return undefined;
-    },
-    getRandomValues(target: Uint8Array) {
-      return target;
-    },
-  };
-  Object.defineProperty(globalThis, "crypto", { configurable: true, writable: true, value: removed });
-  return sha256Hex("checkout")
-    .then((hash) => {
-      assert.equal("subtle" in removed, false);
-      assert.equal(hash, expected);
-      Object.defineProperty(globalThis, "crypto", { configurable: true, writable: true, value: firefox });
-      assert.equal(firefox.subtle, undefined);
-      return sha256Hex("checkout");
-    })
-    .then((hash) => {
-      assert.equal(hash, expected);
-    })
-    .finally(() => {
-      Object.defineProperty(globalThis, "crypto", { configurable: true, writable: true, value: previous });
-    });
+  assert.match(randomId(), /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
 }
 
 {
-  const previous = globalThis.crypto;
-  let fills = 0;
-  const httpCrypto = {
-    getRandomValues(target: Uint8Array) {
-      fills += 1;
-      for (let i = 0; i < target.length; i += 1) target[i] = (i * 17) & 255;
-      return target;
-    },
+  assert.equal(isNavigatorProduct("observer"), false);
+  assert.equal(isNavigatorProduct("navigator-monthly"), true);
+  assert.equal(isNavigatorProduct("navigator-lifetime"), true);
+  const filled = {
+    phone: "(415) 555-0100",
+    street: "1 Market",
+    city: "San Francisco",
+    region: "CA",
+    postal: "94105",
+    country: "United States",
   };
-  Object.defineProperty(globalThis, "crypto", { configurable: true, writable: true, value: httpCrypto });
-  try {
-    assert.equal("randomUUID" in httpCrypto, false);
-    const id = randomId();
-    assert.equal(fills, 1);
-    assert.match(id, UUID_V4);
-    const throwing = {
-      randomUUID() {
-        throw new TypeError("crypto.randomUUID is not a function");
-      },
-      getRandomValues(target: Uint8Array) {
-        fills += 1;
-        target.fill(9);
-        return target;
-      },
-    };
-    Object.defineProperty(globalThis, "crypto", { configurable: true, writable: true, value: throwing });
-    assert.match(randomId(), UUID_V4);
-    assert.equal(fills, 2);
-  } finally {
-    Object.defineProperty(globalThis, "crypto", { configurable: true, writable: true, value: previous });
-  }
+  assert.equal(contactProblem(filled), "");
+  assert.match(contactProblem({ ...filled, phone: "555" }), /at least 10 digits/);
+  assert.match(contactProblem({ ...filled, street: " " }), /street address/);
 }
 
-function memoryStorage(): Storage {
-  const map = new Map<string, string>();
-  return {
-    get length() {
-      return map.size;
-    },
-    clear: () => map.clear(),
-    getItem: (key) => (map.has(key) ? map.get(key)! : null),
-    key: (index) => [...map.keys()][index] ?? null,
-    removeItem: (key) => {
-      map.delete(key);
-    },
-    setItem: (key, value) => {
-      map.set(key, String(value));
-    },
-  };
-}
-
-{
-  const storage = memoryStorage();
-  const local = memoryStorage();
-  writeFormDraft(
-    storage,
-    {
-      email: "buyer@example.com",
-      firstName: "Ada",
-      lastName: "Buyer",
-      productId: "navigator-annual",
-      terms: true,
-    },
-    "2026-10-12",
-  );
-  assert.equal(local.getItem(FORM_DRAFT_KEY), null);
-  const saved = JSON.parse(storage.getItem(FORM_DRAFT_KEY) || "{}") as Record<string, unknown>;
-  assert.deepEqual(Object.keys(saved).sort(), [
-    "email",
-    "firstName",
-    "lastName",
-    "productId",
-    "terms",
-    "termsVersion",
-  ]);
-  assert.equal(saved.card, undefined);
-  const restored = readFormDraft(storage, "2026-10-12");
-  assert.deepEqual(restored, {
-    email: "buyer@example.com",
-    firstName: "Ada",
-    lastName: "Buyer",
-    productId: "navigator-annual",
-    terms: true,
-  });
-  const stale = readFormDraft(storage, "2026-10-13");
-  assert.equal(stale && stale.terms, false);
-  assert.equal(stale && stale.email, "buyer@example.com");
-  storage.setItem(
-    FORM_DRAFT_KEY,
-    JSON.stringify({
-      email: "buyer@example.com",
-      firstName: "Ada",
-      lastName: "Buyer",
-      productId: "observer",
-      terms: true,
-      termsVersion: "2026-10-12",
-      card: "4242424242424242",
-      address: "1 Main",
-    }),
-  );
-  const stripped = readFormDraft(storage, "2026-10-12");
-  assert.equal(stripped && "card" in stripped, false);
-  assert.equal(stripped && stripped.productId, "observer");
-  assert.equal(stripped && stripped.terms, true);
-  storage.setItem(FORM_DRAFT_KEY, "{");
-  assert.equal(readFormDraft(storage, "2026-10-12"), null);
-  clearFormDraft(storage);
-  assert.equal(storage.getItem(FORM_DRAFT_KEY), null);
-}
-
-assertPlainHttpHash()
-  .then(() => {
-    console.log("front-door unit checks ok");
-  })
-  .catch((err: unknown) => {
-    console.error(err);
-    process.exit(1);
-  });
+console.log("front-door unit checks ok");

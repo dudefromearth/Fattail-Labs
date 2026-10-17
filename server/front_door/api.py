@@ -9,6 +9,7 @@ from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from front_door.analytics import dropoff_summary, normalize_event
+from front_door.email_address import EmailAddressError, assert_receives_mail, normalize_email
 from front_door.analytics import AnalyticsError
 from front_door.evidence import EvidenceError, assemble, normalize_moment
 from front_door.handoff import HandoffError, build_handoff
@@ -58,12 +59,14 @@ class FrontDoorApp:
         secret: str,
         allow_facts: bool,
         woo: Any | None = None,
+        email_lookup=None,
     ) -> None:
         self.offers = offers
         self.store = store
         self.secret = secret
         self.allow_facts = allow_facts
         self.woo = woo if woo is not None else LiveWooLookup()
+        self.email_lookup = email_lookup
 
     def reload(self, path=None, env=None) -> None:
         self.offers = load_offers(path, env)
@@ -82,11 +85,17 @@ class FrontDoorApp:
             state = classify(facts)
             return view_for(state, self.offers, attention=payment_attention(facts))
         email = body.get("email")
-        if email is not None and not isinstance(email, str):
-            raise MemberStateError("email must be a string")
-        email = (email or "").strip().lower()
-        if not email or "@" not in email:
+        if email is None or email == "":
             return unchecked_view()
+        if not isinstance(email, str):
+            raise MemberStateError("email must be a string")
+        if not email.strip():
+            return unchecked_view()
+        try:
+            email = normalize_email(email)
+            assert_receives_mail(email, lookup=self.email_lookup)
+        except EmailAddressError as exc:
+            raise MemberStateError(str(exc)) from exc
         try:
             facts = self.woo.lookup(email, self.offers)
         except WooUnavailable as exc:
@@ -229,6 +238,7 @@ def create_app(
     secret: str = "test-secret-not-for-prod",
     allow_facts: bool = False,
     woo: Any | None = None,
+    email_lookup=None,
     offers_path=None,
     env=None,
 ) -> FastAPI:
@@ -241,6 +251,7 @@ def create_app(
         secret=secret,
         allow_facts=allow_facts,
         woo=woo,
+        email_lookup=email_lookup,
     )
     app = FastAPI()
     app.state.front_door = door
