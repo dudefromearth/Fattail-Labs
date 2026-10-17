@@ -4,7 +4,7 @@
 -- THE PRINCIPLE: a discount sets a price ONCE, at checkout. It is never re-applied at
 -- renewal. The resulting amount lands in billing_subscriptions.amount_minor with
 -- amount_locked=1, so expiring or deleting a discount can never re-price anyone already
--- on it. That is the fragility this fixes -- see spec 11.3 for founders0126, the coupon
+-- on it. That is the fragility this fixes -- see spec 11.3 for founders-A, the coupon
 -- that explains why 38 members pay 67 dollars and which no longer exists.
 --
 -- Percentages are BASIS POINTS (4000 = 40 percent). Integer maths only, no float percents.
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS billing_discounts (
   starts_at         DATETIME NULL,
   expires_at        DATETIME NULL,
   note              VARCHAR(255) NOT NULL DEFAULT '',-- why this exists, for whoever finds it
-                                                     -- in two years (see founders0126)
+                                                     -- in two years (see founders-A)
   created_by        VARCHAR(255) NOT NULL DEFAULT '',
   created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

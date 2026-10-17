@@ -1,6 +1,6 @@
 # Deep analysis — ActiveCampaign contact creation, and the Discord plugin
 
-Companion to [SPEC §18](SPEC-Native-Billing-v2.0.md). Written 2026-10-16 from the live source
+Companion to [SPEC §18](../../Specs/FatTail-Labs-Native-Billing-Spec-v2.0.md). Written 2026-10-16 from the live source
 on the FatTail Hostinger box. Read-only throughout.
 
 This document answers two questions SPEC §18.11.6 left open:

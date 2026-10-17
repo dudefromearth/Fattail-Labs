@@ -36,7 +36,8 @@ import recovery        # noqa: E402
 import webhooks        # noqa: E402
 import worker          # noqa: E402
 
-REPO = Path(__file__).resolve().parents[3]
+PKG  = Path(__file__).resolve().parent.parent          # docs/billing/
+REPO = Path(__file__).resolve().parents[3]             # repo root (for .env)
 BILLING_TABLES = ["billing_discount_redemptions", "billing_discounts",
                   "billing_refunds", "billing_charges", "billing_payment_methods",
                   "billing_subscriptions", "billing_events", "billing_worker_runs"]
@@ -51,7 +52,16 @@ def check(name: str, ok: bool, detail: str = "") -> None:
 
 
 def env(key: str) -> str:
-    for line in (REPO / ".env").read_text().splitlines():
+    # .env is gitignored, so it only exists in a working checkout. Try the repo
+    # root, then any LABS_ENV_FILE override, so the suite runs from a clean
+    # worktree too.
+    import os
+    candidates = [Path(os.environ["LABS_ENV_FILE"])] if os.environ.get("LABS_ENV_FILE") else []
+    candidates += [REPO / ".env", Path.home() / "Fattail-Labs" / ".env"]
+    envfile = next((c for c in candidates if c.is_file()), None)
+    if envfile is None:
+        raise SystemExit("no .env found — set LABS_ENV_FILE=/path/to/.env")
+    for line in envfile.read_text().splitlines():
         if line.startswith(key + "="):
             return line.split("=", 1)[1].strip()
     raise SystemExit(f"{key} missing from .env")
@@ -194,7 +204,7 @@ def create_tables(conn):
     # Same approach as server/migrate.py: strip full-line comments BEFORE
     # splitting on ';', because semicolons inside comments truncate statements.
     for name in MIGRATIONS:
-        raw = (REPO / "migrations" / name).read_text()
+        raw = (PKG / "migrations" / name).read_text()
         sql = "\n".join(l for l in raw.splitlines() if not l.lstrip().startswith("--"))
         with conn.cursor() as cur:
             for stmt in [x.strip() for x in sql.split(";") if x.strip()]:
@@ -595,7 +605,7 @@ def test_set_prices(conn, ident, plan):
     # comped and manual_billing must be UNREACHABLE by the worker — by the due
     # query itself, not by a flag check inside the loop.
     comped = mk_sub(conn, identity_id=ident, plan_id=plan, amount_minor=0,
-                    status="comped", woo_id=900000400, discount_note="woo coupon testaccount-4fotw")
+                    status="comped", woo_id=900000400, discount_note="woo coupon comp-F")
     manual = mk_sub(conn, identity_id=ident, plan_id=plan, amount_minor=9700,
                     status="manual_billing", provider="", woo_id=900000401)
     rep = worker.run_cycle(conn, provider_for=lambda n: fake, mode=worker.MODE_LIVE,
@@ -612,7 +622,7 @@ def test_set_prices(conn, ident, plan):
     # a grandfathered price is charged at the SET amount, not the plan's
     reset(conn)
     g = mk_sub(conn, identity_id=ident, plan_id=plan, amount_minor=6700,
-               woo_id=900000410, discount_note="woo coupon founders0126")
+               woo_id=900000410, discount_note="woo coupon founders-A")
     worker.run_cycle(conn, provider_for=lambda n: fake, mode=worker.MODE_LIVE, limits=nosurge)
     check("a grandfathered Activator is charged $67.00, not the $97.00 list price",
           fake.calls and fake.calls[-1]["amount"] == 6700,
@@ -621,7 +631,7 @@ def test_set_prices(conn, ident, plan):
         cur.execute("SELECT amount_minor, discount_note, amount_locked FROM billing_subscriptions WHERE id=%s", (g,))
         row = cur.fetchone()
     check("the set price is locked and its provenance recorded",
-          row["amount_locked"] == 1 and "founders0126" in row["discount_note"], str(row))
+          row["amount_locked"] == 1 and "founders-A" in row["discount_note"], str(row))
 
     # a plan price change must not touch a locked subscription
     with conn.cursor() as cur:
@@ -636,8 +646,8 @@ def test_set_prices(conn, ident, plan):
     conn.commit()
 
     # the whole deliberately-priced population, replayed from the real book
-    amounts = [(6700, "founders0126"), (6700, "founders26"), (21700, "FOUNDER50"),
-               (16020, "founders40"), (40000, "birthday400")]
+    amounts = [(6700, "founders-A"), (6700, "founders-B"), (21700, "founder-C"),
+               (16020, "founders-D"), (40000, "birthday-E")]
     reset(conn)
     for i, (amt, note) in enumerate(amounts):
         mk_sub(conn, identity_id=ident, plan_id=plan, amount_minor=amt,
@@ -878,8 +888,8 @@ def test_discounts(conn, ident, plan):
         cur.execute("DELETE FROM billing_discount_redemptions")
         cur.execute("DELETE FROM billing_discounts")
         for code, kind, val, bp, note in [
-            ("FOUNDERS40", "percent_off", None, 4000, "founder cohort, permanent"),
-            ("FOUNDER50",  "fixed_off",   5000, None, "-$50 recurring, founders"),
+            ("FOUNDERS-D", "percent_off", None, 4000, "founder cohort, permanent"),
+            ("founder-C",  "fixed_off",   5000, None, "-$50 recurring, founders"),
             ("COMP",       "override",       0, None, "staff comp"),
         ]:
             cur.execute("""INSERT INTO billing_discounts
@@ -891,17 +901,17 @@ def test_discounts(conn, ident, plan):
 
     # the real Navigator numbers from the live book
     with conn.cursor() as cur:
-        a, _ = apply_discount(cur, code="FOUNDERS40", plan_price_minor=26700, identity_id=ident)
+        a, _ = apply_discount(cur, code="FOUNDERS-D", plan_price_minor=26700, identity_id=ident)
     conn.commit()
-    check("FOUNDERS40 on $267.00 gives exactly $160.20 (matches live sub #11118)",
+    check("FOUNDERS-D on $267.00 gives exactly $160.20 (matches live sub #11118)",
           a == 16020, f"got {a}")
 
     with conn.cursor() as cur:
         cur.execute("SELECT identity_id FROM identities WHERE identity_id<>%s LIMIT 1", (ident,))
         other = cur.fetchone()["identity_id"]
-        b, _ = apply_discount(cur, code="FOUNDER50", plan_price_minor=26700, identity_id=other)
+        b, _ = apply_discount(cur, code="founder-C", plan_price_minor=26700, identity_id=other)
     conn.commit()
-    check("FOUNDER50 on $267.00 gives exactly $217.00 (matches live subs #6233/#6265/#7018)",
+    check("founder-C on $267.00 gives exactly $217.00 (matches live subs #6233/#6265/#7018)",
           b == 21700, f"got {b}")
 
     with conn.cursor() as cur:
@@ -916,7 +926,7 @@ def test_discounts(conn, ident, plan):
     twice = False
     try:
         with conn.cursor() as cur:
-            apply_discount(cur, code="FOUNDERS40", plan_price_minor=26700, identity_id=ident)
+            apply_discount(cur, code="FOUNDERS-D", plan_price_minor=26700, identity_id=ident)
         conn.commit()
     except Exception as exc:
         conn.rollback()
@@ -925,10 +935,10 @@ def test_discounts(conn, ident, plan):
 
     # percent maths is integer and floors — no float cents anywhere
     with conn.cursor() as cur:
-        cur.execute("UPDATE billing_discounts SET percent_bp=3333 WHERE code='FOUNDERS40'")
+        cur.execute("UPDATE billing_discounts SET percent_bp=3333 WHERE code='FOUNDERS-D'")
         cur.execute("DELETE FROM billing_discount_redemptions")
         cur.execute("UPDATE billing_discounts SET redemptions_used=0")
-        d, _ = apply_discount(cur, code="FOUNDERS40", plan_price_minor=9700, identity_id=ident)
+        d, _ = apply_discount(cur, code="FOUNDERS-D", plan_price_minor=9700, identity_id=ident)
     conn.commit()
     check("33.33% off $97.00 floors to an exact minor-unit amount, no float",
           d == 9700 - (9700 * 3333) // 10000 and isinstance(d, int), f"got {d}")
@@ -968,7 +978,7 @@ def test_discounts(conn, ident, plan):
     sub = mk_sub(conn, identity_id=other, plan_id=plan, amount_minor=6700,
                  woo_id=900000500, discount_note="labs discount FOUNDERS0126")
     with conn.cursor() as cur:
-        cur.execute("UPDATE billing_discounts SET status='disabled' WHERE code='FOUNDERS40'")
+        cur.execute("UPDATE billing_discounts SET status='disabled' WHERE code='FOUNDERS-D'")
         cur.execute("DELETE FROM billing_discounts WHERE code='GONE'")
     conn.commit()
     fake = providers.FakeProvider()
@@ -1042,7 +1052,7 @@ def test_webhooks_and_reconcile(conn, ident, plan):
     check("minor units -> PayPal decimal string: 199700 -> '1997.00'",
           providers.minor_to_decimal_string(199700) == "1997.00")
     check("1700 -> '17.00'", providers.minor_to_decimal_string(1700) == "17.00")
-    check("16020 -> '160.20' (the founders40 Navigator)",
+    check("16020 -> '160.20' (the founders-D Navigator)",
           providers.minor_to_decimal_string(16020) == "160.20")
     check("0 -> '0.00'", providers.minor_to_decimal_string(0) == "0.00")
     rejected = False

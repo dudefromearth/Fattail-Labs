@@ -4,11 +4,12 @@
 The data model, period arithmetic, ledger, worker, recovery, reconciliation, webhook
 ingestion and the Woo import transform are all built and passing **121 assertions**
 against MySQL 8.0.41 (§13.1). Nothing is wired, deployed, or applied to any live
-system. Seven rulings are open (§11).
+system. Five rulings are open (§11.1).
 
-**Home:** `docs/billing/` — this spec, `DIAGRAMS.md`, `DL-532-draft.md`, the tested
-modules in `proto/`, the proof in `tests/test_infrastructure.py`, and the read-only
-export + import transform. Start at `docs/billing/README.md`.
+**Home:** this spec lives in `Specs/` per the repo convention (AGENTS.md: *Specs under `Specs/`;
+human explainers under `docs/`*). Its companions — `DIAGRAMS.md`, `DL-532-draft.md`, the tested modules in
+`proto/`, the proof in `tests/test_infrastructure.py`, and the read-only export + import
+transform — are in **`docs/billing/`**. Start at `docs/billing/README.md`.
 
 **Supersedes** `Specs/FatTail-Labs-Native-Billing-Stripe-Spec-v1.0.md`
 (approved-as-built 2026-07-21, **never wired** — `GET /api/billing/plans` returns
@@ -24,7 +25,7 @@ which sits at 158 while some local checkouts are at 133. Rebase before applying.
 
 **Diagrams:** ownership before/after, the charge sequence, both state machines, the
 four no-slip layers and the migration flow are in
-[`DIAGRAMS.md`](DIAGRAMS.md) — read it alongside §5 and §7.
+[`DIAGRAMS.md`](../docs/billing/DIAGRAMS.md) — read it alongside §5 and §7.
 
 ---
 
@@ -41,6 +42,11 @@ authorization and charge it when told to.
 This is not a new system. It is the same seams — `provider_plan_map`, `identity_links`,
 `upsert_membership` — with a schedule, a ledger, and a worker added underneath.
 
+> **Note on redaction.** Coupon codes, customer identifiers and key fragments are masked
+> throughout (`founders-A`, `cus_REDACTED`…). Some of those discount codes are still live and
+> this repository is public. The real values are in the WordPress database; the mapping is
+> recoverable from `wp_woocommerce_order_items` for anyone who needs it internally.
+
 ### 0.1 The discovery that makes this cheap
 
 The live FatTail WooCommerce store is **already running merchant-initiated billing**. It was
@@ -53,7 +59,7 @@ never provider-owned:
 | PayPal vault tokens in `wp_woocommerce_payment_tokens` | **132 PayPal + 1 Venmo** |
 | Stripe gateway mode | saved-PaymentMethod charges; **zero** Stripe Billing subscription objects |
 | Active Stripe subs with both `cus_` and a modern `pm_` | **116 / 116** |
-| Stripe account | `pk_live_51F4mSMG4MFz1n…`, live mode, Ernie's own |
+| Stripe account | `pk_live_REDACTED`, live mode, Ernie's own |
 | WooPayments | enabled but `wcpay_account_data` errored (null data, 6 consecutive failures) — **dead** |
 | The renewal trigger | `wp_actionscheduler_actions` rows, hook `woocommerce_scheduled_subscription_payment` — **162 pending**, soonest today, furthest **2031-10-03** |
 
@@ -171,14 +177,14 @@ standalone guarantee from v1.0 holds unchanged.
 ```
 # Stripe (adopt Ernie's existing live account — the one Woo uses)
 STRIPE_SECRET_KEY                 sk_live_…
-STRIPE_PUBLISHABLE_KEY            pk_live_51F4mSMG4MFz1n…
+STRIPE_PUBLISHABLE_KEY            pk_live_REDACTED
 STRIPE_WEBHOOK_SECRET             whsec_…
 
 # PayPal — REUSE PPCP's existing credentials verbatim.
 # Source: wp_options → woocommerce-ppcp-data-common → client_id / client_secret
 # (merchant M22DBMQN686X8). Reusing the same REST app removes any doubt about
 # whether vault ids resolve.
-PAYPAL_CLIENT_ID                  BAALHAOxmFxVRX0JIQ1BZxmtL2qDkZ01…
+PAYPAL_CLIENT_ID                  BAAL…REDACTED
 PAYPAL_CLIENT_SECRET              …
 PAYPAL_WEBHOOK_ID                 …
 PAYPAL_API_BASE                   https://api-m.paypal.com
@@ -862,8 +868,8 @@ class Provider(Protocol):
 ```python
 stripe.PaymentIntent.create(
     amount=199700, currency="usd",
-    customer="cus_VAghPXcGbdOw9d",
-    payment_method="pm_1UALK1G4MFz1nQrJGrBxXkNt",
+    customer="cus_REDACTED",
+    payment_method="pm_REDACTED",
     off_session=True, confirm=True,
     description="FatTail Navigator Annual — 2027-10-14 → 2028-10-14",
     statement_descriptor_suffix="FATTAIL",
@@ -1374,11 +1380,11 @@ The discount mapping, made concrete — this is where money is lost if it's got 
 
 | Coupon | Subs | Effect |
 |---|---|---|
-| `founders0126` | 25 | Activator at **$67** instead of $97 |
+| `founders-A` | 25 | Activator at **$67** instead of $97 |
 | `founder50` | 3 | Navigator at **$217** instead of $267 |
-| `founders40` | 2 | Navigator at **$160.20** |
-| `birthday400` | 1 | Navigator Quarterly at **$400** |
-| `testaccount-4fotw` | 3 | **$0.00** — comped. Must never be charged |
+| `founders-D` | 2 | Navigator at **$160.20** |
+| `birthday-E` | 1 | Navigator Quarterly at **$400** |
+| `comp-F` | 3 | **$0.00** — comped. Must never be charged |
 
 ### 9.3 Deliberately set prices are a first-class state, not an exception
 
@@ -1405,12 +1411,12 @@ Read from `wp_postmeta` rather than assumed:
 
 | Product | They pay | List | Why | Subs |
 |---|---|---|---|---|
-| Activator | **$67.00** | $97 | coupon `founders0126` (−$30 recurring fee) | **38** |
-| Activator | **$67.00** | $97 | coupon `founders26` (−$30 recurring fee) | 1 |
-| Navigator | **$217.00** | $267 | coupon `FOUNDER50` (−$50 recurring fee) | 3 |
-| Navigator | **$160.20** | $267 | coupon `founders40` (−40% recurring) | 2 |
-| Navigator Quarterly | **$400.00** | $597 | coupon `birthday400` (−$197 recurring fee) | 1 |
-| Observer · Activator · Navigator | **$0.00** | — | coupon `testaccount-4fotw` — comped | 3 |
+| Activator | **$67.00** | $97 | coupon `founders-A` (−$30 recurring fee) | **38** |
+| Activator | **$67.00** | $97 | coupon `founders-B` (−$30 recurring fee) | 1 |
+| Navigator | **$217.00** | $267 | coupon `founder-C` (−$50 recurring fee) | 3 |
+| Navigator | **$160.20** | $267 | coupon `founders-D` (−40% recurring) | 2 |
+| Navigator Quarterly | **$400.00** | $597 | coupon `birthday-E` (−$197 recurring fee) | 1 |
+| Observer · Activator · Navigator | **$0.00** | — | coupon `comp-F` — comped | 3 |
 | Navigator | **$0.00** | $267 | hand-made manual comp, no coupon (#12264) | 1 |
 | | | | **total deliberately priced** | **49** |
 
@@ -1420,15 +1426,15 @@ At list for contrast: 104 Observers, 15 Activators, 3 Navigators, 50 Navigator A
 
 | Coupon | Discount | Expires | Subs |
 |---|---|---|---|
-| `birthday400` | −$197 | **2026-10-15 — tomorrow** | 1 |
-| `FOUNDER50` | −$50 | 2026-12-31 (78 days) | 3 |
-| `founders26` | −$30 | 2026-12-31 (78 days) | 1 |
-| `founders40` | −40% | never | 2 |
-| `founders0126` | −$30 (presumed) | **the coupon no longer exists in `wp_posts`** | **38** |
+| `birthday-E` | −$197 | **2026-10-15 — tomorrow** | 1 |
+| `founder-C` | −$50 | 2026-12-31 (78 days) | 3 |
+| `founders-B` | −$30 | 2026-12-31 (78 days) | 1 |
+| `founders-D` | −40% | never | 2 |
+| `founders-A` | −$30 (presumed) | **the coupon no longer exists in `wp_posts`** | **38** |
 
-That last row is the sharpest one. The code `founders0126` survives only as a snapshot in
+That last row is the sharpest one. The code `founders-A` survives only as a snapshot in
 the subscription's coupon line item; there is no `shop_coupon` post with that title any more.
-`founders26` carries the identical −$30 recurring fee and a `usage_count` of 96, so the two
+`founders-B` carries the identical −$30 recurring fee and a `usage_count` of 96, so the two
 are almost certainly the same discount renamed at some point — but for 38 paying members the
 only remaining record of why they pay $67 is a string in an order-items row.
 
@@ -1440,7 +1446,7 @@ fragility in WooCommerce right now, independent of this project.
 
 **Labs removes it.** `amount_minor` is stored per subscription and `amount_locked = 1`, and
 no code path recalculates it. After migration, a coupon expiring upstream — or being
-deleted, as `founders0126` apparently already was — cannot change what anybody pays. The
+deleted, as `founders-A` apparently already was — cannot change what anybody pays. The
 grandfathered prices stop being a side effect of coupon state and become a recorded fact.
 
 #### The rule, stated as a prohibition
@@ -1601,7 +1607,7 @@ Three more shapes, verified the same way:
 |---|---|---|
 | Weekly Observer mid-term (#11390) | next `2026-10-15 04:08:53`, end `2026-11-26` | `next_charge_at` identical, `ends_at` identical, `max_periods` **7** (12-week term) |
 | Weekly Observer final period (#11420) | next `0`, end `2026-10-15 16:12:58` | `next_charge_at` **NULL** — expires at `ends_at`, never charged |
-| Grandfathered Activator (#4744) | total `$67.00`, coupon `founders0126` | `amount_minor` **6700**, `discount_note` `woo coupon founders0126` |
+| Grandfathered Activator (#4744) | total `$67.00`, coupon `founders-A` | `amount_minor` **6700**, `discount_note` `woo coupon founders-A` |
 | Pending-cancel (#5173) | next `0`, end `2026-11-03 15:08:34` | `next_charge_at` **NULL**, `status` `pending_cancel` |
 | Comped (#6908) | total `$0.00`, no gateway, manual `true` | `quarantined`: `no_auto_billing_in_woo;zero_amount_comped` |
 
@@ -1757,9 +1763,9 @@ is a glance at the list to confirm nothing on it is a surprise.
 
 Not a decision about this project — a thing worth knowing now:
 
-- **`birthday400` expires 2026-10-15 — tomorrow.** `FOUNDER50` and `founders26` expire
+- **`birthday-E` expires 2026-10-15 — tomorrow.** `founder-C` and `founders-B` expire
   2026-12-31.
-- **`founders0126`, which explains why 38 Activators pay $67, no longer exists as a coupon
+- **`founders-A`, which explains why 38 Activators pay $67, no longer exists as a coupon
   in `wp_posts` at all.** The code survives only as a snapshot in each subscription's coupon
   line item.
 
@@ -1884,7 +1890,7 @@ in a repo that deploys, and that should happen once DL-532 is ruled on, not befo
 | `proto/recovery.py` | §7.2 / §7.7 / §7.9 | recovery, reconciliation, heartbeat |
 | `proto/webhooks.py` | §6.3 / §6.4 | durable dedupe + ordering |
 | `proto/providers.py` | §6.1 / §6.2 | request builders + a scriptable fake |
-| `tests/test_infrastructure.py` | §13.1 | 82 assertions, self-cleaning |
+| `tests/test_infrastructure.py` | §13.1 | 121 assertions, self-cleaning |
 | `import-dryrun.py` · `export-woo-subs.sql` | §9 | the verified import, no PII |
 | `DIAGRAMS.md` · `DL-532-draft.md` · `README.md` | — | drawings, governance, index |
 
@@ -2010,7 +2016,7 @@ CREATE TABLE IF NOT EXISTS billing_discounts (
   starts_at         DATETIME NULL,
   expires_at        DATETIME NULL,
   note              VARCHAR(255) NOT NULL DEFAULT '',-- why this exists, for whoever finds it
-                                                     -- in two years (see founders0126)
+                                                     -- in two years (see founders-A)
   created_by        VARCHAR(255) NOT NULL DEFAULT '',
   created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -2089,14 +2095,14 @@ A price *decrease* needs no notice and applies immediately.
 A comp is `kind='override'`, `value_minor=0`, `duration='forever'`. Applying it puts the
 subscription in status `comped` (§9.3) rather than `active`, so it is unreachable by the due
 query. This replaces the current practice of running a $0 subscription through the billing
-path, which is how `testaccount-4fotw` ended up with 31 renewal orders.
+path, which is how `comp-F` ended up with 31 renewal orders.
 
 ### 16.6 Admin surface
 
 `/admin/billing/discounts` — list, create, disable, and see redemptions. Rules the UI enforces:
 
 - A code can be **disabled but never deleted**, and never edited once redeemed. Its redemption
-  rows are the only record of why somebody pays what they pay. `founders0126` is the cautionary
+  rows are the only record of why somebody pays what they pay. `founders-A` is the cautionary
   tale: 38 members, and the coupon is simply gone.
 - `note` is **required**. "Founder cohort Jan 2026, promised permanent" is the sentence that
   saves an argument in 2028.
@@ -2108,7 +2114,7 @@ path, which is how `testaccount-4fotw` ended up with 31 renewal orders.
 Not required, and deliberately not done. The 49 affected subscriptions carry their price in
 `amount_minor` with the code in `discount_note`; nothing needs the coupon object to keep
 billing correctly. Recreate a Woo coupon in Labs only if you want to **sell on it again** —
-`founders40` (−40%, no expiry) being the likely candidate.
+`founders-D` (−40%, no expiry) being the likely candidate.
 
 ### 16.8 What this does NOT cover
 
@@ -2521,7 +2527,7 @@ more clearly the right shape.
 #### 18.11.6 RESOLVED — see `ANALYSIS-ac-and-discord.md`
 
 Both items left open here have been investigated in depth. Full write-up in
-[`ANALYSIS-ac-and-discord.md`](ANALYSIS-ac-and-discord.md); the headlines:
+[`ANALYSIS-ac-and-discord.md`](../docs/billing/ANALYSIS-ac-and-discord.md); the headlines:
 
 **AC contacts — answered.** The vendor `activecampaign-for-woocommerce` plugin creates them,
 by two live routes: `user_register` (immediate contact sync, stamps

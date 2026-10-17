@@ -1,6 +1,6 @@
 # Native Billing v2.0 — Diagrams
 
-Companion to [SPEC-Native-Billing-v2.0.md](SPEC-Native-Billing-v2.0.md). Section
+Companion to [SPEC](../../Specs/FatTail-Labs-Native-Billing-Spec-v2.0.md). Section
 references point there.
 
 ---

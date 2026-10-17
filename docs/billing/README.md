@@ -15,7 +15,7 @@ DL-532 and the five open questions in SPEC §11.1.
 
 | File | What it is |
 |---|---|
-| **[SPEC-Native-Billing-v2.0.md](SPEC-Native-Billing-v2.0.md)** | The spec, 16 sections. Data model, failure-point register, migration, cutover runbook, and **§15 — what is proven vs what is still assumed**. Supersedes `Native-Billing-Stripe-Spec-v1.0` |
+| **[SPEC](../../Specs/FatTail-Labs-Native-Billing-Spec-v2.0.md)** | The spec, 16 sections. Data model, failure-point register, migration, cutover runbook, and **§15 — what is proven vs what is still assumed**. Supersedes `Native-Billing-Stripe-Spec-v1.0` |
 | **[SETUP-for-ernie.md](SETUP-for-ernie.md)** | Forward-as-is instructions for Ernie: the Stripe restricted key, three dashboard settings, and why PayPal needs nothing yet. Webhooks deliberately deferred |
 | **[SECURITY-ac-key-exposure.md](SECURITY-ac-key-exposure.md)** | ⚠️ **Read first.** A live credential leak found while analysing the plugins — unrelated to billing, fix today |
 | **[ANALYSIS-ac-and-discord.md](ANALYSIS-ac-and-discord.md)** | Deep dive: what creates AC contacts (and what else dies at cutover), and the Discord plugin read in full — including the exact root cause of its silent role-grant failure |
@@ -102,7 +102,7 @@ charge against one token for PayPal, before any tranche.
 | ~~Convert to granted membership~~ **confirmed deliberate** → status `comped` | #6908 · #6911 · #6913 · #12264 (all $0) |
 | Review as a list, charge nothing | the 42 on-hold (21 of them 90+ days overdue) |
 | ~~Confirm the term~~ honoured as written via `ends_at` | **#11390** — Observer on a 12-week term |
-| **Look at before 2026-10-15** — `birthday400` expires tomorrow; `founders0126` (38 subs) no longer exists as a coupon at all. A live Woo fragility, not a migration one (SPEC §11.3) | 45 subscriptions |
+| **Look at before 2026-10-15** — `birthday-E` expires tomorrow; `founders-A` (38 subs) no longer exists as a coupon at all. A live Woo fragility, not a migration one (SPEC §11.3) | 45 subscriptions |
 
 SPEC §11 shrank from nine questions to five once the pricing turned out to be deliberate
 (§11.2). Nothing blocks building.
