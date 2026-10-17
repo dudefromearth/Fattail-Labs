@@ -16,6 +16,7 @@ DL-532 and the five open questions in SPEC §11.1.
 | File | What it is |
 |---|---|
 | **[SPEC](../../Specs/FatTail-Labs-Native-Billing-Spec-v2.0.md)** | The spec, 16 sections. Data model, failure-point register, migration, cutover runbook, and **§15 — what is proven vs what is still assumed**. Supersedes `Native-Billing-Stripe-Spec-v1.0` |
+| **[GAP-ANALYSIS.md](GAP-ANALYSIS.md)** | What is built, what is **built but never runs**, and what is not built at all. Verified against the code, not recalled |
 | **[SETUP-for-ernie.md](SETUP-for-ernie.md)** | Forward-as-is instructions for Ernie: the Stripe restricted key, three dashboard settings, and why PayPal needs nothing yet. Webhooks deliberately deferred |
 | **[SECURITY-ac-key-exposure.md](SECURITY-ac-key-exposure.md)** | ⚠️ **Read first.** A live credential leak found while analysing the plugins — unrelated to billing, fix today |
 | **[ANALYSIS-ac-and-discord.md](ANALYSIS-ac-and-discord.md)** | Deep dive: what creates AC contacts (and what else dies at cutover), and the Discord plugin read in full — including the exact root cause of its silent role-grant failure |
