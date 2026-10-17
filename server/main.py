@@ -50,6 +50,7 @@ def create_app() -> FastAPI:
     from routes.auth_routes import integrations as integrations_router
     from routes.auth_routes import router as auth_router
     from routes.billing import router as billing_router
+    from routes.billing_admin import router as billing_admin_router
     from routes.community import router as community_router
     from routes.community_app import router as community_app_router
     from routes.community_admin import router as community_admin_router
@@ -203,6 +204,7 @@ def create_app() -> FastAPI:
     app.include_router(live_router)
     app.include_router(pathway_router)
     app.include_router(billing_router)
+    app.include_router(billing_admin_router)
     app.include_router(hub_public_router)
     app.include_router(hub_admin_router)
 

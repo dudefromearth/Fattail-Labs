@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Native Billing v2.0 worker — Specs/FatTail-Labs-Native-Billing-Spec-v2.0.md §5.5
+
+     ⚠️ INSTALL AS A LaunchDAEMON, NOT A LaunchAgent.
+     GUI LaunchAgents on MiniTwo die on console logout. A billing worker that
+     silently stops when someone logs out is the worst possible version of this
+     system: renewals stop, nobody is told, and the first symptom is a month of
+     missing revenue. The §7.9 heartbeat is the backstop; the daemon is the fix.
+
+     ⚠️ LABS_BILLING_MODE. The worker REFUSES to start on "off" (the default).
+     Set it to "shadow" first and leave it there for 14 days — shadow does all
+     the work and is structurally incapable of calling a provider. Only then
+     consider "live".
+
+     Install:
+       sudo cp ai.fattail.labs.billing-worker.plist /Library/LaunchDaemons/
+       sudo chown root:wheel /Library/LaunchDaemons/ai.fattail.labs.billing-worker.plist
+       sudo launchctl bootstrap system /Library/LaunchDaemons/ai.fattail.labs.billing-worker.plist
+     Stop:
+       sudo launchctl bootout system/ai.fattail.labs.billing-worker
+
+     Env lives HERE, not in .env — the worker is launched directly, with no
+     shell, so nothing sources a dotenv file.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>ai.fattail.labs.billing-worker</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/ernie/Fattail-Labs/server/.venv/bin/python</string>
+    <string>-m</string>
+    <string>billing</string>
+  </array>
+  <key>WorkingDirectory</key><string>/Users/ernie/Fattail-Labs/server</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>LABS_BILLING_MODE</key><string>shadow</string>
+    <key>LABS_BILLING_WORKER_INTERVAL_SEC</key><string>300</string>
+    <key>LABS_BILLING_LEASE_SEC</key><string>900</string>
+    <key>LABS_BILLING_DAILY_CAP_MINOR</key><string>750000</string>
+    <!-- DB + provider credentials go here too. Never in source. -->
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key>
+  <dict><key>SuccessfulExit</key><false/></dict>
+  <key>StandardOutPath</key><string>/var/log/labs-billing-worker.log</string>
+  <key>StandardErrorPath</key><string>/var/log/labs-billing-worker.err</string>
+</dict>
+</plist>
