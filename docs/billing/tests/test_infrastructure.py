@@ -1142,6 +1142,91 @@ def test_checkout(conn, ident, plan):
               cur.fetchone()["status"] == "shadow")
 
 
+# ----------------------------- 11b. provider EVENT processing (§6.3 / §6.4)
+def test_event_processing(conn, ident, plan):
+    print("\n11b. PROVIDER EVENTS (§6.3/§6.4) — what a webhook is allowed to do")
+    reset(conn)
+    try:
+        from billing import events
+    except ImportError:
+        print("     SKIPPED — events module only in the lifted package")
+        return
+    nosurge = worker.Limits(due_surge_multiple=1000.0, daily_cap_minor=10**9)
+    fake = providers.FakeProvider(name="stripe", default=providers.PENDING)
+
+    # a PENDING charge, waiting on the provider to tell us what happened
+    sid = mk_sub(conn, identity_id=ident, plan_id=plan, amount_minor=9700, woo_id=900000700)
+    worker.run_cycle(conn, provider_for=lambda n: fake, mode=worker.MODE_LIVE, limits=nosurge)
+    with conn.cursor() as cur:
+        cur.execute("SELECT * FROM billing_charges WHERE subscription_id=%s", (sid,))
+        ch = cur.fetchone()
+    check("a PENDING charge sits as processing, awaiting the webhook",
+          ch["status"] == "processing", ch["status"])
+
+    with conn.cursor() as cur:
+        res = events.handle_stripe(cur, {
+            "id": "evt_1", "type": "payment_intent.succeeded",
+            "data": {"object": {"id": ch["provider_intent_ref"]}}})
+        conn.commit()
+        cur.execute("SELECT status FROM billing_charges WHERE id=%s", (ch["id"],))
+        after = cur.fetchone()["status"]
+        cur.execute("SELECT period_index, next_charge_at FROM billing_subscriptions WHERE id=%s", (sid,))
+        sub = cur.fetchone()
+    check("payment_intent.succeeded settles the charge", after == "succeeded", f"{after} ({res})")
+    check("and advances the subscription so the worker will not re-charge the period",
+          sub["period_index"] == 1 and sub["next_charge_at"] is not None, str(sub))
+
+    # §6.4 — a late duplicate must not move a settled charge
+    with conn.cursor() as cur:
+        res2 = events.handle_stripe(cur, {
+            "id": "evt_2", "type": "payment_intent.payment_failed",
+            "data": {"object": {"id": ch["provider_intent_ref"]}}})
+        cur.execute("SELECT status FROM billing_charges WHERE id=%s", (ch["id"],))
+        still = cur.fetchone()["status"]
+    conn.rollback()
+    check("a LATE failure event cannot un-settle a succeeded charge (§6.4)",
+          still == "succeeded" and "already" in res2, f"{still} ({res2})")
+
+    # The shared Stripe account: WooCommerce's own events arrive here too.
+    with conn.cursor() as cur:
+        res3 = events.handle_stripe(cur, {
+            "id": "evt_woo", "type": "payment_intent.succeeded",
+            "data": {"object": {"id": "pi_woocommerce_not_ours"}}})
+    check("an event for a charge we did NOT open is ignored, not acted on",
+          "no Labs ledger row" in res3, res3)
+
+    # PayPal: the member revokes us from inside their own PayPal account
+    reset(conn)
+    pp = mk_sub(conn, identity_id=ident, plan_id=plan, amount_minor=1700,
+                unit="week", provider="paypal", woo_id=900000701)
+    with conn.cursor() as cur:
+        cur.execute("""INSERT INTO billing_payment_methods
+                         (identity_id, provider, customer_ref, method_ref, kind)
+                       VALUES (%s,'paypal','ppcust','VAULT-TOK-1','paypal')""", (ident,))
+        cur.execute("SELECT LAST_INSERT_ID() id"); pmid = cur.fetchone()["id"]
+        cur.execute("UPDATE billing_subscriptions SET payment_method_id=%s WHERE id=%s", (pmid, pp))
+    conn.commit()
+    with conn.cursor() as cur:
+        res4 = events.handle_paypal(cur, {
+            "id": "evt_pp", "event_type": "VAULT.PAYMENT-TOKEN.DELETED",
+            "resource": {"id": "VAULT-TOK-1"}})
+        conn.commit()
+        cur.execute("SELECT status FROM billing_payment_methods WHERE id=%s", (pmid,))
+        mstat = cur.fetchone()["status"]
+        cur.execute("SELECT status FROM billing_subscriptions WHERE id=%s", (pp,))
+        sstat = cur.fetchone()["status"]
+    check("a revoked PayPal token marks the method dead and moves the sub to grace",
+          mstat == "revoked" and sstat == "grace", f"method={mstat} sub={sstat} ({res4})")
+
+    # a dispute must NOT silently revoke access (§7.11)
+    with conn.cursor() as cur:
+        res5 = events.handle_paypal(cur, {
+            "id": "evt_d", "event_type": "CUSTOMER.DISPUTE.CREATED",
+            "resource": {"dispute_id": "D-1"}})
+    check("a dispute raises an alert and revokes nothing (§7.11)",
+          "ALERT" in res5 and "revok" not in res5.lower(), res5)
+
+
 # ----------------------------------------------------- 11. webhooks + reconcile
 def test_webhooks_and_reconcile(conn, ident, plan):
     print("\n11. WEBHOOKS (§6.3 / §6.4)")
@@ -1372,6 +1457,8 @@ def main():
         test_money_edges(conn, created_idents[3], plan)
         reset(conn)
         test_discounts(conn, created_idents[3], plan)
+        reset(conn)
+        test_event_processing(conn, created_idents[2], plan)
         reset(conn)
         test_webhooks_and_reconcile(conn, created_idents[2], plan)
         reset(conn)

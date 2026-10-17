@@ -254,6 +254,41 @@ class PayPalProvider:
             return None
         return None
 
+    # --- webhooks -------------------------------------------------------------
+
+    def verify_webhook(self, *, webhook_id: str, headers: dict, body: bytes) -> bool:
+        """§6.3 — PayPal signature verification is an API CALL, not a local HMAC.
+
+        Unlike Stripe, this needs working credentials as well as the webhook id,
+        so a credential rotation breaks webhook verification too. Fails CLOSED:
+        anything we cannot positively verify is rejected.
+        """
+        import json as _json
+        need = ["paypal-transmission-id", "paypal-transmission-time",
+                "paypal-cert-url", "paypal-auth-algo", "paypal-transmission-sig"]
+        h = {k.lower(): v for k, v in headers.items()}
+        if not all(h.get(k) for k in need):
+            log.warning("paypal webhook missing signature headers")
+            return False
+        try:
+            payload = {
+                "transmission_id": h["paypal-transmission-id"],
+                "transmission_time": h["paypal-transmission-time"],
+                "cert_url": h["paypal-cert-url"],
+                "auth_algo": h["paypal-auth-algo"],
+                "transmission_sig": h["paypal-transmission-sig"],
+                "webhook_id": webhook_id,
+                "webhook_event": _json.loads(body.decode("utf-8")),
+            }
+            r = self._call("POST", "/v1/notifications/verify-webhook-signature", json=payload)
+        except (ProviderError, ValueError) as exc:
+            log.error("paypal webhook verification failed: %s", exc)
+            return False
+        if r.status_code != 200:
+            log.error("paypal verify returned %s: %s", r.status_code, r.text[:200])
+            return False
+        return (r.json().get("verification_status") or "").upper() == "SUCCESS"
+
     # --- refunds --------------------------------------------------------------
 
     def refund(self, *, charge_ref: str, amount_minor: int,

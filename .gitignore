@@ -46,3 +46,4 @@ server/var/
 # Agent scratch — not program record (contains stray Spec-v1_0_1.md)
 Claude outputs/
 server/.venv
+server/.venv/
