@@ -121,6 +121,33 @@ class Config:
         # (Native Billing spec §2). Web origin is validated when billing is used.
         self.stripe_secret_key = os.environ.get("STRIPE_SECRET_KEY", "").strip() or None
         self.stripe_webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET", "").strip() or None
+        self.stripe_publishable_key = os.environ.get("STRIPE_PUBLISHABLE_KEY", "").strip() or None
+
+        # Native billing v2 — PayPal (Specs/FatTail-Labs-Native-Billing-Spec-v2.0.md §3.2).
+        # ALL optional: absence disables the provider, exactly like Stripe.
+        self.paypal_client_id = os.environ.get("PAYPAL_CLIENT_ID", "").strip() or None
+        self.paypal_client_secret = os.environ.get("PAYPAL_CLIENT_SECRET", "").strip() or None
+        self.paypal_webhook_id = os.environ.get("PAYPAL_WEBHOOK_ID", "").strip() or None
+        self.paypal_api_base = (os.environ.get("PAYPAL_API_BASE", "").strip()
+                                or "https://api-m.paypal.com")
+
+        # Native billing v2 — the worker (§3, §7.10).
+        # off | shadow | live. Defaults to OFF: a deploy can never start charging
+        # by accident, it has to be switched on deliberately.
+        self.billing_mode = (os.environ.get("LABS_BILLING_MODE", "").strip().lower() or "off")
+        if self.billing_mode not in ("off", "shadow", "live"):
+            raise ConfigError(
+                f"LABS_BILLING_MODE must be off|shadow|live, got {self.billing_mode!r}")
+        self.billing_worker_interval_sec = int(
+            os.environ.get("LABS_BILLING_WORKER_INTERVAL_SEC", "300") or 300)
+        self.billing_lease_sec = int(os.environ.get("LABS_BILLING_LEASE_SEC", "900") or 900)
+        # Circuit breaker (§7.10): a cycle that would spend more than this halts.
+        self.billing_daily_cap_minor = int(
+            os.environ.get("LABS_BILLING_DAILY_CAP_MINOR", "750000") or 750000)
+        self.billing_alert_emails = [
+            e.strip() for e in os.environ.get("LABS_BILLING_ALERT_EMAILS", "").split(",")
+            if e.strip()
+        ]
         self.web_origin = os.environ.get("LABS_WEB_ORIGIN", "").strip() or None
 
         # Playbook scrapbook archive + version retention (Spec v1.1a · OD fail-loud)

@@ -28,13 +28,21 @@ from pathlib import Path
 
 import pymysql
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "proto"))
-import ledger          # noqa: E402
-import periods         # noqa: E402
-import providers       # noqa: E402
-import recovery        # noqa: E402
-import webhooks        # noqa: E402
-import worker          # noqa: E402
+# Prefer the LIFTED package at server/billing when this repo has one, so the
+# suite proves the code that actually ships. Falls back to the prototypes in
+# proto/ so the package stays runnable standalone.
+_REPO = Path(__file__).resolve().parents[3]
+if (_REPO / "server" / "billing" / "worker.py").is_file():
+    sys.path.insert(0, str(_REPO / "server"))
+    from billing import ledger, periods, recovery, webhooks, worker   # noqa: E402
+    from billing import providers                                      # noqa: E402
+    from billing.providers.fake import FakeProvider                    # noqa: E402
+    providers.FakeProvider = FakeProvider
+    _SOURCE = "server/billing (lifted)"
+else:
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "proto"))
+    import ledger, periods, providers, recovery, webhooks, worker      # noqa: E402
+    _SOURCE = "docs/billing/proto (prototype)"
 
 PKG  = Path(__file__).resolve().parent.parent          # docs/billing/
 REPO = Path(__file__).resolve().parents[3]             # repo root (for .env)
@@ -517,10 +525,10 @@ def test_declines(conn, ident, plan):
     check("the PaymentIntent ref is stored so the member can confirm it later",
           bool(c["provider_intent_ref"]))
 
-    classif = [providers.classify_stripe_error(c) for c in
+    classif = [providers.classify(c) for c in
                ("authentication_required", "expired_card", "insufficient_funds",
                 "api_connection_error", "some_new_code_stripe_invents")]
-    check("error classifier: 3DS/hard/soft/transport/unknown all route correctly",
+    check("decline classifier: 3DS/hard/soft/transport/unknown all route correctly",
           classif == [providers.REQUIRES_ACTION, providers.HARD_DECLINE,
                       providers.SOFT_DECLINE, providers.TRANSPORT_ERROR,
                       providers.SOFT_DECLINE], str(classif))
@@ -1061,11 +1069,19 @@ def test_webhooks_and_reconcile(conn, ident, plan):
     except TypeError:
         rejected = True
     check("a float amount is refused by the formatter too", rejected)
+    # The idempotency key is NOT part of the body — it is an HTTP header the SDK
+    # sends separately. Keeping it out of the params is what lets the same body
+    # be replayed under a new key for a legitimate retry.
     req = providers.build_stripe_request(customer_ref="cus_x", method_ref="pm_x",
                                          amount_minor=199700, currency="USD",
-                                         idempotency_key="k", descriptor="d", metadata={})
+                                         descriptor="d", metadata={"labs_charge_id": "42"})
     check("Stripe request is off_session + confirm (true merchant-initiated)",
           req["off_session"] is True and req["confirm"] is True and req["amount"] == 199700)
+    check("Stripe request carries no idempotency key in the body",
+          not any("idempot" in k.lower() for k in req))
+    check("Stripe request refuses a float amount",
+          _raises(lambda: providers.build_stripe_request(
+              customer_ref="c", method_ref="m", amount_minor=1997.0, currency="USD"), TypeError))
     order = providers.build_paypal_order(vault_id="v1", amount_minor=9700, currency="USD",
                                          charge_id="42", invoice_id="labs-sub1-p7")
     sc = order["payment_source"]["paypal"]["stored_credential"]
@@ -1152,7 +1168,8 @@ def main():
     tsv = Path(sys.argv[1]) if len(sys.argv) > 1 else None
     print("=" * 78)
     print("NATIVE BILLING v2.0 — INFRASTRUCTURE PROOF")
-    print("localhost MySQL only · 6 new tables, dropped afterwards · live DB never contacted")
+    print("localhost MySQL only · tables dropped afterwards · live DB never contacted")
+    print(f"testing: {_SOURCE}")
     print("=" * 78)
 
     test_periods()
