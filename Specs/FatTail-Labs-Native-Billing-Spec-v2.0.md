@@ -1148,7 +1148,36 @@ access.
   identity is **quarantined, not guessed** (§9.5). Merges use the existing documented atomic
   merge recipe before import, never during.
 
-### 7.13 Dual-write: Woo and Labs both granting access
+### 7.13 ⚠️ CORRECTED 2026-10-17 — the overwrite risk does not exist; double billing does
+
+**This section was wrong.** It asserted that the Woo SSO sync would overwrite a Labs
+membership unless taught to skip. Reading `identity.sync_provider_memberships()` — the single
+place that path writes memberships, called from `routes/auth_routes.py:314` — every statement
+is **already scoped by source**:
+
+```sql
+UPDATE memberships SET status='expired'
+ WHERE identity_id=%s AND source=%s AND plan_id NOT IN (...)
+```
+
+and `memberships` is keyed `UNIQUE (identity_id, plan_id, source)`, so sources coexist by
+design. Woo SSO can only expire rows whose source is `wordpress:fattail`. A Labs-born
+membership (`source='front-door'`) is untouchable by it. **No skip rule is needed.**
+
+**The real exposure, which this section missed:** nothing stops a member who already has a
+live WooCommerce subscription from buying again on Labs. They would be charged by both
+systems for overlapping access, and the second charge looks legitimate to each. That is a
+checkout problem, not an SSO one, and the fix belongs in `checkout.start()`:
+
+> Before creating a subscription, refuse the purchase if this identity already holds an
+> active or grace membership from a WordPress source, and route them to support instead.
+
+It is the most expensive mistake available in the parallel-run model — a double charge is a
+refund and a trust problem at once — and among the cheapest to prevent.
+
+Full working in `docs/billing/ANALYSIS-three-blockers.md` §1.
+
+### 7.13b Dual-write at actual migration (retained for §9, not needed now)
 The highest-risk window in the whole project, and the thing most likely to actually go wrong.
 - Both systems can grant/revoke the same membership. Labs already has prior art for this
   going bad (the membership rejoin desync, and the Castaway system failing silently for
