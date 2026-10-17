@@ -1001,6 +1001,117 @@ def test_discounts(conn, ident, plan):
     conn.commit()
 
 
+# ------------------------- 10e. first purchase: the Front Door join (§8.1)
+def test_checkout(conn, ident, plan):
+    print("\n10e. FIRST PURCHASE (§8.1) — the join with Ernie's Front Door")
+    reset(conn)
+    try:
+        from billing import catalog, checkout
+    except ImportError:
+        print("     SKIPPED — checkout module only exists in the lifted package")
+        return
+
+    # the two catalogs must agree, or a member is granted one thing and billed another
+    FRONT_DOOR = {
+        "observer":           {"plan": "observer-trial", "days": 42},
+        "navigator-monthly":  {"plan": "navigator",      "days": 31},
+        "quarterly":          {"plan": "navigator",      "days": 92},
+        "navigator-annual":   {"plan": "navigator",      "days": 366},
+        "navigator-lifetime": {"plan": "navigator",      "days": None},
+    }
+    problems = catalog.assert_matches_front_door(FRONT_DOOR)
+    check("billing catalog agrees with the Front Door's PRODUCTS table",
+          not problems, "; ".join(problems))
+    check("prices match the live WooCommerce products",
+          catalog.resolve("observer").amount_minor == 1700
+          and catalog.resolve("quarterly").amount_minor == 59700
+          and catalog.resolve("navigator-annual").amount_minor == 199700
+          and catalog.resolve("navigator-lifetime").amount_minor == 300000)
+    check("public aliases resolve to canonical ids (CK-CATALOG)",
+          catalog.resolve("trial").product_id == "observer"
+          and catalog.resolve("annual").product_id == "navigator-annual")
+    check("Observer's advertised total is $102 (6 x $17)",
+          catalog.resolve("observer").total_commitment_minor == 10200)
+    check("an unknown product is rejected, not guessed",
+          _raises(lambda: catalog.resolve("free-please"), catalog.UnknownProduct))
+
+    # the observer-trial plan must exist for this section
+    with conn.cursor() as cur:
+        cur.execute("SELECT id FROM plans WHERE slug='observer-trial'")
+        row = cur.fetchone()
+    if not row:
+        print("     (observer-trial plan absent in this dev DB — using the test plan)")
+
+    fake = providers.FakeProvider()
+    r = checkout.start(conn, identity_id=ident, product_id="observer",
+                       provider_name="stripe", customer_ref="cus_t", method_ref="pm_t",
+                       mode="live", provider_for=lambda n: fake)
+    check("first purchase succeeds and returns a subscription", r.ok and r.subscription_id,
+          f"{r.outcome} {r.message}")
+    check("the FIRST charge is ON-SESSION so 3DS can challenge the member now",
+          fake.calls and fake.calls[-1]["off_session"] is False,
+          str(fake.calls[-1] if fake.calls else None))
+    check("charged the catalog price, not a browser-supplied one",
+          fake.calls[-1]["amount"] == 1700, str(fake.calls[-1]["amount"]))
+    with conn.cursor() as cur:
+        cur.execute("SELECT * FROM billing_subscriptions WHERE id=%s", (r.subscription_id,))
+        sub = cur.fetchone()
+        cur.execute("SELECT status, amount_minor FROM billing_charges WHERE subscription_id=%s",
+                    (r.subscription_id,))
+        ch = cur.fetchone()
+    check("ledger row settled succeeded at the catalog price",
+          ch["status"] == "succeeded" and ch["amount_minor"] == 1700, str(ch))
+    check("subscription is active with the NEXT charge a week out, not the term end",
+          sub["status"] == "active" and sub["period_index"] == 1
+          and (sub["next_charge_at"] - sub["anchor_at"]).days == 7,
+          f"{sub['status']} idx={sub['period_index']} next={sub['next_charge_at']}")
+    check("amount is locked at checkout (§7.3)", sub["amount_locked"] == 1)
+    check("Observer carries the 6-charge cap", sub["max_periods"] == 6, str(sub["max_periods"]))
+    check("membership end is the END OF THE PERIOD PAID FOR, not the full 42 days",
+          r.membership_ends_at is not None
+          and 6 <= (r.membership_ends_at - sub["anchor_at"]).days <= 8,
+          f"ends {r.membership_ends_at} vs anchor {sub['anchor_at']}")
+
+    # Lifetime is a one-off: a charge with no subscription and no end date
+    reset(conn)
+    fake2 = providers.FakeProvider()
+    r2 = checkout.start(conn, identity_id=ident, product_id="lifetime",
+                        provider_name="stripe", customer_ref="cus_t", method_ref="pm_t",
+                        mode="live", provider_for=lambda n: fake2)
+    check("Lifetime charges $3,000 once and creates NO subscription",
+          r2.ok and r2.subscription_id is None and fake2.calls[-1]["amount"] == 300000,
+          f"sub={r2.subscription_id} amount={fake2.calls[-1]['amount']}")
+    check("Lifetime grants unlimited access (no membership end date)",
+          r2.membership_ends_at is None)
+
+    # a decline must not leave an active subscription behind
+    reset(conn)
+    dec = providers.FakeProvider(default=(providers.SOFT_DECLINE, "card_declined"))
+    r3 = checkout.start(conn, identity_id=ident, product_id="navigator-monthly",
+                        provider_name="stripe", customer_ref="cus_t", method_ref="pm_t",
+                        mode="live", provider_for=lambda n: dec)
+    with conn.cursor() as cur:
+        cur.execute("SELECT status, next_charge_at FROM billing_subscriptions WHERE id=%s",
+                    (r3.subscription_id,))
+        s3 = cur.fetchone()
+    check("a declined first payment grants nothing and schedules no renewal",
+          (not r3.ok) and r3.membership_ends_at is None
+          and s3["status"] == "past_due" and s3["next_charge_at"] is None, str(s3))
+
+    # shadow mode must not reach a provider even at checkout
+    reset(conn)
+    trip = providers.FakeProvider()
+    r4 = checkout.start(conn, identity_id=ident, product_id="quarterly",
+                        provider_name="stripe", customer_ref="cus_t", method_ref="pm_t",
+                        mode="shadow", provider_for=lambda n: trip)
+    check("shadow checkout writes a ledger row and calls NO provider",
+          r4.ok and len(trip.calls) == 0)
+    with conn.cursor() as cur:
+        cur.execute("SELECT status FROM billing_charges WHERE id=%s", (r4.charge_id,))
+        check("and the row is marked shadow, not succeeded",
+              cur.fetchone()["status"] == "shadow")
+
+
 # ----------------------------------------------------- 11. webhooks + reconcile
 def test_webhooks_and_reconcile(conn, ident, plan):
     print("\n11. WEBHOOKS (§6.3 / §6.4)")
@@ -1190,7 +1301,7 @@ def main():
         cur.execute("SELECT COUNT(*) n FROM information_schema.tables WHERE table_schema=DATABASE()")
         base_tables = cur.fetchone()["n"]
 
-    created_idents, created_plan = [], None
+    created_idents, created_plan, created_plans = [], None, []
     try:
         drop_tables(conn)
         create_tables(conn)
@@ -1200,6 +1311,12 @@ def main():
         plan, created_plan_flag = ensure_plan(conn, "observer-trial")
         conn.commit()
         created_plan = plan if created_plan_flag else None
+        # §8.1 checkout needs the real plan slugs the Front Door grants against.
+        for slug in ("navigator", "activator"):
+            pid, made = ensure_plan(conn, slug)
+            if made:
+                created_plans.append(pid)
+        conn.commit()
 
         test_ledger(conn, created_idents[0], plan)
         reset(conn)
@@ -1212,6 +1329,8 @@ def main():
         test_breakers(conn, created_idents[2], plan)
         reset(conn)
         test_set_prices(conn, created_idents[3], plan)
+        reset(conn)
+        test_checkout(conn, created_idents[3], plan)
         reset(conn)
         test_money_edges(conn, created_idents[3], plan)
         reset(conn)
@@ -1226,8 +1345,8 @@ def main():
         with conn.cursor() as cur:
             for i in created_idents:
                 cur.execute("DELETE FROM identities WHERE identity_id=%s", (i,))
-            if created_plan:
-                cur.execute("DELETE FROM plans WHERE id=%s", (created_plan,))
+            for pid in ([created_plan] if created_plan else []) + created_plans:
+                cur.execute("DELETE FROM plans WHERE id=%s", (pid,))
         conn.commit()
         with conn.cursor() as cur:
             cur.execute("SELECT COUNT(*) n FROM identities")

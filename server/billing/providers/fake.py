@@ -31,9 +31,11 @@ class FakeProvider:
     fail_lookup: bool = False
 
     def charge(self, *, customer_ref, method_ref, amount_minor, currency,
-               idempotency_key, descriptor="", metadata=None) -> ChargeResult:
+               idempotency_key, descriptor="", metadata=None,
+               off_session: bool = True) -> ChargeResult:
         self.calls.append(dict(key=idempotency_key, amount=amount_minor,
-                               method=method_ref, currency=currency))
+                               method=method_ref, currency=currency,
+                               off_session=off_session))
         if idempotency_key in self.seen:
             return self.seen[idempotency_key]          # provider-side idempotency
         spec = self.script.get(idempotency_key, self.default)

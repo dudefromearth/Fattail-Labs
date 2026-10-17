@@ -34,13 +34,23 @@ _ApiErr = getattr(stripe, "APIError", None) or stripe.error.APIError
 def build_payment_intent_params(*, customer_ref: str, method_ref: str,
                                 amount_minor: int, currency: str,
                                 descriptor: str = "",
-                                metadata: dict | None = None) -> dict:
-    """The exact PaymentIntent body for a merchant-initiated charge.
+                                metadata: dict | None = None,
+                                off_session: bool = True) -> dict:
+    """The exact PaymentIntent body. Pure, so the shape is unit-testable without
+    a network or a key.
 
-    Pure, so the shape is unit-testable without a network or a key. The two
-    fields that make this merchant-initiated rather than a normal payment are
-    off_session and confirm — if either is dropped, Stripe expects a customer
-    to be present and the renewal fails.
+    TWO DIFFERENT CHARGES, and conflating them is a real bug:
+
+    off_session=True  — a RENEWAL. The member is not here. `off_session` plus
+        `confirm` is what makes it merchant-initiated; drop either and Stripe
+        expects a browser, and every renewal fails.
+
+    off_session=False — the FIRST charge at checkout. The member IS here, so
+        3DS can challenge them interactively and succeed, instead of coming
+        back later as requires_action and an email. It also sets
+        setup_future_usage=off_session, which is what earns the mandate that
+        makes later renewals work at all. Skipping it means the card is saved
+        but not authorised for unattended use.
     """
     if not isinstance(amount_minor, int) or isinstance(amount_minor, bool):
         raise TypeError("amount_minor must be int minor units")
@@ -49,10 +59,13 @@ def build_payment_intent_params(*, customer_ref: str, method_ref: str,
         "currency": currency.lower(),
         "customer": customer_ref,
         "payment_method": method_ref,
-        "off_session": True,
         "confirm": True,
         "metadata": dict(metadata or {}),
     }
+    if off_session:
+        params["off_session"] = True
+    else:
+        params["setup_future_usage"] = "off_session"
     if descriptor:
         params["description"] = descriptor[:350]
     return params
@@ -70,7 +83,7 @@ class StripeProvider:
 
     def charge(self, *, customer_ref: str, method_ref: str, amount_minor: int,
                currency: str, idempotency_key: str, descriptor: str = "",
-               metadata: dict | None = None) -> ChargeResult:
+               metadata: dict | None = None, off_session: bool = True) -> ChargeResult:
         """One off-session charge against a saved PaymentMethod.
 
         IDEMPOTENCY, AND ITS LIMIT: Stripe keys expire after 24 HOURS. A retry of
@@ -81,7 +94,7 @@ class StripeProvider:
         params = build_payment_intent_params(
             customer_ref=customer_ref, method_ref=method_ref,
             amount_minor=amount_minor, currency=currency,
-            descriptor=descriptor, metadata=metadata)
+            descriptor=descriptor, metadata=metadata, off_session=off_session)
         try:
             pi = stripe.PaymentIntent.create(
                 api_key=self._key, idempotency_key=idempotency_key, **params

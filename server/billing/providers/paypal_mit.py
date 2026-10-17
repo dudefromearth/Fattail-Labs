@@ -32,9 +32,11 @@ SANDBOX = "https://api-m.sandbox.paypal.com"
 _TIMEOUT = httpx.Timeout(20.0, connect=10.0)
 
 
-def build_order_body(*, vault_id: str, amount_minor: int, currency: str,
+def build_order_body(*, vault_id: str = "", amount_minor: int, currency: str,
                      invoice_id: str, charge_id: str = "",
-                     descriptor: str = "") -> dict:
+                     descriptor: str = "", save_for_future: bool = False,
+                     customer_id: str = "", return_url: str = "",
+                     cancel_url: str = "") -> dict:
     """The exact order body for a vaulted merchant-initiated charge.
 
     Pure, so the shape is unit-testable without credentials. Two things matter:
@@ -55,6 +57,33 @@ def build_order_body(*, vault_id: str, amount_minor: int, currency: str,
     }
     if descriptor:
         unit["description"] = descriptor[:127]
+    if save_for_future:
+        # FIRST purchase: the member approves in their PayPal window and we ask
+        # PayPal to keep the token ON SUCCESS. usage_type MERCHANT is what makes
+        # the saved token chargeable by us later without the member present —
+        # without it the vault entry exists but every renewal is refused.
+        paypal: dict = {
+            "attributes": {
+                "vault": {
+                    "store_in_vault": "ON_SUCCESS",
+                    "usage_type": "MERCHANT",
+                    "customer_type": "CONSUMER",
+                    "permit_multiple_payment_tokens": False,
+                },
+            },
+            "experience_context": {
+                "shipping_preference": "NO_SHIPPING",
+                "user_action": "PAY_NOW",
+                **({"return_url": return_url} if return_url else {}),
+                **({"cancel_url": cancel_url} if cancel_url else {}),
+            },
+        }
+        if customer_id:
+            paypal["attributes"]["customer"] = {"id": customer_id}
+        return {"intent": "CAPTURE", "purchase_units": [unit],
+                "payment_source": {"paypal": paypal}}
+
+    # RENEWAL: charge the stored token with no member present.
     return {
         "intent": "CAPTURE",
         "purchase_units": [unit],
