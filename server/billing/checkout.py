@@ -48,6 +48,51 @@ class CheckoutError(Exception):
     pass
 
 
+class AlreadySubscribed(CheckoutError):
+    """This identity is already being billed — refuse rather than charge twice."""
+
+
+def _existing_billing(cur, identity_id: int) -> dict | None:
+    """Is this member ALREADY being billed, by us or by WooCommerce?
+
+    THE PARALLEL-RUN HAZARD (spec §7.13, corrected 2026-10-17). While Woo keeps
+    billing its 171 subscriptions and Labs takes new signups, nothing otherwise
+    stops a member with a live Woo subscription buying again here. They would be
+    charged by BOTH systems for overlapping access, and each charge looks
+    perfectly legitimate to the system that made it.
+
+    It is the most expensive mistake available in this model — a double charge is
+    a refund and a trust problem at once — and among the cheapest to prevent.
+
+    Checked in two directions:
+      1. a Labs billing subscription that is still live
+      2. an active or grace membership from a WordPress source, i.e. Woo
+    """
+    cur.execute(
+        """SELECT id, plan_id, status FROM billing_subscriptions
+            WHERE identity_id = %s
+              AND status IN ('active','past_due','grace','pending_cancel')
+            LIMIT 1""",
+        (identity_id,))
+    row = cur.fetchone()
+    if row:
+        return {"where": "labs", "detail": f"billing subscription #{row['id']} ({row['status']})"}
+
+    cur.execute(
+        """SELECT m.source, p.slug FROM memberships m
+             JOIN plans p ON p.id = m.plan_id
+            WHERE m.identity_id = %s
+              AND m.status IN ('active','grace')
+              AND m.source LIKE 'wordpress:%%'
+            LIMIT 1""",
+        (identity_id,))
+    row = cur.fetchone()
+    if row:
+        return {"where": "woocommerce",
+                "detail": f"{row['slug']} membership from {row['source']}"}
+    return None
+
+
 def _plan_id(cur, slug: str) -> int:
     cur.execute("SELECT id FROM plans WHERE slug = %s", (slug,))
     row = cur.fetchone()
@@ -78,7 +123,8 @@ def _remember_method(cur, *, identity_id: int, provider: str, customer_ref: str,
 
 def start(conn, *, identity_id: int, product_id: str, provider_name: str,
           customer_ref: str, method_ref: str, mode: str = "live",
-          now: datetime | None = None, provider_for=None) -> StartResult:
+          now: datetime | None = None, provider_for=None,
+          allow_duplicate: bool = False) -> StartResult:
     """Charge the first payment and create the subscription.
 
     mode:
@@ -88,11 +134,27 @@ def start(conn, *, identity_id: int, product_id: str, provider_name: str,
 
     Returns a StartResult. The caller writes the membership using
     `membership_ends_at`; nothing here touches `memberships`.
+
+    Raises AlreadySubscribed when the identity is already being billed — by Labs
+    or by WooCommerce. `allow_duplicate=True` overrides, and exists only for an
+    admin deliberately creating a second subscription. It should never be set
+    from a member-facing path.
     """
     if mode == "off":
         raise CheckoutError("billing is off (LABS_BILLING_MODE=off)")
     product = catalog.resolve(product_id)      # raises UnknownProduct -> 422
     now = now or datetime.utcnow()
+
+    # §7.13 — refuse BEFORE any money moves, not after.
+    with conn.cursor() as cur:
+        existing = _existing_billing(cur, identity_id)
+    if existing and not allow_duplicate:
+        log.warning("refusing duplicate purchase for identity=%s: %s",
+                    identity_id, existing["detail"])
+        raise AlreadySubscribed(
+            "This account already has an active subscription "
+            f"({existing['detail']}). Contact support to change plan rather than "
+            "buying a second one.")
 
     # --- period + term --------------------------------------------------------
     if product.is_recurring:

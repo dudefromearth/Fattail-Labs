@@ -163,6 +163,55 @@ def _add_contact_tag(cfg: dict, contact_id: str, tag_id: str) -> None:
     )
 
 
+def remove_contact_tag(cfg: dict, contact_tag_id: str) -> bool:
+    """Remove a tag from a contact.  DELETE /contactTags/{contactTagId}
+
+    WHY THIS MATTERS MORE THAN IT LOOKS. FatTail's tag model has two kinds:
+
+      STATUS tags toggle   — Observer / Activator / Navigator / CANCELLED.
+                             Exactly one tier tag at a time.
+      HISTORY tags persist — Observer Completed / Dropout / Annual / Quarterly
+                             / Lifetime. Never removed; that is the mechanism
+                             by which they survive a tier change.
+
+    Without removal an upgrading member accumulates BOTH `FOTW - Observer` and
+    `FOTW - Navigator` and matches two mutually exclusive segments, so every
+    tier journey misfires. The WordPress plugin strips exactly four tag names
+    and nothing else; the Labs equivalent must keep that allow-list, because a
+    naive "remove everything not wanted" would delete ActiveCampaign's own
+    campaign tags.
+
+    Note the id is the CONTACT-TAG id (the join row), not the tag id.
+    """
+    try:
+        _request(cfg, "DELETE", f"/contactTags/{contact_tag_id}")
+    except ACError:
+        log.warning("AC: failed to remove contactTag %s", contact_tag_id)
+        return False
+    return True
+
+
+def contact_tags(cfg: dict, contact_id: str) -> dict[str, str]:
+    """Tag name -> contactTag id for a contact.
+
+    Returns the join-row ids because that is what removal needs. Resolving
+    names here keeps callers working in tag NAMES, which is what the business
+    rules are written in.
+    """
+    out: dict[str, str] = {}
+    res = _request(cfg, "GET", f"/contacts/{contact_id}/contactTags") or {}
+    for ct in res.get("contactTags", []) or []:
+        tag_id = str(ct.get("tag") or "")
+        ct_id = str(ct.get("id") or "")
+        if not tag_id or not ct_id:
+            continue
+        tag = _request(cfg, "GET", f"/tags/{tag_id}") or {}
+        name = (tag.get("tag") or {}).get("tag") if isinstance(tag.get("tag"), dict) else None
+        if name:
+            out[name] = ct_id
+    return out
+
+
 def sync_lead(
     email: str, *, source: str | None = None, surface_key: str | None = None
 ) -> dict:

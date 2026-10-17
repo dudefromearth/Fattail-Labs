@@ -114,3 +114,53 @@ class DiscordRest:
             if exc.status == 404:
                 return None
             raise
+
+
+    # --- guild roles -------------------------------------------------------
+    #
+    # These five exist because routes/front_door_access.py calls them and they
+    # were never written: list_guild_roles, add_guild_member, create_guild_role,
+    # add_guild_member_role, remove_guild_member_role. That code would raise
+    # AttributeError the first time a member connected Discord, which is why the
+    # Front Door spec records the Discord flow as "not walked".
+    #
+    # ⚠️ THEY AUTHENTICATE WITH THE BOT TOKEN AND NOTHING ELSE.
+    # The WooCommerce vendor plugin gates its role grant on the MEMBER's OAuth
+    # access token while authenticating as the bot — the member token is
+    # irrelevant to the request, so a lapsed one skips the grant silently while
+    # the scheduled job still reports success. That single line is why
+    # fotw-discord-role-reconcile.php had to be written. Do not reproduce it.
+
+    def list_guild_roles(self, guild_id: str) -> list[dict]:
+        """Every role in the guild. Needed to resolve a role NAME to an id."""
+        return self._request("GET", f"/guilds/{guild_id}/roles") or []
+
+    def create_guild_role(self, guild_id: str, name: str, *,
+                          hoist: bool = False) -> dict:
+        return self._request("POST", f"/guilds/{guild_id}/roles",
+                             json={"name": name, "hoist": hoist}) or {}
+
+    def add_guild_member(self, guild_id: str, user_id: str,
+                         access_token: str) -> dict | None:
+        """Put a member INTO the guild.
+
+        This is the one call that legitimately needs the member's OAuth token —
+        Discord will not let a bot add someone who has not consented. Used once
+        at connect time and never stored.
+        """
+        return self._request("PUT", f"/guilds/{guild_id}/members/{user_id}",
+                             json={"access_token": access_token})
+
+    def add_guild_member_role(self, guild_id: str, user_id: str,
+                              role_id: str) -> bool:
+        """Grant a role. Bot token only — no member token involved."""
+        self._request("PUT",
+                      f"/guilds/{guild_id}/members/{user_id}/roles/{role_id}")
+        return True
+
+    def remove_guild_member_role(self, guild_id: str, user_id: str,
+                                 role_id: str) -> bool:
+        """Revoke a role. Bot token only."""
+        self._request("DELETE",
+                      f"/guilds/{guild_id}/members/{user_id}/roles/{role_id}")
+        return True

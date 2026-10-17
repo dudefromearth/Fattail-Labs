@@ -1128,6 +1128,56 @@ def test_checkout(conn, ident, plan):
           (not r3.ok) and r3.membership_ends_at is None
           and s3["status"] == "past_due" and s3["next_charge_at"] is None, str(s3))
 
+    # §7.13 — the double-billing guard. The real risk in the parallel run.
+    reset(conn)
+    g1 = providers.FakeProvider()
+    first = checkout.start(conn, identity_id=ident, product_id="navigator-monthly",
+                           provider_name="stripe", customer_ref="cus_t", method_ref="pm_t",
+                           mode="live", provider_for=lambda n: g1)
+    check("first purchase succeeds", first.ok)
+    blocked = False
+    try:
+        checkout.start(conn, identity_id=ident, product_id="navigator-annual",
+                       provider_name="stripe", customer_ref="cus_t", method_ref="pm_t",
+                       mode="live", provider_for=lambda n: g1)
+    except checkout.AlreadySubscribed:
+        blocked = True
+    check("a SECOND purchase on the same identity is REFUSED (§7.13)", blocked)
+    check("and no second charge was attempted", len(g1.calls) == 1, f"{len(g1.calls)} calls")
+
+    # the Woo side of the same guard: a live WooCommerce membership blocks it too
+    reset(conn)
+    with conn.cursor() as cur:
+        cur.execute("""INSERT INTO memberships (identity_id, plan_id, status, source)
+                       VALUES (%s,%s,'active','wordpress:fattail')
+                       ON DUPLICATE KEY UPDATE status='active'""", (ident, plan))
+    conn.commit()
+    g2 = providers.FakeProvider()
+    woo_blocked = False
+    try:
+        checkout.start(conn, identity_id=ident, product_id="observer",
+                       provider_name="stripe", customer_ref="cus_t", method_ref="pm_t",
+                       mode="live", provider_for=lambda n: g2)
+    except checkout.AlreadySubscribed as exc:
+        woo_blocked = "support" in str(exc)
+    check("a member WooCommerce is still billing cannot buy again on Labs",
+          woo_blocked and len(g2.calls) == 0, f"calls={len(g2.calls)}")
+    with conn.cursor() as cur:
+        cur.execute("DELETE FROM memberships WHERE identity_id=%s AND source='wordpress:fattail'",
+                    (ident,))
+    conn.commit()
+
+    # an admin can still deliberately override
+    reset(conn)
+    g3 = providers.FakeProvider()
+    checkout.start(conn, identity_id=ident, product_id="observer", provider_name="stripe",
+                   customer_ref="cus_t", method_ref="pm_t", mode="live",
+                   provider_for=lambda n: g3)
+    over = checkout.start(conn, identity_id=ident, product_id="navigator-monthly",
+                          provider_name="stripe", customer_ref="cus_t", method_ref="pm_t",
+                          mode="live", provider_for=lambda n: g3, allow_duplicate=True)
+    check("allow_duplicate=True lets an admin override deliberately", over.ok)
+
     # shadow mode must not reach a provider even at checkout
     reset(conn)
     trip = providers.FakeProvider()
